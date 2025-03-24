@@ -1,18 +1,20 @@
-from datetime import datetime
-from app import db
-from app.models.base import BaseModel
+from datetime import datetime, UTC
+from app.extensions import db
+from app.models.base import Base
 
-class Communication(BaseModel):
+class Communication(Base):
     """Communication model for tracking interactions with people and churches."""
     __tablename__ = 'communications'
 
     type = db.Column(db.String, nullable=False)  # Email, SMS, Phone, Letter
     message = db.Column(db.String, nullable=False)
-    date_sent = db.Column(db.DateTime, default=datetime.utcnow)
-    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    date_sent = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC))
     person_id = db.Column(db.Integer, db.ForeignKey('people.id'))
     church_id = db.Column(db.Integer, db.ForeignKey('churches.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    office_id = db.Column(db.Integer, db.ForeignKey('offices.id'), nullable=False)
     direction = db.Column(db.String(50), nullable=False, default='outbound')  # 'inbound' or 'outbound'
     
     # Gmail integration fields
@@ -22,10 +24,6 @@ class Communication(BaseModel):
     subject = db.Column(db.String, nullable=True)  # Email subject
     attachments = db.Column(db.String, nullable=True)  # JSON string of attachment info
     last_synced_at = db.Column(db.DateTime, nullable=True)  # Timestamp for last sync
-
-    # Relationships
-    person = db.relationship("Person", back_populates="communications")
-    church = db.relationship("Church", back_populates="communications")
 
     def __repr__(self):
         return f"<Communication(type='{self.type}', date_sent='{self.date_sent}')>"
@@ -41,6 +39,8 @@ class Communication(BaseModel):
             'person_id': self.person_id,
             'church_id': self.church_id,
             'user_id': self.user_id,
+            'owner_id': self.owner_id,
+            'office_id': self.office_id,
             'direction': self.direction,
             'gmail_message_id': self.gmail_message_id,
             'gmail_thread_id': self.gmail_thread_id,

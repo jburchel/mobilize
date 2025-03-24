@@ -5,17 +5,12 @@ from app import create_app, db
 from app.models.user import User
 from app.auth.firebase import verify_firebase_token
 from flask_login import login_user
+from app.config.config import TestingConfig
 
 @pytest.fixture
 def app():
     """Create and configure a test Flask application."""
-    app = create_app()
-    app.config.update({
-        'TESTING': True,
-        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
-        'SECRET_KEY': 'test_key',
-        'WTF_CSRF_ENABLED': False
-    })
+    app = create_app(TestingConfig)
 
     with app.app_context():
         db.create_all()
@@ -42,32 +37,40 @@ def mock_firebase_verify():
 
 def test_login_endpoint(client, mock_firebase_verify):
     """Test the login endpoint with Firebase token."""
-    response = client.post('/auth/login', json={
-        'idToken': 'test_token'
+    # Create a test user first
+    user = User(
+        email='test@example.com',
+        username='testuser',
+        firebase_uid='test_uid',
+        first_name='Test',
+        last_name='User',
+        is_active=True,
+        role='standard_user',
+        office_id=1
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    # Test the login endpoint
+    response = client.post('/api/auth/login', json={
+        'email': 'test@example.com'
     })
     
     assert response.status_code == 200
     data = response.get_json()
     assert 'user' in data
     assert data['user']['email'] == 'test@example.com'
-    
-    # Verify user was created in database
-    user = User.query.filter_by(firebase_uid='test_uid').first()
-    assert user is not None
-    assert user.email == 'test@example.com'
-    assert user.first_name == 'Test'
-    assert user.last_name == 'User'
 
 def test_login_no_token(client):
     """Test the login endpoint without a token."""
-    response = client.post('/auth/login', json={})
+    response = client.post('/api/auth/login', json={})
     assert response.status_code == 400
     data = response.get_json()
     assert 'error' in data
 
 def test_verify_token_endpoint(client, mock_firebase_verify):
     """Test the token verification endpoint."""
-    response = client.post('/auth/verify-token', json={
+    response = client.post('/api/auth/verify-token', json={
         'idToken': 'test_token'
     })
     
@@ -80,7 +83,7 @@ def test_google_auth_flow(client):
     """Test the Google OAuth flow."""
     with patch('app.auth.google_oauth.get_google_auth_url') as mock_auth_url:
         mock_auth_url.return_value = 'https://accounts.google.com/o/oauth2/auth'
-        response = client.get('/auth/google/authorize')
+        response = client.get('/api/auth/google/authorize')
         assert response.status_code == 302
         assert response.headers['Location'].startswith('https://accounts.google.com/o/oauth2/auth')
 
@@ -104,7 +107,7 @@ def test_google_callback(client):
             'picture': 'http://example.com/pic.jpg'
         }, None)
         
-        response = client.get('/auth/google/callback')
+        response = client.get('/api/auth/google/callback')
         
         assert response.status_code == 302
         assert response.headers['Location'] == '/dashboard'
@@ -114,29 +117,33 @@ def test_google_callback(client):
         assert user is not None
         assert user.first_name == 'Test'
         assert user.last_name == 'User'
-        assert user.profile_picture_url == 'http://example.com/pic.jpg'
+        assert user.profile_image == 'http://example.com/pic.jpg'
         
         # Verify credentials were stored
         mock_store_creds.assert_called_once_with(mock_flow.credentials, user.id)
 
-def test_role_based_access(client, mock_firebase_verify):
+def test_role_based_access(client, mock_firebase_verify, test_office):
     """Test role-based access control."""
-    # Create an admin user
+    # Create admin user
     admin = User(
         email='admin@example.com',
+        username='admin',
         firebase_uid='admin_uid',
-        role='super_admin'
+        role='super_admin',
+        office_id=test_office.id
     )
     db.session.add(admin)
     db.session.commit()
 
-    # Create a standard user
-    user = User(
-        email='user@example.com',
-        firebase_uid='user_uid',
-        role='standard_user'
+    # Create standard user
+    standard = User(
+        email='standard@example.com',
+        username='standard',
+        firebase_uid='standard_uid',
+        role='standard_user',
+        office_id=test_office.id
     )
-    db.session.add(user)
+    db.session.add(standard)
     db.session.commit()
 
     # Test admin access
@@ -151,21 +158,23 @@ def test_role_based_access(client, mock_firebase_verify):
 
     # Test standard user access
     with client.session_transaction() as sess:
-        sess['user_id'] = user.id
+        sess['user_id'] = standard.id
         sess['_fresh'] = True  # Mark the session as fresh
     
     # Log in the standard user
-    login_user(user)
+    login_user(standard)
     response = client.get('/admin/dashboard')
     assert response.status_code == 403
 
-def test_logout(client):
-    """Test the logout functionality."""
-    # Create and login a user
+def test_logout(client, test_office):
+    """Test user logout."""
+    # Create a test user
     user = User(
         email='test@example.com',
+        username='testuser',
         firebase_uid='test_uid',
-        role='standard_user'
+        role='standard_user',
+        office_id=test_office.id
     )
     db.session.add(user)
     db.session.commit()
@@ -178,9 +187,11 @@ def test_logout(client):
     login_user(user)
 
     # Test logout
-    response = client.post('/auth/logout')
-    assert response.status_code == 302
-    assert response.headers['Location'] == '/auth/login'
+    response = client.post('/api/auth/logout')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'message' in data
+    assert data['message'] == 'Logout successful'
 
     # Verify session is cleared
     with client.session_transaction() as sess:

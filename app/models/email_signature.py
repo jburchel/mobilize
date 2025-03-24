@@ -1,8 +1,8 @@
 from datetime import datetime
-from app import db
-from app.models.base import BaseModel
+from app.extensions import db
+from app.models.base import Base
 
-class EmailSignature(BaseModel):
+class EmailSignature(Base):
     """Email signature model for storing user email signatures."""
     __tablename__ = 'email_signatures'
 

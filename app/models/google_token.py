@@ -1,8 +1,8 @@
 from datetime import datetime
-from app import db
-from app.models.base import BaseModel
+from app.extensions import db
+from app.models.base import Base
 
-class GoogleToken(BaseModel):
+class GoogleToken(Base):
     """Google OAuth token model for storing user tokens."""
     __tablename__ = 'google_tokens'
 

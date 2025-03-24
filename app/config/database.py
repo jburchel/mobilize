@@ -1,12 +1,10 @@
 import os
 from pathlib import Path
-from flask_sqlalchemy import SQLAlchemy
 from flask import current_app
+from app.extensions import db
 
 # Get the application root directory
 ROOT_DIR = Path(__file__).parent.parent.parent
-
-db = SQLAlchemy()
 
 def init_db(app):
     """Initialize database configuration."""

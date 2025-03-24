@@ -1,7 +1,7 @@
-from app import db
-from app.models.base import BaseModel
+from app.extensions import db
+from app.models.base import Base
 
-class Permission(BaseModel):
+class Permission(Base):
     """Permission model for managing user permissions."""
     __tablename__ = 'permissions'
     

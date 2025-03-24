@@ -52,6 +52,17 @@ def init_firebase(app):
 def verify_firebase_token(id_token):
     """Verify the Firebase ID token."""
     try:
+        # Check if Firebase is initialized
+        try:
+            firebase_admin.get_app()
+        except ValueError:
+            current_app.logger.warning("Firebase not initialized. Token verification will fail.")
+            return None
+
+        # Convert bytes to string if necessary
+        if isinstance(id_token, bytes):
+            id_token = id_token.decode('utf-8')
+
         decoded_token = auth.verify_id_token(id_token)
         return decoded_token
     except Exception as e:
