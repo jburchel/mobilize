@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Pipelines{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Pipeline Management</h1>
+        <a href="{{ url_for('pipeline.create') }}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Create New Pipeline
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-xl-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Main Pipelines</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">
+                        Main pipelines are system-wide pipelines that categorize all people and churches. Custom pipelines exist within stages of these main pipelines.
+                    </p>
+                    
+                    <div class="row">
+                        <!-- People Main Pipeline -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="card border-left-primary shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                People Pipeline</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                {{ people_main_pipeline.name if people_main_pipeline else "Not Created" }}
+                                            </div>
+                                            {% if people_main_pipeline %}
+                                                <div class="mt-2">
+                                                    <span class="badge bg-info">{{ people_main_pipeline.contact_count() }} Contacts</span>
+                                                    <a href="{{ url_for('pipeline.view', pipeline_id=people_main_pipeline.id) }}" class="btn btn-sm btn-outline-primary mt-3">
+                                                        <i class="bi bi-eye me-1"></i> View Pipeline
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="bi bi-people-fill fa-2x text-primary-subtle"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Church Main Pipeline -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="card border-left-success shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                Church Pipeline</div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                {{ church_main_pipeline.name if church_main_pipeline else "Not Created" }}
+                                            </div>
+                                            {% if church_main_pipeline %}
+                                                <div class="mt-2">
+                                                    <span class="badge bg-info">{{ church_main_pipeline.contact_count() }} Contacts</span>
+                                                    <a href="{{ url_for('pipeline.view', pipeline_id=church_main_pipeline.id) }}" class="btn btn-sm btn-outline-success mt-3">
+                                                        <i class="bi bi-eye me-1"></i> View Pipeline
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="bi bi-building-fill fa-2x text-success-subtle"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Custom Pipelines</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
+                            aria-labelledby="dropdownMenuLink">
+                            <div class="dropdown-header">Create New:</div>
+                            <a class="dropdown-item" href="{{ url_for('pipeline.create', type='people') }}">
+                                <i class="bi bi-people me-1"></i> People Pipeline
+                            </a>
+                            <a class="dropdown-item" href="{{ url_for('pipeline.create', type='church') }}">
+                                <i class="bi bi-building me-1"></i> Church Pipeline
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if custom_pipelines %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="pipelinesTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Main Pipeline Stage</th>
+                                        <th>Contacts</th>
+                                        <th>Status</th>
+                                        <th data-bs-toggle="tooltip" title="View, Edit, or Manage Stages">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pipeline in custom_pipelines %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="text-dark fw-bold">
+                                                {{ pipeline.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if pipeline.pipeline_type == 'people' %}
+                                                <span class="badge bg-primary">People</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Church</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if pipeline.parent_pipeline_stage %}
+                                                <span class="badge bg-info">{{ pipeline.parent_pipeline_stage }}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Not Set</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ pipeline.contact_count() }}</td>
+                                        <td>
+                                            {% if pipeline.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View Pipeline">
+                                                <i class="bi bi-eye me-1"></i>
+                                            </a>
+                                            <button class="btn btn-sm btn-info edit-btn" data-id="{{ pipeline.id }}" data-name="{{ pipeline.name }}" data-description="{{ pipeline.description }}" data-bs-toggle="tooltip" title="Edit Pipeline">
+                                                <i class="bi bi-pencil me-1"></i>
+                                            </button>
+                                            <a href="{{ url_for('pipeline.manage_stages', pipeline_id=pipeline.id) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Manage Stages">
+                                                <i class="bi bi-list-check me-1"></i>
+                                            </a>
+                                            <button class="btn btn-sm btn-danger delete-btn" data-id="{{ pipeline.id }}" data-name="{{ pipeline.name }}" data-bs-toggle="tooltip" title="Delete Pipeline">
+                                                <i class="bi bi-trash me-1"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <p class="mb-3">No custom pipelines have been created yet.</p>
+                            <a href="{{ url_for('pipeline.create') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create your first pipeline
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Pipeline Modal -->
+<div class="modal fade" id="editPipelineModal" tabindex="-1" aria-labelledby="editPipelineModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPipelineModalLabel">Edit Pipeline</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('pipeline.update_pipeline') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" id="editPipelineId" name="pipeline_id">
+                    
+                    <div class="mb-3">
+                        <label for="editPipelineName" class="form-label">Pipeline Name</label>
+                        <input type="text" class="form-control" id="editPipelineName" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editPipelineDescription" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="editPipelineDescription" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Pipeline Modal -->
+<div class="modal fade" id="deletePipelineModal" tabindex="-1" aria-labelledby="deletePipelineModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletePipelineModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the pipeline "<span id="deletePipelineName"></span>"?</p>
+                <p class="text-danger">This action cannot be undone. All stages and contact associations will be permanently removed.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deletePipelineForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger">Delete Pipeline</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        // Initialize DataTable
+        $('#pipelinesTable').DataTable({
+            "order": [[ 0, "asc" ]], // Order by first column
+            "language": {
+                "search": "Search pipelines:",
+                "emptyTable": "No custom pipelines found. Create one to get started!"
+            },
+            "columnDefs": [
+                { "width": "15%", "targets": 3 }, // Actions column
+            ]
+        });
+        
+        // Setup edit button handlers
+        $('.edit-btn').click(function() {
+            var pipelineId = $(this).data('id');
+            var pipelineName = $(this).data('name');
+            var pipelineDescription = $(this).data('description');
+            
+            // Populate the edit modal
+            $('#editPipelineId').val(pipelineId);
+            $('#editPipelineName').val(pipelineName);
+            $('#editPipelineDescription').val(pipelineDescription);
+            
+            // Show the modal
+            $('#editPipelineModal').modal('show');
+        });
+        
+        // Setup delete pipeline button handlers
+        $('.delete-btn').click(function() {
+            var pipelineId = $(this).data('id');
+            var pipelineName = $(this).data('name');
+            
+            // Update the modal
+            $('#deletePipelineName').text(pipelineName);
+            $('#deletePipelineForm').attr('action', "{{ url_for('pipeline.delete', pipeline_id=0) }}".replace('0', pipelineId));
+            
+            // Show the modal
+            $('#deletePipelineModal').modal('show');
+        });
+    });
+</script>
+
+{% endblock %} 

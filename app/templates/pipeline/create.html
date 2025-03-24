@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Create Pipeline{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Create New Pipeline</h1>
+        <a href="{{ url_for('pipeline.index') }}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Pipelines
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-8 col-lg-10">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Pipeline Information</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('pipeline.create') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Pipeline Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pipeline_type" class="form-label">Pipeline Type *</label>
+                            <select class="form-select" id="pipeline_type" name="pipeline_type" required>
+                                <option value="people" {% if pipeline_type == 'people' %}selected{% endif %}>People Pipeline</option>
+                                <option value="church" {% if pipeline_type == 'church' %}selected{% endif %}>Church Pipeline</option>
+                            </select>
+                            <div class="form-text">This determines which type of contacts can be added to this pipeline.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="parent_pipeline_stage" class="form-label">Main Pipeline Stage *</label>
+                            <select class="form-select" id="parent_pipeline_stage" name="parent_pipeline_stage" required>
+                                <option value="">Select a stage...</option>
+                                {% for stage in parent_stages %}
+                                <option value="{{ stage }}">{{ stage }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">This pipeline will operate within this stage of the main pipeline.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="office_id" class="form-label">Office *</label>
+                            <select class="form-select" id="office_id" name="office_id" required>
+                                <option value="">Select an office...</option>
+                                {% for office in offices %}
+                                <option value="{{ office.id }}">{{ office.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Pipeline
+                            </button>
+                            <a href="{{ url_for('pipeline.index') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('pipeline_type').addEventListener('change', function() {
+        // Redirect with the new pipeline type to refresh parent stage options
+        window.location.href = "{{ url_for('pipeline.create') }}?type=" + this.value;
+    });
+</script>
+{% endblock %} 

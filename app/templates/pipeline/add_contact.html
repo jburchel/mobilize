@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block styles %}
+<style>
+    .person-card, .church-card {
+        margin-bottom: 10px;
+        border-left: 3px solid transparent;
+    }
+    .person-card {
+        border-left-color: #007bff;
+    }
+    .church-card {
+        border-left-color: #28a745;
+    }
+    .person-card.selected, .church-card.selected {
+        background-color: #f8f9fa;
+        box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    .contact-type-badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 5px;
+    }
+    .contact-type-badge.person {
+        background-color: #cce5ff;
+        color: #004085;
+    }
+    .contact-type-badge.church {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .contacts-container {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    .filter-box {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{{ page_title }}</h1>
+        <div>
+            <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-eye"></i> View Pipeline
+            </a>
+            <a href="{{ url_for('pipeline.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Pipelines
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Add Contacts to Pipeline</h6>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('pipeline.add_contact', pipeline_id=pipeline.id) }}" id="addContactForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                
+                <div class="row">
+                    <!-- Left Column - Stage Selection -->
+                    <div class="col-md-4">
+                        <div class="mb-4">
+                            <label for="stage_id" class="form-label">Initial Stage *</label>
+                            <select class="form-select" id="stage_id" name="stage_id" required>
+                                <option value="">Select a stage...</option>
+                                {% for stage in stages %}
+                                <option value="{{ stage.id }}">{{ stage.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select the starting stage for selected contacts</div>
+                        </div>
+
+                        <div class="filter-box">
+                            <h6 class="mb-3">Filter Contacts</h6>
+                            <form id="searchForm" action="{{ url_for('pipeline.add_contact', pipeline_id=pipeline.id) }}" method="GET">
+                                <div class="mb-3">
+                                    <label for="search" class="form-label">Search</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="search" name="search" placeholder="Name, email, phone..." value="{{ search_query }}">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="type" id="type-all" value="all" {% if contact_type == 'all' %}checked{% endif %} onChange="this.form.submit()">
+                                        <label class="form-check-label" for="type-all">All</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="type" id="type-person" value="person" {% if contact_type == 'person' %}checked{% endif %} onChange="this.form.submit()">
+                                        <label class="form-check-label" for="type-person">People</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="type" id="type-church" value="church" {% if contact_type == 'church' %}checked{% endif %} onChange="this.form.submit()">
+                                        <label class="form-check-label" for="type-church">Churches</label>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="d-flex justify-content-between">
+                                <button type="button" id="select-all" class="btn btn-outline-secondary btn-sm">Select All</button>
+                                <button type="button" id="clear-selection" class="btn btn-outline-secondary btn-sm">Clear Selection</button>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <div class="alert alert-info" id="selection-count">
+                                    0 contacts selected
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column - Contacts Selection -->
+                    <div class="col-md-8">
+                        <div class="contacts-container">
+                            {% if people %}
+                                <h6 class="mb-3">People ({{ people|length }})</h6>
+                                {% for person in people %}
+                                <div class="card person-card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input contact-checkbox" type="checkbox" name="contact_ids" value="{{ person.id }}" id="person-{{ person.id }}">
+                                                    <label class="form-check-label" for="person-{{ person.id }}">
+                                                        {{ person.first_name }} {{ person.last_name }}
+                                                        <span class="contact-type-badge person">Person</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="ms-4 ps-2 mt-2 text-muted">
+                                            {% if person.email %}
+                                            <div><i class="fas fa-envelope"></i> {{ person.email }}</div>
+                                            {% endif %}
+                                            {% if person.phone %}
+                                            <div><i class="fas fa-phone"></i> {{ person.phone }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <h6 class="mb-3">People (0)</h6>
+                                <div class="alert alert-info">No available people to add.</div>
+                            {% endif %}
+                            
+                            {% if churches %}
+                                <h6 class="mb-3 mt-4">Churches ({{ churches|length }})</h6>
+                                {% for church in churches %}
+                                <div class="card church-card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input contact-checkbox" type="checkbox" name="contact_ids" value="{{ church.id }}" id="church-{{ church.id }}">
+                                                    <label class="form-check-label" for="church-{{ church.id }}">
+                                                        {{ church.name }}
+                                                        <span class="contact-type-badge church">Church</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="ms-4 ps-2 mt-2 text-muted">
+                                            {% if church.email %}
+                                            <div><i class="fas fa-envelope"></i> {{ church.email }}</div>
+                                            {% endif %}
+                                            {% if church.phone %}
+                                            <div><i class="fas fa-phone"></i> {{ church.phone }}</div>
+                                            {% endif %}
+                                            {% if church.city or church.state %}
+                                            <div><i class="fas fa-map-marker-alt"></i> 
+                                                {{ church.city }}{% if church.city and church.state %}, {% endif %}{{ church.state }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <h6 class="mb-3 mt-4">Churches (0)</h6>
+                                <div class="alert alert-info">No available churches to add.</div>
+                            {% endif %}
+                            
+                            {% if (not people and not churches) and search_query %}
+                                <div class="alert alert-warning">No contacts found matching your search.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary" id="add-contacts-btn" disabled>
+                        <i class="fas fa-plus-circle"></i> Add Selected Contacts
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Update selected count and toggle selected class
+        function updateSelectedCount() {
+            var count = $('.contact-checkbox:checked').length;
+            $('#selection-count').text(count + ' contacts selected');
+            
+            // Enable/disable submit button
+            if (count > 0 && $('#stage_id').val()) {
+                $('#add-contacts-btn').prop('disabled', false);
+            } else {
+                $('#add-contacts-btn').prop('disabled', true);
+            }
+            
+            // Update card selected state
+            $('.contact-checkbox').each(function() {
+                var card = $(this).closest('.card');
+                if ($(this).is(':checked')) {
+                    card.addClass('selected');
+                } else {
+                    card.removeClass('selected');
+                }
+            });
+        }
+        
+        // Bind events
+        $('.contact-checkbox').change(updateSelectedCount);
+        $('#stage_id').change(updateSelectedCount);
+        
+        // Select/unselect all visible contacts
+        $('#select-all').click(function() {
+            $('.contact-checkbox').prop('checked', true);
+            updateSelectedCount();
+        });
+        
+        $('#clear-selection').click(function() {
+            $('.contact-checkbox').prop('checked', false);
+            updateSelectedCount();
+        });
+        
+        // Initial update
+        updateSelectedCount();
+    });
+</script>
+{% endblock %} 

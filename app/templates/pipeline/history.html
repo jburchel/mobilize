@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline History - {{ pipeline.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="bi bi-clock-history me-2"></i> Pipeline History - {{ pipeline.name }}
+        </h1>
+        <div>
+            <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Pipeline
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Recent Activity</h6>
+            <div class="d-flex align-items-center">
+                <div class="input-group input-group-sm me-2" style="width: 250px;">
+                    <input type="text" class="form-control" id="historySearch" placeholder="Search history...">
+                    <button class="btn btn-outline-secondary" type="button">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <select class="form-select form-select-sm me-2" id="historyFilter" style="width: 150px;">
+                    <option value="all">All Activity</option>
+                    <option value="movement">Stage Movements</option>
+                    <option value="addition">New Additions</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if history_items %}
+            <div class="table-responsive">
+                <table class="table table-hover history-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Contact</th>
+                            <th style="width: 35%;">Activity</th>
+                            <th style="width: 20%;">Date/Time</th>
+                            <th style="width: 15%;">User</th>
+                            <th style="width: 10%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in history_items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-placeholder rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                         style="width: 32px; height: 32px; background-color: #4e73df; color: white; font-size: 0.8rem;">
+                                        {{ item.pipeline_contact.contact.get_name()|truncate(1, True, '') }}
+                                    </div>
+                                    <a href="{{ url_for('pipeline.history', pipeline_id=pipeline.id, pipeline_contact_id=item.pipeline_contact.id) }}">
+                                        {{ item.pipeline_contact.contact.get_name() }}
+                                    </a>
+                                </div>
+                            </td>
+                            <td>
+                                {% if item.from_stage %}
+                                Moved from 
+                                <span class="badge" style="background-color: {{ item.from_stage.color }};">
+                                    {{ item.from_stage.name }}
+                                </span>
+                                to 
+                                <span class="badge" style="background-color: {{ item.to_stage.color }};">
+                                    {{ item.to_stage.name }}
+                                </span>
+                                {% else %}
+                                Added to 
+                                <span class="badge" style="background-color: {{ item.to_stage.color }};">
+                                    {{ item.to_stage.name }}
+                                </span>
+                                {% endif %}
+                                
+                                {% if item.notes %}
+                                <button class="btn btn-sm text-primary show-notes-btn" 
+                                        data-bs-toggle="popover" 
+                                        data-bs-content="{{ item.notes }}"
+                                        data-bs-trigger="focus"
+                                        data-bs-placement="top">
+                                    <i class="bi bi-chat-quote"></i> Notes
+                                </button>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-muted">
+                                    {{ item.moved_at.strftime('%b %d, %Y') }}
+                                    <br>
+                                    {{ item.moved_at.strftime('%I:%M %p') }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if item.moved_by_user %}
+                                {{ item.moved_by_user.name or item.moved_by_user.email or 'Unknown' }}
+                                {% elif item.is_automated %}
+                                <span class="badge bg-secondary">Automated</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('pipeline.history', pipeline_id=pipeline.id, pipeline_contact_id=item.pipeline_contact.id) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-clock-history text-muted" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">No History Available</h5>
+                <p class="text-muted">There's no recorded history for this pipeline yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Initialize popovers
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+        });
+        
+        // Search functionality
+        $("#historySearch").on("keyup", function() {
+            var value = $(this).val().toLowerCase();
+            $(".history-table tbody tr").filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+        
+        // Filter functionality
+        $("#historyFilter").on("change", function() {
+            var value = $(this).val();
+            
+            if (value === "all") {
+                $(".history-table tbody tr").show();
+            } else if (value === "movement") {
+                $(".history-table tbody tr").hide();
+                $(".history-table tbody tr:contains('Moved from')").show();
+            } else if (value === "addition") {
+                $(".history-table tbody tr").hide();
+                $(".history-table tbody tr:contains('Added to')").show();
+            }
+        });
+    });
+</script>
+{% endblock %} 

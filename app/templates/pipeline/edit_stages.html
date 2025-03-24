@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Pipeline Stages{% endblock %}
+
+{% block styles %}
+<style>
+    .stage-list {
+        margin-bottom: 1.5rem;
+    }
+    
+    .stage-item {
+        display: flex;
+        align-items: center;
+        background-color: #fff;
+        border: 1px solid #e3e6f0;
+        border-radius: 0.35rem;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+    
+    .stage-item:hover {
+        box-shadow: 0 0.15rem 0.5rem rgba(58, 59, 69, 0.15);
+    }
+    
+    .stage-handle {
+        cursor: move;
+        padding-right: 0.5rem;
+        color: #858796;
+    }
+    
+    .stage-color-preview {
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        margin-right: 0.75rem;
+    }
+    
+    .stage-content {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+    }
+    
+    .stage-order {
+        display: inline-block;
+        width: 1.5rem;
+        height: 1.5rem;
+        line-height: 1.5rem;
+        text-align: center;
+        background-color: #f8f9fc;
+        border-radius: 50%;
+        font-weight: bold;
+        font-size: 0.8rem;
+        margin-right: 0.75rem;
+    }
+    
+    .stage-name {
+        font-weight: 600;
+    }
+    
+    .stage-actions {
+        margin-left: auto;
+    }
+    
+    /* Saved indicator */
+    .saved-indicator {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background-color: #1cc88a;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        box-shadow: 0 0.15rem 0.5rem rgba(0, 0, 0, 0.2);
+        display: none;
+        z-index: 1050;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Manage Pipeline Stages</h2>
+            <p class="text-muted">Define and arrange stages for: {{ pipeline.name }}</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-eye me-1"></i> View Pipeline
+            </a>
+            <a href="{{ url_for('pipeline.index') }}" class="btn btn-outline-secondary ms-2">
+                <i class="bi bi-arrow-left me-1"></i> Back to Pipelines
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Pipeline Stages</h5>
+                    <button type="button" class="btn btn-sm btn-primary" id="addStageBtn">
+                        <i class="bi bi-plus-circle me-1"></i> Add Stage
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="addStageFormContainer" class="add-stage-form mb-4" style="display: none;">
+                        <h6 class="mb-3">Add New Stage</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="newStageName" class="form-label">Stage Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newStageName" placeholder="e.g., Initial Contact">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="newStageColor" class="form-label">Color</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <span id="newColorPreview" class="stage-color-preview" style="background-color: #3498db;"></span>
+                                    </span>
+                                    <input type="color" class="form-control form-control-color" id="newStageColor" value="#3498db">
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label for="newStageDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="newStageDescription" rows="2" placeholder="Describe what happens in this stage"></textarea>
+                            </div>
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="button" class="btn btn-outline-secondary me-2" id="cancelAddStageBtn">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="saveNewStageBtn">Add Stage</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3">
+                        <h6 class="m-0 text-primary fw-bold">Pipeline Stages</h6>
+                        <button type="button" id="addStageButton" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Add Stage
+                        </button>
+                    </div>
+
+                    <div class="stage-list" id="stageList">
+                        {% for stage in stages %}
+                        <div class="stage-item" data-stage-id="{{ stage.id }}" data-order="{{ stage.order }}" data-color="{{ stage.color }}" data-description="{{ stage.description or '' }}">
+                            <div class="stage-handle">
+                                <i class="bi bi-grip-vertical"></i>
+                            </div>
+                            <div class="stage-color-preview" style="background-color: {{ stage.color }};"></div>
+                            <div class="stage-content">
+                                <div class="stage-order">{{ stage.order }}</div>
+                                <div class="stage-name">{{ stage.name }}</div>
+                            </div>
+                            <div class="stage-actions">
+                                <button type="button" class="btn btn-sm btn-outline-primary edit-stage" data-stage-id="{{ stage.id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-stage" data-stage-id="{{ stage.id }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if stages|length == 0 %}
+                    <div class="text-center py-4" id="noStagesMessage">
+                        <i class="bi bi-diagram-3 text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3">No Stages Defined</h5>
+                        <p class="text-muted">Start by adding your first pipeline stage</p>
+                    </div>
+                    {% endif %}
+
+                    <form id="stagesForm" method="POST" action="{{ url_for('pipeline.manage_stages', pipeline_id=pipeline.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" id="stagesData" name="stages_data" value="[]">
+                        <div class="mt-4 d-flex justify-content-end">
+                            <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="btn btn-outline-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i> Save Pipeline Stages
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Stage Details</h5>
+                </div>
+                <div class="card-body" id="stageDetailsPanel">
+                    <div class="text-center py-4">
+                        <i class="bi bi-arrow-left-circle text-muted" style="font-size: 2rem;"></i>
+                        <h6 class="mt-3">Select a Stage</h6>
+                        <p class="text-muted small">Click on a stage to view and edit its details</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-info-circle me-2"></i> Tips for Pipeline Stages
+                    </h5>
+                    <ul class="mb-0">
+                        <li><strong>Order matters</strong> - Arrange stages in the sequence contacts should move through</li>
+                        <li><strong>Be specific</strong> - Clear stage names help team members understand the process</li>
+                        <li><strong>Use colors</strong> - Different colors can help visually distinguish stages</li>
+                        <li><strong>Add descriptions</strong> - Document what happens in each stage and when to move contacts forward</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="saved-indicator" id="savedIndicator">
+        <i class="bi bi-check-circle me-1"></i> Changes saved
+    </div>
+</div>
+
+<!-- Edit Stage Modal -->
+<div class="modal fade" id="editStageModal" tabindex="-1" aria-labelledby="editStageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editStageModalLabel">Edit Stage</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editStageId">
+                <div class="mb-3">
+                    <label for="editStageName" class="form-label">Stage Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control stage-name-input" id="editStageName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editStageColor" class="form-label">Color</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <span id="editColorPreview" class="stage-color-preview"></span>
+                        </span>
+                        <input type="color" class="form-control form-control-color stage-color-input" id="editStageColor" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="editStageDescription" class="form-label">Description</label>
+                    <textarea class="form-control stage-description-input" id="editStageDescription" rows="3"></textarea>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input stage-active-input" id="editStageActive">
+                    <label class="form-check-label" for="editStageActive">Active</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveStageChangesBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Stage Confirmation Modal -->
+<div class="modal fade" id="deleteStageModal" tabindex="-1" aria-labelledby="deleteStageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteStageModalLabel">Delete Stage</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this stage?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteStageForm" method="POST" action="{{ url_for('pipeline.manage_stages', pipeline_id=pipeline.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="stage_id" id="deleteStageId">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stage Template (hidden) -->
+<div id="stage-template" style="display: none;">
+    <div class="card stage-card" data-id="">
+        <div class="card-header bg-light">
+            <span class="stage-handle"><i class="fas fa-grip-vertical"></i></span>
+            <span class="stage-name">New Stage</span>
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-secondary edit-stage">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-stage">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="display: none;">
+            <div class="mb-3">
+                <label class="form-label">Stage Name</label>
+                <input type="text" class="form-control stage-name-input" value="New Stage" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea class="form-control stage-description-input" rows="2"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Color</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <span class="color-preview" style="background-color: #3498db;"></span>
+                    </span>
+                    <input type="color" class="form-control form-control-color stage-color-input" value="#3498db" title="Choose stage color">
+                </div>
+            </div>
+            
+            <div class="automation-section">
+                <h6 class="mb-3">Automation Rules</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label">Auto-move after days</label>
+                    <input type="number" class="form-control stage-auto-move-days-input" min="0">
+                    <div class="form-text">Automatically move contacts to the next stage after this many days (leave empty to disable)</div>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input stage-auto-reminder-input">
+                    <label class="form-check-label">Send reminder when contact enters stage</label>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Auto-create task template</label>
+                    <input type="text" class="form-control stage-auto-task-template-input">
+                    <div class="form-text">Template for tasks to create when contact enters this stage. Use {contact_name} as placeholder.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Make stages sortable
+        new Sortable(document.getElementById('stageList'), {
+            handle: '.stage-handle',
+            animation: 150,
+            onEnd: function() {
+                updateStageOrder();
+            }
+        });
+        
+        // Function to update stage order
+        function updateStageOrder() {
+            $('.stage-item').each(function(index) {
+                $(this).attr('data-order', index + 1);
+                $(this).find('.stage-order').text(index + 1);
+            });
+        }
+        
+        // Bind event handlers for edit and delete buttons
+        rebindStageEventHandlers();
+        
+        // Save changes from the edit modal
+        $('#saveStageChangesBtn').on('click', function() {
+            var stageId = $('#editStageId').val();
+            var stageName = $('#editStageName').val();
+            var stageColor = $('#editStageColor').val();
+            var stageDescription = $('#editStageDescription').val();
+            var stageActive = $('#editStageActive').prop('checked');
+            
+            // Find the stage item and update its data
+            var stageItem = $('.stage-item[data-stage-id="' + stageId + '"]');
+            stageItem.find('.stage-name').text(stageName);
+            stageItem.find('.stage-color-preview').css('background-color', stageColor);
+            stageItem.attr('data-color', stageColor);
+            stageItem.attr('data-description', stageDescription || '');
+            
+            // Close the modal
+            $('#editStageModal').modal('hide');
+            
+            // Show a saved indicator
+            $('#savedIndicator').fadeIn().delay(1500).fadeOut();
+            
+            // For debugging
+            console.log('Updated stage:', stageId, stageName, stageColor, stageDescription);
+        });
+        
+        // Submit form
+        $('#stagesForm').submit(function(e) {
+            var stagesData = [];
+            
+            // Collect data from each stage item
+            $('.stage-item').each(function(index) {
+                var stageItem = $(this);
+                var stageId = stageItem.attr('data-stage-id');
+                var stageName = stageItem.find('.stage-name').text().trim();
+                var stageColor = stageItem.attr('data-color') || '#3498db';
+                var stageOrder = index + 1;
+                var stageDescription = stageItem.attr('data-description') || '';
+                
+                var stageData = {
+                    id: stageId,
+                    name: stageName,
+                    color: stageColor,
+                    order: stageOrder,
+                    description: stageDescription
+                };
+                
+                stagesData.push(stageData);
+            });
+            
+            // Set form data
+            $('#stagesData').val(JSON.stringify(stagesData));
+            
+            // For debugging
+            console.log('Submitting stages data:', JSON.stringify(stagesData));
+            
+            // Continue with form submission
+            return true;
+        });
+        
+        // Initialize both "Add Stage" buttons to use the same function
+        $('#addStageBtn, #addStageButton').click(function() {
+            console.log('Add Stage button clicked');
+            
+            // Create a new stage with default values
+            var newStageId = 'new_' + Date.now(); // Temporary ID
+            var newStageName = 'New Stage';
+            var newStageColor = '#3498db';
+            var newStageOrder = $('.stage-item').length + 1;
+            
+            var newStageHtml = `
+                <div class="stage-item" data-stage-id="${newStageId}" data-order="${newStageOrder}" data-color="${newStageColor}">
+                    <div class="stage-handle">
+                        <i class="bi bi-grip-vertical"></i>
+                    </div>
+                    <div class="stage-color-preview" style="background-color: ${newStageColor};"></div>
+                    <div class="stage-content">
+                        <div class="stage-order">${newStageOrder}</div>
+                        <div class="stage-name">${newStageName}</div>
+                    </div>
+                    <div class="stage-actions">
+                        <button type="button" class="btn btn-sm btn-outline-primary edit-stage" data-stage-id="${newStageId}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger delete-stage" data-stage-id="${newStageId}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Add the new stage to the list
+            $('#stageList').append(newStageHtml);
+            
+            // Hide "no stages" message if it was showing
+            $('#noStagesMessage').hide();
+            
+            // Rebind event handlers to the new buttons
+            rebindStageEventHandlers();
+            
+            // Update stage order
+            updateStageOrder();
+        });
+        
+        // Function to rebind event handlers to all stage controls
+        function rebindStageEventHandlers() {
+            // Unbind existing handlers to prevent duplicates
+            $('.edit-stage').off('click');
+            $('.delete-stage').off('click');
+            
+            // Rebind edit handlers
+            $('.edit-stage').on('click', function() {
+                var stageId = $(this).data('stage-id');
+                $('#editStageId').val(stageId);
+                var stageItem = $('.stage-item[data-stage-id="' + stageId + '"]');
+                var stageName = stageItem.find('.stage-name').text().trim();
+                var stageColor = stageItem.attr('data-color') || '#3498db';
+                var stageDescription = stageItem.attr('data-description') || '';
+                
+                // Populate edit modal with stage data
+                $('#editStageName').val(stageName);
+                $('#editStageColor').val(stageColor);
+                $('#editColorPreview').css('background-color', stageColor);
+                $('#editStageDescription').val(stageDescription);
+                
+                // Show the modal
+                $('#editStageModal').modal('show');
+            });
+            
+            // Rebind delete handlers
+            $('.delete-stage').on('click', function() {
+                if (confirm('Are you sure you want to delete this stage? This cannot be undone.')) {
+                    var stageId = $(this).data('stage-id');
+                    $('.stage-item[data-stage-id="' + stageId + '"]').remove();
+                    if ($('.stage-item').length === 0) {
+                        $('#noStagesMessage').show();
+                    }
+                    updateStageOrder();
+                }
+            });
+        }
+        
+        // Update color preview in the edit modal when color changes
+        $('#editStageColor').on('input', function() {
+            $('#editColorPreview').css('background-color', $(this).val());
+        });
+    });
+</script>
+{% endblock %} 
