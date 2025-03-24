@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Mobilize CRM{% endblock %}
+
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card card-border-primary-blue">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Administration Controls</h5>
+                </div>
+                <div class="card-body">
+                    <p>Welcome to the Admin Dashboard, {{ current_user.first_name }}. Your role is <strong class="text-primary-blue">{{ current_user.role }}</strong>.</p>
+                    <p>From here you can manage system-wide settings and user permissions.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- User Management -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 card-border-primary-blue">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">User Management</h5>
+                    {% if current_user.role == 'super_admin' %}
+                    <a href="{{ url_for('admin.users') }}?add=true" class="btn btn-sm btn-primary">
+                        <i class="bi bi-person-plus"></i> Add User
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <p>Manage user accounts, roles, and permissions</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-people me-2 text-primary-blue"></i> View All Users
+                            </div>
+                            <span class="badge bg-primary-blue rounded-pill">{{ user_count }}</span>
+                        </a>
+                        {% if current_user.role == 'super_admin' %}
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-shield-lock me-2 text-primary-blue"></i> Manage Roles & Permissions
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Office Management (only visible to super_admin) -->
+        {% if current_user.role == 'super_admin' %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 card-border-primary-green">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Office Management</h5>
+                    <a href="{{ url_for('admin.offices') }}?add=true" class="btn btn-sm btn-success">
+                        <i class="bi bi-building-add"></i> Add Office
+                    </a>
+                </div>
+                <div class="card-body">
+                    <p>Configure office settings and manage office users</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('admin.offices') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-building me-2 text-primary-green"></i> View All Offices
+                            </div>
+                            <span class="badge bg-primary-green rounded-pill">{{ office_count }}</span>
+                        </a>
+                        {% if current_user.office %}
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-gear me-2 text-primary-green"></i> Manage {{ current_user.office.name }}
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- System Settings -->
+        {% if current_user.role == 'super_admin' %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 card-border-primary-blue">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">System Settings</h5>
+                </div>
+                <div class="card-body">
+                    <p>Configure system-wide settings and integrations</p>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-google me-2 text-primary-blue"></i> Google Workspace Integration
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-envelope me-2 text-primary-blue"></i> Email Settings
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-database me-2 text-primary-blue"></i> Database Management
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Logs & Monitoring -->
+        {% if current_user.role == 'super_admin' %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 card-border-primary-green">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Logs & Monitoring</h5>
+                </div>
+                <div class="card-body">
+                    <p>Review system logs and monitor system performance</p>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-file-text me-2 text-primary-green"></i> System Logs
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-activity me-2 text-primary-green"></i> User Activity
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <i class="bi bi-graph-up me-2 text-primary-green"></i> System Performance
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

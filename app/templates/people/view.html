@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+
+{% block title %}{{ person.first_name }} {{ person.last_name }} - Mobilize CRM{% endblock %}
+
+{% block page_title %}{{ person.first_name }} {{ person.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Action Bar -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('people.edit', id=person.id) }}" class="btn btn-primary">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                            <i class="bi bi-plus-circle"></i> Add Task
+                        </button>
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addNoteModal">
+                            <i class="bi bi-journal-plus"></i> Add Note
+                        </button>
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#logCommunicationModal">
+                            <i class="bi bi-chat-dots"></i> Log Communication
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Profile Information -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if person.profile_image %}
+                            <img src="{{ url_for('static', filename=person.profile_image) }}" 
+                                 alt="Profile image" 
+                                 class="rounded-circle img-thumbnail"
+                                 style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto"
+                                 style="width: 150px; height: 150px;">
+                                <i class="bi bi-person" style="font-size: 4rem;"></i>
+                            </div>
+                        {% endif %}
+                        <h4 class="mt-3">
+                            {% if person.title %}{{ person.title }} {% endif %}
+                            {{ person.first_name }} {{ person.last_name }}
+                        </h4>
+                        
+                        <div class="mt-2">
+                            {% if person.people_pipeline %}
+                                <span class="badge bg-info">{{ person.people_pipeline }}</span>
+                            {% endif %}
+                            {% if person.priority %}
+                                <span class="badge bg-{{ person.priority.lower() }}">{{ person.priority }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Status:</div>
+                        <div class="col-7">{{ person.status }}</div>
+                    </div>
+                    
+                    {% if person.marital_status %}
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Marital Status:</div>
+                        <div class="col-7">{{ person.marital_status }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if person.spouse_first_name or person.spouse_last_name %}
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Spouse:</div>
+                        <div class="col-7">{{ person.spouse_first_name }} {{ person.spouse_last_name }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if person.date_of_birth %}
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Date of Birth:</div>
+                        <div class="col-7">{{ person.date_of_birth }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if person.tags %}
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Tags:</div>
+                        <div class="col-7">
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for tag in person.tags.split(',') %}
+                                    <span class="badge bg-light text-dark">{{ tag.strip() }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if person.virtuous %}
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Virtuous:</div>
+                        <div class="col-7">Yes</div>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Contact Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if person.email %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Email:</div>
+                        <div class="col-8">
+                            <a href="mailto:{{ person.email }}">{{ person.email }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if person.phone %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Phone:</div>
+                        <div class="col-8">
+                            <a href="tel:{{ person.phone }}">{{ person.phone }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if person.address or person.city or person.state or person.zip_code %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Address:</div>
+                        <div class="col-8">
+                            {% if person.address %}{{ person.address }}<br>{% endif %}
+                            {% if person.city or person.state or person.zip_code %}
+                                {{ person.city }}{% if person.city and person.state %}, {% endif %}
+                                {{ person.state }} {{ person.zip_code }}
+                            {% endif %}
+                            {% if person.country %}<br>{{ person.country }}{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Church Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Church Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if person.church %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Church:</div>
+                        <div class="col-8">
+                            <a href="{{ url_for('churches.view', id=person.church.id) }}">
+                                {{ person.church.name }}
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if person.church_role %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Role:</div>
+                        <div class="col-8">{{ person.church_role }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline and Activity Information -->
+        <div class="col-md-8">
+            <!-- Pipeline Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Pipeline Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Pipeline:</div>
+                                <div class="col-7">{{ person.people_pipeline }}</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Status:</div>
+                                <div class="col-7">{{ person.pipeline_status }}</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Stage:</div>
+                                <div class="col-7">{{ person.pipeline_stage }}</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Priority:</div>
+                                <div class="col-7">{{ person.priority }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Source:</div>
+                                <div class="col-7">{{ person.source }}</div>
+                            </div>
+                            
+                            {% if person.referred_by %}
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Referred By:</div>
+                                <div class="col-7">{{ person.referred_by }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Assigned To:</div>
+                                <div class="col-7">{{ person.assigned_to }}</div>
+                            </div>
+                            
+                            {% if person.date_closed %}
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Date Closed:</div>
+                                <div class="col-7">{{ person.date_closed }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if person.info_given %}
+                    <div class="row mb-3">
+                        <div class="col-12 text-muted mb-1">Information Given:</div>
+                        <div class="col-12">{{ person.info_given }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if person.desired_service %}
+                    <div class="row mb-3">
+                        <div class="col-12 text-muted mb-1">Desired Service:</div>
+                        <div class="col-12">{{ person.desired_service }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if person.reason_closed %}
+                    <div class="row mb-3">
+                        <div class="col-12 text-muted mb-1">Reason Closed:</div>
+                        <div class="col-12">{{ person.reason_closed }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Additional Notes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Additional Notes</h5>
+                </div>
+                <div class="card-body">
+                    {% if person.notes %}
+                        <div class="mb-0">{{ person.notes|nl2br }}</div>
+                    {% else %}
+                        <p class="text-muted mb-0">No additional notes available.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tasks -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tasks</h5>
+                </div>
+                <div class="card-body">
+                    {% if tasks %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Due Date</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for task in tasks %}
+                                        <tr>
+                                            <td>{{ task.title }}</td>
+                                            <td>{{ task.due_date.strftime('%Y-%m-%d') }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ task.priority.lower() }}">
+                                                    {{ task.priority }}
+                                                </span>
+                                            </td>
+                                            <td>{{ task.status }}</td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-success" title="Complete"
+                                                            onclick="completeTask({{ task.id }})">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-primary" title="Edit"
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#editTaskModal"
+                                                            data-task-id="{{ task.id }}">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No tasks assigned.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Communications Log -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Communications Log</h5>
+                </div>
+                <div class="card-body">
+                    {% if communications %}
+                        <div class="timeline">
+                            {% for comm in communications %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-{{ comm.type.lower() }}"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">{{ comm.type }}</h6>
+                                        <p class="mb-1">{{ comm.notes }}</p>
+                                        <small class="text-muted">
+                                            {{ comm.date.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No communications logged.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Tracking Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tracking Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Last Contact:</div>
+                                <div class="col-7">
+                                    {% if person.last_contact %}
+                                        {{ person.last_contact.strftime('%Y-%m-%d') }}
+                                    {% else %}
+                                        None
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Next Contact:</div>
+                                <div class="col-7">
+                                    {% if person.next_contact %}
+                                        {{ person.next_contact.strftime('%Y-%m-%d') }}
+                                    {% else %}
+                                        None
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {% if person.google_contact_id %}
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Google Contact:</div>
+                                <div class="col-7">Synced</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Last Synced:</div>
+                                <div class="col-7">
+                                    {% if person.last_synced_at %}
+                                        {{ person.last_synced_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                        Unknown
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete {{ person.first_name }} {{ person.last_name }}? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('people.delete', id=person.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTaskForm" action="{{ url_for('tasks.add') }}" method="POST">
+                    <input type="hidden" name="person_id" value="{{ person.id }}">
+                    <div class="mb-3">
+                        <label for="taskTitle" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="taskTitle" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="taskDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskDueDate" class="form-label">Due Date</label>
+                        <input type="date" class="form-control" id="taskDueDate" name="due_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reminder_option" class="form-label">Reminder</label>
+                        <select class="form-select" id="reminder_option" name="reminder_option">
+                            <option value="none">No reminder</option>
+                            <option value="15_min">15 minutes before</option>
+                            <option value="30_min">30 minutes before</option>
+                            <option value="1_hour">1 hour before</option>
+                            <option value="2_hours">2 hours before</option>
+                            <option value="1_day">1 day before</option>
+                            <option value="3_days">3 days before</option>
+                            <option value="1_week">1 week before</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskPriority" class="form-label">Priority</label>
+                        <select class="form-select" id="taskPriority" name="priority" required>
+                            <option value="High">High</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Task</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal fade" id="addNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addNoteForm" action="{{ url_for('people.add_note', id=person.id) }}" method="POST">
+                    <div class="mb-3">
+                        <label for="noteContent" class="form-label">Note</label>
+                        <textarea class="form-control" id="noteContent" name="content" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Note</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Communication Modal -->
+<div class="modal fade" id="logCommunicationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Log Communication</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="logCommunicationForm" action="{{ url_for('communications.add') }}" method="POST">
+                    <input type="hidden" name="person_id" value="{{ person.id }}">
+                    <div class="mb-3">
+                        <label for="commType" class="form-label">Type</label>
+                        <select class="form-select" id="commType" name="type" required>
+                            <option value="Email">Email</option>
+                            <option value="Phone">Phone</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Text">Text</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="commNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="commNotes" name="notes" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log Communication</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.priority-badge {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.priority-high { background-color: var(--bs-danger); }
+.priority-medium { background-color: var(--bs-warning); }
+.priority-low { background-color: var(--bs-success); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Task completion handler
+    window.completeTask = function(taskId) {
+        if (confirm('Mark this task as complete?')) {
+            fetch(`/tasks/${taskId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                }
+            });
+        }
+    };
+
+    // Form submission handlers
+    const forms = ['addTaskForm', 'addNoteForm', 'logCommunicationForm'];
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this)
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    }
+                });
+            });
+        }
+    });
+});
+</script>
+{% endblock %} 

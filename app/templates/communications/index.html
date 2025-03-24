@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}Communications Hub - Mobilize CRM{% endblock %}
+
+{% block page_title %}Communications Hub{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-envelope me-2"></i>Communications History
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-9">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Search communications..." id="search-communications">
+                                <button class="btn btn-outline-secondary" type="button" id="clear-search" style="display: none;">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div id="search-feedback" class="mt-2 small text-muted" style="display: none;">
+                                Showing <span id="result-count">0</span> results for "<span id="search-term"></span>"
+                                <span id="match-type"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-grid">
+                                <a href="{{ url_for('communications.compose') }}" class="btn btn-success">
+                                    <i class="bi bi-plus-circle me-2"></i>New Message
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary active" data-filter="all">All</button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="email">Email</button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="sms">SMS</button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="phone">Phone</button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="letter">Letter</button>
+                            </div>
+                            <div class="float-end">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-secondary active" data-direction="all">All</button>
+                                    <button type="button" class="btn btn-outline-secondary" data-direction="inbound">Inbound</button>
+                                    <button type="button" class="btn btn-outline-secondary" data-direction="outbound">Outbound</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="communications-table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Subject/Summary</th>
+                                    <th>Contact</th>
+                                    <th>Direction</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if communications %}
+                                    {% for comm in communications %}
+                                    <tr data-type="{{ comm.type|lower }}" data-direction="{{ comm.direction|lower }}" 
+                                        data-subject="{{ comm.subject|default('') }}" 
+                                        data-contact="{{ comm.person.first_name ~ ' ' ~ comm.person.last_name if comm.person_id else comm.church.name if comm.church_id else 'Unknown' }}"
+                                        data-message="{{ comm.message|striptags|truncate(500) }}">
+                                        <td>
+                                            {% if comm.type == 'email' %}
+                                                <i class="bi bi-envelope text-primary"></i>
+                                            {% elif comm.type == 'sms' %}
+                                                <i class="bi bi-chat-dots text-success"></i>
+                                            {% elif comm.type == 'phone' %}
+                                                <i class="bi bi-telephone text-info"></i>
+                                            {% elif comm.type == 'letter' %}
+                                                <i class="bi bi-file-text text-secondary"></i>
+                                            {% endif %}
+                                            {{ comm.type }}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('communications.view', id=comm.id) }}">
+                                                {{ comm.subject if comm.subject else '(No Subject)' }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if comm.person_id %}
+                                                <a href="{{ url_for('people.view', id=comm.person_id) }}">
+                                                    {{ comm.person.first_name + ' ' + comm.person.last_name }}
+                                                </a>
+                                            {% elif comm.church_id %}
+                                                <a href="{{ url_for('churches.view', id=comm.church_id) }}">
+                                                    {{ comm.church.name }}
+                                                </a>
+                                            {% else %}
+                                                Unknown
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if comm.direction == 'inbound' %}
+                                                <span class="badge bg-info">Inbound</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Outbound</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ comm.date_sent.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            {% if comm.email_status == 'sent' %}
+                                                <span class="badge bg-success">Sent</span>
+                                            {% elif comm.email_status == 'draft' %}
+                                                <span class="badge bg-warning">Draft</span>
+                                            {% elif comm.email_status == 'failed' %}
+                                                <span class="badge bg-danger">Failed</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Unknown</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('communications.view', id=comm.id) }}" class="btn btn-outline-primary" title="View">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                {% if comm.direction == 'inbound' %}
+                                                <a href="{{ url_for('communications.compose') }}?reply_to={{ comm.id }}" class="btn btn-outline-secondary" title="Reply">
+                                                    <i class="bi bi-reply"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No communications found.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-cloud-arrow-down me-2"></i>Gmail Sync Status
+                    </h5>
+                </div>
+                <div class="card-body" id="sync-status-panel">
+                    <div class="text-center p-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading sync status...</p>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary w-100" id="trigger-sync">
+                        <i class="bi bi-arrow-repeat me-2"></i>Sync Now
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>Email Templates
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>Create and manage reusable email templates to streamline your communications.</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('communications.templates') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            All Templates
+                            <span class="badge bg-primary rounded-pill">3</span>
+                        </a>
+                        <a href="{{ url_for('communications.templates') }}?category=followup" class="list-group-item list-group-item-action">Follow-up Templates</a>
+                        <a href="{{ url_for('communications.templates') }}?category=welcome" class="list-group-item list-group-item-action">Welcome Templates</a>
+                        <a href="{{ url_for('communications.templates') }}?category=newsletter" class="list-group-item list-group-item-action">Newsletter Templates</a>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('communications.templates') }}?action=new" class="btn btn-success w-100">
+                        <i class="bi bi-plus-circle me-2"></i>New Template
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Gmail sync status checking -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to update the sync status panel
+    function updateSyncStatus(status) {
+        let statusHtml = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span><strong>Status:</strong></span>
+                <span class="badge bg-${status.status === 'synced' ? 'success' : 'warning'}">${status.status === 'synced' ? 'Synced' : 'Pending'}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span><strong>Last Sync:</strong></span>
+                <span>${new Date(status.last_sync).toLocaleString()}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span><strong>Messages Synced:</strong></span>
+                <span class="badge bg-primary rounded-pill">${status.count}</span>
+            </div>
+        `;
+        
+        document.getElementById('sync-status-panel').innerHTML = statusHtml;
+    }
+    
+    // Initial fetch of sync status
+    fetch('{{ url_for("communications.sync_status") }}')
+        .then(response => response.json())
+        .then(status => {
+            updateSyncStatus(status);
+        })
+        .catch(error => {
+            console.error('Failed to fetch sync status:', error);
+            document.getElementById('sync-status-panel').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Failed to load sync status.
+                </div>
+            `;
+        });
+    
+    // Set up filter buttons
+    const typeFilters = document.querySelectorAll('[data-filter]');
+    const directionFilters = document.querySelectorAll('[data-direction]');
+    const searchInput = document.getElementById('search-communications');
+    const clearSearchBtn = document.getElementById('clear-search');
+    const searchFeedback = document.getElementById('search-feedback');
+    const searchTerm = document.getElementById('search-term');
+    const resultCount = document.getElementById('result-count');
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        
+        // Show/hide clear button based on search input
+        clearSearchBtn.style.display = query ? 'block' : 'none';
+        
+        // Apply search filter
+        filterCommunications();
+    });
+    
+    // Clear search button
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        searchFeedback.style.display = 'none';
+        clearSearchBtn.style.display = 'none';
+        filterCommunications();
+    });
+    
+    typeFilters.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            typeFilters.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Apply filter
+            filterCommunications();
+        });
+    });
+    
+    directionFilters.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            directionFilters.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Apply filter
+            filterCommunications();
+        });
+    });
+    
+    function filterCommunications() {
+        const activeTypeFilter = document.querySelector('[data-filter].active').getAttribute('data-filter');
+        const activeDirectionFilter = document.querySelector('[data-direction].active').getAttribute('data-direction');
+        const searchQuery = searchInput.value.toLowerCase().trim();
+        
+        const rows = document.querySelectorAll('#communications-table tbody tr');
+        let visibleCount = 0;
+        let messageMatches = 0;
+        
+        rows.forEach(row => {
+            // Skip if it's the "No communications found" row
+            if (row.querySelector('td[colspan]')) return;
+            
+            const rowType = row.getAttribute('data-type');
+            const rowDirection = row.getAttribute('data-direction');
+            const messageContent = row.getAttribute('data-message')?.toLowerCase() || '';
+            const rowAttrs = {
+                type: rowType,
+                direction: rowDirection,
+                subject: row.getAttribute('data-subject')?.toLowerCase() || '',
+                contact: row.getAttribute('data-contact')?.toLowerCase() || ''
+            };
+            
+            // Check if the search matches any specific attribute first
+            let isTypeSearch = rowType === searchQuery || 
+                              (searchQuery === 'email' && rowType === 'email') ||
+                              (searchQuery === 'text' && rowType === 'sms') ||
+                              (searchQuery === 'phone' && rowType === 'phone') ||
+                              (searchQuery === 'letter' && rowType === 'letter');
+                              
+            let isDirectionSearch = searchQuery === 'inbound' && rowDirection === 'inbound' ||
+                                   searchQuery === 'outbound' && rowDirection === 'outbound';
+                                   
+            let isContactSearch = rowAttrs.contact.includes(searchQuery);
+            let isSubjectSearch = rowAttrs.subject.includes(searchQuery);
+            let isMessageSearch = messageContent.includes(searchQuery);
+            
+            const typeMatch = activeTypeFilter === 'all' || activeTypeFilter === rowType;
+            const directionMatch = activeDirectionFilter === 'all' || activeDirectionFilter === rowDirection;
+            const searchMatch = !searchQuery || isTypeSearch || isDirectionSearch || isContactSearch || isSubjectSearch || isMessageSearch;
+            
+            // Remove any previous matches
+            row.classList.remove('table-info', 'table-warning', 'message-match');
+            
+            // Highlight the row if it contains the search term in the message content
+            if (searchQuery && isMessageSearch) {
+                row.classList.add('table-info', 'message-match');
+                messageMatches++;
+                
+                // Add a tooltip or indicator that shows this matched in message content
+                const messageIndicator = row.querySelector('.message-match-indicator');
+                if (!messageIndicator) {
+                    const cell = row.querySelector('td:nth-child(2)'); // Subject column
+                    if (cell) {
+                        const indicator = document.createElement('span');
+                        indicator.className = 'badge bg-info ms-2 message-match-indicator';
+                        indicator.textContent = 'Message match';
+                        indicator.title = 'Search term found in message content';
+                        cell.appendChild(indicator);
+                    }
+                }
+            } else {
+                // Remove any existing message match indicators
+                const indicator = row.querySelector('.message-match-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            }
+            
+            if (typeMatch && directionMatch && searchMatch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update search feedback with additional info about what was matched
+        if (searchQuery) {
+            let matchType = "";
+            if (searchQuery === 'email' || searchQuery === 'phone' || searchQuery === 'text' || searchQuery === 'sms' || searchQuery === 'letter') {
+                matchType = " (matching communication type)";
+            } else if (searchQuery === 'inbound' || searchQuery === 'outbound') {
+                matchType = " (matching direction)";
+            } else if (messageMatches > 0) {
+                matchType = ` (including ${messageMatches} message content ${messageMatches === 1 ? 'match' : 'matches'})`;
+            }
+            
+            searchTerm.textContent = searchQuery;
+            resultCount.textContent = visibleCount;
+            searchFeedback.style.display = 'block';
+            
+            // Add match type info if available
+            if (matchType) {
+                document.getElementById('match-type').textContent = matchType;
+            } else {
+                document.getElementById('match-type').textContent = '';
+            }
+        } else {
+            searchFeedback.style.display = 'none';
+            
+            // Remove all message match indicators when search is cleared
+            document.querySelectorAll('.message-match-indicator').forEach(el => el.remove());
+        }
+        
+        // Show/hide "No results" message
+        const noResultsRow = document.querySelector('#communications-table tbody tr.no-results');
+        if (visibleCount === 0 && rows.length > 0) {
+            if (!noResultsRow) {
+                const tbody = document.querySelector('#communications-table tbody');
+                const newRow = document.createElement('tr');
+                newRow.className = 'no-results';
+                newRow.innerHTML = '<td colspan="7" class="text-center">No communications match your filters.</td>';
+                tbody.appendChild(newRow);
+            } else {
+                noResultsRow.style.display = '';
+            }
+        } else if (noResultsRow) {
+            noResultsRow.style.display = 'none';
+        }
+    }
+    
+    // Set up sync trigger
+    document.getElementById('trigger-sync').addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Syncing...';
+        
+        // Here you would actually call an endpoint to trigger the sync
+        // For now, we'll just simulate it with a timeout
+        setTimeout(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Sync Now';
+            
+            // Update the status after "sync"
+            updateSyncStatus({
+                status: 'synced',
+                last_sync: new Date().toISOString(),
+                count: Math.floor(Math.random() * 50) + 100 
+            });
+            
+            // Show success message
+            alert('Sync completed successfully!');
+        }, 2000);
+    });
+});
+</script>
+{% endblock %} 

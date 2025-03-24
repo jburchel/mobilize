@@ -1,0 +1,690 @@
+{% extends "base.html" %}
+
+{% block title %}{{ church.name }} - Mobilize CRM{% endblock %}
+
+{% block page_title %}Church Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .church-profile-img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 5px;
+    }
+    .detail-card {
+        box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.5rem;
+    }
+    .detail-header {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    .timeline-item {
+        position: relative;
+        padding-left: 40px;
+        margin-bottom: 20px;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    .timeline-content {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Action Bar -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('churches.edit', id=church.id) }}" class="btn btn-primary">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteChurchModal">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                            <i class="bi bi-plus-circle"></i> Add Task
+                        </button>
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addNoteModal">
+                            <i class="bi bi-journal-plus"></i> Add Note
+                        </button>
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#logCommunicationModal">
+                            <i class="bi bi-chat-dots"></i> Log Communication
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Basic Church Information -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Church Profile</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if church.profile_image %}
+                            <img src="{{ url_for('static', filename=church.profile_image) }}" 
+                                 class="church-profile-img" alt="{{ church.name }}">
+                        {% else %}
+                            <div class="church-profile-img d-flex align-items-center justify-content-center bg-light">
+                                <i class="bi bi-building" style="font-size: 80px; color: #6c757d;"></i>
+                            </div>
+                        {% endif %}
+                        <h4 class="mt-3 mb-1">{{ church.name }}</h4>
+                        {% for person in church.church_members %}
+                            {% if person.is_primary_contact %}
+                                <div class="mb-2">
+                                    <strong class="text-primary">Primary Contact:</strong>
+                                    <a href="{{ url_for('people.view', id=person.id) }}" class="h5 mb-0 d-block">
+                                        {{ person.full_name }}
+                                    </a>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        <p class="text-muted">{{ church.denomination or 'No denomination specified' }}</p>
+                        
+                        <div class="mt-2">
+                            {% if church.church_pipeline %}
+                                <span class="badge bg-info">{{ church.church_pipeline }}</span>
+                            {% endif %}
+                            {% if church.priority %}
+                                <span class="badge bg-{{ church.priority.lower() }}">{{ church.priority }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Location:</div>
+                        <div class="col-7">{{ church.location or 'Not specified' }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Weekly Attendance:</div>
+                        <div class="col-7">{{ church.weekly_attendance or 'Not specified' }}</div>
+                    </div>
+                    
+                    {% if church.year_founded %}
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Year Founded:</div>
+                        <div class="col-7">{{ church.year_founded }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.virtuous %}
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Virtuous:</div>
+                        <div class="col-7">Yes</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Contact Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if church.email %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Email:</div>
+                        <div class="col-8">
+                            <a href="mailto:{{ church.email }}">{{ church.email }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.phone %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Phone:</div>
+                        <div class="col-8">
+                            <a href="tel:{{ church.phone }}">{{ church.phone }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.website %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Website:</div>
+                        <div class="col-8">
+                            <a href="{{ church.website }}" target="_blank">{{ church.website }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.address or church.city or church.state or church.zip_code %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Address:</div>
+                        <div class="col-8">
+                            {% if church.address %}{{ church.address }}<br>{% endif %}
+                            {% if church.city or church.state or church.zip_code %}
+                                {{ church.city }}{% if church.city and church.state %}, {% endif %}
+                                {{ church.state }} {{ church.zip_code }}
+                            {% endif %}
+                            {% if church.country %}<br>{{ church.country }}{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if church.main_contact %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Main Contact:</div>
+                        <div class="col-8">
+                            <a href="{{ url_for('people.view', id=church.main_contact.id) }}">
+                                {{ church.main_contact.first_name }} {{ church.main_contact.last_name }}
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Leadership Information -->
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Leadership</h5>
+                </div>
+                <div class="card-body">
+                    {% if church.senior_pastor_name %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Senior Pastor:</div>
+                        <div class="col-8">{{ church.senior_pastor_name }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.senior_pastor_phone %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Senior Pastor Phone:</div>
+                        <div class="col-8">
+                            <a href="tel:{{ church.senior_pastor_phone }}">{{ church.senior_pastor_phone }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.senior_pastor_email %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Senior Pastor Email:</div>
+                        <div class="col-8">
+                            <a href="mailto:{{ church.senior_pastor_email }}">{{ church.senior_pastor_email }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.associate_pastor_name %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Associate Pastor:</div>
+                        <div class="col-8">{{ church.associate_pastor_name }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.missions_pastor_first_name or church.missions_pastor_last_name %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Missions Pastor:</div>
+                        <div class="col-8">
+                            {{ church.missions_pastor_first_name }} {{ church.missions_pastor_last_name }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.mission_pastor_phone %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Missions Pastor Phone:</div>
+                        <div class="col-8">
+                            <a href="tel:{{ church.mission_pastor_phone }}">{{ church.mission_pastor_phone }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.mission_pastor_email %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Missions Pastor Email:</div>
+                        <div class="col-8">
+                            <a href="mailto:{{ church.mission_pastor_email }}">{{ church.mission_pastor_email }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Information -->
+        <div class="col-xl-8 col-lg-7">
+            <!-- Pipeline Information -->
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Pipeline Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Pipeline:</div>
+                                <div class="col-7">{{ church.church_pipeline or 'Not specified' }}</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Priority:</div>
+                                <div class="col-7">{{ church.priority or 'Not specified' }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Source:</div>
+                                <div class="col-7">{{ church.source or 'Not specified' }}</div>
+                            </div>
+                            
+                            {% if church.referred_by %}
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Referred By:</div>
+                                <div class="col-7">{{ church.referred_by }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Assigned To:</div>
+                                <div class="col-7">{{ church.assigned_to or 'Not assigned' }}</div>
+                            </div>
+                            
+                            {% if church.date_closed %}
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Date Closed:</div>
+                                <div class="col-7">{{ church.date_closed }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if church.info_given %}
+                    <div class="row mb-3">
+                        <div class="col-12 text-muted mb-1">Information Given:</div>
+                        <div class="col-12">{{ church.info_given }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if church.reason_closed %}
+                    <div class="row mb-3">
+                        <div class="col-12 text-muted mb-1">Reason Closed:</div>
+                        <div class="col-12">{{ church.reason_closed }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Notes -->
+            {% if church.notes %}
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Notes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-0">
+                        {{ church.notes | safe | nl2br }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Tags -->
+            {% if church.tags %}
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tags</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-1">
+                        {% for tag in church.tags.split(',') %}
+                            <span class="badge bg-primary">{{ tag.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Tasks -->
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tasks</h5>
+                </div>
+                <div class="card-body">
+                    {% if tasks %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Due Date</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for task in tasks %}
+                                        <tr>
+                                            <td>{{ task.title }}</td>
+                                            <td>{{ task.due_date.strftime('%Y-%m-%d') }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ task.priority.lower() }}">
+                                                    {{ task.priority }}
+                                                </span>
+                                            </td>
+                                            <td>{{ task.status }}</td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-success" title="Complete"
+                                                            onclick="completeTask({{ task.id }})">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-primary" title="Edit"
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#editTaskModal"
+                                                            data-task-id="{{ task.id }}">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No tasks assigned.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Communications Log -->
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Communications Log</h5>
+                </div>
+                <div class="card-body">
+                    {% if communications %}
+                        <div class="timeline">
+                            {% for comm in communications %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-{{ comm.type.lower() }}"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">{{ comm.type }}</h6>
+                                        <p class="mb-1">{{ comm.notes }}</p>
+                                        <small class="text-muted">
+                                            {{ comm.date.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No communications logged.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Related People -->
+            <div class="card detail-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Associated People</h5>
+                    <a href="{{ url_for('people.list', church_id=church.id) }}" class="btn btn-sm btn-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if church.people %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th width="15%">Role</th>
+                                        <th width="25%">Name</th>
+                                        <th width="50%">Contact Info</th>
+                                        <th width="10%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for person in church.people[:5] %}
+                                    <tr>
+                                        <td>{{ person.church_role or '-' }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if person.profile_image %}
+                                                    <img src="{{ url_for('static', filename=person.profile_image) }}" 
+                                                         class="rounded-circle me-2" width="32" height="32">
+                                                {% else %}
+                                                    <div class="avatar-sm me-2 rounded-circle bg-primary d-flex align-items-center justify-content-center">
+                                                        <span class="text-white">{{ person.initials }}</span>
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    <a href="{{ url_for('people.view', id=person.id) }}">{{ person.full_name }}</a>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                {% if person.email %}
+                                                    <div class="small text-truncate">
+                                                        <a href="mailto:{{ person.email }}">{{ person.email }}</a>
+                                                    </div>
+                                                {% endif %}
+                                                {% if person.phone %}
+                                                    <div class="small">
+                                                        {{ person.phone }}
+                                                    </div>
+                                                {% endif %}
+                                                {% if not person.email and not person.phone %}
+                                                    <span class="text-muted">No contact info</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('people.view', id=person.id) }}" class="btn btn-sm btn-info">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">No people associated with this church.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteChurchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete {{ church.name }}? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('churches.delete', id=church.id) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTaskForm" action="{{ url_for('tasks.add') }}" method="POST">
+                    <input type="hidden" name="church_id" value="{{ church.id }}">
+                    <div class="mb-3">
+                        <label for="taskTitle" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="taskTitle" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="taskDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskDueDate" class="form-label">Due Date</label>
+                        <input type="date" class="form-control" id="taskDueDate" name="due_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reminder_option" class="form-label">Reminder</label>
+                        <select class="form-select" id="reminder_option" name="reminder_option">
+                            <option value="none">No reminder</option>
+                            <option value="15_min">15 minutes before</option>
+                            <option value="30_min">30 minutes before</option>
+                            <option value="1_hour">1 hour before</option>
+                            <option value="2_hours">2 hours before</option>
+                            <option value="1_day">1 day before</option>
+                            <option value="3_days">3 days before</option>
+                            <option value="1_week">1 week before</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskPriority" class="form-label">Priority</label>
+                        <select class="form-select" id="taskPriority" name="priority" required>
+                            <option value="High">High</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Task</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal fade" id="addNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addNoteForm" action="{{ url_for('churches.add_note', id=church.id) }}" method="POST">
+                    <div class="mb-3">
+                        <label for="noteContent" class="form-label">Note</label>
+                        <textarea class="form-control" id="noteContent" name="content" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Note</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Communication Modal -->
+<div class="modal fade" id="logCommunicationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Log Communication</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="logCommunicationForm" action="{{ url_for('communications.add') }}" method="POST">
+                    <input type="hidden" name="church_id" value="{{ church.id }}">
+                    <div class="mb-3">
+                        <label for="commType" class="form-label">Type</label>
+                        <select class="form-select" id="commType" name="type" required>
+                            <option value="Email">Email</option>
+                            <option value="Phone">Phone</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Text">Text</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="commNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="commNotes" name="notes" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log Communication</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Task completion handler
+    window.completeTask = function(taskId) {
+        if (confirm('Mark this task as complete?')) {
+            fetch(`/tasks/${taskId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                }
+            });
+        }
+    };
+
+    // Form submission handlers
+    const forms = ['addTaskForm', 'addNoteForm', 'logCommunicationForm'];
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this)
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    }
+                });
+            });
+        }
+    });
+});
+</script>
+{% endblock %} 

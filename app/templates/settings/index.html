@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Mobilize CRM{% endblock %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card card-border-primary-blue">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">User Settings</h5>
+                </div>
+                <div class="card-body">
+                    <p>Manage your personal settings and preferences.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Profile Settings -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 card-border-primary-blue">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Profile</h5>
+                </div>
+                <div class="card-body">
+                    <p>Manage your profile information</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('settings.profile') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-person me-2 text-primary-blue"></i> Personal Information
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 card-border-primary-green">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Security</h5>
+                </div>
+                <div class="card-body">
+                    <p>Manage your security settings</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('settings.security') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-shield-lock me-2 text-primary-green"></i> Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 card-border-primary-blue">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Notifications</h5>
+                </div>
+                <div class="card-body">
+                    <p>Manage your notification preferences</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('settings.notifications') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-bell me-2 text-primary-blue"></i> Notification Preferences
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

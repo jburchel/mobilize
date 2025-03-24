@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if person else 'Add' }} Person - Mobilize CRM{% endblock %}
+
+{% block page_title %}{{ 'Edit' if person else 'Add' }} Person{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.csrf_token }}
+                        
+                        <!-- Personal Information Section -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2">Personal Information</h5>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        {{ form.title.label(class="form-label") }}
+                                        {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                                        {% if form.title.errors %}
+                                            <div class="invalid-feedback">{{ form.title.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ form.first_name.label(class="form-label") }}
+                                        {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else "")) }}
+                                        {% if form.first_name.errors %}
+                                            <div class="invalid-feedback">{{ form.first_name.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ form.last_name.label(class="form-label") }}
+                                        {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else "")) }}
+                                        {% if form.last_name.errors %}
+                                            <div class="invalid-feedback">{{ form.last_name.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.date_of_birth.label(class="form-label") }}
+                                    {{ form.date_of_birth(class="form-control" + (" is-invalid" if form.date_of_birth.errors else ""), type="date") }}
+                                    {% if form.date_of_birth.errors %}
+                                        <div class="invalid-feedback">{{ form.date_of_birth.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        {{ form.marital_status.label(class="form-label") }}
+                                        {{ form.marital_status(class="form-select" + (" is-invalid" if form.marital_status.errors else "")) }}
+                                        {% if form.marital_status.errors %}
+                                            <div class="invalid-feedback">{{ form.marital_status.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        {{ form.spouse_first_name.label(class="form-label") }}
+                                        {{ form.spouse_first_name(class="form-control" + (" is-invalid" if form.spouse_first_name.errors else "")) }}
+                                        {% if form.spouse_first_name.errors %}
+                                            <div class="invalid-feedback">{{ form.spouse_first_name.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ form.spouse_last_name.label(class="form-label") }}
+                                        {{ form.spouse_last_name(class="form-control" + (" is-invalid" if form.spouse_last_name.errors else "")) }}
+                                        {% if form.spouse_last_name.errors %}
+                                            <div class="invalid-feedback">{{ form.spouse_last_name.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.profile_image.label(class="form-label") }}
+                                    {{ form.profile_image(class="form-control" + (" is-invalid" if form.profile_image.errors else "")) }}
+                                    {% if form.profile_image.errors %}
+                                        <div class="invalid-feedback">{{ form.profile_image.errors[0] }}</div>
+                                    {% endif %}
+                                    {% if person and person.profile_image %}
+                                        <div class="mt-2">
+                                            <img src="{{ url_for('static', filename=person.profile_image) }}" 
+                                                 alt="Current profile image" class="img-thumbnail" style="max-width: 100px;">
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.tags.label(class="form-label") }}
+                                    {{ form.tags(class="form-control" + (" is-invalid" if form.tags.errors else "")) }}
+                                    {% if form.tags.errors %}
+                                        <div class="invalid-feedback">{{ form.tags.errors[0] }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Separate tags with commas</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        {{ form.virtuous(class="form-check-input" + (" is-invalid" if form.virtuous.errors else "")) }}
+                                        {{ form.virtuous.label(class="form-check-label") }}
+                                        {% if form.virtuous.errors %}
+                                            <div class="invalid-feedback">{{ form.virtuous.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information Section -->
+                        <div class="row mb-4 mt-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2">Contact Information</h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.email.label(class="form-label") }}
+                                    {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                                    {% if form.email.errors %}
+                                        <div class="invalid-feedback">{{ form.email.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.phone.label(class="form-label") }}
+                                    {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else "")) }}
+                                    {% if form.phone.errors %}
+                                        <div class="invalid-feedback">{{ form.phone.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.address.label(class="form-label") }}
+                                    {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else "")) }}
+                                    {% if form.address.errors %}
+                                        <div class="invalid-feedback">{{ form.address.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        {{ form.city.label(class="form-label") }}
+                                        {{ form.city(class="form-control" + (" is-invalid" if form.city.errors else "")) }}
+                                        {% if form.city.errors %}
+                                            <div class="invalid-feedback">{{ form.city.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-3">
+                                        {{ form.state.label(class="form-label") }}
+                                        {{ form.state(class="form-select" + (" is-invalid" if form.state.errors else "")) }}
+                                        {% if form.state.errors %}
+                                            <div class="invalid-feedback">{{ form.state.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-3">
+                                        {{ form.zip_code.label(class="form-label") }}
+                                        {{ form.zip_code(class="form-control" + (" is-invalid" if form.zip_code.errors else "")) }}
+                                        {% if form.zip_code.errors %}
+                                            <div class="invalid-feedback">{{ form.zip_code.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.country.label(class="form-label") }}
+                                    {{ form.country(class="form-control" + (" is-invalid" if form.country.errors else "")) }}
+                                    {% if form.country.errors %}
+                                        <div class="invalid-feedback">{{ form.country.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Church Information Section -->
+                        <div class="row mb-4 mt-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2">Church Information</h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.church_id.label(class="form-label") }}
+                                    {{ form.church_id(class="form-select" + (" is-invalid" if form.church_id.errors else "")) }}
+                                    {% if form.church_id.errors %}
+                                        <div class="invalid-feedback">{{ form.church_id.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.church_role.label(class="form-label") }}
+                                    {{ form.church_role(class="form-select" + (" is-invalid" if form.church_role.errors else "")) }}
+                                    {% if form.church_role.errors %}
+                                        <div class="invalid-feedback">{{ form.church_role.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        {{ form.is_primary_contact(class="form-check-input" + (" is-invalid" if form.is_primary_contact.errors else "")) }}
+                                        {{ form.is_primary_contact.label(class="form-check-label") }}
+                                        {% if form.is_primary_contact.errors %}
+                                            <div class="invalid-feedback">{{ form.is_primary_contact.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pipeline Information Section -->
+                        <div class="row mb-4 mt-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2">Pipeline Information</h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.people_pipeline.label(class="form-label") }}
+                                    {{ form.people_pipeline(class="form-select" + (" is-invalid" if form.people_pipeline.errors else "")) }}
+                                    {% if form.people_pipeline.errors %}
+                                        <div class="invalid-feedback">{{ form.people_pipeline.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.pipeline_status.label(class="form-label") }}
+                                    {{ form.pipeline_status(class="form-select" + (" is-invalid" if form.pipeline_status.errors else "")) }}
+                                    {% if form.pipeline_status.errors %}
+                                        <div class="invalid-feedback">{{ form.pipeline_status.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.pipeline_stage.label(class="form-label") }}
+                                    {{ form.pipeline_stage(class="form-select" + (" is-invalid" if form.pipeline_stage.errors else "")) }}
+                                    {% if form.pipeline_stage.errors %}
+                                        <div class="invalid-feedback">{{ form.pipeline_stage.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.priority.label(class="form-label") }}
+                                    {{ form.priority(class="form-select" + (" is-invalid" if form.priority.errors else "")) }}
+                                    {% if form.priority.errors %}
+                                        <div class="invalid-feedback">{{ form.priority.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.source.label(class="form-label") }}
+                                    {{ form.source(class="form-select" + (" is-invalid" if form.source.errors else "")) }}
+                                    {% if form.source.errors %}
+                                        <div class="invalid-feedback">{{ form.source.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.referred_by.label(class="form-label") }}
+                                    {{ form.referred_by(class="form-control" + (" is-invalid" if form.referred_by.errors else "")) }}
+                                    {% if form.referred_by.errors %}
+                                        <div class="invalid-feedback">{{ form.referred_by.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.assigned_to.label(class="form-label") }}
+                                    {{ form.assigned_to(class="form-select" + (" is-invalid" if form.assigned_to.errors else "")) }}
+                                    {% if form.assigned_to.errors %}
+                                        <div class="invalid-feedback">{{ form.assigned_to.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        {{ form.date_closed.label(class="form-label") }}
+                                        {{ form.date_closed(class="form-control" + (" is-invalid" if form.date_closed.errors else ""), type="date") }}
+                                        {% if form.date_closed.errors %}
+                                            <div class="invalid-feedback">{{ form.date_closed.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Information Section -->
+                        <div class="row mb-4 mt-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2">Additional Information</h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.info_given.label(class="form-label") }}
+                                    {{ form.info_given(class="form-control" + (" is-invalid" if form.info_given.errors else ""), rows="3") }}
+                                    {% if form.info_given.errors %}
+                                        <div class="invalid-feedback">{{ form.info_given.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.desired_service.label(class="form-label") }}
+                                    {{ form.desired_service(class="form-control" + (" is-invalid" if form.desired_service.errors else ""), rows="3") }}
+                                    {% if form.desired_service.errors %}
+                                        <div class="invalid-feedback">{{ form.desired_service.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.reason_closed.label(class="form-label") }}
+                                    {{ form.reason_closed(class="form-control" + (" is-invalid" if form.reason_closed.errors else ""), rows="3") }}
+                                    {% if form.reason_closed.errors %}
+                                        <div class="invalid-feedback">{{ form.reason_closed.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.notes.label(class="form-label") }}
+                                    {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows="3") }}
+                                    {% if form.notes.errors %}
+                                        <div class="invalid-feedback">{{ form.notes.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    {{ 'Save Changes' if person else 'Add Person' }}
+                                </button>
+                                <a href="{{ url_for('people.list') }}" class="btn btn-secondary">Cancel</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tag input
+    const tagInput = document.getElementById('tags');
+    if (tagInput) {
+        // You could add a tag input library here if desired
+        // For now, we'll use a simple comma-separated input
+    }
+});
+</script>
+{% endblock %} 

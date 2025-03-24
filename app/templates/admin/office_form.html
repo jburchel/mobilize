@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if office else 'New' }} Office - Mobilize CRM{% endblock %}
+
+{% block page_title %}{{ 'Edit' if office else 'New' }} Office{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.offices') }}">Office Management</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ 'Edit' if office else 'New' }} Office</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">{{ 'Edit' if office else 'New' }} Office</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.edit_office', office_id=office.id) if office else url_for('admin.new_office') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="name" class="form-label">Office Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ office.name if office else '' }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="location" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="location" name="location" 
+                               value="{% if office %}{{ office.city }}{% if office.city and office.state %}, {% endif %}{{ office.state }}{% if (office.city or office.state) and office.country %}, {% endif %}{{ office.country }}{% endif %}"
+                               placeholder="City, State, Country">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="timezone" class="form-label">Timezone</label>
+                        <select class="form-select" id="timezone" name="timezone">
+                            <option value="" {% if not office or not office.timezone %}selected{% endif %}>Select Timezone...</option>
+                            <option value="America/New_York" {% if office and office.timezone == 'America/New_York' %}selected{% endif %}>Eastern Time (ET)</option>
+                            <option value="America/Chicago" {% if office and office.timezone == 'America/Chicago' %}selected{% endif %}>Central Time (CT)</option>
+                            <option value="America/Denver" {% if office and office.timezone == 'America/Denver' %}selected{% endif %}>Mountain Time (MT)</option>
+                            <option value="America/Los_Angeles" {% if office and office.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific Time (PT)</option>
+                            <option value="America/Anchorage" {% if office and office.timezone == 'America/Anchorage' %}selected{% endif %}>Alaska Time</option>
+                            <option value="Pacific/Honolulu" {% if office and office.timezone == 'Pacific/Honolulu' %}selected{% endif %}>Hawaii Time</option>
+                            <option value="Europe/London" {% if office and office.timezone == 'Europe/London' %}selected{% endif %}>London (GMT/BST)</option>
+                            <option value="Europe/Paris" {% if office and office.timezone == 'Europe/Paris' %}selected{% endif %}>Central European Time</option>
+                            <option value="Asia/Tokyo" {% if office and office.timezone == 'Asia/Tokyo' %}selected{% endif %}>Japan Time</option>
+                            <option value="Australia/Sydney" {% if office and office.timezone == 'Australia/Sydney' %}selected{% endif %}>Sydney Time</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {% if office %}
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="active" {% if office.is_active %}selected{% endif %}>Active</option>
+                            <option value="inactive" {% if not office.is_active %}selected{% endif %}>Inactive</option>
+                        </select>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="contact_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="contact_email" name="contact_email" value="{{ office.email if office else '' }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="contact_phone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="contact_phone" name="contact_phone" value="{{ office.phone if office else '' }}">
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> {{ 'Update' if office else 'Create' }} Office
+                    </button>
+                    <a href="{{ url_for('admin.offices') }}" class="btn btn-secondary">
+                        <i class="bi bi-x"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

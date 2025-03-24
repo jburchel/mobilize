@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block title %}Google Sync Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">Google Sync Dashboard</h1>
+            <p class="text-muted">Manage your Google integration and synchronization settings</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Connection Status</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if has_valid_token %}
+                                <span class="text-success">Connected</span>
+                                {% else %}
+                                <span class="text-danger">Not Connected</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas {% if has_valid_token %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    {% if has_valid_token %}
+                    <a href="{{ url_for('auth.revoke_google') }}" class="btn btn-sm btn-outline-danger">Disconnect</a>
+                    {% else %}
+                    <a href="{{ url_for('auth.google_auth') }}" class="btn btn-sm btn-primary">Connect Google Account</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Status Card -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Last Sync</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="last-sync-time">
+                                {% if sync_history and sync_history|length > 0 %}
+                                {{ sync_history[0].created_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                Never
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-sync-alt fa-2x text-gray-300" id="sync-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="text-xs text-muted" id="sync-status-text">
+                        {% if sync_history and sync_history|length > 0 %}
+                        Last sync: {{ sync_history[0].sync_type }} ({{ sync_history[0].status }})
+                        {% else %}
+                        No synchronization history found
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conflicts Card -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Conflicts</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="conflict-count">-</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('google_sync.conflicts') }}" class="btn btn-sm btn-outline-warning">Resolve Conflicts</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Sync Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-address-book fa-3x mb-3 text-primary"></i>
+                                    <h5 class="card-title">Contacts</h5>
+                                    <p class="card-text">Import and sync your Google contacts.</p>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('google_sync.import_contacts') }}" class="btn btn-sm btn-primary">Import Contacts</a>
+                                        <form action="{{ url_for('google_sync.manual_sync') }}" method="post" class="d-inline">
+                                            <input type="hidden" name="sync_type" value="contacts">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Sync Now</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-alt fa-3x mb-3 text-success"></i>
+                                    <h5 class="card-title">Calendar</h5>
+                                    <p class="card-text">Sync your Google Calendar events.</p>
+                                    <form action="{{ url_for('google_sync.manual_sync') }}" method="post">
+                                        <input type="hidden" name="sync_type" value="calendar">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Sync Calendar</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-envelope fa-3x mb-3 text-info"></i>
+                                    <h5 class="card-title">Emails</h5>
+                                    <p class="card-text">Sync your Gmail messages with contacts.</p>
+                                    <form action="{{ url_for('google_sync.manual_sync') }}" method="post">
+                                        <input type="hidden" name="sync_type" value="emails">
+                                        <button type="submit" class="btn btn-sm btn-outline-info">Sync Emails</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Sync History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Sync History</h6>
+                    <a href="{{ url_for('google_sync.sync_history') }}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="syncHistoryTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Items Processed</th>
+                                    <th>Created</th>
+                                    <th>Updated</th>
+                                    <th>Skipped</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if sync_history %}
+                                    {% for history in sync_history %}
+                                    <tr>
+                                        <td>{{ history.sync_type }}</td>
+                                        <td><span class="badge badge-{{ 'success' if history.status == 'completed' else 'warning' if history.status == 'partial' else 'danger' }}">{{ history.status }}</span></td>
+                                        <td>{{ history.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>{{ history.items_processed }}</td>
+                                        <td>{{ history.items_created }}</td>
+                                        <td>{{ history.items_updated }}</td>
+                                        <td>{{ history.items_skipped }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No synchronization history found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to load conflict count
+        function loadConflictCount() {
+            fetch('/api/v1/contacts/conflicts/count')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('conflict-count').textContent = data.count;
+                })
+                .catch(error => {
+                    console.error('Error fetching conflict count:', error);
+                });
+        }
+
+        // Function to check sync status
+        function checkSyncStatus() {
+            fetch('/google_sync/status')
+                .then(response => response.json())
+                .then(data => {
+                    const syncIcon = document.getElementById('sync-icon');
+                    const syncStatusText = document.getElementById('sync-status-text');
+                    
+                    if (data.status === 'in_progress') {
+                        syncIcon.classList.add('fa-spin');
+                        syncIcon.classList.remove('text-gray-300');
+                        syncIcon.classList.add('text-info');
+                        syncStatusText.textContent = 'Sync in progress...';
+                    } else {
+                        syncIcon.classList.remove('fa-spin');
+                        syncIcon.classList.add('text-gray-300');
+                        syncIcon.classList.remove('text-info');
+                        
+                        if (data.last_sync) {
+                            document.getElementById('last-sync-time').textContent = new Date(data.last_sync).toLocaleString();
+                            syncStatusText.textContent = `Last sync: ${data.type} (${data.status})`;
+                        } else {
+                            syncStatusText.textContent = 'No synchronization history found';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking sync status:', error);
+                });
+        }
+
+        // Initial loads
+        loadConflictCount();
+        checkSyncStatus();
+
+        // Set interval to check sync status every 10 seconds
+        setInterval(checkSyncStatus, 10000);
+    });
+</script>
+{% endblock %} 

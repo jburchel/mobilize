@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block title %}Resolve Contact Conflicts{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('google_sync.index') }}">Google Sync</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Resolve Conflicts</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0 text-gray-800">Resolve Contact Conflicts</h1>
+            <p class="text-muted">Resolve conflicts between local contacts and Google contacts</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Contact Conflicts</h6>
+                </div>
+                <div class="card-body">
+                    {% if conflicted_contacts %}
+                    <form action="{{ url_for('google_sync.resolve_conflicts') }}" method="post">
+                        {% for contact in conflicted_contacts %}
+                        <div class="card mb-4">
+                            <div class="card-header bg-warning">
+                                <h5 class="mb-0">Conflict for: {{ contact.get_name() }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-5">
+                                        <div class="card">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0">Local Contact</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Name:</label>
+                                                    <div class="col-sm-8">{{ contact.first_name }} {{ contact.last_name }}</div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Email:</label>
+                                                    <div class="col-sm-8">{{ contact.email or 'None' }}</div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Phone:</label>
+                                                    <div class="col-sm-8">{{ contact.phone or 'None' }}</div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Address:</label>
+                                                    <div class="col-sm-8">
+                                                        {% if contact.address %}
+                                                            {{ contact.address }}<br>
+                                                            {% if contact.city or contact.state or contact.zip_code %}
+                                                                {{ contact.city or '' }} {{ contact.state or '' }} {{ contact.zip_code or '' }}<br>
+                                                            {% endif %}
+                                                            {{ contact.country or '' }}
+                                                        {% else %}
+                                                            None
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Last Updated:</label>
+                                                    <div class="col-sm-8">{{ contact.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-2 d-flex align-items-center justify-content-center">
+                                        <div class="text-center">
+                                            <i class="fas fa-exchange-alt fa-2x text-warning mb-3"></i>
+                                            <div class="custom-control custom-radio">
+                                                <input type="radio" id="keep-local-{{ contact.id }}" name="resolution[{{ contact.id }}]" value="local" class="custom-control-input" checked>
+                                                <label class="custom-control-label" for="keep-local-{{ contact.id }}">Keep Local</label>
+                                            </div>
+                                            <div class="custom-control custom-radio mt-2">
+                                                <input type="radio" id="keep-google-{{ contact.id }}" name="resolution[{{ contact.id }}]" value="google" class="custom-control-input">
+                                                <label class="custom-control-label" for="keep-google-{{ contact.id }}">Keep Google</label>
+                                            </div>
+                                            <div class="custom-control custom-radio mt-2">
+                                                <input type="radio" id="merge-{{ contact.id }}" name="resolution[{{ contact.id }}]" value="merge" class="custom-control-input">
+                                                <label class="custom-control-label" for="merge-{{ contact.id }}">Merge</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-5">
+                                        <div class="card">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0">Google Contact</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                {% if contact.conflict_data %}
+                                                {% set google_data = contact.conflict_data %}
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Name:</label>
+                                                    <div class="col-sm-8">
+                                                        {{ google_data.get('first_name', '') }} {{ google_data.get('last_name', '') }}
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Email:</label>
+                                                    <div class="col-sm-8">
+                                                        {% if google_data.get('emails') %}
+                                                            {% for email in google_data.get('emails', []) %}
+                                                                <div>{{ email }}</div>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            None
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Phone:</label>
+                                                    <div class="col-sm-8">
+                                                        {% if google_data.get('phones') %}
+                                                            {% for phone in google_data.get('phones', []) %}
+                                                                <div>{{ phone }}</div>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            None
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Address:</label>
+                                                    <div class="col-sm-8">
+                                                        {% if google_data.get('address') %}
+                                                            {% set address = google_data.get('address', {}) %}
+                                                            {{ address.get('street', '') }}<br>
+                                                            {% if address.get('city') or address.get('state') or address.get('zip') %}
+                                                                {{ address.get('city', '') }} {{ address.get('state', '') }} {{ address.get('zip', '') }}<br>
+                                                            {% endif %}
+                                                            {{ address.get('country', '') }}
+                                                        {% else %}
+                                                            None
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="form-group row">
+                                                    <label class="col-sm-4">Last Updated:</label>
+                                                    <div class="col-sm-8">
+                                                        {% if google_data.get('updated_time') %}
+                                                            {{ google_data.get('updated_time') }}
+                                                        {% else %}
+                                                            Unknown
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                {% else %}
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle mr-1"></i> Google contact data not available
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Merge options show/hide using JavaScript -->
+                                <div class="merge-options-{{ contact.id }} mt-4" style="display: none;">
+                                    <div class="card">
+                                        <div class="card-header bg-info text-white">
+                                            <h6 class="mb-0">Select Fields to Keep</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>First Name</label>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="first-name-local-{{ contact.id }}" name="merge_first_name[{{ contact.id }}]" value="local" class="custom-control-input" checked>
+                                                            <label class="custom-control-label" for="first-name-local-{{ contact.id }}">Local</label>
+                                                        </div>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="first-name-google-{{ contact.id }}" name="merge_first_name[{{ contact.id }}]" value="google" class="custom-control-input">
+                                                            <label class="custom-control-label" for="first-name-google-{{ contact.id }}">Google</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>Last Name</label>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="last-name-local-{{ contact.id }}" name="merge_last_name[{{ contact.id }}]" value="local" class="custom-control-input" checked>
+                                                            <label class="custom-control-label" for="last-name-local-{{ contact.id }}">Local</label>
+                                                        </div>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="last-name-google-{{ contact.id }}" name="merge_last_name[{{ contact.id }}]" value="google" class="custom-control-input">
+                                                            <label class="custom-control-label" for="last-name-google-{{ contact.id }}">Google</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>Email</label>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="email-local-{{ contact.id }}" name="merge_email[{{ contact.id }}]" value="local" class="custom-control-input" checked>
+                                                            <label class="custom-control-label" for="email-local-{{ contact.id }}">Local</label>
+                                                        </div>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="email-google-{{ contact.id }}" name="merge_email[{{ contact.id }}]" value="google" class="custom-control-input">
+                                                            <label class="custom-control-label" for="email-google-{{ contact.id }}">Google</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>Phone</label>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="phone-local-{{ contact.id }}" name="merge_phone[{{ contact.id }}]" value="local" class="custom-control-input" checked>
+                                                            <label class="custom-control-label" for="phone-local-{{ contact.id }}">Local</label>
+                                                        </div>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="phone-google-{{ contact.id }}" name="merge_phone[{{ contact.id }}]" value="google" class="custom-control-input">
+                                                            <label class="custom-control-label" for="phone-google-{{ contact.id }}">Google</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-3">
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>Address</label>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="address-local-{{ contact.id }}" name="merge_address[{{ contact.id }}]" value="local" class="custom-control-input" checked>
+                                                            <label class="custom-control-label" for="address-local-{{ contact.id }}">Local</label>
+                                                        </div>
+                                                        <div class="custom-control custom-radio">
+                                                            <input type="radio" id="address-google-{{ contact.id }}" name="merge_address[{{ contact.id }}]" value="google" class="custom-control-input">
+                                                            <label class="custom-control-label" for="address-google-{{ contact.id }}">Google</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="row mt-4">
+                            <div class="col-12 text-right">
+                                <a href="{{ url_for('google_sync.index') }}" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-success">Resolve Conflicts</button>
+                            </div>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle mr-1"></i> No conflicts to resolve!
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('google_sync.index') }}" class="btn btn-primary">Return to Dashboard</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for contact in conflicted_contacts %}
+        const radioButtons{{ contact.id }} = document.querySelectorAll('input[name="resolution[{{ contact.id }}]"]');
+        const mergeOptions{{ contact.id }} = document.querySelector('.merge-options-{{ contact.id }}');
+        
+        radioButtons{{ contact.id }}.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'merge') {
+                    mergeOptions{{ contact.id }}.style.display = 'block';
+                } else {
+                    mergeOptions{{ contact.id }}.style.display = 'none';
+                }
+            });
+        });
+        {% endfor %}
+    });
+</script>
+{% endblock %} 

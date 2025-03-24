@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Create Task - Mobilize CRM{% endblock %}
+
+{% block page_title %}Create New Task{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>Create New Task
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="task-form" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="task-title" class="form-label">Task Title *</label>
+                            <input type="text" class="form-control" id="task-title" name="title" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="task-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="task-description" name="description" rows="4"></textarea>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="task-status" class="form-label">Status *</label>
+                                <select class="form-select" id="task-status" name="status" required>
+                                    <option value="pending">Pending</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="task-priority" class="form-label">Priority *</label>
+                                <select class="form-select" id="task-priority" name="priority" required>
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="task-due-date" class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="task-due-date" name="due_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="task-assigned-to" class="form-label">Assigned To</label>
+                                <select class="form-select" id="task-assigned-to" name="assigned_to">
+                                    <option value="">Unassigned</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.first_name }} {{ user.last_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Related To</label>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="contact_type" id="contact-type-none" value="none" checked>
+                                    <label class="form-check-label" for="contact-type-none">None</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="contact_type" id="contact-type-person" value="person">
+                                    <label class="form-check-label" for="contact-type-person">Person</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="contact_type" id="contact-type-church" value="church">
+                                    <label class="form-check-label" for="contact-type-church">Church</label>
+                                </div>
+                            </div>
+                            
+                            <div id="person-contact-group" style="display: none;">
+                                <select class="form-select" id="person-contact" name="person_id">
+                                    <option value="">Select a person...</option>
+                                    {% for person in people %}
+                                    <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div id="church-contact-group" style="display: none;">
+                                <select class="form-select" id="church-contact" name="church_id">
+                                    <option value="">Select a church...</option>
+                                    {% for church in churches %}
+                                    <option value="{{ church.id }}">{{ church.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reminder_option" class="form-label">Reminder</label>
+                            <select class="form-select" id="reminder_option" name="reminder_option">
+                                <option value="none">No reminder</option>
+                                <option value="15_min">15 minutes before</option>
+                                <option value="30_min">30 minutes before</option>
+                                <option value="1_hour">1 hour before</option>
+                                <option value="2_hours">2 hours before</option>
+                                <option value="1_day">1 day before</option>
+                                <option value="3_days">3 days before</option>
+                                <option value="1_week">1 week before</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('tasks.list') }}" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-2"></i>Create Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Task Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-lightbulb me-2"></i>Tips for Creating Tasks</h6>
+                        <ul class="mb-0">
+                            <li>Be specific with your task title</li>
+                            <li>Set a realistic due date</li>
+                            <li>Assign high priority only to urgent tasks</li>
+                            <li>Include all necessary details in the description</li>
+                            <li>Link tasks to relevant contacts when applicable</li>
+                        </ul>
+                    </div>
+                    
+                    <h6 class="border-bottom pb-2 mb-3">Task Status Definitions</h6>
+                    <div class="mb-2">
+                        <span class="badge bg-warning">Pending</span>
+                        <span class="ms-2">Task has not been started yet</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">In Progress</span>
+                        <span class="ms-2">Work on the task has begun</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-success">Completed</span>
+                        <span class="ms-2">Task has been finished</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="badge bg-danger">Overdue</span>
+                        <span class="ms-2">Past due date and not completed</span>
+                    </div>
+                    
+                    <h6 class="border-bottom pb-2 mb-3">Priority Levels</h6>
+                    <div class="mb-2">
+                        <span class="badge bg-danger">High</span>
+                        <span class="ms-2">Urgent and important</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-warning">Medium</span>
+                        <span class="ms-2">Important but not urgent</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">Low</span>
+                        <span class="ms-2">Can be addressed later</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle contact type selection
+    const contactTypeRadios = document.querySelectorAll('input[name="contact_type"]');
+    const personContactGroup = document.getElementById('person-contact-group');
+    const churchContactGroup = document.getElementById('church-contact-group');
+    
+    contactTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'person') {
+                personContactGroup.style.display = 'block';
+                churchContactGroup.style.display = 'none';
+            } else if (this.value === 'church') {
+                personContactGroup.style.display = 'none';
+                churchContactGroup.style.display = 'block';
+            } else {
+                personContactGroup.style.display = 'none';
+                churchContactGroup.style.display = 'none';
+            }
+        });
+    });
+    
+    // Set minimum date for due date to today
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayFormatted = `${yyyy}-${mm}-${dd}`;
+    
+    document.getElementById('task-due-date').min = todayFormatted;
+    
+    // Form validation
+    const taskForm = document.getElementById('task-form');
+    taskForm.addEventListener('submit', function(event) {
+        if (!this.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const contactType = document.querySelector('input[name="contact_type"]:checked').value;
+        
+        if (contactType === 'person') {
+            const personId = document.getElementById('person-contact').value;
+            if (!personId) {
+                event.preventDefault();
+                alert('Please select a person or change the contact type.');
+                return;
+            }
+        } else if (contactType === 'church') {
+            const churchId = document.getElementById('church-contact').value;
+            if (!churchId) {
+                event.preventDefault();
+                alert('Please select a church or change the contact type.');
+                return;
+            }
+        }
+        
+        this.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %} 

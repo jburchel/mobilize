@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Office Users - {{ office.name }} - Mobilize CRM{% endblock %}
+
+{% block page_title %}Office Users - {{ office.name }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.offices') }}">Office Management</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Office Users - {{ office.name }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Current Office Users Card -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Current Users in {{ office.name }}</h5>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="bi bi-plus-lg"></i> Add User
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user_office in office.user_offices %}
+                        {% set user = user_office.user %}
+                        <tr>
+                            <td>{{ user.first_name }} {{ user.last_name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                <span class="badge role-badge {{ user_office.role }}">{{ user_office.role }}</span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editRoleModal{{ user.id }}">
+                                        <i class="bi bi-pencil"></i> Edit Role
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#removeUserModal{{ user.id }}">
+                                        <i class="bi bi-person-x"></i> Remove
+                                    </button>
+                                </div>
+                                
+                                <!-- Edit Role Modal -->
+                                <div class="modal fade" id="editRoleModal{{ user.id }}" tabindex="-1" aria-labelledby="editRoleModalLabel{{ user.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editRoleModalLabel{{ user.id }}">Edit User Role</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ url_for('admin.update_office_user', office_id=office.id, user_id=user.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label for="role{{ user.id }}" class="form-label">Role for {{ user.email }}</label>
+                                                        <select class="form-select" id="role{{ user.id }}" name="role">
+                                                            <option value="super_admin" {% if user_office.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
+                                                            <option value="office_admin" {% if user_office.role == 'office_admin' %}selected{% endif %}>Office Admin</option>
+                                                            <option value="standard_user" {% if user_office.role == 'standard_user' %}selected{% endif %}>Standard User</option>
+                                                            <option value="limited_user" {% if user_office.role == 'limited_user' %}selected{% endif %}>Limited User</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">Update Role</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Remove User Modal -->
+                                <div class="modal fade" id="removeUserModal{{ user.id }}" tabindex="-1" aria-labelledby="removeUserModalLabel{{ user.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="removeUserModalLabel{{ user.id }}">Remove User</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to remove <strong>{{ user.email }}</strong> from {{ office.name }}?</p>
+                                                <p class="text-danger">The user will lose access to all data in this office.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form action="{{ url_for('admin.remove_office_user', office_id=office.id, user_id=user.id) }}" method="POST">
+                                                    <button type="submit" class="btn btn-danger">Remove User</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center">No users assigned to this office yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUserModalLabel">Add User to {{ office.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="userTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="existing-tab" data-bs-toggle="tab" data-bs-target="#existing" type="button" role="tab" aria-controls="existing" aria-selected="true">Existing Users</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="new-tab" data-bs-toggle="tab" data-bs-target="#new" type="button" role="tab" aria-controls="new" aria-selected="false">New User</button>
+                    </li>
+                </ul>
+                <div class="tab-content mt-3" id="userTabsContent">
+                    <div class="tab-pane fade show active" id="existing" role="tabpanel" aria-labelledby="existing-tab">
+                        <div class="mb-3">
+                            <label for="userSearch" class="form-label">Search Users</label>
+                            <input type="text" class="form-control" id="userSearch" placeholder="Start typing to search...">
+                        </div>
+                        <div class="list-group user-list">
+                            {% for user in users %}
+                                {% if user.id not in user_roles %}
+                                <a href="#" class="list-group-item list-group-item-action user-item" data-user-id="{{ user.id }}" data-user-email="{{ user.email }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ user.first_name }} {{ user.last_name }}</strong><br>
+                                            <small>{{ user.email }}</small>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary select-user" data-user-id="{{ user.id }}" data-user-email="{{ user.email }}">
+                                            Select
+                                        </button>
+                                    </div>
+                                </a>
+                                {% endif %}
+                            {% else %}
+                                <div class="text-center p-3">No available users found.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="new" role="tabpanel" aria-labelledby="new-tab">
+                        <form id="newUserForm">
+                            <div class="mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="firstName" name="firstName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="lastName" name="lastName" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create User</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="roleSelection" class="mt-3 d-none">
+                    <form action="{{ url_for('admin.update_office_user', office_id=office.id, user_id=0) }}" method="POST" id="addUserForm">
+                        <input type="hidden" name="user_id" id="selectedUserId">
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role for <span id="selectedUserEmail"></span></label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Select Role...</option>
+                                <option value="super_admin">Super Admin</option>
+                                <option value="office_admin">Office Admin</option>
+                                <option value="standard_user">Standard User</option>
+                                <option value="limited_user">Limited User</option>
+                            </select>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Add User</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // User search functionality
+    const userSearch = document.getElementById('userSearch');
+    const userItems = document.querySelectorAll('.user-item');
+    
+    userSearch.addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();
+        
+        userItems.forEach(item => {
+            const userEmail = item.getAttribute('data-user-email').toLowerCase();
+            const userName = item.querySelector('strong').textContent.toLowerCase();
+            
+            if (userEmail.includes(searchValue) || userName.includes(searchValue)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+    
+    // User selection
+    const selectButtons = document.querySelectorAll('.select-user');
+    const roleSelection = document.getElementById('roleSelection');
+    const selectedUserId = document.getElementById('selectedUserId');
+    const selectedUserEmail = document.getElementById('selectedUserEmail');
+    const addUserForm = document.getElementById('addUserForm');
+    
+    selectButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const userId = this.getAttribute('data-user-id');
+            const userEmail = this.getAttribute('data-user-email');
+            
+            selectedUserId.value = userId;
+            selectedUserEmail.textContent = userEmail;
+            
+            addUserForm.action = "{{ url_for('admin.update_office_user', office_id=office.id) }}".replace('user_id', userId);
+            
+            roleSelection.classList.remove('d-none');
+        });
+    });
+    
+    // New user form
+    const newUserForm = document.getElementById('newUserForm');
+    
+    newUserForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Here you would normally submit the form to create a new user
+        // For now, we'll just show a message
+        alert('This would create a new user in a real implementation.');
+    });
+});
+</script>
+{% endblock %} 

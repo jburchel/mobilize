@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Task - Mobilize CRM{% endblock %}
+
+{% block page_title %}Edit Task{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil-square me-2"></i>Edit Task
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="task-form" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="task_id" value="{{ task.id }}">
+                        
+                        <div class="mb-3">
+                            <label for="task-title" class="form-label">Task Title *</label>
+                            <input type="text" class="form-control" id="task-title" name="title" value="{{ task.title }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="task-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="task-description" name="description" rows="4">{{ task.description }}</textarea>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="task-status" class="form-label">Status *</label>
+                                <select class="form-select" id="task-status" name="status" required>
+                                    <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="task-priority" class="form-label">Priority *</label>
+                                <select class="form-select" id="task-priority" name="priority" required>
+                                    <option value="low" {% if task.priority == 'low' %}selected{% endif %}>Low</option>
+                                    <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>Medium</option>
+                                    <option value="high" {% if task.priority == 'high' %}selected{% endif %}>High</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="task-due-date" class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="task-due-date" name="due_date" 
+                                       value="{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="task-assigned-to" class="form-label">Assigned To</label>
+                                <select class="form-select" id="task-assigned-to" name="assigned_to">
+                                    <option value="">Unassigned</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}" {% if task.assigned_to == user.id %}selected{% endif %}>
+                                        {{ user.first_name }} {{ user.last_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Related To</label>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="contact_type" id="contact-type-none" 
+                                           value="none" {% if not task.person_id and not task.church_id %}checked{% endif %}>
+                                    <label class="form-check-label" for="contact-type-none">None</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="contact_type" id="contact-type-person" 
+                                           value="person" {% if task.person_id %}checked{% endif %}>
+                                    <label class="form-check-label" for="contact-type-person">Person</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="contact_type" id="contact-type-church" 
+                                           value="church" {% if task.church_id %}checked{% endif %}>
+                                    <label class="form-check-label" for="contact-type-church">Church</label>
+                                </div>
+                            </div>
+                            
+                            <div id="person-contact-group" {% if not task.person_id %}style="display: none;"{% endif %}>
+                                <select class="form-select" id="person-contact" name="person_id">
+                                    <option value="">Select a person...</option>
+                                    {% for person in people %}
+                                    <option value="{{ person.id }}" {% if task.person_id == person.id %}selected{% endif %}>
+                                        {{ person.first_name }} {{ person.last_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div id="church-contact-group" {% if not task.church_id %}style="display: none;"{% endif %}>
+                                <select class="form-select" id="church-contact" name="church_id">
+                                    <option value="">Select a church...</option>
+                                    {% for church in churches %}
+                                    <option value="{{ church.id }}" {% if task.church_id == church.id %}selected{% endif %}>
+                                        {{ church.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reminder_option" class="form-label">Reminder</label>
+                            <select class="form-select" id="reminder_option" name="reminder_option">
+                                <option value="none" {% if task.reminder_option == 'none' or task.reminder_option is none %}selected{% endif %}>No reminder</option>
+                                <option value="15_min" {% if task.reminder_option == '15_min' %}selected{% endif %}>15 minutes before</option>
+                                <option value="30_min" {% if task.reminder_option == '30_min' %}selected{% endif %}>30 minutes before</option>
+                                <option value="1_hour" {% if task.reminder_option == '1_hour' %}selected{% endif %}>1 hour before</option>
+                                <option value="2_hours" {% if task.reminder_option == '2_hours' %}selected{% endif %}>2 hours before</option>
+                                <option value="1_day" {% if task.reminder_option == '1_day' %}selected{% endif %}>1 day before</option>
+                                <option value="3_days" {% if task.reminder_option == '3_days' %}selected{% endif %}>3 days before</option>
+                                <option value="1_week" {% if task.reminder_option == '1_week' %}selected{% endif %}>1 week before</option>
+                            </select>
+                        </div>
+
+                        {% if task.status == 'completed' %}
+                        <div class="mb-3">
+                            <label for="completion-notes" class="form-label">Completion Notes</label>
+                            <textarea class="form-control" id="completion-notes" name="completion_notes" rows="3" readonly>{{ task.completion_notes }}</textarea>
+                            <div class="form-text">
+                                Task was completed on {{ task.completed_date.strftime('%Y-%m-%d %H:%M') if task.completed_date else 'Unknown date' }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('tasks.list') }}" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-2"></i>Save Changes
+                            </button>
+                            {% if task.status != 'completed' %}
+                            <a href="{{ url_for('tasks.complete', id=task.id) }}" class="btn btn-success">
+                                <i class="bi bi-check-circle me-2"></i>Mark as Completed
+                            </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Task Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Created By:</div>
+                        <div class="col-7">{{ task.created_by_user.first_name }} {{ task.created_by_user.last_name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Created Date:</div>
+                        <div class="col-7">{{ task.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-5 text-muted">Last Updated:</div>
+                        <div class="col-7">{{ task.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                    
+                    {% if task.status != 'completed' and task.due_date and task.due_date < current_date %}
+                    <div class="alert alert-danger mt-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> This task is overdue!
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Activity History
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% if task_history %}
+                            {% for history in task_history %}
+                            <div class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ history.action }}</h6>
+                                    <small>{{ history.date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                </div>
+                                <p class="mb-1">{{ history.description }}</p>
+                                <small>By {{ history.user.first_name }} {{ history.user.last_name }}</small>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center p-3">
+                                <p class="text-muted mb-0">No activity history available.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle contact type selection
+    const contactTypeRadios = document.querySelectorAll('input[name="contact_type"]');
+    const personContactGroup = document.getElementById('person-contact-group');
+    const churchContactGroup = document.getElementById('church-contact-group');
+    
+    contactTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'person') {
+                personContactGroup.style.display = 'block';
+                churchContactGroup.style.display = 'none';
+            } else if (this.value === 'church') {
+                personContactGroup.style.display = 'none';
+                churchContactGroup.style.display = 'block';
+            } else {
+                personContactGroup.style.display = 'none';
+                churchContactGroup.style.display = 'none';
+            }
+        });
+    });
+    
+    // Form validation
+    const taskForm = document.getElementById('task-form');
+    taskForm.addEventListener('submit', function(event) {
+        if (!this.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const contactType = document.querySelector('input[name="contact_type"]:checked').value;
+        
+        if (contactType === 'person') {
+            const personId = document.getElementById('person-contact').value;
+            if (!personId) {
+                event.preventDefault();
+                alert('Please select a person or change the contact type.');
+                return;
+            }
+        } else if (contactType === 'church') {
+            const churchId = document.getElementById('church-contact').value;
+            if (!churchId) {
+                event.preventDefault();
+                alert('Please select a church or change the contact type.');
+                return;
+            }
+        }
+        
+        this.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %} 

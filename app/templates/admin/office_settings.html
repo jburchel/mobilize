@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Office Settings - {{ office.name }} - Mobilize CRM{% endblock %}
+
+{% block page_title %}Office Settings - {{ office.name }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.offices') }}">Office Management</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Office Settings - {{ office.name }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Office Settings</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.office_settings', office_id=office.id) }}">
+                <div class="row">
+                    <!-- Pipeline Stages -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Pipeline Stages</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="pipeline-stages-container">
+                                    {% if office.settings and office.settings.pipeline_stages %}
+                                        {% for stage in office.settings.pipeline_stages %}
+                                        <div class="input-group mb-2 pipeline-stage-input">
+                                            <input type="text" class="form-control" name="pipeline_stages" value="{{ stage }}" placeholder="Stage name">
+                                            <button type="button" class="btn btn-outline-danger remove-stage-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="input-group mb-2 pipeline-stage-input">
+                                            <input type="text" class="form-control" name="pipeline_stages" value="New Contact" placeholder="Stage name">
+                                            <button type="button" class="btn btn-outline-danger remove-stage-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group mb-2 pipeline-stage-input">
+                                            <input type="text" class="form-control" name="pipeline_stages" value="Contacted" placeholder="Stage name">
+                                            <button type="button" class="btn btn-outline-danger remove-stage-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group mb-2 pipeline-stage-input">
+                                            <input type="text" class="form-control" name="pipeline_stages" value="Qualified" placeholder="Stage name">
+                                            <button type="button" class="btn btn-outline-danger remove-stage-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group mb-2 pipeline-stage-input">
+                                            <input type="text" class="form-control" name="pipeline_stages" value="Committed" placeholder="Stage name">
+                                            <button type="button" class="btn btn-outline-danger remove-stage-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addPipelineStageBtn">
+                                    <i class="bi bi-plus"></i> Add Stage
+                                </button>
+                                <small class="form-text text-muted mt-2">
+                                    These stages will be available when assigning pipeline stages to contacts.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Contact Categories -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Contact Categories</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="categories-container">
+                                    {% if office.settings and office.settings.contact_categories %}
+                                        {% for category in office.settings.contact_categories %}
+                                        <div class="input-group mb-2 category-input">
+                                            <input type="text" class="form-control" name="contact_categories" value="{{ category }}" placeholder="Category name">
+                                            <button type="button" class="btn btn-outline-danger remove-category-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="input-group mb-2 category-input">
+                                            <input type="text" class="form-control" name="contact_categories" value="Donor" placeholder="Category name">
+                                            <button type="button" class="btn btn-outline-danger remove-category-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group mb-2 category-input">
+                                            <input type="text" class="form-control" name="contact_categories" value="Volunteer" placeholder="Category name">
+                                            <button type="button" class="btn btn-outline-danger remove-category-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group mb-2 category-input">
+                                            <input type="text" class="form-control" name="contact_categories" value="Partner" placeholder="Category name">
+                                            <button type="button" class="btn btn-outline-danger remove-category-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addCategoryBtn">
+                                    <i class="bi bi-plus"></i> Add Category
+                                </button>
+                                <small class="form-text text-muted mt-2">
+                                    These categories will be available when classifying contacts.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Task Priorities -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Task Priorities</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="priorities-container">
+                                    {% if office.settings and office.settings.task_priorities %}
+                                        {% for priority in office.settings.task_priorities %}
+                                        <div class="input-group mb-2 priority-input">
+                                            <input type="text" class="form-control" name="task_priorities" value="{{ priority }}" placeholder="Priority name">
+                                            <button type="button" class="btn btn-outline-danger remove-priority-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="input-group mb-2 priority-input">
+                                            <input type="text" class="form-control" name="task_priorities" value="High" placeholder="Priority name">
+                                            <button type="button" class="btn btn-outline-danger remove-priority-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group mb-2 priority-input">
+                                            <input type="text" class="form-control" name="task_priorities" value="Medium" placeholder="Priority name">
+                                            <button type="button" class="btn btn-outline-danger remove-priority-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group mb-2 priority-input">
+                                            <input type="text" class="form-control" name="task_priorities" value="Low" placeholder="Priority name">
+                                            <button type="button" class="btn btn-outline-danger remove-priority-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addPriorityBtn">
+                                    <i class="bi bi-plus"></i> Add Priority
+                                </button>
+                                <small class="form-text text-muted mt-2">
+                                    These priorities will be available when creating tasks.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Default Reminder Settings -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Default Reminder Settings</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="default_reminder_time" class="form-label">Default Reminder Time (hours before due date)</label>
+                                    <input type="number" class="form-control" id="default_reminder_time" name="default_reminder_time" value="{{ office.settings.default_reminder_time if office.settings and office.settings.default_reminder_time else '24' }}" min="1" max="168">
+                                    <small class="form-text text-muted">
+                                        This is the default time before a task is due that a reminder will be sent.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Settings
+                    </button>
+                    <a href="{{ url_for('admin.offices') }}" class="btn btn-secondary">
+                        <i class="bi bi-x"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Pipeline Stages
+    const pipelineStagesContainer = document.querySelector('.pipeline-stages-container');
+    const addPipelineStageBtn = document.getElementById('addPipelineStageBtn');
+    
+    addPipelineStageBtn.addEventListener('click', function() {
+        const stageInput = document.createElement('div');
+        stageInput.className = 'input-group mb-2 pipeline-stage-input';
+        stageInput.innerHTML = `
+            <input type="text" class="form-control" name="pipeline_stages" placeholder="Stage name">
+            <button type="button" class="btn btn-outline-danger remove-stage-btn">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        pipelineStagesContainer.appendChild(stageInput);
+        
+        // Add event listener to new remove button
+        stageInput.querySelector('.remove-stage-btn').addEventListener('click', function() {
+            if (document.querySelectorAll('.pipeline-stage-input').length > 1) {
+                this.closest('.pipeline-stage-input').remove();
+            } else {
+                alert('You must have at least one pipeline stage');
+            }
+        });
+    });
+    
+    // Add event listeners to existing remove buttons for pipeline stages
+    document.querySelectorAll('.remove-stage-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (document.querySelectorAll('.pipeline-stage-input').length > 1) {
+                this.closest('.pipeline-stage-input').remove();
+            } else {
+                alert('You must have at least one pipeline stage');
+            }
+        });
+    });
+    
+    // Contact Categories
+    const categoriesContainer = document.querySelector('.categories-container');
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    
+    addCategoryBtn.addEventListener('click', function() {
+        const categoryInput = document.createElement('div');
+        categoryInput.className = 'input-group mb-2 category-input';
+        categoryInput.innerHTML = `
+            <input type="text" class="form-control" name="contact_categories" placeholder="Category name">
+            <button type="button" class="btn btn-outline-danger remove-category-btn">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        categoriesContainer.appendChild(categoryInput);
+        
+        // Add event listener to new remove button
+        categoryInput.querySelector('.remove-category-btn').addEventListener('click', function() {
+            if (document.querySelectorAll('.category-input').length > 1) {
+                this.closest('.category-input').remove();
+            } else {
+                alert('You must have at least one category');
+            }
+        });
+    });
+    
+    // Add event listeners to existing remove buttons for categories
+    document.querySelectorAll('.remove-category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (document.querySelectorAll('.category-input').length > 1) {
+                this.closest('.category-input').remove();
+            } else {
+                alert('You must have at least one category');
+            }
+        });
+    });
+    
+    // Task Priorities
+    const prioritiesContainer = document.querySelector('.priorities-container');
+    const addPriorityBtn = document.getElementById('addPriorityBtn');
+    
+    addPriorityBtn.addEventListener('click', function() {
+        const priorityInput = document.createElement('div');
+        priorityInput.className = 'input-group mb-2 priority-input';
+        priorityInput.innerHTML = `
+            <input type="text" class="form-control" name="task_priorities" placeholder="Priority name">
+            <button type="button" class="btn btn-outline-danger remove-priority-btn">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        prioritiesContainer.appendChild(priorityInput);
+        
+        // Add event listener to new remove button
+        priorityInput.querySelector('.remove-priority-btn').addEventListener('click', function() {
+            if (document.querySelectorAll('.priority-input').length > 1) {
+                this.closest('.priority-input').remove();
+            } else {
+                alert('You must have at least one priority');
+            }
+        });
+    });
+    
+    // Add event listeners to existing remove buttons for priorities
+    document.querySelectorAll('.remove-priority-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (document.querySelectorAll('.priority-input').length > 1) {
+                this.closest('.priority-input').remove();
+            } else {
+                alert('You must have at least one priority');
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

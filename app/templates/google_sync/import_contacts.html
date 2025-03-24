@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Import Google Contacts{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('google_sync.index') }}">Google Sync</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Import Contacts</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0 text-gray-800">Import Google Contacts</h1>
+            <p class="text-muted">Select contacts from your Google account to import</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Step 1: Select Contacts</h6>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('google_sync.map_contacts') }}" method="post">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="contactsTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th width="50px">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="select-all">
+                                                <label class="custom-control-label" for="select-all"></label>
+                                            </div>
+                                        </th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Already Imported</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if google_contacts %}
+                                        {% for contact in google_contacts %}
+                                        <tr>
+                                            <td>
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input contact-checkbox" 
+                                                        id="contact-{{ contact.id }}" 
+                                                        name="selected_contacts" 
+                                                        value="{{ contact.id }}"
+                                                        {% if contact.already_imported %}disabled{% endif %}>
+                                                    <label class="custom-control-label" for="contact-{{ contact.id }}"></label>
+                                                </div>
+                                            </td>
+                                            <td>{{ contact.name }}</td>
+                                            <td>
+                                                {% if contact.emails %}
+                                                    {% for email in contact.emails %}
+                                                        <div>{{ email }}</div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">No email</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if contact.phones %}
+                                                    {% for phone in contact.phones %}
+                                                        <div>{{ phone }}</div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">No phone</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if contact.already_imported %}
+                                                    <span class="badge badge-success">Imported</span>
+                                                {% else %}
+                                                    <span class="badge badge-secondary">New</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center">No Google contacts found</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12 text-right">
+                                <a href="{{ url_for('google_sync.index') }}" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary" id="continue-btn" disabled>Continue to Mapping</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllCheckbox = document.getElementById('select-all');
+        const contactCheckboxes = document.querySelectorAll('.contact-checkbox:not([disabled])');
+        const continueBtn = document.getElementById('continue-btn');
+
+        // Function to update the continue button state
+        function updateContinueButton() {
+            const checkedCount = document.querySelectorAll('.contact-checkbox:checked').length;
+            continueBtn.disabled = checkedCount === 0;
+        }
+
+        // Handle "Select All" checkbox
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                contactCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+                updateContinueButton();
+            });
+        }
+
+        // Handle individual contact checkboxes
+        contactCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateContinueButton();
+                
+                // Update "Select All" checkbox
+                const allChecked = document.querySelectorAll('.contact-checkbox:not([disabled])').length === 
+                                  document.querySelectorAll('.contact-checkbox:not([disabled]):checked').length;
+                selectAllCheckbox.checked = allChecked;
+            });
+        });
+
+        // Initialize DataTable
+        $('#contactsTable').DataTable({
+            "pageLength": 25,
+            "order": [[1, 'asc']], // Sort by name column
+            "columnDefs": [
+                { "orderable": false, "targets": 0 } // Disable sorting on checkbox column
+            ]
+        });
+    });
+</script>
+{% endblock %} 

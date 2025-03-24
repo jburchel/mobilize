@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Map Google Contacts{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('google_sync.index') }}">Google Sync</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('google_sync.import_contacts') }}">Import Contacts</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Map Fields</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0 text-gray-800">Map Contact Fields</h1>
+            <p class="text-muted">Specify how Google contact fields should map to Mobilize CRM fields</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Step 2: Map Fields</h6>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('google_sync.execute_import') }}" method="post">
+                        {% for contact in contact_details %}
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <strong>{{ contact.name }}</strong>
+                                <input type="hidden" name="contact_ids" value="{{ contact.id }}">
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="font-weight-bold">Basic Information</h6>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">First Name</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="first_name[{{ contact.id }}]" 
+                                                    value="{{ contact.first_name }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Last Name</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="last_name[{{ contact.id }}]" 
+                                                    value="{{ contact.last_name }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Title</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="title[{{ contact.id }}]" 
+                                                    value="{{ contact.title }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="font-weight-bold">Contact Information</h6>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Email</label>
+                                            <div class="col-sm-8">
+                                                <select class="form-control" name="email[{{ contact.id }}]">
+                                                    <option value="">-- No Email --</option>
+                                                    {% if contact.emails %}
+                                                        {% for email in contact.emails %}
+                                                            <option value="{{ email }}" {{ 'selected' if loop.first }}>{{ email }}</option>
+                                                        {% endfor %}
+                                                    {% endif %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Phone</label>
+                                            <div class="col-sm-8">
+                                                <select class="form-control" name="phone[{{ contact.id }}]">
+                                                    <option value="">-- No Phone --</option>
+                                                    {% if contact.phones %}
+                                                        {% for phone in contact.phones %}
+                                                            <option value="{{ phone }}" {{ 'selected' if loop.first }}>{{ phone }}</option>
+                                                        {% endfor %}
+                                                    {% endif %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <h6 class="font-weight-bold">Address</h6>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Street</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="address[{{ contact.id }}]" 
+                                                    value="{{ contact.address.street if contact.address and contact.address.street }}">
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">City</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="city[{{ contact.id }}]" 
+                                                    value="{{ contact.address.city if contact.address and contact.address.city }}">
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">State</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="state[{{ contact.id }}]" 
+                                                    value="{{ contact.address.state if contact.address and contact.address.state }}">
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Zip Code</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="zip_code[{{ contact.id }}]" 
+                                                    value="{{ contact.address.zip if contact.address and contact.address.zip }}">
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Country</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" name="country[{{ contact.id }}]" 
+                                                    value="{{ contact.address.country if contact.address and contact.address.country }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="font-weight-bold">Additional Information</h6>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Pipeline Stage</label>
+                                            <div class="col-sm-8">
+                                                <select class="form-control" name="pipeline_stage[{{ contact.id }}]">
+                                                    <option value="INFORMATION">Information</option>
+                                                    <option value="PROMOTION">Promotion</option>
+                                                    <option value="INVITATION">Invitation</option>
+                                                    <option value="CONFIRMATION">Confirmation</option>
+                                                    <option value="AUTOMATION">Automation</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Priority</label>
+                                            <div class="col-sm-8">
+                                                <select class="form-control" name="priority[{{ contact.id }}]">
+                                                    <option value="MEDIUM">Medium</option>
+                                                    <option value="HIGH">High</option>
+                                                    <option value="LOW">Low</option>
+                                                    <option value="URGENT">Urgent</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Notes</label>
+                                            <div class="col-sm-8">
+                                                <textarea class="form-control" name="notes[{{ contact.id }}]" rows="3">{{ contact.notes }}</textarea>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" name="google_contact_id[{{ contact.id }}]" value="{{ contact.id }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="row mt-4">
+                            <div class="col-12 text-right">
+                                <a href="{{ url_for('google_sync.import_contacts') }}" class="btn btn-secondary">Back</a>
+                                <button type="submit" class="btn btn-success">Import Contacts</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

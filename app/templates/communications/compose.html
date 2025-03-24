@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Compose Message - Mobilize CRM{% endblock %}
+
+{% block page_title %}Compose New Message{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<!-- Include Summernote CSS -->
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+<style>
+    .note-editor {
+        margin-bottom: 20px;
+    }
+    #email-preview {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 20px;
+        background-color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-envelope-plus me-2"></i>Compose Message
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="compose-form" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="message-type" class="form-label">Message Type</label>
+                            <select class="form-select" id="message-type" name="type" required>
+                                <option value="email" selected>Email</option>
+                                <option value="sms">SMS</option>
+                                <option value="phone">Phone Call Log</option>
+                                <option value="letter">Letter</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="recipient-type" class="form-label">Recipient Type</label>
+                            <select class="form-select" id="recipient-type" name="recipient_type" required>
+                                <option value="person" selected>Person</option>
+                                <option value="church">Church</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="person-recipient-group">
+                            <label for="person-recipient" class="form-label">Recipient (Person)</label>
+                            <select class="form-select" id="person-recipient" name="person_id">
+                                <option value="">Select a person...</option>
+                                {% for person in people %}
+                                <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="church-recipient-group" style="display: none;">
+                            <label for="church-recipient" class="form-label">Recipient (Church)</label>
+                            <select class="form-select" id="church-recipient" name="church_id">
+                                <option value="">Select a church...</option>
+                                {% for church in churches %}
+                                <option value="{{ church.id }}">{{ church.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="email-specific-fields">
+                            <div class="mb-3">
+                                <label for="email-subject" class="form-label">Subject</label>
+                                <input type="text" class="form-control" id="email-subject" name="subject" placeholder="Enter email subject" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="template-select" class="form-label">Use Template</label>
+                                <select class="form-select" id="template-select" name="template_id">
+                                    <option value="">No template</option>
+                                    <option value="1">Welcome Email</option>
+                                    <option value="2">Follow-up Meeting</option>
+                                    <option value="3">Thank You</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="message-content" class="form-label">Message Content</label>
+                            <textarea class="form-control" id="message-content" name="message" rows="10" required></textarea>
+                        </div>
+                        
+                        <div class="email-specific-fields">
+                            <div class="mb-3">
+                                <label for="attachments" class="form-label">Attachments</label>
+                                <input class="form-control" type="file" id="attachments" name="attachments" multiple>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="track-email" name="track_email" checked>
+                            <label class="form-check-label" for="track-email">
+                                Track email opens and clicks
+                            </label>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-secondary me-md-2" id="preview-button">
+                                <i class="bi bi-eye me-2"></i>Preview
+                            </button>
+                            <button type="button" class="btn btn-info me-md-2" id="save-draft-button">
+                                <i class="bi bi-save me-2"></i>Save Draft
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-send me-2"></i>Send Message
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Message Preview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="email-preview">
+                        <div class="text-center text-muted p-5">
+                            <i class="bi bi-envelope-paper fs-1"></i>
+                            <p class="mt-3">Your message preview will appear here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-lines-fill me-2"></i>Recent Communications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>Recent communications with selected recipient:</p>
+                    <div id="recent-communications">
+                        <div class="text-center text-muted py-4">
+                            <p>Select a recipient to see recent communications.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">Message Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="card">
+                    <div class="card-header">
+                        <div><strong>Subject:</strong> <span id="preview-subject"></span></div>
+                        <div><strong>To:</strong> <span id="preview-recipient"></span></div>
+                    </div>
+                    <div class="card-body">
+                        <div id="preview-content" class="p-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="send-from-preview">Send Message</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Include Summernote JS -->
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize rich text editor
+        $('#message-content').summernote({
+            placeholder: 'Compose your message here...',
+            tabsize: 2,
+            height: 300,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'picture']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
+
+        // Toggle recipient type
+        $('#recipient-type').on('change', function() {
+            const recipientType = $(this).val();
+            if (recipientType === 'person') {
+                $('#person-recipient-group').show();
+                $('#church-recipient-group').hide();
+            } else {
+                $('#person-recipient-group').hide();
+                $('#church-recipient-group').show();
+            }
+        });
+
+        // Toggle message type specific fields
+        $('#message-type').on('change', function() {
+            const messageType = $(this).val();
+            if (messageType === 'email') {
+                $('.email-specific-fields').show();
+            } else {
+                $('.email-specific-fields').hide();
+            }
+        });
+
+        // Preview button handler
+        $('#preview-button').on('click', function() {
+            const subject = $('#email-subject').val() || '(No Subject)';
+            const content = $('#message-content').summernote('code');
+            const recipientType = $('#recipient-type').val();
+            
+            let recipientName = 'No recipient selected';
+            if (recipientType === 'person') {
+                const personSelect = document.getElementById('person-recipient');
+                if (personSelect.selectedIndex > 0) {
+                    recipientName = personSelect.options[personSelect.selectedIndex].text;
+                }
+            } else {
+                const churchSelect = document.getElementById('church-recipient');
+                if (churchSelect.selectedIndex > 0) {
+                    recipientName = churchSelect.options[churchSelect.selectedIndex].text;
+                }
+            }
+            
+            // Update preview modal
+            $('#preview-subject').text(subject);
+            $('#preview-recipient').text(recipientName);
+            $('#preview-content').html(content);
+            
+            // Show the modal
+            var previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+            previewModal.show();
+        });
+
+        // Handle sending from preview
+        $('#send-from-preview').on('click', function() {
+            $('#compose-form').submit();
+        });
+
+        // Handle template selection
+        $('#template-select').on('change', function() {
+            const templateId = $(this).val();
+            if (!templateId) return;
+
+            // Simulate loading template content - in a real app, this would fetch from server
+            let templateContent = '';
+            let templateSubject = '';
+            
+            switch(templateId) {
+                case '1':
+                    templateSubject = 'Welcome to our community!';
+                    templateContent = '<p>Dear [Name],</p><p>Welcome to our community! We are thrilled to have you join us.</p><p>Best regards,<br>Your Mobilize CRM Team</p>';
+                    break;
+                case '2':
+                    templateSubject = 'Follow-up from our meeting';
+                    templateContent = '<p>Dear [Name],</p><p>Thank you for meeting with us today. Here is a summary of what we discussed...</p><p>Best regards,<br>Your Mobilize CRM Team</p>';
+                    break;
+                case '3':
+                    templateSubject = 'Thank you for your support';
+                    templateContent = '<p>Dear [Name],</p><p>We wanted to express our sincere gratitude for your continued support.</p><p>Best regards,<br>Your Mobilize CRM Team</p>';
+                    break;
+            }
+            
+            // Fill in the form
+            $('#email-subject').val(templateSubject);
+            $('#message-content').summernote('code', templateContent);
+        });
+
+        // Handle recipient selection to show recent communications
+        $('#person-recipient, #church-recipient').on('change', function() {
+            const id = $(this).val();
+            if (!id) {
+                $('#recent-communications').html('<div class="text-center text-muted py-4"><p>Select a recipient to see recent communications.</p></div>');
+                return;
+            }
+
+            // In a real app, this would fetch from server - here we just show a placeholder
+            $('#recent-communications').html(`
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Welcome Email</h5>
+                            <small>3 days ago</small>
+                        </div>
+                        <p class="mb-1">Welcome to our community! We are thrilled to have you...</p>
+                        <small><i class="bi bi-envelope-fill text-success me-2"></i>Sent by you</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">RE: Question about events</h5>
+                            <small>5 days ago</small>
+                        </div>
+                        <p class="mb-1">Thank you for your inquiry about our upcoming events...</p>
+                        <small><i class="bi bi-envelope-fill text-success me-2"></i>Sent by you</small>
+                    </a>
+                </div>
+            `);
+        });
+
+        // Save draft handler
+        $('#save-draft-button').on('click', function() {
+            // In a real app, this would actually save to the server
+            alert('Draft saved successfully!');
+        });
+    });
+</script>
+{% endblock %} 

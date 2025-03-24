@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Mobilize CRM{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Statistics Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="dashboard-stat-card primary-blue">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Total People</h6>
+                            <h2 class="card-title mb-0">{{ stats.people_count }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="dashboard-stat-card primary-green">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Total Churches</h6>
+                            <h2 class="card-title mb-0">{{ stats.church_count }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="bi bi-building"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="dashboard-stat-card primary-blue">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Pending Tasks</h6>
+                            <h2 class="card-title mb-0">{{ stats.pending_tasks }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="bi bi-check2-square"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="dashboard-stat-card primary-green">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-white-50">Recent Communications</h6>
+                            <h2 class="card-title mb-0">{{ stats.recent_communications }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="bi bi-chat-dots-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row g-4">
+        <!-- Pending Tasks -->
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 card-border-primary-blue">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Pending Tasks</h5>
+                    <a href="{{ url_for('tasks.add') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg"></i> New Task
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Due Date</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in pending_tasks %}
+                                <tr>
+                                    <td>{{ task.title }}</td>
+                                    <td>{{ task.due_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <span class="priority-badge priority-{{ task.priority.lower() }}">
+                                            {{ task.priority }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form action="{{ url_for('tasks.complete', id=task.id) }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="btn btn-sm btn-success" title="Mark Complete">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                        </form>
+                                        <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No pending tasks</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 card-border-primary-green">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-feed">
+                        {% for activity in recent_activities %}
+                        <div class="activity-item d-flex align-items-start mb-3">
+                            <div class="activity-icon me-3">
+                                {% if activity.type == 'person' %}
+                                <i class="bi bi-person-fill text-primary-blue"></i>
+                                {% elif activity.type == 'church' %}
+                                <i class="bi bi-building text-primary-green"></i>
+                                {% elif activity.type == 'task' %}
+                                <i class="bi bi-check2-square text-primary-blue"></i>
+                                {% elif activity.type == 'communication' %}
+                                <i class="bi bi-chat-dots-fill text-primary-green"></i>
+                                {% endif %}
+                            </div>
+                            <div class="activity-content flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="activity-text">{{ activity.description }}</div>
+                                    {% if activity.type == 'communication' %}
+                                    <a href="{{ url_for('communications.view', id=activity.id) }}" class="btn btn-sm btn-outline-primary ms-2">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% elif activity.type == 'task' %}
+                                    <a href="{{ url_for('tasks.edit', id=activity.id) }}" class="btn btn-sm btn-outline-primary ms-2">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p class="text-center">No recent activity</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Refresh dashboard data periodically
+    setInterval(function() {
+        fetch('/dashboard/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                // Update statistics
+                document.querySelector('.dashboard-stat-card:nth-child(1) h2').textContent = data.people_count;
+                document.querySelector('.dashboard-stat-card:nth-child(2) h2').textContent = data.church_count;
+                document.querySelector('.dashboard-stat-card:nth-child(3) h2').textContent = data.pending_tasks;
+                document.querySelector('.dashboard-stat-card:nth-child(4) h2').textContent = data.recent_communications;
+            });
+    }, 60000); // Refresh every minute
+});
+</script>
+{% endblock %} 
