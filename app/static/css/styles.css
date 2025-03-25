@@ -55,15 +55,15 @@ h1, h2, h3, h4, h5, h6 {
     height: 100vh;
     position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: var(--z-index-fixed, 1000);
 }
 
 .sidebar {
     min-width: var(--sidebar-width);
     max-width: var(--sidebar-width);
-    background-color: var(--sidebar-bg);
+    background-color: var(--color-primary-blue, var(--sidebar-bg));
     min-height: 100vh;
-    transition: all 0.3s;
+    transition: all var(--transition-base, 0.3s);
 }
 
 .main-content {
@@ -108,48 +108,59 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar .nav-link {
     color: rgba(255, 255, 255, 0.85);
-    padding: 0.75rem 1rem;
+    padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1rem);
     border-radius: 0;
-    transition: background-color 0.2s;
+    transition: background-color var(--transition-fast, 0.2s);
+    font-size: var(--font-size-md, 1rem);
+    display: flex;
+    align-items: center;
 }
 
 .sidebar .nav-link:hover {
-    background-color: var(--sidebar-hover);
-    color: white;
+    background-color: var(--color-primary-blue-dark, var(--sidebar-hover));
+    color: var(--color-surface, white);
 }
 
 .sidebar .nav-link.active {
-    background-color: var(--sidebar-active);
-    color: white;
+    background-color: var(--color-primary-green, var(--sidebar-active));
+    color: var(--color-surface, white);
+    font-weight: var(--font-weight-medium, 500);
+}
+
+.sidebar .nav-link i, 
+.sidebar .nav-link svg {
+    margin-right: var(--spacing-xs, 0.5rem);
+    font-size: var(--font-size-lg, 1.25rem);
+    opacity: 0.85;
 }
 
 /* Sidebar Section Headers */
 .sidebar-heading {
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs, 0.75rem);
     text-transform: uppercase;
     letter-spacing: 0.1rem;
     color: rgba(255, 255, 255, 0.6);
-    padding: 0.75rem 1rem;
-    margin-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1rem);
+    margin-top: var(--spacing-md, 1rem);
+    border-top: var(--border-width-thin, 1px) solid rgba(255, 255, 255, 0.2);
 }
 
 /* Sidebar Divider */
 .sidebar-divider {
     position: relative;
-    height: 1px;
+    height: var(--border-width-thin, 1px);
     background-color: rgba(255, 255, 255, 0.2);
-    margin: 1rem 0.75rem;
+    margin: var(--spacing-md, 1rem) var(--spacing-sm, 0.75rem);
     text-align: center;
 }
 
 .sidebar-divider-text {
     position: relative;
     top: -10px;
-    background-color: var(--sidebar-bg);
+    background-color: var(--color-primary-blue, var(--sidebar-bg));
     color: rgba(255, 255, 255, 0.7);
-    font-size: 0.75rem;
-    padding: 0 0.5rem;
+    font-size: var(--font-size-xs, 0.75rem);
+    padding: 0 var(--spacing-xs, 0.5rem);
     letter-spacing: 0.1rem;
 }
 
@@ -360,16 +371,60 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.85rem;
 }
 
-/* Responsive adjustments */
+/* Mobile Navigation */
+.mobile-nav-toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--color-surface, white);
+    font-size: var(--font-size-xl, 1.5rem);
+    cursor: pointer;
+    padding: var(--spacing-2xs, 0.25rem);
+}
+
+/* Breadcrumbs */
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    padding: var(--spacing-xs, 0.5rem) 0;
+    margin-bottom: var(--spacing-md, 1rem);
+    list-style: none;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumb-item + .breadcrumb-item {
+    padding-left: var(--spacing-xs, 0.5rem);
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "/";
+    padding-right: var(--spacing-xs, 0.5rem);
+    color: var(--color-gray-500, #adb5bd);
+}
+
+.breadcrumb-item.active {
+    color: var(--color-gray-600, #6c757d);
+}
+
+/* Responsive navigation adjustments */
 @media (max-width: 991.98px) {
     .sidebar {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
-        z-index: 1030;
-        box-shadow: none;
+        z-index: var(--z-index-fixed, 1030);
+        box-shadow: var(--shadow-md, none);
         height: auto;
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
     }
     
     .main-content {
@@ -379,6 +434,14 @@ h1, h2, h3, h4, h5, h6 {
     .sidebar-wrapper {
         height: auto;
         position: relative;
+    }
+    
+    .mobile-nav-toggle {
+        display: block;
+    }
+    
+    .header-container {
+        padding: var(--spacing-xs, 0.5rem);
     }
 }
 
