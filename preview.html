@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobilize CRM Component Preview</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="app/static/css/design-tokens.css">
+  <link rel="stylesheet" href="app/static/css/modern-components.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .section {
+      margin-bottom: 40px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .section-title {
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      color: #343a40;
+    }
+    .component-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .nav-container {
+      position: sticky;
+      top: 0;
+      background-color: #183963;
+      color: white;
+      padding: 10px 20px;
+      z-index: 1000;
+    }
+    .nav-links {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      overflow-x: auto;
+    }
+    .nav-links li {
+      margin-right: 15px;
+    }
+    .nav-links a {
+      color: white;
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 5px 10px;
+      border-radius: 4px;
+    }
+    .nav-links a:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .preview-header h1 {
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav-container">
+    <div class="preview-header">
+      <h1>Mobilize CRM Components</h1>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#navigation">Navigation</a></li>
+      <li><a href="#forms">Form Elements</a></li>
+      <li><a href="#data-visualization">Data Visualization</a></li>
+      <li><a href="#content">Content Components</a></li>
+      <li><a href="#cards">Cards</a></li>
+      <li><a href="#tables">Tables</a></li>
+      <li><a href="#performance">Performance</a></li>
+    </ul>
+  </div>
+
+  <div class="container">
+    <!-- Navigation Components -->
+    <section id="navigation" class="section">
+      <h2 class="section-title">Navigation Components</h2>
+      
+      <h3>Sidebar</h3>
+      <div style="height: 400px; border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; display: flex;">
+        <div class="sidebar">
+          <div class="sidebar-logo">
+            <img src="https://placehold.co/150x40/183963/FFFFFF?text=MOBILIZE" alt="Mobilize CRM Logo">
+            <button class="sidebar-toggle" aria-label="Toggle sidebar">
+              <i class="fas fa-bars"></i>
+            </button>
+          </div>
+          <div class="sidebar-menu">
+            <div class="nav-section">
+              <div class="nav-section-title">Main</div>
+              <div class="nav-item">
+                <a href="#" class="nav-link active">
+                  <span class="nav-icon"><i class="fas fa-home"></i></span>
+                  <span class="nav-text">Dashboard</span>
+                </a>
+              </div>
+              <div class="nav-item">
+                <a href="#" class="nav-link">
+                  <span class="nav-icon"><i class="fas fa-user"></i></span>
+                  <span class="nav-text">People</span>
+                  <span class="nav-badge">42</span>
+                </a>
+              </div>
+              <div class="nav-item">
+                <a href="#" class="nav-link">
+                  <span class="nav-icon"><i class="fas fa-church"></i></span>
+                  <span class="nav-text">Churches</span>
+                </a>
+              </div>
+            </div>
+            
+            <div class="nav-section">
+              <div class="nav-section-title">Communication</div>
+              <div class="nav-item">
+                <a href="#" class="nav-link">
+                  <span class="nav-icon"><i class="fas fa-envelope"></i></span>
+                  <span class="nav-text">Emails</span>
+                </a>
+              </div>
+              <div class="nav-item">
+                <a href="#" class="nav-link">
+                  <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+                  <span class="nav-text">Tasks</span>
+                  <span class="nav-badge">5</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-footer">
+            <div class="user-info">
+              <img src="https://placehold.co/32x32/cccccc/666666?text=JD" alt="User" class="user-avatar">
+              <div class="user-details">
+                <div class="user-name">John Doe</div>
+                <div class="user-role">Administrator</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1; padding: 20px; background-color: #f8f9fa;">
+          <h3>Main Content Area</h3>
+          <p>This is where the main content would go.</p>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Breadcrumbs</h3>
+      <div class="breadcrumb-wrapper">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item"><a href="#">People</a></li>
+            <li class="breadcrumb-item active" aria-current="page">John Doe</li>
+          </ol>
+        </nav>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Tab Navigation</h3>
+      <div class="tab-navigation">
+        <div class="tab-item active">Overview</div>
+        <div class="tab-item">Contact Information</div>
+        <div class="tab-item">Communication History</div>
+        <div class="tab-item">Tasks <span class="tab-badge">3</span></div>
+        <div class="tab-item">Notes</div>
+      </div>
+    </section>
+
+    <!-- Form Elements -->
+    <section id="forms" class="section">
+      <h2 class="section-title">Form Elements</h2>
+      
+      <h3>Text Inputs</h3>
+      <div style="max-width: 500px;">
+        <div style="margin-bottom: 20px;">
+          <label for="standard-input" class="form-label">Standard Input</label>
+          <input type="text" id="standard-input" class="form-control" placeholder="Enter text">
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label for="required-input" class="form-label required">Required Input</label>
+          <input type="text" id="required-input" class="form-control" placeholder="This field is required" required>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label for="valid-input" class="form-label">Valid Input</label>
+          <input type="text" id="valid-input" class="form-control is-valid" value="Correct value">
+          <div class="valid-feedback">Looks good!</div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label for="invalid-input" class="form-label">Invalid Input</label>
+          <input type="text" id="invalid-input" class="form-control is-invalid" value="Incorrect value">
+          <div class="invalid-feedback">Please provide a valid value.</div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Select Inputs</h3>
+      <div style="max-width: 500px;">
+        <div style="margin-bottom: 20px;">
+          <label for="standard-select" class="form-label">Standard Select</label>
+          <select id="standard-select" class="form-select">
+            <option selected>Choose an option</option>
+            <option value="1">Option 1</option>
+            <option value="2">Option 2</option>
+            <option value="3">Option 3</option>
+          </select>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Checkboxes & Radios</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        <div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="checkbox1">
+            <label class="form-check-label" for="checkbox1">
+              Default checkbox
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="checkbox2" checked>
+            <label class="form-check-label" for="checkbox2">
+              Checked checkbox
+            </label>
+          </div>
+        </div>
+        
+        <div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="radioGroup1" id="radio1" checked>
+            <label class="form-check-label" for="radio1">
+              Default radio
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="radioGroup1" id="radio2">
+            <label class="form-check-label" for="radio2">
+              Second default radio
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Input Groups</h3>
+      <div style="max-width: 500px;">
+        <div style="margin-bottom: 20px;">
+          <label for="input-with-text" class="form-label">Input with Text Addon</label>
+          <div class="input-group">
+            <span class="input-group-text">@</span>
+            <input type="text" id="input-with-text" class="form-control" placeholder="Username">
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label for="input-with-button" class="form-label">Input with Button</label>
+          <div class="input-group">
+            <input type="text" id="input-with-button" class="form-control" placeholder="Search term">
+            <button class="btn btn-primary" type="button">Search</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Visualization -->
+    <section id="data-visualization" class="section">
+      <h2 class="section-title">Data Visualization</h2>
+      
+      <h3>KPI Cards</h3>
+      <div class="component-grid">
+        <div class="kpi-card primary">
+          <div class="kpi-card-title">Total People</div>
+          <div class="kpi-card-value">1,456</div>
+          <div class="kpi-card-comparison positive">
+            <span class="kpi-card-comparison-icon">↑</span> 12% from last month
+          </div>
+        </div>
+        
+        <div class="kpi-card success">
+          <div class="kpi-card-title">Active Churches</div>
+          <div class="kpi-card-value">187</div>
+          <div class="kpi-card-comparison positive">
+            <span class="kpi-card-comparison-icon">↑</span> 5% from last month
+          </div>
+        </div>
+        
+        <div class="kpi-card info">
+          <div class="kpi-card-title">Total Tasks</div>
+          <div class="kpi-card-value">342</div>
+          <div class="kpi-card-comparison negative">
+            <span class="kpi-card-comparison-icon">↓</span> 3% from last month
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Chart Containers</h3>
+      <div class="chart-card">
+        <div class="chart-title">Monthly People Growth</div>
+        <div class="chart-subtitle">New people added per month in 2023</div>
+        <div class="chart-container">
+          <!-- Chart placeholder -->
+          <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border: 1px dashed #ced4da;">
+            Chart Area - In a real app, a chart would be rendered here
+          </div>
+        </div>
+        <div class="chart-legend">
+          <div class="chart-legend-item">
+            <span class="chart-legend-indicator chart-color-primary"></span>
+            North America
+          </div>
+          <div class="chart-legend-item">
+            <span class="chart-legend-indicator chart-color-secondary"></span>
+            Europe
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Progress Bars</h3>
+      <div style="max-width: 600px;">
+        <div style="margin-bottom: 20px;">
+          <h4>Basic Progress Bar</h4>
+          <div class="progress">
+            <div class="progress-bar" style="width: 65%;" role="progressbar" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100">
+              65%
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <h4>Striped Progress Bar</h4>
+          <div class="progress">
+            <div class="progress-bar progress-bar-striped" style="width: 45%;" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100">
+              45%
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Content Components -->
+    <section id="content" class="section">
+      <h2 class="section-title">Content Components</h2>
+      
+      <h3>Status Badges</h3>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <span class="status-badge primary">New</span>
+        <span class="status-badge success">Active</span>
+        <span class="status-badge info">In Progress</span>
+        <span class="status-badge warning">Pending</span>
+        <span class="status-badge danger">Inactive</span>
+        <span class="status-badge secondary">Archived</span>
+      </div>
+      
+      <h3 style="margin-top: 30px;">With Icons</h3>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <span class="status-badge primary"><i class="fas fa-plus-circle"></i> New</span>
+        <span class="status-badge success"><i class="fas fa-check-circle"></i> Active</span>
+        <span class="status-badge warning"><i class="fas fa-clock"></i> Pending</span>
+        <span class="status-badge danger"><i class="fas fa-exclamation-circle"></i> Inactive</span>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Skeleton Loaders</h3>
+      <div style="max-width: 500px;">
+        <div class="skeleton-loader skeleton-title"></div>
+        <div class="skeleton-loader" style="width: 80%;"></div>
+        <div class="skeleton-loader" style="width: 90%;"></div>
+        <div class="skeleton-loader" style="width: 75%;"></div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Empty States</h3>
+      <div class="card">
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="empty-state-title">No People Found</div>
+          <div class="empty-state-description">
+            There are no people matching your search criteria. Try adjusting your filters or add a new person.
+          </div>
+          <div class="empty-state-action">
+            <button class="btn btn-primary">Add New Person</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cards -->
+    <section id="cards" class="section">
+      <h2 class="section-title">Cards</h2>
+      
+      <h3>Basic Cards</h3>
+      <div class="component-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Standard Card</div>
+          </div>
+          <div class="card-body">
+            <p>This is a basic card component with header and body.</p>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-primary">Action</button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Card with Subtitle</div>
+            <div class="card-subtitle">Supporting information</div>
+          </div>
+          <div class="card-body">
+            <p>This card includes a subtitle for additional context.</p>
+          </div>
+        </div>
+        
+        <div class="card border-primary">
+          <div class="card-header">Primary Border</div>
+          <div class="card-body">
+            <p>Card with a primary border style.</p>
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Contact Cards</h3>
+      <div class="component-grid">
+        <div class="contact-card">
+          <div class="contact-card-avatar">
+            <div class="avatar">JD</div>
+          </div>
+          <div class="contact-card-info">
+            <div class="contact-card-name">John Doe</div>
+            <div class="contact-card-title">Lead Pastor</div>
+            <div class="contact-card-detail">
+              <i class="fas fa-envelope"></i> john.doe@example.com
+            </div>
+            <div class="contact-card-detail">
+              <i class="fas fa-phone"></i> (555) 123-4567
+            </div>
+          </div>
+          <div class="contact-card-actions">
+            <button class="btn btn-icon" aria-label="Edit contact">
+              <i class="fas fa-pencil-alt"></i>
+            </button>
+            <button class="btn btn-icon" aria-label="View contact details">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="contact-card">
+          <div class="contact-card-avatar">
+            <div class="avatar" style="background-color: var(--color-primary-green);">SP</div>
+          </div>
+          <div class="contact-card-info">
+            <div class="contact-card-name">Sarah Parker</div>
+            <div class="contact-card-title">Worship Leader</div>
+            <div class="contact-card-detail">
+              <i class="fas fa-envelope"></i> sarah.p@example.com
+            </div>
+            <div class="contact-card-detail">
+              <i class="fas fa-phone"></i> (555) 987-6543
+            </div>
+          </div>
+          <div class="contact-card-actions">
+            <button class="btn btn-icon" aria-label="Edit contact">
+              <i class="fas fa-pencil-alt"></i>
+            </button>
+            <button class="btn btn-icon" aria-label="View contact details">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Stat Cards</h3>
+      <div class="component-grid">
+        <div class="stat-card">
+          <div class="stat-card-icon primary">
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="stat-card-content">
+            <div class="stat-card-value">1,254</div>
+            <div class="stat-card-label">Total People</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-card-icon success">
+            <i class="fas fa-church"></i>
+          </div>
+          <div class="stat-card-content">
+            <div class="stat-card-value">87</div>
+            <div class="stat-card-label">Churches</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-card-icon warning">
+            <i class="fas fa-tasks"></i>
+          </div>
+          <div class="stat-card-content">
+            <div class="stat-card-value">156</div>
+            <div class="stat-card-label">Open Tasks</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tables -->
+    <section id="tables" class="section">
+      <h2 class="section-title">Tables</h2>
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">People Table</div>
+        </div>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="table-user">
+                    <div class="table-user-avatar">JD</div>
+                    <div class="table-user-info">
+                      <div class="table-user-name">John Doe</div>
+                      <div class="table-user-title">Lead Pastor</div>
+                    </div>
+                  </div>
+                </td>
+                <td>john.doe@example.com</td>
+                <td>(555) 123-4567</td>
+                <td><span class="status-badge success">Active</span></td>
+                <td>
+                  <div class="table-actions">
+                    <button class="btn btn-icon btn-sm" aria-label="Edit">
+                      <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button class="btn btn-icon btn-sm" aria-label="View">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon btn-sm" aria-label="Delete">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="table-user">
+                    <div class="table-user-avatar" style="background-color: var(--color-primary-green);">SP</div>
+                    <div class="table-user-info">
+                      <div class="table-user-name">Sarah Parker</div>
+                      <div class="table-user-title">Worship Leader</div>
+                    </div>
+                  </div>
+                </td>
+                <td>sarah.p@example.com</td>
+                <td>(555) 987-6543</td>
+                <td><span class="status-badge warning">Pending</span></td>
+                <td>
+                  <div class="table-actions">
+                    <button class="btn btn-icon btn-sm" aria-label="Edit">
+                      <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button class="btn btn-icon btn-sm" aria-label="View">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon btn-sm" aria-label="Delete">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance Optimization Section -->
+    <section id="performance" class="section">
+      <h2 class="section-title">Performance Optimization</h2>
+      
+      <h3>Lazy Loading Images</h3>
+      <p>Scroll down to see images load only when they enter the viewport.</p>
+      
+      <div style="height: 200px; overflow-y: scroll; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px;">
+        <div style="margin-bottom: 20px;">
+          <h4>Regular Image (Eager Loading)</h4>
+          <img src="https://placehold.co/600x200/183963/FFFFFF?text=Eager+Loaded+Image" alt="Eager loaded image" width="100%">
+        </div>
+        
+        <div style="margin-bottom: 20px; margin-top: 400px;">
+          <h4>Lazy Loaded Image</h4>
+          <div class="image-container">
+            <img class="lazy-image" data-src="https://placehold.co/600x200/2b5797/FFFFFF?text=Lazy+Loaded+Image" alt="Lazy loaded image" width="100%">
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 20px; margin-top: 400px;">
+          <h4>Lazy Loaded Image with Blur-Up Effect</h4>
+          <div class="image-container">
+            <img class="lazy-image blur-up" 
+                 data-src="https://placehold.co/600x200/5c2d91/FFFFFF?text=Blur+Up+Effect"
+                 src="https://placehold.co/60x20/5c2d91/FFFFFF?text=" 
+                 alt="Lazy loaded image with blur-up effect" width="100%">
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 20px; margin-top: 400px;">
+          <h4>Lazy Loaded Background Image</h4>
+          <div style="height: 200px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px;"
+               data-background="https://placehold.co/600x200/c50f1f/FFFFFF?text=Background+Image">
+            This background will load when scrolled into view
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Responsive Images with srcset</h3>
+      <p>These images will load different sizes based on the viewport width.</p>
+      
+      <div class="image-container">
+        <img class="lazy-image" 
+             data-src="https://placehold.co/800x300/183963/FFFFFF?text=Default+Size" 
+             data-srcset="https://placehold.co/400x150/183963/FFFFFF?text=Small 400w, 
+                         https://placehold.co/800x300/183963/FFFFFF?text=Medium 800w, 
+                         https://placehold.co/1200x450/183963/FFFFFF?text=Large 1200w" 
+             data-sizes="(max-width: 400px) 400px, (max-width: 800px) 800px, 1200px"
+             alt="Responsive image with srcset" width="100%">
+      </div>
+      
+      <h3 style="margin-top: 30px;">Different Aspect Ratios</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div>
+          <h4>16:9 Aspect Ratio (Default)</h4>
+          <div class="image-container">
+            <img class="lazy-image" data-src="https://placehold.co/600x338/183963/FFFFFF?text=16:9" alt="16:9 aspect ratio">
+          </div>
+        </div>
+        
+        <div>
+          <h4>4:3 Aspect Ratio</h4>
+          <div class="image-container aspect-4-3">
+            <img class="lazy-image" data-src="https://placehold.co/600x450/2b5797/FFFFFF?text=4:3" alt="4:3 aspect ratio">
+          </div>
+        </div>
+        
+        <div>
+          <h4>1:1 Aspect Ratio (Square)</h4>
+          <div class="image-container aspect-1-1">
+            <img class="lazy-image" data-src="https://placehold.co/600x600/5c2d91/FFFFFF?text=1:1" alt="1:1 aspect ratio">
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    // Import the LazyLoad module
+    import lazyLoad from './app/static/js/components/LazyLoad.js';
+    
+    // Initialize tab navigation
+    document.querySelectorAll('.tab-item').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+    
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = link.getAttribute('href');
+        const targetElement = document.querySelector(targetId);
+        
+        window.scrollTo({
+          top: targetElement.offsetTop - 70,
+          behavior: 'smooth'
+        });
+      });
+    });
+  </script>
+</body>
+</html> 
