@@ -38,6 +38,27 @@ def require_office_admin(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Alias for require_office_admin
+admin_required = require_office_admin
+
+def office_member_required(f):
+    """Decorator to require user to be a member of any office for a route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(403)
+        
+        # Super admins can access any office
+        if current_user.is_super_admin():
+            return f(*args, **kwargs)
+        
+        # Check if user has a current office
+        if not hasattr(current_user, 'current_office_id') or not current_user.current_office_id:
+            abort(403)
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
 class OfficeDataFilter:
     """Filter querysets based on office visibility rules."""
     

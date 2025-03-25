@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Campaign - Mobilize CRM{% endblock %}
+
+{% block page_title %}Preview Campaign: {{ campaign.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('emails.edit_campaign', campaign_id=campaign.id) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Edit
+                </a>
+                
+                <div>
+                    <form action="{{ url_for('emails.send_campaign', campaign_id=campaign.id) }}" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-send me-1"></i> Send Campaign
+                        </button>
+                    </form>
+                    <a href="{{ url_for('emails.campaigns') }}" class="btn btn-outline-secondary ms-2">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Email Preview -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-envelope me-2"></i>Email Preview
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-light" id="previewForRecipient">
+                            <i class="bi bi-person me-1"></i> Preview for Contact
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="p-3 border rounded mb-3">
+                        <div class="mb-3">
+                            <strong>Subject:</strong> {{ campaign.subject }}
+                        </div>
+                        <hr>
+                        <div id="emailContent">
+                            {{ campaign.content|safe }}
+                        </div>
+                    </div>
+                    
+                    <div class="small">
+                        <p class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            This is how your email will appear to recipients. Any personalization variables will be replaced with the recipient's information.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Campaign Details -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Campaign Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Name:</dt>
+                        <dd class="col-sm-8">{{ campaign.name }}</dd>
+                        
+                        {% if campaign.description %}
+                        <dt class="col-sm-4">Description:</dt>
+                        <dd class="col-sm-8">{{ campaign.description }}</dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-4">Status:</dt>
+                        <dd class="col-sm-8">
+                            {% if campaign.status == 'draft' %}
+                                <span class="badge bg-secondary">Draft</span>
+                            {% elif campaign.status == 'scheduled' %}
+                                <span class="badge bg-info">Scheduled</span>
+                            {% elif campaign.status == 'sending' %}
+                                <span class="badge bg-warning">Sending</span>
+                            {% elif campaign.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                            {% elif campaign.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ campaign.status }}</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Template:</dt>
+                        <dd class="col-sm-8">
+                            {% if campaign.template %}
+                                {{ campaign.template.name }}
+                            {% else %}
+                                <span class="text-muted">No template</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Created:</dt>
+                        <dd class="col-sm-8">{{ campaign.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                    </dl>
+                </div>
+            </div>
+            
+            <!-- Recipients Summary -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-people me-2"></i>Recipients
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Total Recipients:</strong> {{ recipient_count }}
+                    </p>
+                    
+                    <div class="mb-3">
+                        <h6>Filter Criteria:</h6>
+                        <ul class="list-unstyled">
+                            {% set filters = campaign.get_recipient_filter() %}
+                            {% if filters.status %}
+                                <li><i class="bi bi-funnel me-2"></i><strong>Status:</strong> 
+                                    {% for status in filters.status %}
+                                        <span class="badge bg-secondary">{{ status }}</span>
+                                    {% endfor %}
+                                </li>
+                            {% endif %}
+                            {% if not filters %}
+                                <li class="text-muted"><i class="bi bi-info-circle me-2"></i>No filters applied</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    {% if recipients %}
+                        <h6>Sample Recipients:</h6>
+                        <div class="list-group small">
+                            {% for recipient in recipients %}
+                                <a href="#" class="list-group-item list-group-item-action preview-for-recipient" 
+                                  data-recipient-name="{{ recipient.first_name }} {{ recipient.last_name }}"
+                                  data-recipient-first-name="{{ recipient.first_name }}"
+                                  data-recipient-last-name="{{ recipient.last_name }}"
+                                  data-recipient-email="{{ recipient.email or '' }}"
+                                  data-recipient-phone="{{ recipient.phone or '' }}">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ recipient.first_name }} {{ recipient.last_name }}</h6>
+                                    </div>
+                                    <p class="mb-1">{{ recipient.email }}</p>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>No recipients match your filter criteria.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recipient Preview Modal -->
+<div class="modal fade" id="recipientPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Preview for <span id="previewRecipientName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>Subject:</strong> <span id="previewSubject"></span>
+                </div>
+                <div class="border p-3 rounded">
+                    <div id="previewContent"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Preview for specific recipient
+        const previewLinks = document.querySelectorAll('.preview-for-recipient');
+        previewLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const recipientName = this.dataset.recipientName;
+                const firstName = this.dataset.recipientFirstName;
+                const lastName = this.dataset.recipientLastName;
+                const email = this.dataset.recipientEmail;
+                const phone = this.dataset.recipientPhone;
+                
+                // Set recipient name in modal title
+                document.getElementById('previewRecipientName').textContent = recipientName;
+                
+                // Get email content and replace variables
+                let subject = '{{ campaign.subject }}';
+                let content = document.getElementById('emailContent').innerHTML;
+                
+                // Replace variables in subject and content
+                subject = replaceVariables(subject, recipientName, firstName, lastName, email, phone);
+                content = replaceVariables(content, recipientName, firstName, lastName, email, phone);
+                
+                // Update modal with personalized content
+                document.getElementById('previewSubject').textContent = subject;
+                document.getElementById('previewContent').innerHTML = content;
+                
+                // Show modal
+                new bootstrap.Modal(document.getElementById('recipientPreviewModal')).show();
+            });
+        });
+        
+        // Preview button functionality
+        document.getElementById('previewForRecipient').addEventListener('click', function() {
+            // Just open the first recipient in the list if available
+            const firstRecipient = document.querySelector('.preview-for-recipient');
+            if (firstRecipient) {
+                firstRecipient.click();
+            } else {
+                alert('No sample recipients available for preview');
+            }
+        });
+        
+        // Function to replace variables in content
+        function replaceVariables(content, name, firstName, lastName, email, phone) {
+            content = content.replace(/\[Name\]/g, name || '[Name]');
+            content = content.replace(/\[FirstName\]/g, firstName || '[FirstName]');
+            content = content.replace(/\[LastName\]/g, lastName || '[LastName]');
+            content = content.replace(/\[Email\]/g, email || '[Email]');
+            content = content.replace(/\[Phone\]/g, phone || '[Phone]');
+            return content;
+        }
+    });
+</script>
+{% endblock %} 

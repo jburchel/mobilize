@@ -19,6 +19,9 @@ from .google_token import GoogleToken
 from .email_signature import EmailSignature
 from .sync_history import SyncHistory
 from .pipeline import Pipeline, PipelineStage, PipelineContact, PipelineStageHistory
+from .email_template import EmailTemplate
+from .email_tracking import EmailTracking
+from .email_campaign import EmailCampaign
 
 # Make them available at the package level
 __all__ = [
@@ -38,5 +41,8 @@ __all__ = [
     'Pipeline',
     'PipelineStage',
     'PipelineContact',
-    'PipelineStageHistory'
+    'PipelineStageHistory',
+    'EmailTemplate',
+    'EmailTracking',
+    'EmailCampaign'
 ] 

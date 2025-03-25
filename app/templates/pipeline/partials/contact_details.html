@@ -1,0 +1,169 @@
+<!-- Contact Details Partial -->
+<div class="container-fluid p-0">
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <h4>{{ contact.get_name() }}</h4>
+            <p class="text-muted">
+                {% if contact.contact_type == 'person' %}
+                <i class="fas fa-user text-primary me-1"></i> Person
+                {% else %}
+                <i class="fas fa-church text-success me-1"></i> Church
+                {% endif %}
+                <span class="ms-2">Added to pipeline: {{ pipeline_contact.created_at.strftime('%b %d, %Y') }}</span>
+            </p>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="info-tab" data-bs-toggle="tab" href="#info-content" role="tab">
+                <i class="fas fa-info-circle me-1"></i> Info
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="activity-tab" data-bs-toggle="tab" href="#activity-tab" role="tab" 
+               data-contact-id="{{ pipeline_contact.contact_id }}">
+                <i class="fas fa-history me-1"></i> Activity
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="tasks-tab" data-bs-toggle="tab" href="#tasks-tab" role="tab"
+               data-contact-id="{{ pipeline_contact.contact_id }}">
+                <i class="fas fa-tasks me-1"></i> Tasks
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="history-tab" data-bs-toggle="tab" href="#history-tab" role="tab">
+                <i class="fas fa-exchange-alt me-1"></i> Pipeline History
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Info Tab -->
+        <div class="tab-pane fade show active" id="info-content" role="tabpanel">
+            <div class="row">
+                <div class="col-md-6">
+                    <ul class="list-group">
+                        {% if contact.contact_type == 'person' %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Name</span>
+                                <strong>{{ contact.get_name() }}</strong>
+                            </li>
+                            {% if contact.email %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Email</span>
+                                <strong>{{ contact.email }}</strong>
+                            </li>
+                            {% endif %}
+                            {% if contact.phone %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Phone</span>
+                                <strong>{{ contact.phone }}</strong>
+                            </li>
+                            {% endif %}
+                        {% elif contact.contact_type == 'church' %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Name</span>
+                                <strong>{{ contact.name }}</strong>
+                            </li>
+                            {% if contact.website %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Website</span>
+                                <strong>{{ contact.website }}</strong>
+                            </li>
+                            {% endif %}
+                            {% if contact.phone %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Phone</span>
+                                <strong>{{ contact.phone }}</strong>
+                            </li>
+                            {% endif %}
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Current Stage</h5>
+                            <p class="card-text">
+                                <span class="badge bg-primary">{{ pipeline_contact.current_stage.name if pipeline_contact.current_stage else 'None' }}</span>
+                            </p>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        data-bs-toggle="modal" data-bs-target="#moveContactModal"
+                                        data-contact-id="{{ pipeline_contact.id }}"
+                                        data-contact-name="{{ contact.get_name() }}"
+                                        data-current-stage="{{ pipeline_contact.current_stage_id }}">
+                                    <i class="fas fa-exchange-alt me-1"></i> Move to Another Stage
+                                </button>
+                                {% if contact.contact_type == 'person' %}
+                                <a href="{{ url_for('people.show', id=contact.id) }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-external-link-alt me-1"></i> View Full Profile
+                                </a>
+                                {% else %}
+                                <a href="{{ url_for('churches.show', id=contact.id) }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-external-link-alt me-1"></i> View Full Profile
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Activity Tab -->
+        <div class="tab-pane fade" id="activity-tab" role="tabpanel">
+            <div id="activity-container">
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading activity...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tasks Tab -->
+        <div class="tab-pane fade" id="tasks-tab" role="tabpanel">
+            <div id="tasks-container">
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading tasks...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pipeline History Tab -->
+        <div class="tab-pane fade" id="history-tab" role="tabpanel">
+            {% if history %}
+                <div class="timeline">
+                    {% for entry in history %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h5 class="timeline-title">
+                                    {% if entry.from_stage %}
+                                    Moved from {{ entry.from_stage.name }} to {{ entry.to_stage.name }}
+                                    {% else %}
+                                    Added to {{ entry.to_stage.name }}
+                                    {% endif %}
+                                </h5>
+                                <div class="timeline-date">{{ entry.moved_at.strftime('%b %d, %Y %H:%M') }}</div>
+                                {% if entry.notes %}
+                                <div class="timeline-text">{{ entry.notes }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">No history records found for this contact.</div>
+            {% endif %}
+        </div>
+    </div>
+</div> 

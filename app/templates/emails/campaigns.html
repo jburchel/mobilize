@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Email Campaigns - Mobilize CRM{% endblock %}
+
+{% block page_title %}Email Campaigns{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .status-badge {
+        min-width: 80px;
+        text-align: center;
+    }
+    .campaign-action-btn {
+        width: 38px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-megaphone me-2"></i>Email Campaigns
+                    </h5>
+                    <a href="{{ url_for('emails.index') }}" class="btn btn-sm btn-outline-light me-2">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Email Dashboard
+                    </a>
+                    <a href="{{ url_for('emails.new_campaign') }}" class="btn btn-light btn-sm">
+                        <i class="bi bi-plus-circle me-1"></i> New Campaign
+                    </a>
+                </div>
+                
+                <div class="card-body">
+                    {% if campaigns %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Subject</th>
+                                        <th>Recipients</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Sent</th>
+                                        <th>Performance</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for campaign in campaigns %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ campaign.name }}</strong>
+                                            {% if campaign.description %}
+                                                <br><small class="text-muted">{{ campaign.description }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ campaign.subject }}</td>
+                                        <td>{{ campaign.recipient_count }}</td>
+                                        <td>
+                                            {% if campaign.status == 'draft' %}
+                                                <span class="badge bg-secondary status-badge">Draft</span>
+                                            {% elif campaign.status == 'scheduled' %}
+                                                <span class="badge bg-info status-badge">Scheduled</span>
+                                            {% elif campaign.status == 'sending' %}
+                                                <span class="badge bg-warning status-badge">Sending</span>
+                                            {% elif campaign.status == 'completed' %}
+                                                <span class="badge bg-success status-badge">Completed</span>
+                                            {% elif campaign.status == 'cancelled' %}
+                                                <span class="badge bg-danger status-badge">Cancelled</span>
+                                            {% elif campaign.status == 'failed' %}
+                                                <span class="badge bg-danger status-badge">Failed</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary status-badge">{{ campaign.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ campaign.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ campaign.sent_at.strftime('%Y-%m-%d') if campaign.sent_at else '—' }}</td>
+                                        <td>
+                                            {% if campaign.status == 'completed' and campaign.sent_count > 0 %}
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                                        <div class="progress-bar bg-success" role="progressbar" 
+                                                             style="width: {{ (campaign.open_count / campaign.sent_count * 100)|round }}%;" 
+                                                             aria-valuenow="{{ (campaign.open_count / campaign.sent_count * 100)|round }}" 
+                                                             aria-valuemin="0" aria-valuemax="100"></div>
+                                                    </div>
+                                                    <small>{{ (campaign.open_count / campaign.sent_count * 100)|round }}% opened</small>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                {% if campaign.status == 'draft' or campaign.status == 'scheduled' %}
+                                                    <a href="{{ url_for('emails.edit_campaign', campaign_id=campaign.id) }}" class="btn btn-outline-primary campaign-action-btn" title="Edit Campaign">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('emails.preview_campaign', campaign_id=campaign.id) }}" class="btn btn-outline-info campaign-action-btn" title="Preview Campaign">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-outline-success campaign-action-btn" 
+                                                            data-bs-toggle="modal" data-bs-target="#sendCampaignModal" 
+                                                            data-campaign-id="{{ campaign.id }}" 
+                                                            data-campaign-name="{{ campaign.name }}"
+                                                            title="Send Campaign">
+                                                        <i class="bi bi-send"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger campaign-action-btn" 
+                                                            data-bs-toggle="modal" data-bs-target="#cancelCampaignModal" 
+                                                            data-campaign-id="{{ campaign.id }}" 
+                                                            data-campaign-name="{{ campaign.name }}"
+                                                            title="Cancel Campaign">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                {% elif campaign.status == 'completed' %}
+                                                    <a href="{{ url_for('emails.campaign_analytics', campaign_id=campaign.id) }}" class="btn btn-outline-primary campaign-action-btn" title="View Analytics">
+                                                        <i class="bi bi-graph-up"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('emails.preview_campaign', campaign_id=campaign.id) }}" class="btn btn-outline-info campaign-action-btn" title="View Campaign">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{{ url_for('emails.preview_campaign', campaign_id=campaign.id) }}" class="btn btn-outline-info campaign-action-btn" title="View Campaign">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-envelope-paper text-muted" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">No Campaigns Yet</h4>
+                            <p class="text-muted">Create your first email campaign to engage with your contacts.</p>
+                            <a href="{{ url_for('emails.new_campaign') }}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i>Create Campaign
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Campaign Modal -->
+<div class="modal fade" id="sendCampaignModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Send Campaign</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to send the campaign "<span id="sendCampaignName"></span>" to all recipients?</p>
+                <p class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="sendCampaignForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-success">Send Campaign</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Campaign Modal -->
+<div class="modal fade" id="cancelCampaignModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancel Campaign</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel the campaign "<span id="cancelCampaignName"></span>"?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep Campaign</button>
+                <form id="cancelCampaignForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger">Yes, Cancel Campaign</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Send campaign modal
+        const sendCampaignModal = document.getElementById('sendCampaignModal');
+        if (sendCampaignModal) {
+            sendCampaignModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const campaignId = button.getAttribute('data-campaign-id');
+                const campaignName = button.getAttribute('data-campaign-name');
+                
+                document.getElementById('sendCampaignName').textContent = campaignName;
+                document.getElementById('sendCampaignForm').action = "{{ url_for('emails.send_campaign', campaign_id=0) }}".replace('0', campaignId);
+            });
+        }
+        
+        // Cancel campaign modal
+        const cancelCampaignModal = document.getElementById('cancelCampaignModal');
+        if (cancelCampaignModal) {
+            cancelCampaignModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const campaignId = button.getAttribute('data-campaign-id');
+                const campaignName = button.getAttribute('data-campaign-name');
+                
+                document.getElementById('cancelCampaignName').textContent = campaignName;
+                document.getElementById('cancelCampaignForm').action = "{{ url_for('emails.cancel_campaign', campaign_id=0) }}".replace('0', campaignId);
+            });
+        }
+    });
+</script>
+{% endblock %} 

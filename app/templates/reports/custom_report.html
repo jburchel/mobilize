@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+
+{% block title %}Custom Reports{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Custom Report Generator</h1>
+        <a href="{{ url_for('reports.reports_dashboard') }}" class="d-none d-sm-inline-block btn btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50 mr-1"></i> Back to Reports
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Report Configuration Form -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Report Configuration</h6>
+                </div>
+                <div class="card-body">
+                    <form id="report-form" method="post" action="{{ url_for('reports.custom_report') }}">
+                        <div class="form-group">
+                            <label for="report-type">Report Type</label>
+                            <select class="form-control" id="report-type" name="report_type" required>
+                                <option value="">Select Report Type</option>
+                                <option value="contact_activity">Contact Activity</option>
+                                <option value="volunteer_activity">Volunteer Activity</option>
+                                <option value="church_engagement">Church Engagement</option>
+                            </select>
+                        </div>
+
+                        <!-- Date Range Selection -->
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="report-start-date">Start Date</label>
+                                <input type="date" class="form-control" id="report-start-date" name="start_date" required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="report-end-date">End Date</label>
+                                <input type="date" class="form-control" id="report-end-date" name="end_date" required>
+                            </div>
+                        </div>
+
+                        <!-- Options for Contact Activity Report -->
+                        <div id="contact-report-options" class="report-options" style="display:none;">
+                            <h5 class="mt-4 mb-3">Contact Activity Options</h5>
+                            <div class="form-group">
+                                <label>Include Fields</label>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="contact-field-phone" name="fields" value="phone" checked>
+                                    <label class="custom-control-label" for="contact-field-phone">Phone</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="contact-field-email" name="fields" value="email" checked>
+                                    <label class="custom-control-label" for="contact-field-email">Email</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="contact-field-address" name="fields" value="address" checked>
+                                    <label class="custom-control-label" for="contact-field-address">Address</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="contact-field-status" name="fields" value="status" checked>
+                                    <label class="custom-control-label" for="contact-field-status">Status</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="contact-field-comms" name="fields" value="communications" checked>
+                                    <label class="custom-control-label" for="contact-field-comms">Communication Details</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Options for Volunteer Activity Report -->
+                        <div id="volunteer-report-options" class="report-options" style="display:none;">
+                            <h5 class="mt-4 mb-3">Volunteer Activity Options</h5>
+                            <div class="form-group">
+                                <label>Include Fields</label>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="volunteer-field-tasks" name="fields" value="tasks" checked>
+                                    <label class="custom-control-label" for="volunteer-field-tasks">Tasks</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="volunteer-field-completion" name="fields" value="completion_rate" checked>
+                                    <label class="custom-control-label" for="volunteer-field-completion">Completion Rate</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="volunteer-field-hours" name="fields" value="hours" checked>
+                                    <label class="custom-control-label" for="volunteer-field-hours">Hours Logged</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Options for Church Engagement Report -->
+                        <div id="church-report-options" class="report-options" style="display:none;">
+                            <h5 class="mt-4 mb-3">Church Engagement Options</h5>
+                            <div class="form-group">
+                                <label>Include Fields</label>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="church-field-contacts" name="fields" value="contacts" checked>
+                                    <label class="custom-control-label" for="church-field-contacts">Associated Contacts</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="church-field-comms" name="fields" value="communications" checked>
+                                    <label class="custom-control-label" for="church-field-comms">Communications</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="church-field-events" name="fields" value="events" checked>
+                                    <label class="custom-control-label" for="church-field-events">Events</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Output Format -->
+                        <div class="form-group mt-4">
+                            <label for="report-format">Output Format</label>
+                            <select class="form-control" id="report-format" name="format">
+                                <option value="csv">CSV</option>
+                                <option value="excel">Excel (XLSX)</option>
+                            </select>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary" id="generate-report-btn">
+                                <i class="fas fa-file-alt mr-1"></i> Generate Report
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="preview-btn">
+                                <i class="fas fa-eye mr-1"></i> Preview
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Saved Reports -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Saved Reports</h6>
+                </div>
+                <div class="card-body">
+                    <div class="nav flex-column nav-pills" id="saved-reports-tab" role="tablist" aria-orientation="vertical">
+                        <p class="text-center text-muted">No saved reports found</p>
+                        <!-- Saved reports will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Preview/Results -->
+    <div class="row mt-4" id="report-result-container" style="display:none;">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Report Preview</h6>
+                    <div class="dropdown no-arrow">
+                        <button id="download-report-btn" class="btn btn-sm btn-primary shadow-sm">
+                            <i class="fas fa-download fa-sm text-white-50"></i> Download
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Report generation progress -->
+                    <div id="report-progress" class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="sr-only">Generating report...</span>
+                        </div>
+                        <p>Generating report, please wait...</p>
+                    </div>
+                    
+                    <!-- Report results -->
+                    <div id="report-result" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="reportDataTable" width="100%" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <!-- Column headers will be dynamically inserted here -->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Report data will be dynamically inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Initialize date pickers with default values
+        const today = new Date();
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        
+        $('#report-start-date').val(formatDate(thirtyDaysAgo));
+        $('#report-end-date').val(formatDate(today));
+        
+        // Show/hide report options based on report type selection
+        $('#report-type').change(function() {
+            const reportType = $(this).val();
+            $('.report-options').hide();
+            
+            if (reportType === 'contact_activity') {
+                $('#contact-report-options').show();
+            } else if (reportType === 'volunteer_activity') {
+                $('#volunteer-report-options').show();
+            } else if (reportType === 'church_engagement') {
+                $('#church-report-options').show();
+            }
+        });
+        
+        // Preview button click handler
+        $('#preview-btn').click(function(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = $('#report-form').serialize();
+            
+            // Show result container and progress indicator
+            $('#report-result-container').show();
+            $('#report-progress').show();
+            $('#report-result').hide();
+            
+            // Simulate report generation (this would normally be an AJAX call to the backend)
+            setTimeout(function() {
+                // Hide progress indicator
+                $('#report-progress').hide();
+                
+                // Show mock report data
+                showMockReportData();
+            }, 1500);
+        });
+        
+        // Format date as YYYY-MM-DD
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Show mock report data for preview
+        function showMockReportData() {
+            const reportType = $('#report-type').val();
+            let headers, data;
+            
+            if (reportType === 'contact_activity') {
+                headers = ['Name', 'Email', 'Phone', 'Last Contact', 'Communication Count'];
+                data = [
+                    ['John Smith', 'john@example.com', '555-123-4567', '2023-05-15', '5'],
+                    ['Jane Doe', 'jane@example.com', '555-987-6543', '2023-05-10', '3'],
+                    ['Bob Johnson', 'bob@example.com', '555-555-5555', '2023-05-20', '2']
+                ];
+            } else if (reportType === 'volunteer_activity') {
+                headers = ['Volunteer', 'Email', 'Assigned Tasks', 'Completed Tasks', 'Completion Rate'];
+                data = [
+                    ['Mary Wilson', 'mary@example.com', '12', '10', '83%'],
+                    ['Tom Jackson', 'tom@example.com', '8', '5', '63%'],
+                    ['Sarah Adams', 'sarah@example.com', '15', '15', '100%']
+                ];
+            } else if (reportType === 'church_engagement') {
+                headers = ['Church Name', 'Pastor', 'Phone', 'Associated Contacts', 'Communication Count'];
+                data = [
+                    ['First Baptist', 'Pastor Mike', '555-111-2222', '25', '12'],
+                    ['Grace Community', 'Pastor Sarah', '555-333-4444', '18', '8'],
+                    ['New Life Church', 'Pastor John', '555-555-6666', '30', '15']
+                ];
+            } else {
+                // Default mock data
+                headers = ['Column 1', 'Column 2', 'Column 3'];
+                data = [
+                    ['Data 1-1', 'Data 1-2', 'Data 1-3'],
+                    ['Data 2-1', 'Data 2-2', 'Data 2-3'],
+                    ['Data 3-1', 'Data 3-2', 'Data 3-3']
+                ];
+            }
+            
+            // Populate table headers
+            const headerRow = $('#reportDataTable thead tr');
+            headerRow.empty();
+            headers.forEach(header => {
+                headerRow.append(`<th>${header}</th>`);
+            });
+            
+            // Populate table data
+            const tbody = $('#reportDataTable tbody');
+            tbody.empty();
+            data.forEach(row => {
+                let rowHtml = '<tr>';
+                row.forEach(cell => {
+                    rowHtml += `<td>${cell}</td>`;
+                });
+                rowHtml += '</tr>';
+                tbody.append(rowHtml);
+            });
+            
+            // Show the report result
+            $('#report-result').show();
+        }
+        
+        // Download button click handler
+        $('#download-report-btn').click(function() {
+            // This would normally submit the form for actual download
+            $('#report-form').submit();
+        });
+    });
+</script>
+{% endblock %} 

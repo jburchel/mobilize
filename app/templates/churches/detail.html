@@ -100,7 +100,7 @@
                             {% if person.is_primary_contact %}
                                 <div class="mb-2">
                                     <strong class="text-primary">Primary Contact:</strong>
-                                    <a href="{{ url_for('people.view', id=person.id) }}" class="h5 mb-0 d-block">
+                                    <a href="{{ url_for('people.show', id=person.id) }}" class="h5 mb-0 d-block">
                                         {{ person.full_name }}
                                     </a>
                                 </div>
@@ -195,7 +195,7 @@
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Main Contact:</div>
                         <div class="col-8">
-                            <a href="{{ url_for('people.view', id=church.main_contact.id) }}">
+                            <a href="{{ url_for('people.show', id=church.main_contact.id) }}">
                                 {{ church.main_contact.first_name }} {{ church.main_contact.last_name }}
                             </a>
                         </div>
@@ -451,7 +451,7 @@
             <div class="card detail-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Associated People</h5>
-                    <a href="{{ url_for('people.list', church_id=church.id) }}" class="btn btn-sm btn-primary">
+                    <a href="{{ url_for('people.index', church_id=church.id) }}" class="btn btn-sm btn-primary">
                         View All
                     </a>
                 </div>
@@ -482,7 +482,7 @@
                                                     </div>
                                                 {% endif %}
                                                 <div>
-                                                    <a href="{{ url_for('people.view', id=person.id) }}">{{ person.full_name }}</a>
+                                                    <a href="{{ url_for('people.show', id=person.id) }}">{{ person.full_name }}</a>
                                                 </div>
                                             </div>
                                         </td>
@@ -504,7 +504,7 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('people.view', id=person.id) }}" class="btn btn-sm btn-info">
+                                            <a href="{{ url_for('people.show', id=person.id) }}" class="btn btn-sm btn-info">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                         </td>

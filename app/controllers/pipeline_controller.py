@@ -1,9 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort, current_app
 from flask_login import login_required, current_user
-from app.models import Pipeline, PipelineStage, PipelineContact, PipelineStageHistory, Contact, Office
+from app.models import Pipeline, PipelineStage, PipelineContact, PipelineStageHistory, Contact, Office, Person, Church
 from app.extensions import db
 from datetime import datetime
 import json
+from sqlalchemy import inspect
+from flask_wtf.csrf import generate_csrf
+from sqlalchemy.orm import selectinload
+from sqlalchemy import desc
 
 pipeline_bp = Blueprint('pipeline', __name__, url_prefix='/pipeline')
 
@@ -74,40 +78,96 @@ def create():
 @pipeline_bp.route('/<int:pipeline_id>')
 @login_required
 def view(pipeline_id):
-    """View pipeline and its stages with contacts."""
-    pipeline = Pipeline.query.get_or_404(pipeline_id)
-    stages = pipeline.stages.filter_by(is_active=True).order_by(PipelineStage.order).all()
-    
-    # For each stage, get contacts currently in that stage
-    stage_contacts = {}
-    for stage in stages:
-        pipeline_contacts = PipelineContact.query.filter_by(
-            pipeline_id=pipeline_id, current_stage_id=stage.id
-        ).all()
+    """View a pipeline with all its stages and contacts."""
+    try:
+        pipeline = Pipeline.query.get_or_404(pipeline_id)
         
-        contacts_data = []
+        # Check if user has permission to view this pipeline
+        if pipeline.office_id != current_user.office_id and not current_user.is_super_admin():
+            flash('You do not have permission to view this pipeline', 'danger')
+            return redirect(url_for('pipeline.index'))
+        
+        # Check if we're adding a contact to this pipeline
+        contact_id = request.args.get('contact_id', type=int)
+        contact_type = request.args.get('contact_type')
+        
+        if contact_id and contact_type:
+            # Get the contact
+            contact = Contact.query.get_or_404(contact_id)
+            
+            # Check contact type compatibility with pipeline
+            contact_model_type = getattr(contact, 'type', None) or getattr(contact, 'contact_type', None)
+            
+            if pipeline.pipeline_type != 'both' and pipeline.pipeline_type != contact_model_type:
+                flash(f'Cannot add {contact_type} to a {pipeline.pipeline_type} pipeline', 'danger')
+                return redirect(url_for('pipeline.view', pipeline_id=pipeline_id))
+            
+            # Check if contact is already in pipeline
+            existing = PipelineContact.query.filter_by(
+                pipeline_id=pipeline_id,
+                contact_id=contact_id
+            ).first()
+            
+            if existing:
+                flash('Contact is already in this pipeline', 'warning')
+                return redirect(url_for('pipeline.view', pipeline_id=pipeline_id))
+            
+            # Get the first stage in the pipeline
+            first_stage = PipelineStage.query.filter_by(
+                pipeline_id=pipeline_id
+            ).order_by(PipelineStage.order).first()
+            
+            if not first_stage:
+                flash('Pipeline has no stages to add contact to', 'danger')
+                return redirect(url_for('pipeline.view', pipeline_id=pipeline_id))
+            
+            # Add the contact to the pipeline
+            pipeline_contact = PipelineContact(
+                pipeline_id=pipeline_id,
+                contact_id=contact_id,
+                current_stage_id=first_stage.id,
+                entered_at=datetime.now(),
+                last_updated=datetime.now()
+            )
+            
+            db.session.add(pipeline_contact)
+            db.session.commit()  # Commit immediately to get the pipeline_contact.id
+            
+            # Add history entry
+            history = PipelineStageHistory(
+                pipeline_contact_id=pipeline_contact.id,
+                to_stage_id=first_stage.id,
+                created_by_id=current_user.id,
+                notes="Initial pipeline stage",
+                created_at=datetime.now()
+            )
+            
+            db.session.add(history)
+            db.session.commit()
+            
+            # Success message
+            flash(f'Contact added to pipeline in {first_stage.name} stage', 'success')
+            
+        # Get stages with their contacts
+        stages = pipeline.get_active_stages()
+        
+        # Get only active contacts for this pipeline
+        pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+        
+        # Organize contacts by stage
+        contacts_by_stage = {stage.id: [] for stage in stages}
         for pc in pipeline_contacts:
-            contact = Contact.query.get(pc.contact_id)
-            if contact:
-                # Get last history item for this contact in this pipeline
-                last_movement = PipelineStageHistory.query.filter_by(
-                    pipeline_contact_id=pc.id
-                ).order_by(PipelineStageHistory.moved_at.desc()).first()
-                
-                contacts_data.append({
-                    'contact': contact,
-                    'pipeline_contact': pc,
-                    'days_in_stage': (datetime.utcnow() - pc.last_updated).days,
-                    'last_movement': last_movement
-                })
+            if pc.current_stage_id in contacts_by_stage:
+                contacts_by_stage[pc.current_stage_id].append(pc)
         
-        stage_contacts[stage.id] = contacts_data
-    
-    return render_template('pipeline/view.html', 
-                          pipeline=pipeline, 
-                          stages=stages, 
-                          contacts_by_stage=stage_contacts,
-                          pipeline_type=pipeline.pipeline_type)
+        return render_template('pipeline/view.html', 
+                              pipeline=pipeline,
+                              stages=stages,
+                              contacts_by_stage=contacts_by_stage)
+    except Exception as e:
+        current_app.logger.error(f"Error viewing pipeline {pipeline_id}: {str(e)}")
+        flash(f'Error viewing pipeline: {str(e)}', 'danger')
+        return redirect(url_for('pipeline.index'))
 
 @pipeline_bp.route('/<int:pipeline_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -202,8 +262,7 @@ def manage_stages(pipeline_id):
                         name=stage_data.get('name', 'New Stage'),
                         order=stage_data.get('order', 1),
                         color=stage_data.get('color', '#3498db'),
-                        description=stage_data.get('description', ''),
-                        is_active=True
+                        description=stage_data.get('description', '')
                     )
                     db.session.add(new_stage)
                 elif stage_id:  # Existing stage
@@ -211,8 +270,8 @@ def manage_stages(pipeline_id):
                     if stage and stage.pipeline_id == pipeline_id:
                         stage.name = stage_data.get('name', stage.name)
                         stage.order = stage_data.get('order', stage.order)
-                        stage.color = stage_data.get('color', stage.color)
                         stage.description = stage_data.get('description', stage.description)
+                        stage.color = stage_data.get('color', stage.color)
                         
                         # Update automation fields if present
                         if 'auto_move_days' in stage_data:
@@ -227,8 +286,7 @@ def manage_stages(pipeline_id):
                         name=stage_data.get('name', 'New Stage'),
                         order=stage_data.get('order', 1),
                         color=stage_data.get('color', '#3498db'),
-                        description=stage_data.get('description', ''),
-                        is_active=True
+                        description=stage_data.get('description', '')
                     )
                     db.session.add(new_stage)
             
@@ -251,96 +309,119 @@ def manage_stages(pipeline_id):
 
 @pipeline_bp.route('/<int:pipeline_id>/add_contact', methods=['GET', 'POST'])
 @login_required
-def add_contact(pipeline_id):
-    """Add a contact to a pipeline."""
+def add_contact_to_pipeline(pipeline_id):
+    """Add contacts to a pipeline."""
     pipeline = Pipeline.query.get_or_404(pipeline_id)
-    stages = pipeline.get_active_stages()  # Get all active stages for this pipeline
     
+    # Check if user has permission to view this pipeline
+    if pipeline.office_id != current_user.office_id and not current_user.is_super_admin():
+        flash('You do not have permission to add contacts to this pipeline.', 'danger')
+        return redirect(url_for('pipeline.index'))
+    
+    # Handle form submission
     if request.method == 'POST':
         contact_ids = request.form.getlist('contact_ids')
         stage_id = request.form.get('stage_id')
         
         if not contact_ids:
-            flash('Please select at least one contact', 'warning')
-            return redirect(url_for('pipeline.add_contact', pipeline_id=pipeline_id))
+            flash('Please select at least one contact.', 'warning')
+            return redirect(url_for('pipeline.add_contact_to_pipeline', pipeline_id=pipeline_id))
             
         if not stage_id:
-            flash('Please select a stage', 'warning')
-            return redirect(url_for('pipeline.add_contact', pipeline_id=pipeline_id))
+            flash('Please select a stage.', 'warning')
+            return redirect(url_for('pipeline.add_contact_to_pipeline', pipeline_id=pipeline_id))
         
+        # Add contacts to pipeline
+        stage = PipelineStage.query.get(stage_id)
+        if not stage or stage.pipeline_id != pipeline_id:
+            flash('Invalid stage selected.', 'danger')
+            return redirect(url_for('pipeline.add_contact_to_pipeline', pipeline_id=pipeline_id))
+            
+        # Add each contact to the pipeline
+        added_count = 0
         for contact_id in contact_ids:
+            contact = Contact.query.get(contact_id)
+            if not contact:
+                continue
+                
             # Check if contact is already in pipeline
             existing = PipelineContact.query.filter_by(
-                pipeline_id=pipeline_id, 
+                pipeline_id=pipeline_id,
                 contact_id=contact_id
             ).first()
             
-            if not existing:
-                # Add contact to pipeline
-                pipeline_contact = PipelineContact(
-                    pipeline_id=pipeline_id,
-                    contact_id=contact_id,
-                    current_stage_id=stage_id,
-                    entered_at=datetime.utcnow()
-                )
-                db.session.add(pipeline_contact)
+            if existing:
+                continue
                 
-                # Create initial stage history
-                history = PipelineStageHistory(
-                    pipeline_contact=pipeline_contact,
-                    to_stage_id=stage_id,
-                    moved_by_user_id=current_user.id if current_user.is_authenticated else None,
-                    notes="Initial stage"
-                )
-                db.session.add(history)
-        
+            # Create new pipeline contact
+            pipeline_contact = PipelineContact(
+                pipeline_id=pipeline_id,
+                contact_id=contact_id,
+                current_stage_id=stage.id,
+                entered_at=datetime.now(),
+                last_updated=datetime.now()
+            )
+            
+            # Create history record
+            history = PipelineStageHistory(
+                pipeline_contact_id=pipeline_contact.id,
+                to_stage_id=stage.id,
+                created_by_id=current_user.id,
+                notes="Initial stage",
+                created_at=datetime.now()
+            )
+            
+            db.session.add(pipeline_contact)
+            db.session.add(history)
+            added_count += 1
+            
         db.session.commit()
-        flash(f'{len(contact_ids)} contacts added to the pipeline', 'success')
+        
+        if added_count > 0:
+            flash(f'{added_count} contacts added to pipeline.', 'success')
+        else:
+            flash('No new contacts were added to the pipeline.', 'info')
             
         return redirect(url_for('pipeline.view', pipeline_id=pipeline_id))
     
-    # Get search parameters
-    search_query = request.args.get('search', '')
-    contact_type = request.args.get('type', 'all')
-    
     # Get contacts not already in this pipeline
-    subquery = db.session.query(PipelineContact.contact_id).filter_by(pipeline_id=pipeline_id).subquery()
+    # Get contacts in this pipeline
+    contact_ids_in_pipeline = db.session.query(PipelineContact.contact_id).filter(
+        PipelineContact.pipeline_id == pipeline_id
+    ).subquery()
     
-    # Base query for contacts not in the pipeline
-    from app.models import Contact, Person, Church
-    base_query = Contact.query.filter(Contact.id.notin_(subquery))
+    # Filter to get contacts not in pipeline
+    pipeline_type = pipeline.pipeline_type
+    base_query = Contact.query.filter(Contact.id.notin_(contact_ids_in_pipeline))
     
-    # Apply search if provided
-    if search_query:
-        search_term = f"%{search_query}%"
-        base_query = base_query.filter(
-            db.or_(
-                Contact.first_name.ilike(search_term),
-                Contact.last_name.ilike(search_term),
-                Contact.email.ilike(search_term),
-                Contact.phone.ilike(search_term)
-            )
-        )
+    # Check the structure of the Contact model to determine which attributes to use
+    inspector = inspect(Contact)
+    contact_columns = [column.key for column in inspector.columns]
     
-    # Filter by type based on pipeline_type and request parameter
-    if pipeline.pipeline_type == 'people' or contact_type == 'person':
-        people = Person.query.filter(Person.id.in_([c.id for c in base_query.filter_by(type='person')]))
+    # Determine attribute for filtering by contact type
+    type_attribute = 'type'  # Default to 'type'
+    if 'contact_type' in contact_columns:
+        type_attribute = 'contact_type'
+    
+    # Filter by contact type based on pipeline type
+    if pipeline_type == 'person':
+        # Only show people for person pipelines
+        people = base_query.filter(getattr(Contact, type_attribute) == 'person').all()
         churches = []
-    elif pipeline.pipeline_type == 'church' or contact_type == 'church':
+    elif pipeline_type == 'church':
+        # Only show churches for church pipelines
         people = []
-        churches = Church.query.filter(Church.id.in_([c.id for c in base_query.filter_by(type='church')]))
+        churches = base_query.filter(getattr(Contact, type_attribute) == 'church').all()
     else:
-        people = Person.query.filter(Person.id.in_([c.id for c in base_query.filter_by(type='person')]))
-        churches = Church.query.filter(Church.id.in_([c.id for c in base_query.filter_by(type='church')]))
+        # Show both for mixed pipelines
+        people = base_query.filter(getattr(Contact, type_attribute) == 'person').all()
+        churches = base_query.filter(getattr(Contact, type_attribute) == 'church').all()
     
-    return render_template('pipeline/add_contact.html', 
+    return render_template('pipeline/add_contact.html',
                           pipeline=pipeline,
-                          stages=stages,
+                          stages=pipeline.stages,
                           people=people,
-                          churches=churches,
-                          search_query=search_query,
-                          contact_type=contact_type,
-                          page_title=f"Add Contacts to {pipeline.name}")
+                          churches=churches)
 
 @pipeline_bp.route('/contact/<int:pipeline_contact_id>/move', methods=['POST'])
 @login_required
@@ -355,17 +436,19 @@ def move_contact(pipeline_contact_id):
         return jsonify({'success': False, 'message': 'Stage ID is required'}), 400
     
     try:
-        history = pipeline_contact.move_to_stage(
+        success = pipeline_contact.move_to_stage(
             stage_id=int(stage_id),
             user_id=current_user.id,
             notes=notes
         )
         
-        return jsonify({
-            'success': True, 
-            'message': 'Contact moved successfully',
-            'history_id': history.id
-        })
+        if success:
+            return jsonify({
+                'success': True, 
+                'message': 'Contact moved successfully'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to move contact'}), 500
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -409,7 +492,7 @@ def history(pipeline_id):
         contact = Contact.query.get(pipeline_contact.contact_id)
         history_items = PipelineStageHistory.query.filter_by(
             pipeline_contact_id=pipeline_contact_id
-        ).order_by(PipelineStageHistory.moved_at.desc()).all()
+        ).order_by(PipelineStageHistory.created_at.desc()).all()
         
         return render_template('pipeline/contact_history.html',
                               pipeline=pipeline,
@@ -423,7 +506,7 @@ def history(pipeline_id):
             PipelineContact, PipelineStageHistory.pipeline_contact_id == PipelineContact.id
         ).filter(
             PipelineContact.pipeline_id == pipeline_id
-        ).order_by(PipelineStageHistory.moved_at.desc()).limit(100).all()
+        ).order_by(PipelineStageHistory.created_at.desc()).limit(100).all()
         
         return render_template('pipeline/history.html',
                               pipeline=pipeline,
@@ -449,7 +532,6 @@ def api_pipeline_contacts(pipeline_id):
                 'contact_name': f"{contact.first_name} {contact.last_name}",
                 'stage_id': pc.current_stage_id,
                 'stage_name': stage.name if stage else 'Unknown',
-                'stage_color': stage.color if stage else '#cccccc',
                 'days_in_stage': (datetime.utcnow() - pc.last_updated).days,
                 'entered_at': pc.entered_at.isoformat() if pc.entered_at else None,
                 'last_updated': pc.last_updated.isoformat() if pc.last_updated else None
@@ -531,4 +613,465 @@ def update_pipeline():
         db.session.rollback()
         current_app.logger.error(f"Error editing pipeline: {str(e)}")
         flash(f'An error occurred: {str(e)}', 'danger')
-        return redirect(url_for('pipeline.index')) 
+        return redirect(url_for('pipeline.index'))
+
+@pipeline_bp.route('/move-contact/<int:contact_id>', methods=['POST'])
+@login_required
+def move_contact_api(contact_id):
+    """API endpoint to move a contact to a new stage"""
+    try:
+        # Get the contact
+        pipeline_contact = PipelineContact.query.get_or_404(contact_id)
+        
+        # Check if user has permission to edit this pipeline
+        pipeline = Pipeline.query.get(pipeline_contact.pipeline_id)
+        if not pipeline:
+            return jsonify({'success': False, 'message': 'Pipeline not found'})
+            
+        if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
+            return jsonify({'success': False, 'message': 'Permission denied'})
+        
+        # Get form data
+        data = request.get_json()
+        if not data:
+            data = request.form
+            
+        current_app.logger.debug(f"Move contact data: {data}")
+        
+        # Get the new stage ID
+        new_stage_id = data.get('stage_id')
+        if not new_stage_id:
+            return jsonify({'success': False, 'message': 'No stage ID provided'})
+            
+        # Convert stage_id to int if needed
+        try:
+            new_stage_id = int(new_stage_id)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Invalid stage ID'})
+        
+        # Get the stage
+        new_stage = PipelineStage.query.get(new_stage_id)
+        if not new_stage:
+            return jsonify({'success': False, 'message': 'Stage not found'})
+            
+        # Verify stage belongs to this pipeline
+        if new_stage.pipeline_id != pipeline_contact.pipeline_id:
+            return jsonify({'success': False, 'message': 'Stage not in this pipeline'})
+        
+        # Get notes if provided
+        notes = data.get('notes', '')
+        
+        # Get the old stage
+        old_stage = PipelineStage.query.get(pipeline_contact.current_stage_id)
+        
+        # If no change in stage, just return success
+        if old_stage and old_stage.id == new_stage.id:
+            return jsonify({'success': True, 'message': 'Contact already in this stage'})
+        
+        current_app.logger.debug(f"Moving contact {contact_id} from stage {old_stage.id if old_stage else 'None'} to {new_stage.id}")
+        
+        # Move the contact to the new stage using the model method
+        try:
+            success = pipeline_contact.move_to_stage(
+                stage_id=new_stage_id,
+                user_id=current_user.id,
+                notes=notes
+            )
+            
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': 'Contact moved successfully'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to move contact'
+                })
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error in move_to_stage: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            })
+    except Exception as e:
+        current_app.logger.error(f"Error moving contact {contact_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        })
+
+@pipeline_bp.route('/add_contact', methods=['POST'])
+@login_required
+def add_contact():
+    """Add a contact to a pipeline"""
+    try:
+        pipeline_id = request.form.get('pipeline_id', type=int)
+        contact_id = request.form.get('contact_id', type=int)
+        
+        if not pipeline_id or not contact_id:
+            return jsonify({
+                'success': False,
+                'message': 'Missing required parameters'
+            })
+            
+        # Get the pipeline
+        pipeline = Pipeline.query.get_or_404(pipeline_id)
+        
+        # Check if user has permission to edit this pipeline
+        if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
+            return jsonify({
+                'success': False,
+                'message': 'You do not have permission to edit this pipeline'
+            })
+            
+        # Get the first stage in the pipeline
+        first_stage = PipelineStage.query.filter_by(
+            pipeline_id=pipeline_id
+        ).order_by(PipelineStage.order).first()
+        
+        if not first_stage:
+            return jsonify({
+                'success': False,
+                'message': 'Pipeline has no stages'
+            })
+            
+        # Get the contact
+        contact = Contact.query.get_or_404(contact_id)
+        
+        # Check if this contact type matches the pipeline type
+        contact_type = getattr(contact, 'type', None) or getattr(contact, 'contact_type', None)
+        if pipeline.pipeline_type == 'person' and contact_type != 'person':
+            return jsonify({
+                'success': False,
+                'message': 'This pipeline is for people only'
+            })
+        elif pipeline.pipeline_type == 'church' and contact_type != 'church':
+            return jsonify({
+                'success': False,
+                'message': 'This pipeline is for churches only'
+            })
+            
+        # Check if contact is already in this pipeline
+        existing = PipelineContact.query.filter_by(
+            pipeline_id=pipeline_id,
+            contact_id=contact_id
+        ).first()
+        
+        if existing:
+            return jsonify({
+                'success': False,
+                'message': 'Contact is already in this pipeline'
+            })
+            
+        # Add the contact to the pipeline
+        pipeline_contact = PipelineContact(
+            pipeline_id=pipeline_id,
+            contact_id=contact_id,
+            current_stage_id=first_stage.id,
+            entered_at=datetime.now(),
+            last_updated=datetime.now()
+        )
+        
+        db.session.add(pipeline_contact)
+        
+        # Create a history entry
+        history = PipelineStageHistory(
+            pipeline_contact_id=pipeline_contact.id,
+            to_stage_id=first_stage.id,
+            created_by_id=current_user.id,
+            notes="Initial stage",
+            created_at=datetime.now()
+        )
+        
+        db.session.add(history)
+        db.session.commit()
+        
+        # Update the contacts list HTML for the first stage
+        updated_contacts = PipelineContact.query.filter_by(
+            pipeline_id=pipeline_id,
+            current_stage_id=first_stage.id
+        ).all()
+        
+        # Return the updated contacts list
+        return jsonify({
+            'success': True,
+            'message': 'Contact added to pipeline',
+            'contact_id': pipeline_contact.id,
+            'stage_id': first_stage.id,
+            'updated_contacts': len(updated_contacts)
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error adding contact to pipeline: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        })
+
+class PipelineController:
+    @staticmethod
+    def get_pipelines_for_current_user():
+        """Get all pipelines for the current user's office."""
+        if current_user.is_super_admin():
+            return Pipeline.query.all()
+        else:
+            return Pipeline.query.filter_by(office_id=current_user.office_id).all()
+
+    @staticmethod
+    def get_pipeline_by_id(pipeline_id):
+        """Get a specific pipeline by ID and check access permissions."""
+        pipeline = Pipeline.query.get_or_404(pipeline_id)
+        
+        # Super admins can access any pipeline, others must have matching office_id
+        if current_user.is_super_admin() or pipeline.office_id == current_user.office_id:
+            return pipeline
+        return None
+
+    @staticmethod
+    def get_pipeline_stages(pipeline_id):
+        """Get all stages for a specific pipeline."""
+        return PipelineStage.query.filter_by(pipeline_id=pipeline_id).order_by(PipelineStage.order).all()
+
+    @staticmethod
+    def get_pipeline_stage_by_id(stage_id):
+        """Get a specific pipeline stage by ID."""
+        return PipelineStage.query.get_or_404(stage_id)
+
+    @staticmethod
+    def create_pipeline(name, pipeline_type, description=None):
+        """Create a new pipeline for the current user's office."""
+        pipeline = Pipeline(
+            name=name,
+            pipeline_type=pipeline_type,
+            description=description,
+            office_id=current_user.office_id
+        )
+        db.session.add(pipeline)
+        db.session.commit()
+        return pipeline
+
+    @staticmethod
+    def update_pipeline(pipeline_id, name, pipeline_type, description=None):
+        """Update an existing pipeline."""
+        pipeline = PipelineController.get_pipeline_by_id(pipeline_id)
+        if pipeline:
+            pipeline.name = name
+            pipeline.pipeline_type = pipeline_type
+            pipeline.description = description
+            db.session.commit()
+            return pipeline
+        return None
+
+    @staticmethod
+    def delete_pipeline(pipeline_id):
+        """Delete a pipeline and its associated stages."""
+        pipeline = PipelineController.get_pipeline_by_id(pipeline_id)
+        if pipeline:
+            # Delete all stages associated with this pipeline
+            PipelineStage.query.filter_by(pipeline_id=pipeline_id).delete()
+            # Delete the pipeline
+            db.session.delete(pipeline)
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
+    def create_pipeline_stage(pipeline_id, name, description=None, order=None):
+        """Create a new stage for a specific pipeline."""
+        pipeline = PipelineController.get_pipeline_by_id(pipeline_id)
+        if pipeline:
+            # If order is not specified, place at the end
+            if order is None:
+                max_order = db.session.query(db.func.max(PipelineStage.order))\
+                                    .filter(PipelineStage.pipeline_id == pipeline_id).scalar()
+                order = 1 if max_order is None else max_order + 1
+
+            stage = PipelineStage(
+                name=name,
+                description=description,
+                pipeline_id=pipeline_id,
+                order=order
+            )
+            db.session.add(stage)
+            db.session.commit()
+            return stage
+        return None
+
+    @staticmethod
+    def update_pipeline_stage(stage_id, name, description=None, order=None):
+        """Update an existing pipeline stage."""
+        stage = PipelineController.get_pipeline_stage_by_id(stage_id)
+        if stage:
+            stage.name = name
+            if description is not None:
+                stage.description = description
+            if order is not None:
+                stage.order = order
+            db.session.commit()
+            return stage
+        return None
+
+    @staticmethod
+    def delete_pipeline_stage(stage_id):
+        """Delete a pipeline stage."""
+        stage = PipelineController.get_pipeline_stage_by_id(stage_id)
+        if stage:
+            # Delete all contacts associated with this stage
+            PipelineContact.query.filter_by(current_stage_id=stage_id).delete()
+            # Delete the stage
+            db.session.delete(stage)
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
+    def reorder_pipeline_stages(pipeline_id, stage_order):
+        """Reorder pipeline stages based on a list of stage IDs."""
+        pipeline = PipelineController.get_pipeline_by_id(pipeline_id)
+        if not pipeline:
+            return False
+
+        # Update the order of each stage
+        for index, stage_id in enumerate(stage_order, 1):
+            stage = PipelineStage.query.get(stage_id)
+            if stage and stage.pipeline_id == pipeline_id:
+                stage.order = index
+
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def get_pipeline_contacts(pipeline_id, stage_id=None):
+        """Get contacts in a pipeline, optionally filtered by stage."""
+        pipeline = PipelineController.get_pipeline_by_id(pipeline_id)
+        if not pipeline:
+            return []
+
+        query = PipelineContact.query.filter_by(pipeline_id=pipeline_id)
+        if stage_id:
+            query = query.filter_by(current_stage_id=stage_id)
+        
+        return query.order_by(desc(PipelineContact.last_updated)).all()
+
+    @staticmethod
+    def get_pipeline_contact_by_id(contact_id):
+        """Get a specific pipeline contact by ID."""
+        return PipelineContact.query.get_or_404(contact_id)
+
+    @staticmethod
+    def add_contact_to_pipeline(pipeline_id, contact_id, stage_id, notes=None):
+        """Add a contact to a pipeline at a specific stage."""
+        pipeline = PipelineController.get_pipeline_by_id(pipeline_id)
+        if not pipeline:
+            return None
+
+        # Check if contact exists in the current user's office (or for super admins, any contact)
+        contact = Contact.query.get(contact_id)
+        if contact and (current_user.is_super_admin() or contact.office_id == current_user.office_id):
+            # Check if contact already exists in this pipeline
+            existing = PipelineContact.query.filter_by(
+                pipeline_id=pipeline_id,
+                contact_id=contact_id
+            ).first()
+            
+            if existing:
+                # If it exists, update the stage and notes
+                existing.current_stage_id = stage_id
+                # If notes tracking is implemented, add new note
+                # existing.notes = notes
+                db.session.commit()
+                return existing
+            
+            # Create new pipeline contact
+            pipeline_contact = PipelineContact(
+                pipeline_id=pipeline_id,
+                contact_id=contact_id,
+                current_stage_id=stage_id
+                # If notes tracking is implemented, add notes
+                # notes=notes
+            )
+            db.session.add(pipeline_contact)
+            db.session.commit()
+            return pipeline_contact
+        return None
+
+    @staticmethod
+    def update_pipeline_contact(contact_id, stage_id=None, notes=None):
+        """Update a pipeline contact's stage or notes."""
+        pipeline_contact = PipelineController.get_pipeline_contact_by_id(contact_id)
+        if pipeline_contact:
+            # Get the pipeline to check access
+            pipeline = PipelineController.get_pipeline_by_id(pipeline_contact.pipeline_id)
+            if not pipeline:
+                return None
+            
+            if stage_id:
+                pipeline_contact.current_stage_id = stage_id
+            # If notes tracking is implemented:
+            # if notes is not None:
+            #    pipeline_contact.notes = notes
+            db.session.commit()
+            return pipeline_contact
+        return None
+
+    @staticmethod
+    def remove_contact_from_pipeline(contact_id):
+        """Remove a contact from a pipeline."""
+        pipeline_contact = PipelineController.get_pipeline_contact_by_id(contact_id)
+        if pipeline_contact:
+            # Get the pipeline to check access
+            pipeline = PipelineController.get_pipeline_by_id(pipeline_contact.pipeline_id)
+            if not pipeline:
+                return False
+            
+            db.session.delete(pipeline_contact)
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
+    def get_available_contacts_for_pipeline(pipeline_id):
+        """Get contacts that can be added to a pipeline."""
+        pipeline = PipelineController.get_pipeline_by_id(pipeline_id)
+        if not pipeline:
+            return [], []
+
+        # Get IDs of contacts already in this pipeline
+        existing_contact_ids = db.session.query(PipelineContact.contact_id)\
+                                       .filter(PipelineContact.pipeline_id == pipeline_id).all()
+        existing_contact_ids = [id[0] for id in existing_contact_ids]
+        
+        # For people pipeline
+        if pipeline.pipeline_type == 'person':
+            # For super admins, get all people not already in the pipeline
+            if current_user.is_super_admin():
+                people = Person.query.filter(~Person.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+            else:
+                people = Person.query.filter_by(office_id=current_user.office_id)\
+                                    .filter(~Person.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+            return people, []
+        
+        # For churches pipeline
+        elif pipeline.pipeline_type == 'church':
+            # For super admins, get all churches not already in the pipeline
+            if current_user.is_super_admin():
+                churches = Church.query.filter(~Church.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+            else:
+                churches = Church.query.filter_by(office_id=current_user.office_id)\
+                                      .filter(~Church.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+            return [], churches
+        
+        # For both types
+        else:
+            # For super admins, get all contacts not already in the pipeline
+            if current_user.is_super_admin():
+                people = Person.query.filter(~Person.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+                churches = Church.query.filter(~Church.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+            else:
+                people = Person.query.filter_by(office_id=current_user.office_id)\
+                                    .filter(~Person.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+                churches = Church.query.filter_by(office_id=current_user.office_id)\
+                                      .filter(~Church.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
+            return people, churches 

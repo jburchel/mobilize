@@ -64,11 +64,11 @@
                                     {{ current_user.first_name }} {{ current_user.last_name }}
                                 {% else %}
                                     {% if communication.person_id %}
-                                        <a href="{{ url_for('people.view', id=communication.person_id) }}">
+                                        <a href="{{ url_for('people.show', id=communication.person_id) }}">
                                             {{ communication.person.first_name }} {{ communication.person.last_name }}
                                         </a>
                                     {% elif communication.church_id %}
-                                        <a href="{{ url_for('churches.view', id=communication.church_id) }}">
+                                        <a href="{{ url_for('churches.show', id=communication.church_id) }}">
                                             {{ communication.church.name }}
                                         </a>
                                     {% else %}
@@ -222,7 +222,7 @@
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('people.view', id=communication.person_id) }}" class="btn btn-outline-primary">
+                        <a href="{{ url_for('people.show', id=communication.person_id) }}" class="btn btn-outline-primary">
                             <i class="bi bi-person me-2"></i>View Contact Profile
                         </a>
                         <a href="{{ url_for('communications.index') }}?person_id={{ communication.person_id }}" class="btn btn-outline-secondary">
@@ -244,7 +244,7 @@
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('churches.view', id=communication.church_id) }}" class="btn btn-outline-primary">
+                        <a href="{{ url_for('churches.show', id=communication.church_id) }}" class="btn btn-outline-primary">
                             <i class="bi bi-building me-2"></i>View Church Profile
                         </a>
                         <a href="{{ url_for('communications.index') }}?church_id={{ communication.church_id }}" class="btn btn-outline-secondary">

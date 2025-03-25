@@ -26,8 +26,9 @@ from app.utils.filters import register_filters, register_template_functions
 from app.utils.firebase import firebase_setup
 from app.utils.context_processors import register_template_utilities
 from app.utils.setup_main_pipelines import setup_main_pipelines
-from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipelines
+from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
 from app.cli import register_commands
+from flask_sqlalchemy import SQLAlchemy
 
 # Initialize extensions
 migrate = Migrate()
@@ -105,6 +106,8 @@ def create_app(config_name='development'):
         'google_sync': '/google_sync',
         'settings': '/settings',
         'pipeline': '/pipeline',
+        'reports': '/reports',
+        'emails': '/emails',
     }
     
     # Register all blueprints from routes/__init__.py
@@ -153,13 +156,14 @@ def create_app(config_name='development'):
             db.create_all()  # Create tables if they don't exist
             setup_main_pipelines()
             
-            # Check if the pipeline_contacts table exists before trying to migrate
-            from sqlalchemy import inspect
-            inspector = inspect(db.engine)
-            if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
-                migrate_contacts_to_main_pipelines()
-            else:
-                app.logger.warning("Skipping contact migration - required tables don't exist yet")
+            # Only migrate contacts to main pipelines if not in development
+            if not app.debug:
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
+                    migrate_contacts_to_main_pipeline()
+                else:
+                    app.logger.warning("Skipping contact migration - required tables don't exist yet")
                 
         except Exception as e:
             app.logger.error(f"Error during startup database setup: {str(e)}")

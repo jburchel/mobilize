@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Reminder: {{ task.title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #4a6fdc;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        .task-details {
+            background-color: white;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .task-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .task-property {
+            margin-bottom: 8px;
+        }
+        .task-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4a6fdc;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Task Reminder</h2>
+        </div>
+        <div class="content">
+            <p>Hello {{ user.first_name }},</p>
+            
+            <p>This is a reminder about a task that is due soon:</p>
+            
+            <div class="task-details">
+                <div class="task-title">{{ task.title }}</div>
+                
+                <div class="task-property">
+                    <span class="task-label">Due Date:</span> {{ due_date_formatted }}
+                </div>
+                
+                <div class="task-property">
+                    <span class="task-label">Due Time:</span> {{ due_time }}
+                </div>
+                
+                {% if task.description %}
+                <div class="task-property">
+                    <span class="task-label">Description:</span> {{ task.description }}
+                </div>
+                {% endif %}
+                
+                <div class="task-property">
+                    <span class="task-label">Priority:</span> {{ task.priority|capitalize }}
+                </div>
+                
+                <div class="task-property">
+                    <span class="task-label">Status:</span> {{ task.status|capitalize }}
+                </div>
+            </div>
+            
+            <p>Please make sure to complete this task on time.</p>
+            
+            <a href="{{ app_url }}/tasks/edit/{{ task.id }}" class="button">View Task</a>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated reminder from your Mobilize CRM system.</p>
+            <p>If you no longer wish to receive these reminders, you can update your notification preferences in your account settings.</p>
+        </div>
+    </div>
+</body>
+</html> 

@@ -169,7 +169,7 @@
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Church:</div>
                         <div class="col-8">
-                            <a href="{{ url_for('churches.view', id=person.church.id) }}">
+                            <a href="{{ url_for('churches.show', id=person.church.id) }}">
                                 {{ person.church.name }}
                             </a>
                         </div>

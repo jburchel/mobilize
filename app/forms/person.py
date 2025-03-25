@@ -44,8 +44,8 @@ class PersonForm(FlaskForm):
     is_primary_contact = BooleanField('Primary Contact for Church', default=False)
     
     # Pipeline Information from Old Model
-    people_pipeline = SelectField('People Pipeline', 
-                               choices=[('', 'Select Pipeline')] + PEOPLE_PIPELINE_CHOICES, 
+    people_pipeline = SelectField('Main Pipeline Stage', 
+                               choices=[('', 'Select Stage')] + PEOPLE_PIPELINE_CHOICES, 
                                validators=[Optional()])
     virtuous = BooleanField('Virtuous', default=False)
     
@@ -57,8 +57,6 @@ class PersonForm(FlaskForm):
                                    ('inactive', 'Inactive'),
                                    ('closed', 'Closed')
                                ])
-    pipeline_stage = SelectField('Pipeline Stage', validators=[Optional()],
-                              choices=[('', 'Select Stage')] + PEOPLE_PIPELINE_CHOICES)
     
     # Common Pipeline Fields  
     priority = SelectField('Priority', 

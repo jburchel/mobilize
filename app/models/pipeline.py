@@ -3,19 +3,26 @@ from app.extensions import db
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.models.constants import PEOPLE_PIPELINE_CHOICES, CHURCH_PIPELINE_CHOICES
+from flask import current_app
+from sqlalchemy import desc
+import enum
+
+class PipelineType(str, enum.Enum):
+    PEOPLE = 'person'
+    CHURCHES = 'church'
+    BOTH = 'both'
 
 class Pipeline(db.Model):
-    """Pipeline model represents a workflow for managing contacts through stages."""
+    """Pipeline model for tracking contacts through different stages."""
     __tablename__ = 'pipelines'
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    pipeline_type = db.Column(db.String(20), default='people')  # Type: 'people' or 'church'
     description = db.Column(db.Text)
-    office_id = db.Column(db.Integer, db.ForeignKey('offices.id'))
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    pipeline_type = db.Column(db.String(50), default='both')  # 'person', 'church', or 'both'
+    office_id = db.Column(db.Integer, db.ForeignKey('offices.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # Field to identify if this is a main/system pipeline
     is_main_pipeline = db.Column(db.Boolean, default=False)
@@ -24,21 +31,26 @@ class Pipeline(db.Model):
     parent_pipeline_stage = db.Column(db.String(50), nullable=True)
     
     # Relationships
-    office = db.relationship('Office', backref=db.backref('pipelines', lazy='dynamic'))
+    office = db.relationship('Office', backref=db.backref('pipelines', lazy=True))
     stages = db.relationship('PipelineStage', backref='pipeline', lazy='dynamic', 
-                            order_by='PipelineStage.order')
+                           cascade='all, delete-orphan',
+                           order_by='PipelineStage.order')
     pipeline_contacts = db.relationship('PipelineContact', backref='pipeline', lazy='dynamic')
     
     def __repr__(self):
         return f'<Pipeline {self.name}>'
         
     def get_active_stages(self):
-        """Get all active stages for this pipeline ordered by sequence."""
-        return self.stages.filter_by(is_active=True).order_by(PipelineStage.order).all()
+        """Get all active stages for this pipeline ordered by position."""
+        return self.stages.order_by(PipelineStage.order).all()
+        
+    def count_contacts(self):
+        """Count contacts in this pipeline."""
+        return self.pipeline_contacts.count()
         
     def contact_count(self):
-        """Get count of contacts in this pipeline."""
-        return self.pipeline_contacts.count()
+        """Alias for count_contacts() method."""
+        return self.count_contacts()
         
     def get_available_parent_stages(self):
         """Get available parent pipeline stages based on pipeline type."""
@@ -49,19 +61,16 @@ class Pipeline(db.Model):
         return []
 
     def to_dict(self):
-        """Convert pipeline to dictionary."""
+        """Convert object to dictionary."""
         return {
             'id': self.id,
             'name': self.name,
-            'pipeline_type': self.pipeline_type,
             'description': self.description,
+            'pipeline_type': self.pipeline_type,
             'office_id': self.office_id,
-            'is_active': self.is_active,
-            'is_main_pipeline': self.is_main_pipeline,
-            'parent_pipeline_stage': self.parent_pipeline_stage,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'stages': [stage.to_dict() for stage in self.stages]
+            'contact_count': self.count_contacts()
         }
         
     @classmethod
@@ -75,18 +84,17 @@ class Pipeline(db.Model):
 
 
 class PipelineStage(db.Model):
-    """PipelineStage model represents a stage in a pipeline."""
+    """Model representing a stage in a pipeline."""
     __tablename__ = 'pipeline_stages'
     
     id = db.Column(db.Integer, primary_key=True)
-    pipeline_id = db.Column(db.Integer, db.ForeignKey('pipelines.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     order = db.Column(db.Integer, nullable=False)
-    color = db.Column(db.String(20), default="#3498db")
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    color = db.Column(db.String(20), default='#3498db')  # Default blue color
+    pipeline_id = db.Column(db.Integer, db.ForeignKey('pipelines.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # Automation fields
     auto_move_days = db.Column(db.Integer, nullable=True)
@@ -94,168 +102,129 @@ class PipelineStage(db.Model):
     auto_task_template = db.Column(db.Text, nullable=True)
     
     # Relationships
-    contacts_in_stage = db.relationship('PipelineContact', 
-                                      foreign_keys='PipelineContact.current_stage_id',
-                                      backref='current_stage', lazy='dynamic')
-    
-    from_stage_history = db.relationship('PipelineStageHistory',
-                                        foreign_keys='PipelineStageHistory.from_stage_id',
-                                        backref='from_stage', lazy='dynamic')
-                                    
-    to_stage_history = db.relationship('PipelineStageHistory',
-                                      foreign_keys='PipelineStageHistory.to_stage_id',
-                                      backref='to_stage', lazy='dynamic')
+    contacts_in_stage = db.relationship('PipelineContact', backref='current_stage', lazy='dynamic',
+                                      foreign_keys='PipelineContact.current_stage_id')
+    history_entries = db.relationship('PipelineStageHistory', 
+                                    primaryjoin="or_(PipelineStage.id==PipelineStageHistory.from_stage_id, PipelineStage.id==PipelineStageHistory.to_stage_id)",
+                                    backref='related_stage', lazy='dynamic')
+    from_stage_history = db.relationship('PipelineStageHistory', backref=db.backref('from_stage', overlaps="related_stage"),
+                                    foreign_keys='PipelineStageHistory.from_stage_id', lazy='dynamic',
+                                    overlaps="history_entries,related_stage")
+    to_stage_history = db.relationship('PipelineStageHistory', backref=db.backref('to_stage', overlaps="related_stage"),
+                                  foreign_keys='PipelineStageHistory.to_stage_id', lazy='dynamic',
+                                  overlaps="history_entries,related_stage")
     
     def __repr__(self):
         return f'<PipelineStage {self.name} (Pipeline: {self.pipeline_id})>'
         
-    def contact_count(self):
-        """Get count of contacts in this stage."""
-        return self.contacts_in_stage.count()
-        
     def to_dict(self):
-        """Convert pipeline stage to dictionary."""
+        """Convert object to dictionary."""
         return {
             'id': self.id,
-            'pipeline_id': self.pipeline_id,
             'name': self.name,
             'description': self.description,
             'order': self.order,
-            'color': self.color,
-            'is_active': self.is_active,
+            'pipeline_id': self.pipeline_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'auto_move_days': self.auto_move_days,
-            'auto_reminder': self.auto_reminder,
-            'auto_task_template': self.auto_task_template
+            'contact_count': self.contacts_in_stage.count()
         }
 
 
 class PipelineContact(db.Model):
-    """PipelineContact model represents a contact in a pipeline at a specific stage."""
+    """Model representing a contact in a pipeline."""
     __tablename__ = 'pipeline_contacts'
     
     id = db.Column(db.Integer, primary_key=True)
     contact_id = db.Column(db.Integer, db.ForeignKey('contacts.id'), nullable=False)
     pipeline_id = db.Column(db.Integer, db.ForeignKey('pipelines.id'), nullable=False)
     current_stage_id = db.Column(db.Integer, db.ForeignKey('pipeline_stages.id'), nullable=False)
-    entered_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    entered_at = db.Column(db.DateTime, default=datetime.now)
+    last_updated = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # Relationships
-    contact = db.relationship('Contact', backref=db.backref('pipeline_memberships', lazy='dynamic'))
-    stage_history = db.relationship('PipelineStageHistory', 
-                                  backref='pipeline_contact', lazy='dynamic',
-                                  order_by='PipelineStageHistory.moved_at.desc()')
+    contact = db.relationship('Contact', backref=db.backref('pipeline_entries', lazy=True))
+    history = db.relationship('PipelineStageHistory', backref='pipeline_contact', lazy=True,
+                             cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<PipelineContact {self.contact_id} in Pipeline {self.pipeline_id}>'
         
-    def move_to_stage(self, stage_id, user_id=None, notes=None, is_automated=False):
+    def move_to_stage(self, stage_id, user_id=None, notes=None):
         """Move contact to a new stage and create history record."""
-        previous_stage_id = self.current_stage_id
-        
-        # Create history record
-        history = PipelineStageHistory(
-            pipeline_contact_id=self.id,
-            from_stage_id=previous_stage_id,
-            to_stage_id=stage_id,
-            moved_at=datetime.utcnow(),
-            moved_by_user_id=user_id,
-            notes=notes,
-            is_automated=is_automated
-        )
-        db.session.add(history)
-        
-        # Update current stage
-        self.current_stage_id = stage_id
-        self.last_updated = datetime.utcnow()
-        
-        # Update the contact's main pipeline stage if this is not a main pipeline
-        self.sync_with_main_pipeline()
-        
-        db.session.commit()
-        return history
+        try:
+            previous_stage_id = self.current_stage_id
+            
+            # Create history record
+            if previous_stage_id != stage_id:
+                history_entry = PipelineStageHistory(
+                    pipeline_contact_id=self.id,
+                    from_stage_id=previous_stage_id,
+                    to_stage_id=stage_id,
+                    created_by_id=user_id,
+                    notes=notes
+                )
+                db.session.add(history_entry)
+            
+            # Update current stage
+            self.current_stage_id = stage_id
+            self.last_updated = datetime.now()
+            
+            return True
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return False
     
-    def sync_with_main_pipeline(self):
-        """
-        Sync the contact's main pipeline fields with this pipeline's stage.
-        This ensures that Person.people_pipeline and Person.pipeline_stage
-        or Church.church_pipeline fields stay in sync with custom pipelines.
-        """
-        from app.models import Person, Church
-        
-        # Skip if this is already a main pipeline
-        if self.pipeline.is_main_pipeline:
-            return
-            
-        # Get the contact
-        contact = self.contact
-        
-        # Get the stage
-        stage = PipelineStage.query.get(self.current_stage_id)
-        if not stage:
-            return
-            
-        # Get the parent pipeline stage
-        parent_stage = self.pipeline.parent_pipeline_stage
-        if not parent_stage:
-            return
-            
-        # Update the appropriate fields based on contact type
-        if contact.type == 'person':
-            person = Person.query.get(contact.id)
-            if person:
-                person.people_pipeline = parent_stage
-                person.pipeline_stage = stage.name
-                
-        elif contact.type == 'church':
-            church = Church.query.get(contact.id)
-            if church:
-                church.church_pipeline = parent_stage
-                
-        db.session.add(contact)
-        
     def to_dict(self):
-        """Convert pipeline contact to dictionary."""
+        """Convert object to dictionary."""
+        contact_dict = self.contact.to_dict() if self.contact else {}
+        stage_dict = self.current_stage.to_dict() if self.current_stage else {}
+        
         return {
             'id': self.id,
             'contact_id': self.contact_id,
             'pipeline_id': self.pipeline_id,
             'current_stage_id': self.current_stage_id,
             'entered_at': self.entered_at.isoformat() if self.entered_at else None,
-            'last_updated': self.last_updated.isoformat() if self.last_updated else None
+            'last_updated': self.last_updated.isoformat() if self.last_updated else None,
+            'contact': contact_dict,
+            'stage': stage_dict
         }
 
 
 class PipelineStageHistory(db.Model):
-    """PipelineStageHistory model tracks movement of contacts between pipeline stages."""
+    """Model for tracking movement of contacts between pipeline stages."""
     __tablename__ = 'pipeline_stage_history'
     
     id = db.Column(db.Integer, primary_key=True)
     pipeline_contact_id = db.Column(db.Integer, db.ForeignKey('pipeline_contacts.id'), nullable=False)
-    from_stage_id = db.Column(db.Integer, db.ForeignKey('pipeline_stages.id'), nullable=True)
+    from_stage_id = db.Column(db.Integer, db.ForeignKey('pipeline_stages.id'))
     to_stage_id = db.Column(db.Integer, db.ForeignKey('pipeline_stages.id'), nullable=False)
-    moved_at = db.Column(db.DateTime, default=datetime.utcnow)
-    moved_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     notes = db.Column(db.Text)
-    is_automated = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     
     # Relationships
-    moved_by_user = db.relationship('User', backref=db.backref('pipeline_stage_movements', lazy='dynamic'))
+    created_by = db.relationship('User', backref=db.backref('pipeline_history_actions', lazy=True))
     
     def __repr__(self):
         return f'<PipelineStageHistory {self.id}: {self.from_stage_id} -> {self.to_stage_id}>'
         
     def to_dict(self):
-        """Convert pipeline stage history to dictionary."""
+        """Convert object to dictionary."""
+        from_stage_name = self.from_stage.name if self.from_stage else "New Entry"
+        to_stage_name = self.to_stage.name if self.to_stage else "Unknown"
+        
         return {
             'id': self.id,
             'pipeline_contact_id': self.pipeline_contact_id,
             'from_stage_id': self.from_stage_id,
             'to_stage_id': self.to_stage_id,
-            'moved_at': self.moved_at.isoformat() if self.moved_at else None,
-            'moved_by_user_id': self.moved_by_user_id,
+            'from_stage': from_stage_name,
+            'to_stage': to_stage_name,
             'notes': self.notes,
-            'is_automated': self.is_automated
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_by_id': self.created_by_id,
+            'created_by': self.created_by.name if self.created_by else None
         } 

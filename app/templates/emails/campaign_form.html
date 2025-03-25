@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}{% if campaign %}Edit{% else %}New{% endif %} Email Campaign - Mobilize CRM{% endblock %}
+
+{% block page_title %}{% if campaign %}Edit{% else %}New{% endif %} Email Campaign{% endblock %}
+
+{% block extra_styles %}
+<!-- Summernote CSS -->
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+<style>
+    .variable-badge {
+        font-size: 85%;
+        cursor: pointer;
+    }
+    .form-section {
+        border-radius: 0.25rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .bg-light-subtle {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('emails.campaigns') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Campaigns
+                </a>
+                {% if campaign %}
+                <a href="{{ url_for('emails.preview_campaign', campaign_id=campaign.id) }}" class="btn btn-primary">
+                    <i class="bi bi-eye me-1"></i> Preview Campaign
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-12">
+            <form id="campaignForm" method="POST" action="{{ url_for('emails.edit_campaign', campaign_id=campaign.id) if campaign else url_for('emails.new_campaign') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                
+                <div class="row">
+                    <div class="col-lg-8">
+                        <!-- Campaign Details Section -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>Campaign Details
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Campaign Name<span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{ campaign.name if campaign else '' }}" required>
+                                    <div class="form-text">Give your campaign a descriptive name (for internal use only)</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="2">{{ campaign.description if campaign else '' }}</textarea>
+                                    <div class="form-text">Optional description to help you identify this campaign</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="template_id" class="form-label">Base on Template</label>
+                                    <select class="form-select" id="template_id" name="template_id">
+                                        <option value="">-- No Template --</option>
+                                        {% for template in templates %}
+                                        <option value="{{ template.id }}" {% if campaign and campaign.template_id == template.id %}selected{% endif %}>
+                                            {{ template.name }} ({{ template.category }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Select an existing template or create a custom email</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Email Content Section -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-envelope me-2"></i>Email Content
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="subject" class="form-label">Email Subject<span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="subject" name="subject" 
+                                           value="{{ campaign.subject if campaign else '' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="content" class="form-label">Email Content<span class="text-danger">*</span></label>
+                                    <div class="mb-1">
+                                        <span class="badge bg-info variable-badge" onclick="insertVariable('[Name]')">[Name]</span>
+                                        <span class="badge bg-info variable-badge" onclick="insertVariable('[FirstName]')">[FirstName]</span>
+                                        <span class="badge bg-info variable-badge" onclick="insertVariable('[LastName]')">[LastName]</span>
+                                        <span class="badge bg-info variable-badge" onclick="insertVariable('[Email]')">[Email]</span>
+                                        <span class="badge bg-info variable-badge" onclick="insertVariable('[Phone]')">[Phone]</span>
+                                    </div>
+                                    <textarea id="content" name="content" required>{{ campaign.content if campaign else '' }}</textarea>
+                                    <div class="form-text">
+                                        Use variables like [Name], [FirstName], etc. which will be replaced with recipient information.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <!-- Recipients Section -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-people me-2"></i>Recipients
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info mb-3" id="recipientCounter">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-people-fill me-2"></i>
+                                        <strong>Selected recipients: <span id="selectedCount">0</span></strong>
+                                    </div>
+                                    <div class="small mt-1">Recipients will be filtered based on criteria below</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Filter by Status</label>
+                                    <div class="form-section bg-light-subtle p-3 rounded border mb-2">
+                                        {% for status in statuses %}
+                                        <div class="form-check">
+                                            <input class="form-check-input filter-option" type="checkbox" name="status" value="{{ status }}" 
+                                                   id="status_{{ loop.index }}" {% if campaign and status in selected_statuses %}checked{% endif %}>
+                                            <label class="form-check-label" for="status_{{ loop.index }}">
+                                                <span class="badge bg-{{ 'success' if status == 'active' else 'secondary' }}">{{ status|capitalize }}</span>
+                                            </label>
+                                        </div>
+                                        {% else %}
+                                        <div class="text-muted small">No status filters available</div>
+                                        {% endfor %}
+                                        <div class="form-text mt-2">
+                                            <i class="bi bi-info-circle me-1"></i> Select multiple statuses to include more recipients
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Filter by Tags</label>
+                                    <div class="form-section bg-light-subtle p-3 rounded border mb-2">
+                                        {% if tags %}
+                                            {% for tag in tags %}
+                                            <div class="form-check">
+                                                <input class="form-check-input filter-option" type="checkbox" name="tags" value="{{ tag }}" 
+                                                    id="tag_{{ loop.index }}" {% if campaign and tag in selected_tags %}checked{% endif %}>
+                                                <label class="form-check-label" for="tag_{{ loop.index }}">
+                                                    <span class="badge bg-info">{{ tag }}</span>
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="text-muted small">
+                                                <i class="bi bi-tag me-1"></i>
+                                                No tags available for filtering
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Additional Filters</label>
+                                    <div class="form-section bg-light-subtle p-3 rounded border">
+                                        <div class="form-check">
+                                            <input class="form-check-input filter-option" type="checkbox" name="has_email" value="true" 
+                                                   id="has_email" {% if campaign and has_email %}checked{% endif %}>
+                                            <label class="form-check-label" for="has_email">
+                                                <i class="bi bi-envelope me-1"></i> Has email address
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input filter-option" type="checkbox" name="exclude_previous_recipients" value="true" 
+                                                   id="exclude_previous" {% if campaign and exclude_previous_recipients %}checked{% endif %}>
+                                            <label class="form-check-label" for="exclude_previous">
+                                                <i class="bi bi-envelope-slash me-1"></i> Exclude previous campaign recipients
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-save me-1"></i> 
+                                        {% if campaign %}Save Campaign{% else %}Create Campaign{% endif %}
+                                    </button>
+                                    <a href="{{ url_for('emails.campaigns') }}" class="btn btn-outline-secondary">Cancel</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Info Card -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>Tips
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        Use personalization variables to improve engagement
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        Keep subject lines concise and engaging
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        Preview your campaign before sending
+                                    </li>
+                                    <li>
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        Set specific recipient filters to target your audience
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Include Summernote JS -->
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Initialize rich text editor
+        $('#content').summernote({
+            height: 300,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'hr']],
+                ['view', ['fullscreen', 'codeview']]
+            ],
+            callbacks: {
+                onImageUpload: function(files) {
+                    // Prevent image upload for security
+                    alert('Image upload is not supported in this editor. Please use links to external images.');
+                }
+            }
+        });
+        
+        // Load template content when template is selected
+        $('#template_id').change(function() {
+            const templateId = $(this).val();
+            if (!templateId) return;
+            
+            fetch(`{{ url_for('emails.template_detail', template_id=0) }}`.replace('0', templateId))
+                .then(response => response.json())
+                .then(data => {
+                    if (confirm('Load template content? This will replace your current email content.')) {
+                        $('#subject').val(data.subject);
+                        $('#content').summernote('code', data.content);
+                    }
+                })
+                .catch(error => console.error('Error loading template:', error));
+        });
+    });
+    
+    // Function to insert variable at cursor position in editor
+    function insertVariable(variable) {
+        $('#content').summernote('insertText', variable);
+    }
+    
+    // Handle recipient counting
+    $(document).ready(function() {
+        // Function to update recipient count
+        function updateRecipientCount() {
+            // Get all selected filters
+            const statusFilters = $('input[name="status"]:checked').map(function() {
+                return $(this).val();
+            }).get();
+            
+            const tagFilters = $('input[name="tags"]:checked').map(function() {
+                return $(this).val();
+            }).get();
+            
+            const hasEmail = $('#has_email').is(':checked');
+            const excludePrevious = $('#exclude_previous').is(':checked');
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            statusFilters.forEach(status => params.append('status', status));
+            tagFilters.forEach(tag => params.append('tags', tag));
+            if (hasEmail) params.append('has_email', 'true');
+            if (excludePrevious) params.append('exclude_previous', 'true');
+            
+            // Fetch count from server
+            fetch(`{{ url_for('emails.count_recipients') }}?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    $('#selectedCount').text(data.count);
+                    
+                    // Update alert styling based on count
+                    const alertElement = $('#recipientCounter');
+                    alertElement.removeClass('alert-info alert-warning alert-danger');
+                    
+                    if (data.count === 0) {
+                        alertElement.addClass('alert-danger');
+                    } else if (data.count < 5) {
+                        alertElement.addClass('alert-warning');
+                    } else {
+                        alertElement.addClass('alert-info');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching recipient count:', error);
+                    $('#selectedCount').text('Error');
+                });
+        }
+        
+        // Update count on page load
+        updateRecipientCount();
+        
+        // Update count when filters change
+        $('.filter-option').change(updateRecipientCount);
+    });
+</script>
+{% endblock %} 

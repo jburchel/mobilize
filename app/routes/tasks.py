@@ -13,7 +13,7 @@ tasks_bp = Blueprint('tasks', __name__, template_folder='../templates/tasks')
 @tasks_bp.route('/')
 @tasks_bp.route('/list')
 @login_required
-def list():
+def index():
     """Display list of tasks."""
     # Fetch tasks from database
     tasks = Task.query.order_by(Task.due_date.asc()).all()
@@ -25,7 +25,7 @@ def list():
         if task.status != 'completed' and task.due_date and task.due_date < current_date:
             overdue_count += 1
             
-    return render_template('tasks/list.html', 
+    return render_template('tasks/index.html', 
                           tasks=tasks, 
                           overdue_count=overdue_count,
                           current_date=current_date,
@@ -71,7 +71,7 @@ def add():
         db.session.commit()
         
         flash('Task added successfully!', 'success')
-        return redirect(url_for('tasks.list'))
+        return redirect(url_for('tasks.index'))
     
     # For GET request, display the form
     people = Person.query.all()
@@ -121,7 +121,7 @@ def edit(id):
         db.session.commit()
         
         flash('Task updated successfully!', 'success')
-        return redirect(url_for('tasks.list'))
+        return redirect(url_for('tasks.index'))
     
     # For GET request, display the form with existing data
     people = Person.query.all()
@@ -174,7 +174,23 @@ def complete(id):
     db.session.commit()
     
     flash('Task marked as completed!', 'success')
-    return redirect(url_for('tasks.list'))
+    return redirect(url_for('tasks.index'))
+
+@tasks_bp.route('/send_reminders', methods=['GET'])
+@login_required
+def send_reminders():
+    """Manually trigger task reminders for testing."""
+    from app.tasks.task_automation import process_task_reminders
+    
+    try:
+        # Process reminders
+        reminders_sent = process_task_reminders()
+        
+        flash(f'Successfully sent {reminders_sent} task reminders!', 'success')
+    except Exception as e:
+        flash(f'Error sending reminders: {str(e)}', 'danger')
+        
+    return redirect(url_for('tasks.index'))
 
 @tasks_bp.route('/delete/<int:id>', methods=['POST'])
 @login_required
@@ -187,4 +203,4 @@ def delete(id):
     db.session.commit()
     
     flash('Task deleted successfully!', 'success')
-    return redirect(url_for('tasks.list')) 
+    return redirect(url_for('tasks.index')) 

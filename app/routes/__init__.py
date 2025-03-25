@@ -15,6 +15,8 @@ from .google_sync import google_sync_bp
 from app.routes.admin import admin_bp
 from app.routes.settings import settings_bp
 from app.routes.pipeline import pipeline_bp
+from app.routes.reports import reports_bp
+from app.routes.emails import emails_bp
 
 test_bp = Blueprint('test', __name__)
 
@@ -41,7 +43,9 @@ blueprints = [
     communications_bp,
     google_sync_bp,
     settings_bp,
-    pipeline_bp
+    pipeline_bp,
+    reports_bp,
+    emails_bp
 ]
 
 # This function is no longer used since blueprints are registered directly in app/__init__.py

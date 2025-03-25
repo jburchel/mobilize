@@ -1,6 +1,8 @@
 from app.tasks.sync import sync_all_users
+from app.tasks.task_automation import process_task_reminders
 from app.extensions import db, scheduler
 from app.models.user import User
+from datetime import datetime
 
 def init_scheduler(app):
     """Initialize the scheduler with the Flask app."""
@@ -13,6 +15,16 @@ def init_scheduler(app):
         func=sync_all_users,
         trigger='interval',
         minutes=30,
+        replace_existing=True
+    )
+    
+    # Add task reminder job
+    scheduler.add_job(
+        id='process_task_reminders',
+        func=process_task_reminders,
+        trigger='interval',
+        minutes=60,  # Check hourly
+        next_run_time=datetime.now(),  # Run immediately when app starts
         replace_existing=True
     )
 

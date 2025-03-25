@@ -75,6 +75,16 @@ class Contact(db.Model):
         'polymorphic_on': type
     }
     
+    @property
+    def contact_type(self):
+        """Return contact type (person or church) based on the 'type' column"""
+        if hasattr(self, 'type') and self.type:
+            if self.type.lower() in ('church', 'churches'):
+                return 'church'
+            else:
+                return 'person'
+        return 'person'  # Default to person if type is unknown
+    
     @hybrid_property
     def contact_first_name(self):
         return self.first_name

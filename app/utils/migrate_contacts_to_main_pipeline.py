@@ -14,97 +14,92 @@ from flask import current_app
 
 logger = logging.getLogger('migration')
 
-def migrate_contacts_to_main_pipelines():
-    """Migrate existing contacts to the main pipelines based on their type."""
-    from app.models import Contact, Pipeline, PipelineContact, PipelineStage, PipelineStageHistory
-    from app.extensions import db
-    from flask import current_app
-    
+def migrate_contacts_to_main_pipeline():
+    """Migrate contacts to main pipelines if they aren't already in a pipeline."""
     try:
-        # Get the main pipelines
-        people_main_pipeline = Pipeline.get_main_pipeline('people')
-        church_main_pipeline = Pipeline.get_main_pipeline('church')
+        # Get all main pipelines
+        person_pipelines = Pipeline.query.filter_by(
+            pipeline_type='person',
+            is_main_pipeline=True
+        ).all()
         
-        if not people_main_pipeline or not church_main_pipeline:
-            current_app.logger.warning("Main pipelines not found. Migration skipped.")
-            return
+        church_pipelines = Pipeline.query.filter_by(
+            pipeline_type='church',
+            is_main_pipeline=True
+        ).all()
         
-        # Get the first stage for each pipeline
-        people_first_stage = people_main_pipeline.get_first_stage()
-        church_first_stage = church_main_pipeline.get_first_stage()
-        
-        if not people_first_stage or not church_first_stage:
-            current_app.logger.warning("Pipeline stages not found. Migration skipped.")
-            return
-        
-        # Get contacts not already in the main pipelines
-        people_in_pipeline = db.session.query(Contact.id).join(
-            PipelineContact, PipelineContact.contact_id == Contact.id
+        # Get all contacts not in any pipeline
+        people_in_pipeline = db.session.query(PipelineContact.contact_id).join(
+            Pipeline
         ).filter(
-            PipelineContact.pipeline_id == people_main_pipeline.id,
-            Contact.type == 'person'
+            Pipeline.pipeline_type == 'person'
         ).subquery()
         
-        churches_in_pipeline = db.session.query(Contact.id).join(
-            PipelineContact, PipelineContact.contact_id == Contact.id
+        churches_in_pipeline = db.session.query(PipelineContact.contact_id).join(
+            Pipeline
         ).filter(
-            PipelineContact.pipeline_id == church_main_pipeline.id,
-            Contact.type == 'church'
+            Pipeline.pipeline_type == 'church'
         ).subquery()
         
-        # Find people contacts not in the pipeline
-        people_to_add = Contact.query.filter(
-            Contact.type == 'person',
+        people_to_migrate = Person.query.filter(
             Contact.id.notin_(people_in_pipeline)
         ).all()
         
-        # Find church contacts not in the pipeline
-        churches_to_add = Contact.query.filter(
-            Contact.type == 'church',
+        churches_to_migrate = Church.query.filter(
             Contact.id.notin_(churches_in_pipeline)
         ).all()
         
-        # Add people to the people pipeline
-        for person in people_to_add:
-            pipeline_contact = PipelineContact(
-                pipeline_id=people_main_pipeline.id,
-                contact_id=person.id,
-                current_stage_id=people_first_stage.id
+        # Migrate people
+        for person in people_to_migrate:
+            # Find the main pipeline for this person's office
+            pipeline = next(
+                (p for p in person_pipelines if p.office_id == person.office_id),
+                None
             )
-            db.session.add(pipeline_contact)
             
-            # Create initial stage history
-            history = PipelineStageHistory(
-                pipeline_contact=pipeline_contact,
-                to_stage_id=people_first_stage.id,
-                notes="Initial stage (automatic migration)"
-            )
-            db.session.add(history)
+            if pipeline:
+                # Get the first stage
+                first_stage = PipelineStage.query.filter_by(
+                    pipeline_id=pipeline.id
+                ).order_by(PipelineStage.order).first()
+                
+                if first_stage:
+                    pipeline_contact = PipelineContact(
+                        pipeline_id=pipeline.id,
+                        contact_id=person.id,
+                        current_stage_id=first_stage.id
+                    )
+                    db.session.add(pipeline_contact)
         
-        # Add churches to the church pipeline
-        for church in churches_to_add:
-            pipeline_contact = PipelineContact(
-                pipeline_id=church_main_pipeline.id,
-                contact_id=church.id,
-                current_stage_id=church_first_stage.id
+        # Migrate churches
+        for church in churches_to_migrate:
+            # Find the main pipeline for this church's office
+            pipeline = next(
+                (p for p in church_pipelines if p.office_id == church.office_id),
+                None
             )
-            db.session.add(pipeline_contact)
             
-            # Create initial stage history
-            history = PipelineStageHistory(
-                pipeline_contact=pipeline_contact,
-                to_stage_id=church_first_stage.id,
-                notes="Initial stage (automatic migration)"
-            )
-            db.session.add(history)
+            if pipeline:
+                # Get the first stage
+                first_stage = PipelineStage.query.filter_by(
+                    pipeline_id=pipeline.id
+                ).order_by(PipelineStage.order).first()
+                
+                if first_stage:
+                    pipeline_contact = PipelineContact(
+                        pipeline_id=pipeline.id,
+                        contact_id=church.id,
+                        current_stage_id=first_stage.id
+                    )
+                    db.session.add(pipeline_contact)
         
         db.session.commit()
+        current_app.logger.info(f"Migrated {len(people_to_migrate)} people and {len(churches_to_migrate)} churches to main pipelines.")
         
-        current_app.logger.info(f"Migrated {len(people_to_add)} people and {len(churches_to_add)} churches to main pipelines.")
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error migrating contacts to main pipelines: {str(e)}")
-        # Don't re-raise the exception to prevent app startup failure
+        raise
 
 def migrate_people(people_pipeline, people_stages):
     """Migrate all people to the main people pipeline."""
@@ -199,4 +194,4 @@ if __name__ == "__main__":
     from app import create_app
     app = create_app()
     with app.app_context():
-        migrate_contacts_to_main_pipelines() 
+        migrate_contacts_to_main_pipeline() 

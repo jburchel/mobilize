@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Add to Pipeline - Mobilize CRM{% endblock %}
+
+{% block page_title %}Add {{ contact.first_name }} {{ contact.last_name }} to Pipeline{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Select Pipeline</h5>
+                </div>
+                <div class="card-body">
+                    {% if pipelines %}
+                        <p>Select a pipeline to add this contact to:</p>
+                        <div class="list-group">
+                            {% for pipeline in pipelines %}
+                                <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}?contact_id={{ contact.id }}&contact_type={{ contact_type }}" 
+                                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-1">{{ pipeline.name }}</h5>
+                                        <p class="mb-1 text-muted">{{ pipeline.description }}</p>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">Pipeline</span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <p>No suitable pipelines found for this contact type.</p>
+                            <a href="{{ url_for('pipeline.create') }}" class="btn btn-primary">Create a New Pipeline</a>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    {% if contact_type == 'person' %}
+                    <a href="{{ url_for('people.show', id=contact.id) }}" class="btn btn-secondary">Cancel</a>
+                    {% elif contact_type == 'church' %}
+                    <a href="{{ url_for('churches.show', id=contact.id) }}" class="btn btn-secondary">Cancel</a>
+                    {% else %}
+                    <a href="{{ url_for('pipeline.index') }}" class="btn btn-secondary">Cancel</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Reminder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .content {
+            padding: 20px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+        }
+        h1 {
+            color: #0d6efd;
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #0d6efd;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .alert {
+            padding: 15px;
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Pipeline Reminder</h1>
+        </div>
+        <div class="content">
+            <p>Hello {{ user.first_name }},</p>
+            
+            <p>This is an automated reminder about contacts that have been in the <strong>"{{ stage.name }}"</strong> stage of the <strong>"{{ pipeline.name }}"</strong> pipeline for <strong>{{ days }} days</strong>.</p>
+            
+            <div class="alert">
+                <p>These contacts may need your attention to move forward in the pipeline.</p>
+            </div>
+            
+            <h3>Contacts:</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Contact</th>
+                        <th>Days in Stage</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contact in contacts %}
+                    <tr>
+                        <td>{{ contact.name }}</td>
+                        <td>{{ contact.days_in_stage }}</td>
+                        <td>
+                            <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id, _external=True) }}" class="btn">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <p>You can view all contacts in this pipeline by clicking the button below:</p>
+            
+            <p style="text-align: center;">
+                <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id, _external=True) }}" class="btn">View Pipeline</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>This is an automated email from the Mobilize CRM system. Please do not reply to this email.</p>
+            <p>{{ user.office.name if user.office else 'Mobilize CRM' }}</p>
+        </div>
+    </div>
+</body>
+</html> 

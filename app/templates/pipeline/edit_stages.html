@@ -251,6 +251,54 @@
                     <input type="checkbox" class="form-check-input stage-active-input" id="editStageActive">
                     <label class="form-check-label" for="editStageActive">Active</label>
                 </div>
+                
+                <div class="accordion" id="automationAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#automationSettings" aria-expanded="true" aria-controls="automationSettings">
+                                Automation Settings
+                            </button>
+                        </h2>
+                        <div id="automationSettings" class="accordion-collapse collapse show" data-bs-parent="#automationAccordion">
+                            <div class="accordion-body">
+                                <div class="mb-3">
+                                    <label for="editAutoMoveDays" class="form-label">Auto-move after days</label>
+                                    <input type="number" class="form-control" id="editAutoMoveDays" min="0">
+                                    <div class="form-text">Automatically move contacts to the next stage after this many days. Leave empty to disable.</div>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="editAutoReminder">
+                                    <label class="form-check-label" for="editAutoReminder">Send reminders for contacts in this stage</label>
+                                    <div class="form-text">Sends daily reminders when contacts have been in this stage for too long.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="editAutoTaskTemplate" class="form-label">Auto-create task template</label>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control" id="editAutoTaskTitle" placeholder="Task title">
+                                    </div>
+                                    <textarea class="form-control mb-2" id="editAutoTaskDescription" placeholder="Task description" rows="2"></textarea>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2">
+                                            <label for="editAutoTaskDays" class="form-label">Days to complete</label>
+                                            <input type="number" class="form-control" id="editAutoTaskDays" min="1" placeholder="3">
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <label for="editAutoTaskPriority" class="form-label">Priority</label>
+                                            <select class="form-select" id="editAutoTaskPriority">
+                                                <option value="LOW">Low</option>
+                                                <option value="MEDIUM">Medium</option>
+                                                <option value="HIGH">High</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-text">Automatically creates tasks when contacts enter this stage.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -374,12 +422,30 @@
             var stageDescription = $('#editStageDescription').val();
             var stageActive = $('#editStageActive').prop('checked');
             
+            // Get automation settings
+            var autoMoveDays = $('#editAutoMoveDays').val();
+            var autoReminder = $('#editAutoReminder').prop('checked');
+            
+            // Build auto task template JSON
+            var autoTaskTemplate = null;
+            if ($('#editAutoTaskTitle').val()) {
+                autoTaskTemplate = JSON.stringify({
+                    title: $('#editAutoTaskTitle').val(),
+                    description: $('#editAutoTaskDescription').val(),
+                    days_to_complete: parseInt($('#editAutoTaskDays').val()) || 1,
+                    priority: $('#editAutoTaskPriority').val() || 'MEDIUM'
+                });
+            }
+            
             // Find the stage item and update its data
             var stageItem = $('.stage-item[data-stage-id="' + stageId + '"]');
             stageItem.find('.stage-name').text(stageName);
             stageItem.find('.stage-color-preview').css('background-color', stageColor);
             stageItem.attr('data-color', stageColor);
             stageItem.attr('data-description', stageDescription || '');
+            stageItem.attr('data-auto-move-days', autoMoveDays || '');
+            stageItem.attr('data-auto-reminder', autoReminder ? 'true' : 'false');
+            stageItem.attr('data-auto-task-template', autoTaskTemplate || '');
             
             // Close the modal
             $('#editStageModal').modal('hide');
@@ -403,13 +469,19 @@
                 var stageColor = stageItem.attr('data-color') || '#3498db';
                 var stageOrder = index + 1;
                 var stageDescription = stageItem.attr('data-description') || '';
+                var autoMoveDays = stageItem.attr('data-auto-move-days') || '';
+                var autoReminder = stageItem.attr('data-auto-reminder') === 'true';
+                var autoTaskTemplate = stageItem.attr('data-auto-task-template') || '';
                 
                 var stageData = {
                     id: stageId,
                     name: stageName,
                     color: stageColor,
                     order: stageOrder,
-                    description: stageDescription
+                    description: stageDescription,
+                    auto_move_days: autoMoveDays ? parseInt(autoMoveDays) : null,
+                    auto_reminder: autoReminder,
+                    auto_task_template: autoTaskTemplate
                 };
                 
                 stagesData.push(stageData);
@@ -483,12 +555,41 @@
                 var stageName = stageItem.find('.stage-name').text().trim();
                 var stageColor = stageItem.attr('data-color') || '#3498db';
                 var stageDescription = stageItem.attr('data-description') || '';
+                var autoMoveDays = stageItem.attr('data-auto-move-days') || '';
+                var autoReminder = stageItem.attr('data-auto-reminder') === 'true';
+                var autoTaskTemplate = stageItem.attr('data-auto-task-template') || '';
                 
                 // Populate edit modal with stage data
                 $('#editStageName').val(stageName);
                 $('#editStageColor').val(stageColor);
                 $('#editColorPreview').css('background-color', stageColor);
                 $('#editStageDescription').val(stageDescription);
+                
+                // Populate automation settings
+                $('#editAutoMoveDays').val(autoMoveDays);
+                $('#editAutoReminder').prop('checked', autoReminder);
+                
+                // Parse and populate task template if it exists
+                if (autoTaskTemplate) {
+                    try {
+                        var taskTemplate = JSON.parse(autoTaskTemplate);
+                        $('#editAutoTaskTitle').val(taskTemplate.title || '');
+                        $('#editAutoTaskDescription').val(taskTemplate.description || '');
+                        $('#editAutoTaskDays').val(taskTemplate.days_to_complete || '1');
+                        $('#editAutoTaskPriority').val(taskTemplate.priority || 'MEDIUM');
+                    } catch (e) {
+                        console.error('Failed to parse task template:', e);
+                        $('#editAutoTaskTitle').val('');
+                        $('#editAutoTaskDescription').val('');
+                        $('#editAutoTaskDays').val('1');
+                        $('#editAutoTaskPriority').val('MEDIUM');
+                    }
+                } else {
+                    $('#editAutoTaskTitle').val('');
+                    $('#editAutoTaskDescription').val('');
+                    $('#editAutoTaskDays').val('1');
+                    $('#editAutoTaskPriority').val('MEDIUM');
+                }
                 
                 // Show the modal
                 $('#editStageModal').modal('show');

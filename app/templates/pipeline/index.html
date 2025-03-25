@@ -280,7 +280,7 @@
             
             // Update the modal
             $('#deletePipelineName').text(pipelineName);
-            $('#deletePipelineForm').attr('action', "{{ url_for('pipeline.delete', pipeline_id=0) }}".replace('0', pipelineId));
+            $('#deletePipelineForm').attr('action', `/pipeline/${pipelineId}/delete`);
             
             // Show the modal
             $('#deletePipelineModal').modal('show');

@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid" id="report-dashboard">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Reports Dashboard</h1>
+        <a href="{{ url_for('reports.custom_report') }}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
+            <i class="fas fa-file-alt fa-sm text-white-50 mr-1"></i> Create Custom Report
+        </a>
+    </div>
+
+    <!-- Widgets Row -->
+    <div class="row">
+        <!-- Contacts Widget -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Contacts</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-contacts">Loading...</div>
+                            <div class="text-xs text-muted mt-2">New (30d): <span id="new-contacts">-</span></div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-address-book fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 py-2">
+                    <button class="btn btn-sm btn-outline-primary export-btn" data-type="contacts">
+                        <i class="fas fa-download fa-sm"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Churches Widget -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Churches</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-churches">Loading...</div>
+                            <div class="text-xs text-muted mt-2">New (30d): <span id="new-churches">-</span></div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-church fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 py-2">
+                    <button class="btn btn-sm btn-outline-success export-btn" data-type="churches">
+                        <i class="fas fa-download fa-sm"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasks Widget -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Tasks</div>
+                            <div class="row no-gutters align-items-center">
+                                <div class="col-auto">
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800" id="total-tasks">Loading...</div>
+                                </div>
+                                <div class="col">
+                                    <div class="progress progress-sm mr-2">
+                                        <div class="progress-bar bg-info" role="progressbar" id="task-progress"
+                                            style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-muted mt-2">
+                                Completed: <span id="completed-tasks">-</span> | 
+                                Overdue: <span id="overdue-tasks">-</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 py-2">
+                    <button class="btn btn-sm btn-outline-info export-btn" data-type="tasks">
+                        <i class="fas fa-download fa-sm"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Communications Widget -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Communications</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-communications">Loading...</div>
+                            <div class="text-xs text-muted mt-2">
+                                Emails: <span id="emails-count">-</span> | 
+                                Calls: <span id="calls-count">-</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-comments fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 py-2">
+                    <button class="btn btn-sm btn-outline-warning export-btn" data-type="communications">
+                        <i class="fas fa-download fa-sm"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1" role="dialog" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportModalLabel">Export Data</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="exportForm" method="post">
+                    <div class="modal-body">
+                        <input type="hidden" id="entity-type" name="entity_type" value="">
+                        
+                        <div class="form-group">
+                            <label for="format">Export Format</label>
+                            <select class="form-control" id="format" name="format">
+                                <option value="csv">CSV</option>
+                                <option value="excel">Excel</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Export</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Reports Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Reports</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="recentReportsTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Report Name</th>
+                                    <th>Type</th>
+                                    <th>Created</th>
+                                    <th>Created By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">No recent reports found</td>
+                                </tr>
+                                <!-- Recent reports will be populated here via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Load widgets data
+        loadWidgetData();
+        
+        // Set up export buttons
+        $('.export-btn').click(function() {
+            const entityType = $(this).data('type');
+            $('#entity-type').val(entityType);
+            $('#exportModalLabel').text('Export ' + entityType.charAt(0).toUpperCase() + entityType.slice(1));
+            $('#exportModal').modal('show');
+        });
+        
+        // Set up export form submission
+        $('#exportForm').submit(function(e) {
+            e.preventDefault();
+            const entityType = $('#entity-type').val();
+            const format = $('#format').val();
+            
+            // Create a form to submit the export request
+            const form = $('<form></form>').attr({
+                method: 'post',
+                action: '/reports/export/' + entityType
+            });
+            
+            // Add the format field
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'format',
+                value: format
+            }).appendTo(form);
+            
+            // Submit the form
+            form.appendTo('body').submit().remove();
+            
+            // Close the modal
+            $('#exportModal').modal('hide');
+        });
+    });
+    
+    function loadWidgetData() {
+        // Load contacts widget data
+        $.get('/reports/widgets/contacts', function(data) {
+            $('#total-contacts').text(data.total_contacts);
+            $('#new-contacts').text(data.new_contacts_30d);
+        });
+        
+        // Load churches widget data
+        $.get('/reports/widgets/churches', function(data) {
+            $('#total-churches').text(data.total_churches);
+            $('#new-churches').text(data.new_churches_30d);
+        });
+        
+        // Load tasks widget data
+        $.get('/reports/widgets/tasks', function(data) {
+            $('#total-tasks').text(data.total_tasks);
+            $('#completed-tasks').text(data.completed_tasks);
+            $('#overdue-tasks').text(data.overdue_tasks);
+            
+            // Update progress bar
+            const progressPercent = data.completion_rate;
+            $('#task-progress').css('width', progressPercent + '%').attr('aria-valuenow', progressPercent);
+        });
+        
+        // Load communications widget data
+        $.get('/reports/widgets/communications', function(data) {
+            $('#total-communications').text(data.total_communications);
+            $('#emails-count').text(data.emails);
+            $('#calls-count').text(data.calls);
+        });
+    }
+</script>
+{% endblock %} 

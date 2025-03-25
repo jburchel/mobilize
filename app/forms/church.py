@@ -39,7 +39,7 @@ class ChurchForm(FlaskForm):
     weekly_attendance = IntegerField('Weekly Attendance', validators=[Optional(), NumberRange(min=0)])
     
     # Pipeline and Tracking
-    church_pipeline = SelectField('Pipeline Stage', 
+    church_pipeline = SelectField('Main Pipeline Stage', 
                                 choices=[('', 'Select Stage')] + CHURCH_PIPELINE_CHOICES, 
                                 validators=[Optional()])
     priority = SelectField('Priority', 

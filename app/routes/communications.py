@@ -154,7 +154,7 @@ def add():
         flash('Communication logged successfully!', 'success')
         
         # Redirect back to the person view page
-        return redirect(url_for('people.view', id=person_id))
+        return redirect(url_for('people.show', id=person_id))
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error logging communication: {str(e)}")

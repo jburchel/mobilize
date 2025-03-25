@@ -250,20 +250,54 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    {{ form.pipeline_stage.label(class="form-label") }}
-                                    {{ form.pipeline_stage(class="form-select" + (" is-invalid" if form.pipeline_stage.errors else "")) }}
-                                    {% if form.pipeline_stage.errors %}
-                                        <div class="invalid-feedback">{{ form.pipeline_stage.errors[0] }}</div>
-                                    {% endif %}
-                                </div>
-
-                                <div class="mb-3">
                                     {{ form.priority.label(class="form-label") }}
                                     {{ form.priority(class="form-select" + (" is-invalid" if form.priority.errors else "")) }}
                                     {% if form.priority.errors %}
                                         <div class="invalid-feedback">{{ form.priority.errors[0] }}</div>
                                     {% endif %}
                                 </div>
+
+                                <!-- Secondary Pipelines Section -->
+                                {% if person %}
+                                <div class="mb-3">
+                                    <label class="form-label">Secondary Pipelines</label>
+                                    <div class="card">
+                                        <div class="card-body p-3">
+                                            {% if person.pipeline_entries and person.pipeline_entries|length > 0 %}
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Pipeline</th>
+                                                            <th>Current Stage</th>
+                                                            <th>Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for entry in person.pipeline_entries %}
+                                                            {% if not entry.pipeline.is_main_pipeline %}
+                                                            <tr>
+                                                                <td>{{ entry.pipeline.name }}</td>
+                                                                <td>{{ entry.current_stage.name }}</td>
+                                                                <td>
+                                                                    <a href="{{ url_for('pipeline.view_contact', pipeline_id=entry.pipeline_id, contact_id=person.id) }}" class="btn btn-sm btn-primary">
+                                                                        <i class="bi bi-eye"></i>
+                                                                    </a>
+                                                                </td>
+                                                            </tr>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            {% else %}
+                                                <p class="text-muted mb-0">Not in any secondary pipelines</p>
+                                            {% endif %}
+                                            <a href="{{ url_for('pipeline.add_contact_page', contact_id=person.id, contact_type='person') }}" class="btn btn-sm btn-primary mt-2">
+                                                <i class="bi bi-plus-lg"></i> Add to Pipeline
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
 
                             <div class="col-md-6">
@@ -353,7 +387,7 @@
                                 <button type="submit" class="btn btn-primary">
                                     {{ 'Save Changes' if person else 'Add Person' }}
                                 </button>
-                                <a href="{{ url_for('people.list') }}" class="btn btn-secondary">Cancel</a>
+                                <a href="{{ url_for('people.index') }}" class="btn btn-secondary">Cancel</a>
                             </div>
                         </div>
                     </form>

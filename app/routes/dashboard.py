@@ -4,6 +4,7 @@ from app.models import Person, Church, Task, Communication
 from app.utils.decorators import office_required
 from datetime import datetime, timedelta
 from flask import current_app
+from sqlalchemy import or_
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -24,11 +25,17 @@ def index():
     ).order_by(Task.due_date.asc()).limit(5).all()
     
     # Get recent communications
-    recent_communications = Communication.query.filter_by(
-        office_id=office_id
-    ).order_by(
-        Communication.created_at.desc()
-    ).limit(5).all()
+    # For super admins, show communications from all offices
+    if current_user.is_super_admin():
+        recent_communications = Communication.query.order_by(
+            Communication.created_at.desc()
+        ).limit(5).all()
+    else:
+        recent_communications = Communication.query.filter_by(
+            office_id=office_id
+        ).order_by(
+            Communication.created_at.desc()
+        ).limit(5).all()
     
     # Prepare recent activities list
     recent_activities = []
@@ -59,11 +66,18 @@ def index():
         recent_activities.append(activity)
     
     # Add completed tasks to activities (optional)
-    recent_completed_tasks = Task.query.filter(
-        Task.office_id == office_id,
-        Task.status == 'completed',
-        Task.completed_date.isnot(None)
-    ).order_by(Task.completed_date.desc()).limit(5).all()
+    # For super admins, show tasks from all offices
+    if current_user.is_super_admin():
+        recent_completed_tasks = Task.query.filter(
+            Task.status == 'completed',
+            Task.completed_date.isnot(None)
+        ).order_by(Task.completed_date.desc()).limit(5).all()
+    else:
+        recent_completed_tasks = Task.query.filter(
+            Task.office_id == office_id,
+            Task.status == 'completed',
+            Task.completed_date.isnot(None)
+        ).order_by(Task.completed_date.desc()).limit(5).all()
     
     for task in recent_completed_tasks:
         activity = {
@@ -99,13 +113,21 @@ def get_dashboard_stats():
     
     # Count people and churches
     try:
-        people_count = Person.query.filter_by(office_id=office_id).count()
+        # For super admins, count all people across all offices
+        if current_user.is_super_admin():
+            people_count = Person.query.count()
+        else:
+            people_count = Person.query.filter_by(office_id=office_id).count()
     except Exception as e:
         current_app.logger.error(f"Error counting people: {str(e)}")
         people_count = 0
         
     try:
-        church_count = Church.query.filter_by(office_id=office_id).count()
+        # For super admins, count all churches across all offices
+        if current_user.is_super_admin():
+            church_count = Church.query.count()
+        else:
+            church_count = Church.query.filter_by(office_id=office_id).count()
     except Exception as e:
         current_app.logger.error(f"Error counting churches: {str(e)}")
         church_count = 0
@@ -115,13 +137,11 @@ def get_dashboard_stats():
         pending_tasks = Task.query.filter_by(
             assigned_to=current_user.id,
             status='pending',
-            office_id=office_id
         ).count()
         overdue_tasks = Task.query.filter(
             Task.assigned_to == current_user.id,
             Task.status == 'pending',
             Task.due_date < datetime.now().date(),
-            Task.office_id == office_id
         ).count()
     except Exception as e:
         current_app.logger.error(f"Error counting tasks: {str(e)}")
@@ -130,11 +150,17 @@ def get_dashboard_stats():
         
     # Count communications
     try:
-        recent_communications = Communication.query.filter_by(
-            office_id=office_id
-        ).filter(
-            Communication.created_at >= (datetime.now() - timedelta(days=30))
-        ).count()
+        # For super admins, count communications from all offices
+        if current_user.is_super_admin():
+            recent_communications = Communication.query.filter(
+                Communication.created_at >= (datetime.now() - timedelta(days=30))
+            ).count()
+        else:
+            recent_communications = Communication.query.filter_by(
+                office_id=office_id
+            ).filter(
+                Communication.created_at >= (datetime.now() - timedelta(days=30))
+            ).count()
     except Exception as e:
         current_app.logger.error(f"Error counting communications: {str(e)}")
         recent_communications = 0

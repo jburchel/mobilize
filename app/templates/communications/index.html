@@ -95,11 +95,11 @@
                                         </td>
                                         <td>
                                             {% if comm.person_id %}
-                                                <a href="{{ url_for('people.view', id=comm.person_id) }}">
+                                                <a href="{{ url_for('people.show', id=comm.person_id) }}">
                                                     {{ comm.person.first_name + ' ' + comm.person.last_name }}
                                                 </a>
                                             {% elif comm.church_id %}
-                                                <a href="{{ url_for('churches.view', id=comm.church_id) }}">
+                                                <a href="{{ url_for('churches.show', id=comm.church_id) }}">
                                                     {{ comm.church.name }}
                                                 </a>
                                             {% else %}
