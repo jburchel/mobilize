@@ -14,8 +14,8 @@ This document outlines the specific tasks required to implement the design plan 
   - [x] Update legacy variables to map to new tokens
   - [x] Apply tokens to basic typography
   - [x] Apply tokens to buttons
-  - [ ] Apply tokens to cards and containers
-  - [ ] Apply tokens to forms
+  - [x] Apply tokens to cards and containers
+  - [x] Apply tokens to forms
   - [ ] Apply tokens to navigation
 
 - [ ] **Set up build process improvements**

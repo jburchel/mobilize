@@ -4,7 +4,7 @@
 
 /* Form Components Styles */
 .form-control.is-invalid {
-    border-color: #dc3545;
+    border-color: var(--color-danger, #dc3545);
     padding-right: calc(1.5em + 0.75rem);
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
     background-repeat: no-repeat;
@@ -13,7 +13,7 @@
 }
 
 .form-control.is-valid {
-    border-color: #198754;
+    border-color: var(--color-success, #198754);
     padding-right: calc(1.5em + 0.75rem);
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
     background-repeat: no-repeat;
@@ -22,7 +22,7 @@
 }
 
 .was-validated .form-control:invalid {
-    border-color: #dc3545;
+    border-color: var(--color-danger, #dc3545);
     padding-right: calc(1.5em + 0.75rem);
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
     background-repeat: no-repeat;
@@ -31,7 +31,7 @@
 }
 
 .was-validated .form-control:valid {
-    border-color: #198754;
+    border-color: var(--color-success, #198754);
     padding-right: calc(1.5em + 0.75rem);
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
     background-repeat: no-repeat;
@@ -42,9 +42,9 @@
 .invalid-feedback {
     display: none;
     width: 100%;
-    margin-top: 0.25rem;
-    font-size: 0.875em;
-    color: #dc3545;
+    margin-top: var(--spacing-2xs, 0.25rem);
+    font-size: var(--font-size-sm, 0.875em);
+    color: var(--color-danger, #dc3545);
 }
 
 .was-validated .form-control:invalid ~ .invalid-feedback,
@@ -55,27 +55,40 @@
 /* Tag Input */
 .tag-input {
     position: relative;
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-md, 1rem);
 }
 
 .tags-container {
-    margin-top: 0.5rem;
+    margin-top: var(--spacing-xs, 0.5rem);
     display: flex;
     flex-wrap: wrap;
+    gap: var(--spacing-2xs, 0.25rem);
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--spacing-2xs, 0.25rem) var(--spacing-xs, 0.5rem);
+    background-color: var(--color-gray-200, #e9ecef);
+    border-radius: var(--border-radius-sm, 0.25rem);
+    margin-right: var(--spacing-2xs, 0.25rem);
+    margin-bottom: var(--spacing-2xs, 0.25rem);
+    font-size: var(--font-size-sm, 0.875rem);
 }
 
 .tag-remove {
     cursor: pointer;
-    font-weight: bold;
+    font-weight: var(--font-weight-bold, 700);
+    margin-left: var(--spacing-2xs, 0.25rem);
 }
 
 /* Rich Text Editor */
 .rich-text-toolbar {
-    border: 1px solid #ddd;
+    border: var(--border-width-thin, 1px) solid var(--color-border, #ddd);
     border-bottom: none;
-    border-radius: 0.25rem 0.25rem 0 0;
-    padding: 0.5rem;
-    background-color: #f8f9fa;
+    border-radius: var(--border-radius-sm, 0.25rem) var(--border-radius-sm, 0.25rem) 0 0;
+    padding: var(--spacing-xs, 0.5rem);
+    background-color: var(--color-gray-100, #f8f9fa);
 }
 
 .rich-text-content {
@@ -85,8 +98,8 @@
 }
 
 .rich-text-content:focus {
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(var(--color-primary-blue, 24, 57, 99), 0.25);
+    border-color: var(--color-primary-blue-light, #2A5183);
     outline: 0;
 }
 
@@ -100,30 +113,31 @@
     position: absolute;
     top: 100%;
     left: 0;
-    z-index: 1000;
+    z-index: var(--z-index-dropdown, 1000);
     display: none;
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
-    padding: 0.5rem 0;
-    margin: 0.125rem 0 0;
-    font-size: 1rem;
-    color: #212529;
+    padding: var(--spacing-xs, 0.5rem) 0;
+    margin: var(--spacing-2xs, 0.125rem) 0 0;
+    font-size: var(--font-size-md, 1rem);
+    color: var(--color-text, #212529);
     text-align: left;
     list-style: none;
-    background-color: #fff;
+    background-color: var(--color-surface, #fff);
     background-clip: padding-box;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 0.25rem;
+    border: var(--border-width-thin, 1px) solid var(--color-border, rgba(0, 0, 0, 0.15));
+    border-radius: var(--border-radius-sm, 0.25rem);
+    box-shadow: var(--shadow-sm, 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075));
 }
 
 .dropdown-item {
     display: block;
     width: 100%;
-    padding: 0.25rem 1rem;
+    padding: var(--spacing-2xs, 0.25rem) var(--spacing-sm, 1rem);
     clear: both;
-    font-weight: 400;
-    color: #212529;
+    font-weight: var(--font-weight-normal, 400);
+    color: var(--color-text, #212529);
     text-align: inherit;
     white-space: nowrap;
     background-color: transparent;
@@ -133,15 +147,15 @@
 
 .dropdown-item:hover,
 .dropdown-item:focus {
-    color: #1e2125;
+    color: var(--color-text, #1e2125);
     text-decoration: none;
-    background-color: #f8f9fa;
+    background-color: var(--color-gray-100, #f8f9fa);
 }
 
 .dropdown-item.active {
-    color: #fff;
+    color: var(--color-surface, #fff);
     text-decoration: none;
-    background-color: #0d6efd;
+    background-color: var(--color-primary-blue, #0d6efd);
 }
 
 /* Data Table Component Styles */
