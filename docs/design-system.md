@@ -1,126 +1,127 @@
 # Mobilize CRM Design System
 
-This document provides an overview of the Mobilize CRM design system, its components, and how to use them in development.
+This document provides an overview of the Mobilize CRM design system, its components, and usage guidelines.
 
-## Overview
+## Introduction
 
-The Mobilize CRM design system consists of:
-
-1. **Design Tokens**: Foundational variables for colors, typography, spacing, etc.
-2. **Component Library**: Reusable UI components with consistent styling
-3. **Pattern Guidelines**: Common UI patterns and their implementation
-4. **Documentation**: Guidelines for usage and implementation
+The Mobilize CRM design system is a collection of reusable components, guidelines, and design tokens that ensure consistency and efficiency across the application. It serves as a single source of truth for designers and developers.
 
 ## Design Tokens
 
-All design tokens are defined in `app/static/css/design-tokens.css`. These CSS variables should be used throughout the application for consistent styling.
+Design tokens are the visual design atoms of the design system. They define:
 
-### How to Use Design Tokens
+- Colors
+- Typography
+- Spacing
+- Border radii
+- Shadows
+- Transitions
+
+These tokens are implemented as CSS custom properties (variables) in `app/static/css/design-tokens.css`.
+
+## Core Components
+
+The design system includes the following core components:
+
+### Buttons
+
+Buttons allow users to take actions and make choices. Different styles of buttons represent different kinds of actions.
+
+- Primary buttons: Main actions
+- Secondary buttons: Alternative actions
+- Outline buttons: Less prominent actions
+- Button sizes: Small, Medium, Large
+
+See `stories/buttons.stories.js` for examples and usage guidelines.
+
+### Forms
+
+Forms allow users to enter data. The design system includes various form controls:
+
+- Text inputs
+- Select dropdowns
+- Checkboxes
+- Radio buttons
+- Textareas
+- Input groups
+- Form validation states
+
+See `stories/forms.stories.js` for examples and usage guidelines.
+
+### Cards
+
+Cards are containers that group related content and actions. They provide a flexible way to present information.
+
+- Basic cards
+- Cards with headers/footers
+- Stat cards
+- Cards with colored borders
+- Dashboard cards
+
+See `stories/cards.stories.js` for examples and usage guidelines.
+
+### Containers
+
+Containers help create consistent layouts across the application:
+
+- Fixed-width containers
+- Fluid containers
+- Header containers
+- Table containers
+
+## Usage Guidelines
+
+### General Principles
+
+1. **Consistency**: Follow established patterns and use existing components whenever possible.
+2. **Accessibility**: Ensure all components are accessible to users with disabilities.
+3. **Simplicity**: Keep interfaces simple and focused on the task at hand.
+4. **Hierarchy**: Use visual hierarchy to guide users through interfaces.
+
+### Using Design Tokens
+
+Always use design tokens instead of hard-coded values:
 
 ```css
-/* Example of using design tokens */
-.my-component {
+/* DO */
+.element {
   color: var(--color-primary-blue);
-  font-size: var(--font-size-md);
-  padding: var(--spacing-md);
-  border-radius: var(--border-radius-sm);
-  box-shadow: var(--shadow-md);
-  transition: all var(--transition-base) var(--transition-timing-ease);
+  margin-bottom: var(--spacing-md);
+}
+
+/* DON'T */
+.element {
+  color: #183963;
+  margin-bottom: 16px;
 }
 ```
 
 ## Component Documentation
 
-### Component Structure
+For detailed documentation about each component, visual examples, and code snippets, run the Storybook documentation:
 
-Each component should:
-
-1. Use design tokens for all styling values
-2. Be responsive by default
-3. Include necessary ARIA attributes for accessibility
-4. Support keyboard navigation where applicable
-5. Have clear documentation on usage
-
-### Component Template
-
-```html
-<!-- Example component template -->
-<div class="card-component" aria-labelledby="card-title">
-  <div class="card-header">
-    <h3 id="card-title" class="card-title">Card Title</h3>
-  </div>
-  <div class="card-body">
-    <p class="card-text">Card content goes here</p>
-  </div>
-  <div class="card-footer">
-    <button class="btn btn-primary">Action</button>
-  </div>
-</div>
+```
+npm run storybook
 ```
 
-## Setting Up Storybook (Development Guide)
+This will launch a local server at http://localhost:6006 with interactive documentation.
 
-We use Storybook for component documentation and development. To set up Storybook:
+## Build a Static Version
 
-1. Install dependencies:
-   ```bash
-   npm install -g @storybook/cli
-   npx sb init
-   ```
+To build a static version of the documentation site:
 
-2. Start Storybook:
-   ```bash
-   npm run storybook
-   ```
-
-3. Creating a component story:
-   ```js
-   // Example: Button.stories.js
-   export default {
-     title: 'Components/Button',
-     component: Button,
-   };
-   
-   export const Primary = () => '<button class="btn btn-primary">Primary Button</button>';
-   export const Secondary = () => '<button class="btn btn-secondary">Secondary Button</button>';
-   ```
-
-## Accessibility Guidelines
-
-All components must:
-
-1. Have appropriate color contrast (minimum 4.5:1 for text)
-2. Be navigable via keyboard
-3. Include appropriate ARIA roles and attributes
-4. Support screen readers
-5. Provide text alternatives for non-text content
-
-## Performance Considerations
-
-1. Use CSS variables for runtime theme changes
-2. Minimize DOM nesting
-3. Use CSS transitions instead of JavaScript animations where possible
-4. Lazy load components not visible in the initial viewport
-5. Optimize images using the provided script
-
-## Build Process
-
-Our build process includes:
-
-1. CSS optimization with PostCSS
-2. Image optimization with Sharp
-3. Component documentation with Storybook
-
-To build optimized assets:
-
-```bash
-npm run build
+```
+npm run storybook:build
 ```
 
-## Contributing to the Design System
+This will generate static files in the `docs/storybook` directory that can be deployed to any web server.
 
-1. All new components should be built using design tokens
-2. Document components in Storybook
-3. Test components for accessibility
-4. Ensure responsive behavior on all devices
-5. Get design review before implementation 
+## Contributing
+
+When adding new components or modifying existing ones:
+
+1. Update the design tokens if needed
+2. Create or update the component's story file
+3. Include usage guidelines and accessibility considerations
+4. Document any variants or props
+5. Ensure the component is responsive 

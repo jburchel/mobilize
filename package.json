@@ -3,16 +3,17 @@
   "version": "1.0.0",
   "description": "Mobilize CRM - Customer Relationship Management for Mobilization",
   "scripts": {
-    "css:dev": "postcss app/static/css/*.css --dir app/static/css/dist/ --config postcss.config.js --watch",
-    "css:build": "postcss app/static/css/*.css --dir app/static/css/dist/ --config postcss.config.js --no-map",
+    "css:dev": "cross-env NODE_ENV=development postcss app/static/css/*.css --dir app/static/css/dist/ --config postcss.config.js --watch",
+    "css:build": "cross-env NODE_ENV=production postcss app/static/css/*.css --dir app/static/css/dist/ --config postcss.config.js --no-map",
     "images:optimize": "node scripts/optimize-images.js",
     "build": "npm run css:build && npm run images:optimize",
     "start": "npm run css:dev",
-    "storybook": "start-storybook -p 6006",
-    "storybook:build": "build-storybook -o docs/storybook"
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build -o docs/storybook"
   },
   "devDependencies": {
     "@babel/core": "^7.22.5",
+    "@fullhuman/postcss-purgecss": "^5.0.0",
     "@storybook/addon-a11y": "^7.0.23",
     "@storybook/addon-actions": "^7.0.23",
     "@storybook/addon-essentials": "^7.0.23",
@@ -20,13 +21,20 @@
     "@storybook/html": "^7.0.23",
     "autoprefixer": "^10.4.14",
     "babel-loader": "^9.1.2",
+    "cross-env": "^7.0.3",
     "cssnano": "^6.0.1",
+    "imagemin": "^8.0.1",
+    "imagemin-mozjpeg": "^10.0.0",
+    "imagemin-pngquant": "^9.0.2",
+    "imagemin-svgo": "^10.0.1",
+    "imagemin-webp": "^8.0.0",
     "postcss": "^8.4.24",
     "postcss-cli": "^10.1.0",
+    "postcss-critical-split": "^2.5.3",
     "postcss-import": "^15.1.0",
     "postcss-nested": "^6.0.1",
     "postcss-preset-env": "^8.4.2",
     "purgecss": "^5.0.0",
     "sharp": "^0.32.1"
   }
-} 
+}
