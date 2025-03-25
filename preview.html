@@ -88,6 +88,7 @@
       <li><a href="#cards">Cards</a></li>
       <li><a href="#tables">Tables</a></li>
       <li><a href="#performance">Performance</a></li>
+      <li><a href="#ui-refinement">UI Refinement</a></li>
     </ul>
   </div>
 
@@ -677,11 +678,112 @@
         </div>
       </div>
     </section>
+    
+    <!-- UI Refinement Section -->
+    <section id="ui-refinement" class="section">
+      <h2 class="section-title">UI Refinement</h2>
+      
+      <h3>Enhanced Typography</h3>
+      <div style="max-width: 800px;">
+        <h1>Heading Level 1 with Gradient</h1>
+        <h2>Heading Level 2 with Underline</h2>
+        <h3>Heading Level 3 in Primary Color</h3>
+        <h4>Heading Level 4 Semi-Bold</h4>
+        <h5>HEADING LEVEL 5 UPPERCASE</h5>
+        <h6>HEADING LEVEL 6 SUBTLE</h6>
+        
+        <p class="lead">This is a lead paragraph that stands out with larger text. It's useful for introducing sections or highlighting important content within the page.</p>
+        
+        <p>This is a regular paragraph with <strong>strong emphasis</strong> and <em>italicized text</em>. The typography system uses the Inter font family for improved readability across devices and screen sizes.</p>
+        
+        <p>Here's a paragraph with different text styles: <span class="text-primary">primary color</span>, <span class="text-secondary">secondary color</span>, <span class="text-success">success color</span>, <span class="text-danger">danger color</span>, <span class="text-muted">muted text</span>, and <span class="text-uppercase">uppercase text</span>.</p>
+        
+        <p class="text-sm">This is smaller text that might be used for captions or notes.</p>
+        
+        <blockquote>
+          This is a blockquote that stands out visually from other content.
+          <footer>— Quote attribution</footer>
+        </blockquote>
+        
+        <p>You can also highlight text with <mark>marked content</mark> or include <code>code snippets</code>.</p>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Motion & Interactions</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+        <div>
+          <h4>Button Hover Effects</h4>
+          <button class="btn btn-primary ripple">Hover Me</button>
+          <button class="btn btn-primary ripple" style="margin-left: 10px;">Click Me</button>
+        </div>
+        
+        <div>
+          <h4>Card Hover Effects</h4>
+          <div class="card hover-lift" style="padding: 20px;">
+            <h5>Interactive Card</h5>
+            <p>Hover over this card to see it lift up with a shadow effect.</p>
+          </div>
+        </div>
+        
+        <div>
+          <h4>Loading Animations</h4>
+          <div style="margin-bottom: 10px;">
+            <div class="loading-bounce"></div>
+            <div class="loading-bounce"></div>
+            <div class="loading-bounce"></div>
+          </div>
+          <div>
+            <div class="loading-spinner"></div>
+          </div>
+        </div>
+        
+        <div>
+          <h4>Toggle Control</h4>
+          <div class="toggle-container">
+            <input type="checkbox" id="toggle-demo" class="toggle-input">
+            <label for="toggle-demo" class="toggle-slider"></label>
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Staggered Animations</h3>
+      <div>
+        <button id="animate-items" class="btn btn-primary">Animate Items</button>
+        <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
+          <div class="card stagger-item" style="padding: 15px;">Item 1</div>
+          <div class="card stagger-item" style="padding: 15px;">Item 2</div>
+          <div class="card stagger-item" style="padding: 15px;">Item 3</div>
+          <div class="card stagger-item" style="padding: 15px;">Item 4</div>
+          <div class="card stagger-item" style="padding: 15px;">Item 5</div>
+          <div class="card stagger-item" style="padding: 15px;">Item 6</div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top: 30px;">Dark Mode Toggle</h3>
+      <div style="margin-bottom: 20px;">
+        <button class="theme-toggle">
+          <span class="theme-toggle-thumb"></span>
+          <span class="theme-toggle-track"></span>
+          <span class="theme-toggle-icon theme-toggle-icon-sun"><i class="fas fa-sun"></i></span>
+          <span class="theme-toggle-icon theme-toggle-icon-moon"><i class="fas fa-moon"></i></span>
+        </button>
+        <span style="margin-left: 10px;">Click to toggle dark/light mode</span>
+      </div>
+      
+      <div class="card" style="padding: 20px;">
+        <h4>Dark Mode Preview</h4>
+        <p>This card and all other components will change appearance when dark mode is toggled.</p>
+        <div style="margin-top: 15px;">
+          <button class="btn btn-primary">Primary Button</button>
+          <button class="btn btn-secondary" style="margin-left: 10px;">Secondary Button</button>
+        </div>
+      </div>
+    </section>
   </div>
 
   <script type="module">
-    // Import the LazyLoad module
+    // Import modules
     import lazyLoad from './app/static/js/components/LazyLoad.js';
+    import themeToggle from './app/static/js/components/ThemeToggle.js';
     
     // Initialize tab navigation
     document.querySelectorAll('.tab-item').forEach(tab => {
@@ -704,6 +806,30 @@
         });
       });
     });
+    
+    // Animate staggered items
+    const animateItemsBtn = document.getElementById('animate-items');
+    if (animateItemsBtn) {
+      animateItemsBtn.addEventListener('click', () => {
+        const items = document.querySelectorAll('.stagger-item');
+        items.forEach(item => {
+          item.classList.remove('stagger-item-enter');
+          
+          // Reset animation by removing and re-adding the class
+          setTimeout(() => {
+            item.classList.add('stagger-item-enter');
+          }, 10);
+        });
+      });
+    }
+    
+    // Initialize toggle checkbox
+    const toggleCheckbox = document.getElementById('toggle-demo');
+    if (toggleCheckbox) {
+      toggleCheckbox.addEventListener('change', () => {
+        console.log('Toggle state:', toggleCheckbox.checked ? 'On' : 'Off');
+      });
+    }
   </script>
 </body>
 </html> 

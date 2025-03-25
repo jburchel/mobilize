@@ -4,6 +4,7 @@
 
 // Import modules
 import lazyLoad from './components/LazyLoad.js';
+import themeToggle from './components/ThemeToggle.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize performance optimizations

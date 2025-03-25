@@ -6,11 +6,20 @@
 /* Import design tokens */
 @import 'design-tokens.css';
 
-/* Import component modules */
+/* Import enhanced typography */
+@import 'components/typography.css';
+
+/* Import UI components */
 @import 'components/form-elements.css';
 @import 'components/data-visualization.css';
 @import 'components/navigation.css';
 @import 'components/content.css';
+
+/* Import motion and interactions */
+@import 'components/motion.css';
+
+/* Import theme toggle and dark mode */
+@import 'components/theme-toggle.css';
 
 /* Accessibility utilities */
 .visually-hidden {

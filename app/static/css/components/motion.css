@@ -1,0 +1,259 @@
+/**
+ * Motion and Interactions for Mobilize CRM
+ * This file contains animations, transitions, and interactive effects
+ */
+
+/* ====== Hover Effects ====== */
+
+/* Button hover effects */
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: background-color var(--transition-button), 
+              color var(--transition-button),
+              transform var(--transition-button),
+              box-shadow var(--transition-button);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  box-shadow: 0 4px 6px rgba(26, 75, 145, 0.2);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 8px rgba(26, 75, 145, 0.3);
+}
+
+/* Ripple effect for buttons and clickable elements */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple:after {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 10%, transparent 10.01%);
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transform: scale(10, 10);
+  opacity: 0;
+  transition: transform 0.5s, opacity 0.8s;
+}
+
+.ripple:active:after {
+  transform: scale(0, 0);
+  opacity: 0.3;
+  transition: 0s;
+}
+
+/* Card hover effects */
+.card {
+  transition: transform var(--transition-duration-base) var(--transition-timing-ease),
+              box-shadow var(--transition-duration-base) var(--transition-timing-ease);
+}
+
+.card.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Interactive form elements */
+.form-control, .form-select {
+  transition: border-color var(--transition-duration-fast) ease,
+              box-shadow var(--transition-duration-fast) ease,
+              background-color var(--transition-duration-fast) ease;
+}
+
+.form-control:focus, .form-select:focus {
+  animation: pulse-border 1.5s var(--transition-timing-ease) infinite;
+}
+
+@keyframes pulse-border {
+  0% { border-color: var(--color-primary-light); }
+  50% { border-color: var(--color-primary); }
+  100% { border-color: var(--color-primary-light); }
+}
+
+/* ====== Transitions ====== */
+
+/* Fade transitions */
+.fade-transition {
+  transition: opacity var(--transition-fade);
+}
+
+.fade-enter, .fade-exit-active {
+  opacity: 0;
+}
+
+.fade-enter-active, .fade-exit {
+  opacity: 1;
+}
+
+/* Slide transitions */
+.slide-transition {
+  transition: transform var(--transition-slide), 
+              opacity var(--transition-slide);
+}
+
+.slide-enter, .slide-exit-active {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-enter-active, .slide-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Scale transitions */
+.scale-transition {
+  transition: transform var(--transition-scale), 
+              opacity var(--transition-scale);
+}
+
+.scale-enter, .scale-exit-active {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.scale-enter-active, .scale-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ====== Animations ====== */
+
+/* Entrance animations */
+.animate-fade-in {
+  animation: fade-in var(--animation-duration-base) var(--transition-timing-out) both;
+}
+
+.animate-slide-in {
+  animation: slide-in var(--animation-duration-base) var(--transition-timing-out) both;
+}
+
+.animate-bounce {
+  animation: bounce var(--animation-duration-base) var(--transition-timing-bounce) both;
+}
+
+.animate-pulse {
+  animation: pulse var(--animation-duration-base) var(--transition-timing-ease) infinite;
+}
+
+/* Staggered animations for lists */
+.stagger-item {
+  opacity: 0;
+}
+
+.stagger-item-enter {
+  animation: slide-in var(--animation-duration-base) var(--transition-timing-out) forwards;
+}
+
+.stagger-item:nth-child(1) { animation-delay: calc(var(--animation-delay-small) * 1); }
+.stagger-item:nth-child(2) { animation-delay: calc(var(--animation-delay-small) * 2); }
+.stagger-item:nth-child(3) { animation-delay: calc(var(--animation-delay-small) * 3); }
+.stagger-item:nth-child(4) { animation-delay: calc(var(--animation-delay-small) * 4); }
+.stagger-item:nth-child(5) { animation-delay: calc(var(--animation-delay-small) * 5); }
+.stagger-item:nth-child(6) { animation-delay: calc(var(--animation-delay-small) * 6); }
+.stagger-item:nth-child(7) { animation-delay: calc(var(--animation-delay-small) * 7); }
+.stagger-item:nth-child(8) { animation-delay: calc(var(--animation-delay-small) * 8); }
+
+/* Loading animations */
+.loading-bounce {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: currentColor;
+  border-radius: 50%;
+  animation: loading-bounce 1.2s infinite var(--transition-timing-bounce);
+}
+
+.loading-bounce:nth-child(2) {
+  animation-delay: 0.2s;
+  margin: 0 5px;
+}
+
+.loading-bounce:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loading-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: currentColor;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ====== State Transitions ====== */
+
+/* Toggle transitions */
+.toggle-container {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+
+.toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-gray-300);
+  transition: var(--transition-toggle);
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: var(--transition-toggle);
+  border-radius: 50%;
+}
+
+.toggle-input:checked + .toggle-slider {
+  background-color: var(--color-primary);
+}
+
+.toggle-input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+} 

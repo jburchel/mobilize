@@ -6,62 +6,103 @@
 :root {
   /* =========== COLOR SYSTEM =========== */
   
-  /* Brand Colors */
-  --color-primary-blue: #183963; /* Pantone 534, RGB: 24 57 99 */
-  --color-primary-blue-dark: #132E4C;
-  --color-primary-blue-light: #2A5183;
+  /* Brand Colors - Updated color scheme */
+  --color-primary: #1a4b91; /* Updated blue - slightly deeper with better contrast */
+  --color-primary-dark: #0d3a7a;
+  --color-primary-light: #2d62b8;
+  --color-primary-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   
-  --color-primary-green: #39A949; /* Pantone 7739, RGB: 57 169 73 */
-  --color-primary-green-dark: #2E8A3C;
-  --color-primary-green-light: #4FBF5F;
+  --color-secondary: #41b553; /* Updated green - slightly more vibrant */
+  --color-secondary-dark: #34993f;
+  --color-secondary-light: #57cc69;
+  --color-secondary-gradient: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
   
-  /* Grayscale */
+  /* Legacy color mappings for backward compatibility */
+  --color-primary-blue: var(--color-primary);
+  --color-primary-blue-dark: var(--color-primary-dark);
+  --color-primary-blue-light: var(--color-primary-light);
+  --color-primary-green: var(--color-secondary);
+  --color-primary-green-dark: var(--color-secondary-dark);
+  --color-primary-green-light: var(--color-secondary-light);
+  
+  /* Enhanced Grayscale */
+  --color-gray-50: #fafbfc; /* New lighter shade */
   --color-gray-100: #f8f9fa;
   --color-gray-200: #e9ecef;
   --color-gray-300: #dee2e6;
   --color-gray-400: #ced4da;
   --color-gray-500: #adb5bd;
-  --color-gray-600: #7F7F7F; /* Pantone 840 C, RGB: 127 127 127 */
+  --color-gray-600: #7F7F7F;
   --color-gray-700: #495057;
   --color-gray-800: #343a40;
   --color-gray-900: #212529;
+  --color-gray-950: #121518; /* New darker shade */
   
-  /* Feedback Colors */
-  --color-success: #28a745;
-  --color-info: #17a2b8;
-  --color-warning: #ffc107;
-  --color-danger: #dc3545;
+  /* Refined Feedback Colors */
+  --color-success: #2bb64a;
+  --color-success-light: #def5e3;
+  --color-success-dark: #1d8936;
+  
+  --color-info: #0d96c6;
+  --color-info-light: #ddf5fc;
+  --color-info-dark: #0a77a0;
+  
+  --color-warning: #f5b60d;
+  --color-warning-light: #fff8dd;
+  --color-warning-dark: #c4910a;
+  
+  --color-danger: #e13535;
+  --color-danger-light: #fde2e2;
+  --color-danger-dark: #b91c1c;
+  
+  /* Accent Colors */
+  --color-accent-1: #6b38e0; /* Purple */
+  --color-accent-2: #fd8024; /* Orange */
+  --color-accent-3: #08caa8; /* Teal */
   
   /* UI Colors */
-  --color-background: var(--color-gray-100);
+  --color-background: var(--color-gray-50);
   --color-surface: #ffffff;
+  --color-surface-variant: #f2f7fc; /* Slight blue tint */
   --color-text: var(--color-gray-900);
   --color-text-light: var(--color-gray-600);
+  --color-text-lighter: var(--color-gray-500);
   --color-border: var(--color-gray-300);
   
+  /* Theme colors */
+  --color-theme-hover: rgba(26, 75, 145, 0.05); /* Primary with 0.05 opacity */
+  --color-theme-selected: rgba(26, 75, 145, 0.1); /* Primary with 0.1 opacity */
+  
+  /* Color variables for light/dark mode */
+  --color-mode-bg: var(--color-background);
+  --color-mode-surface: var(--color-surface);
+  --color-mode-text: var(--color-text);
+  --color-mode-border: var(--color-border);
+
   /* =========== TYPOGRAPHY =========== */
   
   /* Font Families */
-  --font-family-base: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", 
+  --font-family-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", 
                       Roboto, Helvetica, Arial, sans-serif;
-  --font-family-headings: "Cronos Pro", system-ui, -apple-system, BlinkMacSystemFont, 
+  --font-family-headings: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 
                          "Segoe UI", Roboto, sans-serif;
   
-  /* Font Sizes - Using a modular scale with 1.2 ratio */
-  --font-size-base: 14px;
-  --font-size-xs: 0.694rem;     /* ~10px */
-  --font-size-sm: 0.833rem;     /* ~12px */
-  --font-size-md: 1rem;         /* 14px */
-  --font-size-lg: 1.2rem;       /* ~17px */
-  --font-size-xl: 1.44rem;      /* ~20px */
-  --font-size-2xl: 1.728rem;    /* ~24px */
-  --font-size-3xl: 2.074rem;    /* ~29px */
-  --font-size-4xl: 2.488rem;    /* ~35px */
+  /* Font Sizes - Using a modular scale with 1.25 ratio for more distinct hierarchy */
+  --font-size-base: 16px; /* Increased for better readability */
+  --font-size-xs: 0.64rem;     /* ~10px */
+  --font-size-sm: 0.8rem;      /* ~13px */
+  --font-size-md: 1rem;        /* 16px */
+  --font-size-lg: 1.25rem;     /* ~20px */
+  --font-size-xl: 1.563rem;    /* ~25px */
+  --font-size-2xl: 1.953rem;   /* ~31px */
+  --font-size-3xl: 2.441rem;   /* ~39px */
+  --font-size-4xl: 3.052rem;   /* ~49px */
   
   /* Line Heights */
-  --line-height-tight: 1.25;
+  --line-height-tight: 1.2;
   --line-height-base: 1.5;
   --line-height-loose: 1.75;
+  --line-height-heading: 1.3;
   
   /* Font Weights */
   --font-weight-light: 300;
@@ -69,6 +110,12 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.025em;  
+  --letter-spacing-normal: 0em;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
   
   /* =========== SPACING SYSTEM =========== */
   
@@ -100,18 +147,64 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(26, 75, 145, 0.25);
+  
+  /* Colored shadows */
+  --shadow-primary: 0 5px 15px -3px rgba(26, 75, 145, 0.3);
+  --shadow-success: 0 5px 15px -3px rgba(43, 182, 74, 0.3);
+  --shadow-danger: 0 5px 15px -3px rgba(225, 53, 53, 0.3);
   
   /* =========== TRANSITIONS =========== */
   
-  --transition-fast: 150ms;
-  --transition-base: 300ms;
-  --transition-slow: 500ms;
+  /* Durations */
+  --transition-duration-instant: 100ms;
+  --transition-duration-fast: 150ms;
+  --transition-duration-base: 300ms;
+  --transition-duration-slow: 500ms;
+  
+  /* Timing functions */
   --transition-timing-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-timing-in: cubic-bezier(0.4, 0, 1, 1);
+  --transition-timing-out: cubic-bezier(0, 0, 0.2, 1);
   --transition-timing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  /* Common transitions */
+  --transition-button: var(--transition-duration-fast) var(--transition-timing-ease);
+  --transition-toggle: var(--transition-duration-base) var(--transition-timing-bounce);
+  --transition-fade: var(--transition-duration-base) var(--transition-timing-out);
+  --transition-slide: var(--transition-duration-base) var(--transition-timing-ease);
+  --transition-scale: var(--transition-duration-base) var(--transition-timing-bounce);
+  
+  /* =========== MOTION & ANIMATION =========== */
+  
+  /* Animation durations */
+  --animation-duration-fast: 400ms;
+  --animation-duration-base: 700ms;
+  --animation-duration-slow: 1000ms;
+  
+  /* Animation delays */
+  --animation-delay-tiny: 50ms;
+  --animation-delay-small: 100ms;
+  --animation-delay-medium: 200ms;
+  
+  /* Animation iterations */
+  --animation-iteration-once: 1;
+  --animation-iteration-twice: 2;
+  --animation-iteration-infinite: infinite;
+  
+  /* Keyframe animations */
+  --animation-keyframes-fade-in: fade-in;
+  --animation-keyframes-fade-out: fade-out;
+  --animation-keyframes-slide-in: slide-in;
+  --animation-keyframes-slide-out: slide-out;
+  --animation-keyframes-bounce: bounce;
+  --animation-keyframes-pulse: pulse;
   
   /* =========== LAYOUT VARIABLES =========== */
   
   --sidebar-width: 250px;
+  --sidebar-collapsed-width: 64px;
   --header-height: 60px;
   --container-max-width: 1200px;
   
@@ -119,7 +212,58 @@
   --z-index-dropdown: 1000;
   --z-index-sticky: 1020;
   --z-index-fixed: 1030;
-  --z-index-modal: 1040;
-  --z-index-popover: 1050;
-  --z-index-tooltip: 1060;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+}
+
+/* Dark mode theme - to be activated with .dark-theme class or media query */
+.dark-theme {
+  --color-mode-bg: var(--color-gray-900);
+  --color-mode-surface: var(--color-gray-800);
+  --color-mode-text: var(--color-gray-100);
+  --color-mode-border: var(--color-gray-700);
+  
+  /* Adjust shadows for dark mode */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  
+  /* Dark mode specific colors */
+  --color-theme-hover: rgba(255, 255, 255, 0.05);
+  --color-theme-selected: rgba(255, 255, 255, 0.1);
+}
+
+/* Keyframe animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slide-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(20px); opacity: 0; }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 } 

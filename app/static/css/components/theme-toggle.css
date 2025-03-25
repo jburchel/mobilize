@@ -1,0 +1,242 @@
+/**
+ * Theme Toggle & Dark Mode Styles for Mobilize CRM
+ * This file contains styles for the theme toggle control and dark mode theme
+ */
+
+/* Dark Mode Toggle Button */
+.theme-toggle {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--border-radius-full);
+  background-color: var(--color-primary);
+  padding: 0 6px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background-color var(--transition-duration-base) var(--transition-timing-ease);
+  border: none;
+  overflow: hidden;
+}
+
+.theme-toggle:focus {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.theme-toggle-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+}
+
+.theme-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform var(--transition-toggle);
+  z-index: 2;
+}
+
+.theme-toggle-icon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  color: #fff;
+  z-index: 1;
+}
+
+.theme-toggle-icon-moon {
+  margin-right: 4px;
+}
+
+.theme-toggle-icon-sun {
+  margin-left: 4px;
+}
+
+body.dark-theme .theme-toggle {
+  background-color: var(--color-gray-700);
+}
+
+body.dark-theme .theme-toggle-thumb {
+  transform: translateX(28px);
+}
+
+/* Dark Mode Styles for Components */
+
+/* Dark mode card styles */
+.dark-theme .card {
+  background-color: var(--color-mode-surface);
+  border-color: var(--color-mode-border);
+}
+
+.dark-theme .card-header {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-bottom-color: var(--color-mode-border);
+}
+
+.dark-theme .card-footer {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-top-color: var(--color-mode-border);
+}
+
+/* Dark mode form controls */
+.dark-theme .form-control,
+.dark-theme .form-select {
+  background-color: var(--color-gray-800);
+  border-color: var(--color-gray-700);
+  color: var(--color-gray-200);
+}
+
+.dark-theme .form-control:focus,
+.dark-theme .form-select:focus {
+  background-color: var(--color-gray-800);
+  border-color: var(--color-primary-light);
+}
+
+.dark-theme .form-control::placeholder {
+  color: var(--color-gray-500);
+}
+
+/* Dark mode buttons */
+.dark-theme .btn {
+  color: var(--color-gray-200);
+}
+
+.dark-theme .btn-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.dark-theme .btn-secondary {
+  background-color: var(--color-gray-700);
+  border-color: var(--color-gray-700);
+}
+
+.dark-theme .btn-outline-primary {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.dark-theme .btn-outline-primary:hover {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+/* Dark mode sidebar */
+.dark-theme .sidebar {
+  background-color: var(--color-gray-900);
+  border-right-color: var(--color-gray-800);
+}
+
+.dark-theme .sidebar-logo {
+  background-color: var(--color-gray-900);
+}
+
+.dark-theme .nav-section-title {
+  color: var(--color-gray-400);
+}
+
+.dark-theme .nav-link {
+  color: var(--color-gray-300);
+}
+
+.dark-theme .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-theme .nav-link.active {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+/* Dark mode tables */
+.dark-theme .table {
+  color: var(--color-gray-300);
+}
+
+.dark-theme .table th {
+  border-bottom-color: var(--color-gray-700);
+}
+
+.dark-theme .table td {
+  border-bottom-color: var(--color-gray-800);
+}
+
+.dark-theme .table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Media query for system dark mode preference */
+@media (prefers-color-scheme: dark) {
+  :root.auto-dark-mode {
+    --color-mode-bg: var(--color-gray-900);
+    --color-mode-surface: var(--color-gray-800);
+    --color-mode-text: var(--color-gray-100);
+    --color-mode-border: var(--color-gray-700);
+    
+    /* Adjust shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  }
+  
+  :root.auto-dark-mode body {
+    background-color: var(--color-mode-bg);
+    color: var(--color-mode-text);
+  }
+  
+  :root.auto-dark-mode .card,
+  :root.auto-dark-mode .modal-content {
+    background-color: var(--color-mode-surface);
+    border-color: var(--color-mode-border);
+  }
+}
+
+/* Theme transition animations */
+.theme-transition {
+  transition: background-color var(--transition-duration-base) ease,
+              color var(--transition-duration-base) ease,
+              border-color var(--transition-duration-base) ease,
+              box-shadow var(--transition-duration-base) ease;
+}
+
+/* Dark Mode Animation */
+.dark-mode-transition {
+  animation: dark-mode-fade 0.5s ease-in-out forwards;
+}
+
+@keyframes dark-mode-fade {
+  0% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Light Mode Animation */
+.light-mode-transition {
+  animation: light-mode-fade 0.5s ease-in-out forwards;
+}
+
+@keyframes light-mode-fade {
+  0% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
+} 
