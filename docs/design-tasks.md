@@ -128,4 +128,11 @@ This document outlines the specific tasks required to implement the design plan 
 - Test each component update in isolation
 - Run accessibility tests after each major change
 - Conduct performance benchmarking before and after optimizations
-- Get user feedback on key UI improvements 
+- Get user feedback on key UI improvements
+
+## Documentation
+
+- [x] Create design system overview
+- [x] Document design tokens and usage
+- [x] Create HTML component preview page
+- [ ] ~~Set up Storybook for component documentation~~ 
