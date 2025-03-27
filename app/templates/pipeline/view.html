@@ -172,11 +172,12 @@
                         <label for="contact_id" class="form-label">Select Contact</label>
                         <select class="form-select" id="contact_id" name="contact_id" required>
                             <option value="">-- Select a contact --</option>
-                            {% if pipeline.pipeline_type == 'person' %}
+                            {% if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'both' %}
                                 {% for person in people %}
-                                <option value="{{ person.id }}">{{ person.get_name() }}</option>
+                                <option value="{{ person.id }}">{{ person.first_name }} {{ person.last_name }}</option>
                                 {% endfor %}
-                            {% elif pipeline.pipeline_type == 'church' %}
+                            {% endif %}
+                            {% if pipeline.pipeline_type == 'church' or pipeline.pipeline_type == 'both' %}
                                 {% for church in churches %}
                                 <option value="{{ church.id }}">{{ church.name }}</option>
                                 {% endfor %}

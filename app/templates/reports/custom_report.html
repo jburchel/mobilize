@@ -2,6 +2,8 @@
 
 {% block title %}Custom Reports{% endblock %}
 
+{% block page_title %}Custom Report Generator{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -172,7 +174,7 @@
                     <!-- Report results -->
                     <div id="report-result" style="display:none;">
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="reportDataTable" width="100%" cellspacing="0">
+                            <table class="table" id="reportDataTable" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <!-- Column headers will be dynamically inserted here -->

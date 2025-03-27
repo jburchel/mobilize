@@ -59,14 +59,14 @@
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <table class="table table-hover datatable">
+                        <table class="table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
                                     <th>Location</th>
-                                    <th>Senior Pastor</th>
+                                    <th>Primary Contact</th>
                                     <th>Denomination</th>
-                                    <th>Weekly Attendance</th>
+                                    <th>Pipeline Stage</th>
                                     <th>Contact Info</th>
                                     <th>Actions</th>
                                 </tr>
@@ -75,14 +75,44 @@
                                 {% for church in churches %}
                                 <tr>
                                     <td>
-                                        <a href="{{ url_for('churches.show', id=church.id) }}" class="text-decoration-none">
-                                            {{ church.name }}
-                                        </a>
+                                        <div class="table-user">
+                                            <div class="table-user-avatar" style="background-color: var(--color-primary-blue);">
+                                                {{ church.name[0:2] }}
+                                            </div>
+                                            <div class="table-user-info">
+                                                <a href="{{ url_for('churches.show', id=church.id) }}" class="text-decoration-none">
+                                                    <div class="table-user-name">{{ church.name }}</div>
+                                                    <div class="table-user-title">{{ church.type or "Church" }}</div>
+                                                </a>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td>{{ church.location }}</td>
-                                    <td>{{ church.senior_pastor_name }}</td>
-                                    <td>{{ church.denomination }}</td>
-                                    <td>{{ church.weekly_attendance }}</td>
+                                    <td>{{ church|format_location }}</td>
+                                    <td>{{ church.main_contact.full_name if church.main_contact else "Not Set" }}</td>
+                                    <td>
+                                        <span class="badge badge-secondary">{{ church.denomination or "Not Set" }}</span>
+                                    </td>
+                                    <td>
+                                        {% if church.church_pipeline %}
+                                            {% if church.church_pipeline == 'INFORMATION' %}
+                                                <span class="badge bg-info">Information</span>
+                                            {% elif church.church_pipeline == 'FIRST_CONTACT' %}
+                                                <span class="badge bg-primary">First Contact</span>
+                                            {% elif church.church_pipeline == 'SCHEDULED' %}
+                                                <span class="badge bg-warning">Scheduled</span>
+                                            {% elif church.church_pipeline == 'VISITED' %}
+                                                <span class="badge bg-success">Visited</span>
+                                            {% elif church.church_pipeline == 'FOLLOW_UP' %}
+                                                <span class="badge bg-secondary">Follow Up</span>
+                                            {% elif church.church_pipeline == 'COMMITTED' %}
+                                                <span class="badge bg-dark">Committed</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ church.church_pipeline|replace("_", " ")|title }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">Not Set</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% if church.email %}
                                             <a href="mailto:{{ church.email }}" class="me-2" title="Email">
@@ -101,15 +131,11 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div class="btn-group">
-                                            <a href="{{ url_for('churches.edit', id=church.id) }}" class="btn btn-sm btn-primary" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
+                                        <div class="table-actions">
+                                            <a href="{{ url_for('churches.edit', id=church.id) }}" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
                                             <form action="{{ url_for('churches.delete', id=church.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete {{ church.name }}? This action cannot be undone.');">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                                <button type="submit" class="btn btn-sm btn-danger">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
+                                                <button type="submit" class="btn-icon btn-sm" aria-label="Delete"><i class="bi bi-trash"></i></button>
                                             </form>
                                         </div>
                                     </td>

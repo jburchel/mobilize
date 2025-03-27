@@ -18,10 +18,14 @@ def init_scheduler(app):
         replace_existing=True
     )
     
-    # Add task reminder job
+    # Add task reminder job with app context wrapper
+    def process_task_reminders_with_context():
+        with app.app_context():
+            process_task_reminders()
+    
     scheduler.add_job(
         id='process_task_reminders',
-        func=process_task_reminders,
+        func=process_task_reminders_with_context,  # Use the wrapper function
         trigger='interval',
         minutes=60,  # Check hourly
         next_run_time=datetime.now(),  # Run immediately when app starts

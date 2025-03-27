@@ -46,7 +46,28 @@ class Pipeline(db.Model):
         
     def count_contacts(self):
         """Count contacts in this pipeline."""
-        return self.pipeline_contacts.count()
+        # Use a direct SQL query to get an accurate count
+        from sqlalchemy import text
+        from app.extensions import db
+        
+        try:
+            # Use direct SQL for most reliable results
+            result = db.session.execute(
+                text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+                {"pipeline_id": self.id}
+            )
+            count = result.scalar() or 0
+            
+            # Debug log
+            import sys
+            print(f"Pipeline {self.id} count: {count}", file=sys.stderr)
+            
+            return count
+        except Exception as e:
+            # Log the error but don't crash
+            import sys
+            print(f"Error counting pipeline contacts: {str(e)}", file=sys.stderr)
+            return 0
         
     def contact_count(self):
         """Alias for count_contacts() method."""

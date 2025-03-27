@@ -36,6 +36,7 @@
                                     {% if form.location.errors %}
                                         <div class="invalid-feedback">{{ form.location.errors[0] }}</div>
                                     {% endif %}
+                                    <div class="form-text">Optional override for the automatic location format. If left empty, location will show as City, State/Province for US/Canada or City, Country for international.</div>
                                 </div>
 
                                 <div class="mb-3">
@@ -257,53 +258,6 @@
                             </div>
                         </div>
 
-                        <!-- Primary Contact Information Section -->
-                        <div class="row mb-4 mt-4">
-                            <div class="col-12">
-                                <h5 class="border-bottom pb-2">Primary Contact Information</h5>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        {{ form.primary_contact_first_name.label(class="form-label") }}
-                                        {{ form.primary_contact_first_name(class="form-control" + (" is-invalid" if form.primary_contact_first_name.errors else "")) }}
-                                        {% if form.primary_contact_first_name.errors %}
-                                            <div class="invalid-feedback">{{ form.primary_contact_first_name.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="col-md-6">
-                                        {{ form.primary_contact_last_name.label(class="form-label") }}
-                                        {{ form.primary_contact_last_name(class="form-control" + (" is-invalid" if form.primary_contact_last_name.errors else "")) }}
-                                        {% if form.primary_contact_last_name.errors %}
-                                            <div class="invalid-feedback">{{ form.primary_contact_last_name.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        {{ form.primary_contact_phone.label(class="form-label") }}
-                                        {{ form.primary_contact_phone(class="form-control" + (" is-invalid" if form.primary_contact_phone.errors else "")) }}
-                                        {% if form.primary_contact_phone.errors %}
-                                            <div class="invalid-feedback">{{ form.primary_contact_phone.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="col-md-6">
-                                        {{ form.primary_contact_email.label(class="form-label") }}
-                                        {{ form.primary_contact_email(class="form-control" + (" is-invalid" if form.primary_contact_email.errors else "")) }}
-                                        {% if form.primary_contact_email.errors %}
-                                            <div class="invalid-feedback">{{ form.primary_contact_email.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Pipeline Information Section -->
                         <div class="row mb-4 mt-4">
                             <div class="col-12">
@@ -336,7 +290,7 @@
                                     <div class="card">
                                         <div class="card-body p-3">
                                             {% if church.pipeline_entries and church.pipeline_entries|length > 0 %}
-                                                <table class="table table-sm">
+                                                <table class="table">
                                                     <thead>
                                                         <tr>
                                                             <th>Pipeline</th>
@@ -398,7 +352,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Additional Information Section -->
                         <div class="row mb-4 mt-4">
                             <div class="col-12">

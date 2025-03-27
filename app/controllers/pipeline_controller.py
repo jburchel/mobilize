@@ -19,8 +19,47 @@ def index():
     custom_pipelines = Pipeline.query.filter_by(is_main_pipeline=False).all()
     
     # Get main pipelines
-    people_main_pipeline = Pipeline.get_main_pipeline('people')
-    church_main_pipeline = Pipeline.get_main_pipeline('church')
+    people_main_pipeline = Pipeline.query.filter_by(is_main_pipeline=True, pipeline_type='person').first()
+    if not people_main_pipeline:
+        people_main_pipeline = Pipeline.query.filter_by(pipeline_type='person').first()
+        
+    church_main_pipeline = Pipeline.query.filter_by(is_main_pipeline=True, pipeline_type='church').first()
+    if not church_main_pipeline:
+        church_main_pipeline = Pipeline.query.filter_by(pipeline_type='church').first()
+    
+    # Debug log the pipeline contact counts
+    if people_main_pipeline:
+        people_count = db.session.execute(
+            db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+            {"pipeline_id": people_main_pipeline.id}
+        ).scalar() or 0
+        current_app.logger.info(f"People main pipeline ID: {people_main_pipeline.id}, Contact count (SQL): {people_count}")
+        model_count = people_main_pipeline.count_contacts()
+        current_app.logger.info(f"People main pipeline contact count (model method): {model_count}")
+        
+        # Force a refresh of count data
+        db.session.refresh(people_main_pipeline)
+    
+    if church_main_pipeline:
+        church_count = db.session.execute(
+            db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+            {"pipeline_id": church_main_pipeline.id}
+        ).scalar() or 0
+        current_app.logger.info(f"Church main pipeline ID: {church_main_pipeline.id}, Contact count (SQL): {church_count}")
+        model_count = church_main_pipeline.count_contacts()
+        current_app.logger.info(f"Church main pipeline contact count (model method): {model_count}")
+        
+        # Force a refresh of count data
+        db.session.refresh(church_main_pipeline)
+    
+    # Log all pipelines with their counts
+    pipelines = Pipeline.query.all()
+    for p in pipelines:
+        count = db.session.execute(
+            db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+            {"pipeline_id": p.id}
+        ).scalar() or 0
+        current_app.logger.info(f"Pipeline ID: {p.id}, Name: {p.name}, Count SQL: {count}, Count Method: {p.count_contacts()}")
     
     return render_template('pipeline/index.html', 
                           custom_pipelines=custom_pipelines,
@@ -81,6 +120,13 @@ def view(pipeline_id):
     """View a pipeline with all its stages and contacts."""
     try:
         pipeline = Pipeline.query.get_or_404(pipeline_id)
+        
+        # Add debug info
+        contact_count = db.session.execute(
+            db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+            {"pipeline_id": pipeline_id}
+        ).scalar() or 0
+        current_app.logger.info(f"View pipeline {pipeline_id}, SQL count: {contact_count}")
         
         # Check if user has permission to view this pipeline
         if pipeline.office_id != current_user.office_id and not current_user.is_super_admin():
@@ -160,10 +206,58 @@ def view(pipeline_id):
             if pc.current_stage_id in contacts_by_stage:
                 contacts_by_stage[pc.current_stage_id].append(pc)
         
+        # Log contact counts for debugging
+        for stage_id, contacts in contacts_by_stage.items():
+            current_app.logger.info(f"Stage {stage_id} has {len(contacts)} contacts")
+        
+        # Get available contacts to populate the Add Contact dropdown
+        people = []
+        churches = []
+        
+        # Get IDs of contacts already in this pipeline
+        current_app.logger.info(f"Getting contacts for pipeline {pipeline_id} of type {pipeline.pipeline_type}")
+        existing_contact_ids = db.session.query(PipelineContact.contact_id)\
+                                       .filter(PipelineContact.pipeline_id == pipeline_id)\
+                                       .all()
+        existing_contact_ids = [p[0] for p in existing_contact_ids]
+        current_app.logger.info(f"Found {len(existing_contact_ids)} existing contacts in this pipeline")
+        
+        # For people pipeline type
+        if pipeline.pipeline_type in ['person', 'both']:
+            people_query = Person.query
+            
+            # Apply exclusion for existing contacts
+            if existing_contact_ids:
+                people_query = people_query.filter(~Person.id.in_(existing_contact_ids))
+            
+            # Apply office filter for non-super-admins
+            if not current_user.is_super_admin():
+                people_query = people_query.filter(Person.office_id == current_user.office_id)
+                
+            people = people_query.all()
+            current_app.logger.info(f"Found {len(people)} available people for dropdown")
+
+        # For church pipeline type
+        if pipeline.pipeline_type in ['church', 'both']:
+            church_query = Church.query
+            
+            # Apply exclusion for existing contacts
+            if existing_contact_ids:
+                church_query = church_query.filter(~Church.id.in_(existing_contact_ids))
+                
+            # Apply office filter for non-super-admins
+            if not current_user.is_super_admin():
+                church_query = church_query.filter(Church.office_id == current_user.office_id)
+                
+            churches = church_query.all()
+            current_app.logger.info(f"Found {len(churches)} available churches for dropdown")
+        
         return render_template('pipeline/view.html', 
-                              pipeline=pipeline,
-                              stages=stages,
-                              contacts_by_stage=contacts_by_stage)
+                          pipeline=pipeline,
+                          stages=stages,
+                          contacts_by_stage=contacts_by_stage,
+                          people=people,
+                          churches=churches)
     except Exception as e:
         current_app.logger.error(f"Error viewing pipeline {pipeline_id}: {str(e)}")
         flash(f'Error viewing pipeline: {str(e)}', 'danger')
@@ -1075,3 +1169,17 @@ class PipelineController:
                 churches = Church.query.filter_by(office_id=current_user.office_id)\
                                       .filter(~Church.id.in_(existing_contact_ids) if existing_contact_ids else True).all()
             return people, churches 
+
+@pipeline_bp.app_context_processor
+def inject_pipeline_utilities():
+    """Add utility functions to the template context."""
+    def get_pipeline_count(pipeline_id):
+        """Get contact count for a pipeline directly from the database."""
+        from sqlalchemy import text
+        result = db.session.execute(
+            text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+            {"pipeline_id": pipeline_id}
+        )
+        return result.scalar() or 0
+    
+    return dict(get_pipeline_count=get_pipeline_count) 

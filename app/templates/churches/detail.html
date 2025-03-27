@@ -120,7 +120,7 @@
 
                     <div class="row mb-3">
                         <div class="col-5 text-muted">Location:</div>
-                        <div class="col-7">{{ church.location or 'Not specified' }}</div>
+                        <div class="col-7">{{ church|format_location or 'Not specified' }}</div>
                     </div>
                     
                     <div class="row mb-3">
@@ -374,7 +374,7 @@
                 <div class="card-body">
                     {% if tasks %}
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table">
                                 <thead>
                                     <tr>
                                         <th>Title</th>
@@ -456,63 +456,83 @@
                     </a>
                 </div>
                 <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        Select a radio button to set a person as the primary contact for this church.
+                    </div>
+                    
                     {% if church.people %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th width="15%">Role</th>
-                                        <th width="25%">Name</th>
-                                        <th width="50%">Contact Info</th>
-                                        <th width="10%">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for person in church.people[:5] %}
-                                    <tr>
-                                        <td>{{ person.church_role or '-' }}</td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                {% if person.profile_image %}
-                                                    <img src="{{ url_for('static', filename=person.profile_image) }}" 
-                                                         class="rounded-circle me-2" width="32" height="32">
-                                                {% else %}
-                                                    <div class="avatar-sm me-2 rounded-circle bg-primary d-flex align-items-center justify-content-center">
-                                                        <span class="text-white">{{ person.initials }}</span>
-                                                    </div>
-                                                {% endif %}
-                                                <div>
-                                                    <a href="{{ url_for('people.show', id=person.id) }}">{{ person.full_name }}</a>
+                        <form action="{{ url_for('churches.set_primary_contact', id=church.id) }}" method="POST" id="primaryContactForm">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th width="10%">Primary</th>
+                                            <th width="15%">Role</th>
+                                            <th width="20%">Name</th>
+                                            <th width="45%">Contact Info</th>
+                                            <th width="10%">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for person in church.people %}
+                                        <tr>
+                                            <td class="text-center">
+                                                <div class="form-check">
+                                                    <input class="form-check-input primary-contact-radio" 
+                                                           type="radio" 
+                                                           name="main_contact_id" 
+                                                           id="primary_{{ person.id }}" 
+                                                           value="{{ person.id }}"
+                                                           {% if church.main_contact_id == person.id %}checked{% endif %}>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex flex-column">
-                                                {% if person.email %}
-                                                    <div class="small text-truncate">
-                                                        <a href="mailto:{{ person.email }}">{{ person.email }}</a>
+                                            </td>
+                                            <td>{{ person.church_role or '-' }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    {% if person.profile_image %}
+                                                        <img src="{{ url_for('static', filename=person.profile_image) }}" 
+                                                             class="rounded-circle me-2" width="32" height="32">
+                                                    {% else %}
+                                                        <div class="avatar-sm me-2 rounded-circle bg-primary d-flex align-items-center justify-content-center">
+                                                            <span class="text-white">{{ person.initials }}</span>
+                                                        </div>
+                                                    {% endif %}
+                                                    <div>
+                                                        <a href="{{ url_for('people.show', id=person.id) }}">{{ person.full_name }}</a>
+                                                        {% if church.main_contact_id == person.id %}
+                                                            <span class="badge bg-primary">Primary</span>
+                                                        {% endif %}
                                                     </div>
-                                                {% endif %}
-                                                {% if person.phone %}
-                                                    <div class="small">
-                                                        {{ person.phone }}
-                                                    </div>
-                                                {% endif %}
-                                                {% if not person.email and not person.phone %}
-                                                    <span class="text-muted">No contact info</span>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <a href="{{ url_for('people.show', id=person.id) }}" class="btn btn-sm btn-info">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    {% if person.email %}
+                                                        <div class="small text-truncate">
+                                                            <a href="mailto:{{ person.email }}">{{ person.email }}</a>
+                                                        </div>
+                                                    {% endif %}
+                                                    {% if person.phone %}
+                                                        <div class="small">
+                                                            {{ person.phone }}
+                                                        </div>
+                                                    {% endif %}
+                                                    {% if not person.email and not person.phone %}
+                                                        <span class="text-muted">No contact info</span>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('people.show', id=person.id) }}" class="btn btn-sm btn-info">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </form>
                     {% else %}
                         <p class="text-muted mb-0">No people associated with this church.</p>
                     {% endif %}
@@ -646,6 +666,11 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1">
+    <!-- Modal content here -->
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -684,6 +709,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
+    });
+
+    // Add event listeners to task handling buttons
+    document.querySelectorAll('.primary-contact-radio').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            // When a radio button is selected, submit the form
+            document.getElementById('primaryContactForm').submit();
+        });
     });
 });
 </script>

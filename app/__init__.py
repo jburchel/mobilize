@@ -174,4 +174,24 @@ def create_app(config_name='development'):
     # Register CLI commands
     register_commands(app)
 
+    # Add stats to global context for sidebar badges
+    @app.before_request
+    def before_request():
+        """Add stats to global context for sidebar badges."""
+        if current_user.is_authenticated:
+            try:
+                from app.routes.dashboard import get_dashboard_stats
+                g.stats = get_dashboard_stats()
+            except Exception as e:
+                app.logger.error(f"Error getting dashboard stats: {str(e)}")
+                g.stats = {
+                    'people_count': 0,
+                    'church_count': 0,
+                    'pending_tasks': 0,
+                    'overdue_tasks': 0,
+                    'recent_communications': 0
+                }
+        else:
+            g.stats = None
+
     return app 

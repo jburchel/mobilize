@@ -5,80 +5,154 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid px-4">
     <!-- Statistics Row -->
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4">
+        <!-- Total People Stat Card -->
         <div class="col-12 col-md-6 col-lg-3">
-            <div class="dashboard-stat-card primary-blue">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Total People</h6>
-                            <h2 class="card-title mb-0">{{ stats.people_count }}</h2>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="bi bi-people-fill"></i>
-                        </div>
+            <div class="kpi-card">
+                <div class="kpi-card-icon primary" style="background-color: #2a5183;">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-card-title">Total People</div>
+                    <div class="kpi-card-value">{{ stats.people_count }}</div>
+                    <div class="kpi-card-comparison positive">
+                        <span class="kpi-card-comparison-icon">↑</span> Active
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Total Churches Stat Card -->
         <div class="col-12 col-md-6 col-lg-3">
-            <div class="dashboard-stat-card primary-green">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Total Churches</h6>
-                            <h2 class="card-title mb-0">{{ stats.church_count }}</h2>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="bi bi-building"></i>
-                        </div>
+            <div class="kpi-card">
+                <div class="kpi-card-icon success" style="background-color: #39A949;">
+                    <i class="fas fa-church"></i>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-card-title">Total Churches</div>
+                    <div class="kpi-card-value">{{ stats.church_count }}</div>
+                    <div class="kpi-card-comparison positive">
+                        <span class="kpi-card-comparison-icon">↑</span> Active
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Pending Tasks Stat Card -->
         <div class="col-12 col-md-6 col-lg-3">
-            <div class="dashboard-stat-card primary-blue">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Pending Tasks</h6>
-                            <h2 class="card-title mb-0">{{ stats.pending_tasks }}</h2>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="bi bi-check2-square"></i>
-                        </div>
+            <div class="kpi-card">
+                <div class="kpi-card-icon info" style="background-color: #0dcaf0;">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-card-title">Open Tasks</div>
+                    <div class="kpi-card-value">{{ stats.pending_tasks }}</div>
+                    <div class="kpi-card-comparison negative">
+                        <span class="kpi-card-comparison-icon">↓</span> Needs attention
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Recent Communications Stat Card -->
         <div class="col-12 col-md-6 col-lg-3">
-            <div class="dashboard-stat-card primary-green">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-subtitle mb-2 text-white-50">Recent Communications</h6>
-                            <h2 class="card-title mb-0">{{ stats.recent_communications }}</h2>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="bi bi-chat-dots-fill"></i>
-                        </div>
+            <div class="kpi-card">
+                <div class="kpi-card-icon warning" style="background-color: #ffc107;">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-card-title">Emails Sent</div>
+                    <div class="kpi-card-value">{{ stats.recent_communications }}</div>
+                    <div class="kpi-card-comparison positive">
+                        <span class="kpi-card-comparison-icon">↑</span> Last 30 days
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Pipeline Charts Row -->
+    <div class="row g-3 mb-4">
+        <!-- People Pipeline Chart -->
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 card-border-primary-blue">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">People Pipeline</h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary test-api-btn" data-pipeline-type="person">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center position-relative">
+                    <div id="peoplePipelineChart" style="height: 300px; width: 100%; position: relative;">
+                        <!-- Canvas will be added here by JavaScript -->
+                    </div>
+                    <div id="people-chart-loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; justify-content: center; align-items: center; background: rgba(255,255,255,0.8); z-index: 100;">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <span class="ms-2">Loading chart data...</span>
+                        </div>
+                    </div>
+                    <div id="people-chart-error" class="alert alert-danger" style="display: none;"></div>
+                    <div id="people-chart-empty" class="alert alert-info" style="display: none;">No data available</div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('pipeline.view', pipeline_id=people_pipeline.id) if people_pipeline else '#' }}" 
+                       id="people-view-pipeline" 
+                       class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> View Pipeline
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Church Pipeline Chart -->
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 card-border-primary-green">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Church Pipeline</h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary test-api-btn" data-pipeline-type="church">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center position-relative">
+                    <div id="churchPipelineChart" style="height: 300px; width: 100%; position: relative;">
+                        <!-- Canvas will be added here by JavaScript -->
+                    </div>
+                    <div id="church-chart-loading" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; justify-content: center; align-items: center; background: rgba(255,255,255,0.8); z-index: 100;">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border text-success" role="status"></div>
+                            <span class="ms-2">Loading chart data...</span>
+                        </div>
+                    </div>
+                    <div id="church-chart-error" class="alert alert-danger" style="display: none;"></div>
+                    <div id="church-chart-empty" class="alert alert-info" style="display: none;">No data available</div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('pipeline.view', pipeline_id=church_pipeline.id) if church_pipeline else '#' }}" 
+                       id="church-view-pipeline" 
+                       class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> View Pipeline
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content Row -->
-    <div class="row g-4">
+    <div class="row g-3">
         <!-- Pending Tasks -->
         <div class="col-12 col-lg-6">
             <div class="card h-100 card-border-primary-blue">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Pending Tasks</h5>
                     <a href="{{ url_for('tasks.add') }}" class="btn btn-sm btn-primary">
-                        <i class="bi bi-plus-lg"></i> New Task
+                        <i class="fas fa-plus"></i> New Task
                     </a>
                 </div>
                 <div class="card-body">
@@ -106,11 +180,11 @@
                                         <form action="{{ url_for('tasks.complete', id=task.id) }}" method="POST" class="d-inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                             <button type="submit" class="btn btn-sm btn-success" title="Mark Complete">
-                                                <i class="bi bi-check-lg"></i>
+                                                <i class="fas fa-check"></i>
                                             </button>
                                         </form>
                                         <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-primary" title="Edit">
-                                            <i class="bi bi-pencil"></i>
+                                            <i class="fas fa-pencil-alt"></i>
                                         </a>
                                     </td>
                                 </tr>
@@ -138,13 +212,13 @@
                         <div class="activity-item d-flex align-items-start mb-3">
                             <div class="activity-icon me-3">
                                 {% if activity.type == 'person' %}
-                                <i class="bi bi-person-fill text-primary-blue"></i>
+                                <i class="fas fa-user text-primary-blue"></i>
                                 {% elif activity.type == 'church' %}
-                                <i class="bi bi-building text-primary-green"></i>
+                                <i class="fas fa-church text-primary-green"></i>
                                 {% elif activity.type == 'task' %}
-                                <i class="bi bi-check2-square text-primary-blue"></i>
+                                <i class="fas fa-tasks text-primary-blue"></i>
                                 {% elif activity.type == 'communication' %}
-                                <i class="bi bi-chat-dots-fill text-primary-green"></i>
+                                <i class="fas fa-comment-alt text-primary-green"></i>
                                 {% endif %}
                             </div>
                             <div class="activity-content flex-grow-1">
@@ -152,11 +226,11 @@
                                     <div class="activity-text">{{ activity.description }}</div>
                                     {% if activity.type == 'communication' %}
                                     <a href="{{ url_for('communications.view', id=activity.id) }}" class="btn btn-sm btn-outline-primary ms-2">
-                                        <i class="bi bi-eye"></i>
+                                        <i class="fas fa-eye"></i>
                                     </a>
                                     {% elif activity.type == 'task' %}
                                     <a href="{{ url_for('tasks.edit', id=activity.id) }}" class="btn btn-sm btn-outline-primary ms-2">
-                                        <i class="bi bi-eye"></i>
+                                        <i class="fas fa-eye"></i>
                                     </a>
                                     {% endif %}
                                 </div>
@@ -174,21 +248,458 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Refresh dashboard data periodically
-    setInterval(function() {
-        fetch('/dashboard/api/stats')
-            .then(response => response.json())
-            .then(data => {
-                // Update statistics
-                document.querySelector('.dashboard-stat-card:nth-child(1) h2').textContent = data.people_count;
-                document.querySelector('.dashboard-stat-card:nth-child(2) h2').textContent = data.church_count;
-                document.querySelector('.dashboard-stat-card:nth-child(3) h2').textContent = data.pending_tasks;
-                document.querySelector('.dashboard-stat-card:nth-child(4) h2').textContent = data.recent_communications;
+// Global variables to store chart instances
+let peopleChart = null;
+let churchChart = null;
+
+// Function to fetch pipeline data and update charts
+function updatePipelineChart(chartType, containerSelector, retryCount = 0) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Updating ${chartType} pipeline chart...`);
+    
+    // Show loading state
+    const container = document.querySelector(containerSelector);
+    if (!container) {
+        console.error(`Container ${containerSelector} not found`);
+        return;
+    }
+    
+    // Show loading indicator
+    const loadingId = `${chartType}-chart-loading`;
+    const loadingElem = document.getElementById(loadingId);
+    if (loadingElem) {
+        loadingElem.style.display = 'flex';
+    }
+    
+    // Use our debug endpoint for chart data
+    fetch(`/dashboard/debug/chart-data/${chartType}?timestamp=${Date.now()}`)
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`API returned ${response.status}: ${response.statusText}\n${text}`);
+                });
+            }
+            
+            // First capture the raw text for debugging
+            return response.text().then(text => {
+                try {
+                    // Then parse it as JSON
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error(`Failed to parse response as JSON: ${text}`);
+                    throw new Error(`Invalid JSON response: ${e.message}`);
+                }
             });
-    }, 60000); // Refresh every minute
+        })
+        .then(data => {
+            console.log(`[${timestamp}] ${chartType} pipeline data:`, data);
+            
+            // Hide loading indicator immediately
+            if (loadingElem) {
+                loadingElem.style.display = 'none';
+            }
+            
+            if (!data.stages || data.stages.length === 0) {
+                container.innerHTML = `<div class="alert alert-info">No ${chartType} pipeline data available.</div>`;
+                return;
+            }
+            
+            // Render the chart
+            renderPipelineChart(chartType, containerSelector, data);
+            
+            // Update view button URLs
+            updateViewButtons(chartType, data.pipeline_id);
+        })
+        .catch(error => {
+            console.error(`[${timestamp}] Error updating ${chartType} pipeline chart:`, error);
+            
+            // Hide loading indicator
+            if (loadingElem) {
+                loadingElem.style.display = 'none';
+            }
+            
+            // Show error message
+            const errorId = `${chartType}-chart-error`;
+            const errorElem = document.getElementById(errorId);
+            if (errorElem) {
+                errorElem.style.display = 'block';
+                errorElem.innerHTML = `
+                    <div class="alert alert-danger">
+                        <p><strong>Failed to load chart data:</strong> ${error.message}</p>
+                        <button class="btn btn-sm btn-outline-danger mt-2 retry-btn">Retry</button>
+                    </div>
+                `;
+                
+                // Add retry functionality
+                const retryBtn = errorElem.querySelector('.retry-btn');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', function() {
+                        errorElem.style.display = 'none';
+                        updatePipelineChart(chartType, containerSelector, 0);
+                    });
+                }
+            }
+            
+            // Auto-retry with exponential backoff, but only up to 3 times
+            if (retryCount < 3) {
+                const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+                console.log(`Retrying in ${delay/1000}s... (Attempt ${retryCount + 1}/3)`);
+                setTimeout(() => {
+                    updatePipelineChart(chartType, containerSelector, retryCount + 1);
+                }, delay);
+            }
+        });
+}
+
+// Function to hard refresh all charts
+function hardRefreshCharts() {
+    console.log('Hard refreshing all charts');
+    
+    // Get current chart types
+    const personChartType = document.querySelector('.chart-type-btn[data-pipeline-type="person"].active')?.getAttribute('data-chart-type') || 'pie';
+    const churchChartType = document.querySelector('.chart-type-btn[data-pipeline-type="church"].active')?.getAttribute('data-chart-type') || 'pie';
+    
+    // Clear any existing charts
+    if (peopleChart) {
+        peopleChart.destroy();
+        peopleChart = null;
+    }
+    
+    if (churchChart) {
+        churchChart.destroy();
+        churchChart = null;
+    }
+    
+    // Force fetch fresh data with cache busting
+    updatePipelineChart('person', '#peoplePipelineChart');
+    updatePipelineChart('church', '#churchPipelineChart');
+    
+    return false; // Prevent default link behavior
+}
+
+// Function to update View Pipeline button URLs
+function updateViewButtons(chartType, pipelineId) {
+    if (!pipelineId) return;
+    
+    // Get the correct button ID
+    const buttonId = chartType === 'person' ? 'people-view-pipeline' : 'church-view-pipeline';
+    const button = document.getElementById(buttonId);
+    
+    if (button) {
+        // Format the correct URL
+        const url = `/pipeline/view?pipeline_id=${pipelineId}`;
+        button.setAttribute('href', url);
+        console.log(`Updated ${buttonId} button to URL: ${url}`);
+    }
+}
+
+// Function to get default color if stage color is missing
+function getDefaultColor(stageName) {
+    // Lowercase stage name for case-insensitive matching
+    const name = (stageName || '').toLowerCase();
+    
+    if (name.includes('promotion')) return '#3498db'; // Blue
+    if (name.includes('information')) return '#2ecc71'; // Green
+    if (name.includes('invitation')) return '#f1c40f'; // Yellow
+    if (name.includes('confirmation')) return '#e67e22'; // Orange
+    if (name.includes('enr') || name.includes('en42')) return '#9b59b6'; // Purple
+    if (name.includes('automation')) return '#1abc9c'; // Teal
+    
+    // Default colors
+    return '#95a5a6'; // Gray
+}
+
+// Function to render a pipeline chart
+function renderPipelineChart(chartType, containerSelector, data) {
+    // Hide ALL loading spinners immediately - regardless of chart type
+    document.getElementById('people-chart-loading').style.display = 'none';
+    document.getElementById('church-chart-loading').style.display = 'none';
+    
+    // Get container and prepare for chart
+    const container = document.querySelector(containerSelector);
+    if (!container) {
+        console.error(`Cannot find chart container: ${containerSelector}`);
+        return;
+    }
+    
+    // Clear the container
+    container.innerHTML = '';
+    
+    // Create canvas for chart
+    const canvasId = `${chartType}ChartCanvas`;
+    const canvas = document.createElement('canvas');
+    canvas.id = canvasId;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    container.appendChild(canvas);
+    
+    // Prepare chart data
+    const labels = data.stages.map(stage => stage.name);
+    const counts = data.stages.map(stage => stage.count);
+    const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name));
+    
+    // Debug
+    console.log(`Rendering ${chartType} chart with data:`, {
+        labels, counts, colors, container, canvasId
+    });
+    
+    // Create chart context
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    // Get chart type preference (pie or bar)
+    const chartStyle = localStorage.getItem(`${chartType}ChartType`) || 'pie';
+    
+    // Destroy existing chart if it exists
+    if (window[`${chartType}Chart`]) {
+        window[`${chartType}Chart`].destroy();
+    }
+    
+    // Common options for both chart types
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.raw || 0;
+                        const percentage = data.stages[context.dataIndex].percentage;
+                        return `${label}: ${value} (${percentage}%)`;
+                    }
+                },
+                titleFont: {
+                    size: 14
+                },
+                bodyFont: {
+                    size: 14
+                }
+            }
+        }
+    };
+    
+    // Configure chart based on type
+    if (chartStyle === 'pie') {
+        window[`${chartType}Chart`] = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15,
+                            font: {
+                                size: 13
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        // Bar chart
+        window[`${chartType}Chart`] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Contacts',
+                    data: counts,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0, // No decimal places for integer counts
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    console.log(`Rendered ${chartStyle} chart for ${chartType} pipeline with ${labels.length} stages`);
+    
+    // Add total contacts summary below the chart
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'text-center mt-3';
+    summaryDiv.innerHTML = `
+        <span class="badge bg-secondary fs-6 p-2">Total: ${data.total_contacts} contacts</span>
+        <div class="btn-group btn-group-sm ms-2" role="group">
+            <button type="button" class="btn btn-outline-primary chart-style-btn ${chartStyle === 'pie' ? 'active' : ''}" 
+                    data-chart-type="pie" data-pipeline="${chartType}">
+                Pie
+            </button>
+            <button type="button" class="btn btn-outline-primary chart-style-btn ${chartStyle === 'bar' ? 'active' : ''}" 
+                    data-chart-type="bar" data-pipeline="${chartType}">
+                Bar
+            </button>
+        </div>
+    `;
+    container.appendChild(summaryDiv);
+    
+    // Add event listeners to chart style buttons
+    const styleButtons = container.querySelectorAll('.chart-style-btn');
+    styleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const newChartType = this.getAttribute('data-chart-type');
+            const pipeline = this.getAttribute('data-pipeline');
+            
+            // Update active state
+            styleButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Save preference
+            localStorage.setItem(`${pipeline}ChartType`, newChartType);
+            
+            // Redraw chart
+            renderPipelineChart(pipeline, containerSelector, data);
+        });
+    });
+}
+
+// Function to test the pipeline API
+function testPipelineApi(chartType) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Testing pipeline API for ${chartType}...`);
+    
+    // Get status element
+    let statusElementId = chartType === 'person' ? 'people-chart-status' : 'church-chart-status';
+    const statusElement = document.getElementById(statusElementId) || document.createElement('div');
+    statusElement.id = statusElementId;
+    statusElement.innerHTML = '<span class="text-info"><i class="fas fa-sync-alt fa-spin me-2"></i>Testing API...</span>';
+    
+    // Add status element if not present
+    const chartContainer = document.querySelector(`#${chartType}PipelineChart`).parentNode;
+    if (!chartContainer.contains(statusElement)) {
+        chartContainer.appendChild(statusElement);
+    }
+    
+    // Use our debug endpoint for chart data
+    fetch(`/dashboard/debug/chart-data/${chartType}?timestamp=${Date.now()}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`API returned ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(`[${timestamp}] API test successful:`, data);
+            
+            // Calculate total contacts for display
+            const totalContacts = data.total_contacts || 0;
+            
+            // Format stage distribution for the alert
+            let stageDistribution = '';
+            if (data.stages && data.stages.length > 0) {
+                stageDistribution = data.stages.map(stage => 
+                    `${stage.name}: ${stage.count} (${stage.percentage}%)`
+                ).join('\n');
+            }
+            
+            // Create success message
+            const successMsg = `API test successful!\n\nPipeline: ${data.pipeline_name}\nTotal Contacts: ${totalContacts}\n\nStage Distribution:\n${stageDistribution}`;
+            
+            // Update UI
+            statusElement.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-2"></i>API working!</span>';
+            
+            // Show alert with data summary
+            alert(successMsg);
+            
+            // Force refresh the chart
+            updatePipelineChart(chartType, `#${chartType}PipelineChart`, 0);
+        })
+        .catch(error => {
+            console.error(`[${timestamp}] API test failed:`, error);
+            statusElement.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-2"></i>API error!</span>';
+            alert(`API Test Failed: ${error.message}`);
+        });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - initializing charts');
+    
+    // Log what elements we can find
+    console.log('Chart containers:',  
+        document.querySelector('#peoplePipelineChart'),
+        document.querySelector('#churchPipelineChart')
+    );
+    
+    console.log('Loading indicators:',
+        document.getElementById('people-chart-loading'),
+        document.getElementById('church-chart-loading')
+    );
+    
+    // Force loading indicators to be visible initially
+    const peopleLoading = document.getElementById('people-chart-loading');
+    const churchLoading = document.getElementById('church-chart-loading');
+    
+    if (peopleLoading) peopleLoading.style.display = 'flex';
+    if (churchLoading) churchLoading.style.display = 'flex';
+    
+    // Initialize charts with delay to ensure DOM is fully ready
+    setTimeout(() => {
+        console.log('Starting chart initialization');
+        updatePipelineChart('person', '#peoplePipelineChart');
+        updatePipelineChart('church', '#churchPipelineChart');
+    }, 500);
+    
+    // Add event listeners for API test buttons
+    document.querySelectorAll('.test-api-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const pipeline = this.getAttribute('data-pipeline-type');
+            testPipelineApi(pipeline);
+        });
+    });
+    
+    // Force a direct test of the APIs for debugging
+    console.log('Direct API test:');
+    fetch('/dashboard/debug/chart-data/person')
+        .then(r => r.json())
+        .then(data => console.log('Person data:', data))
+        .catch(err => console.error('Person fetch error:', err));
+        
+    fetch('/dashboard/debug/chart-data/church')
+        .then(r => r.json())
+        .then(data => console.log('Church data:', data))
+        .catch(err => console.error('Church fetch error:', err));
 });
 </script>
-{% endblock %} 
+{% endblock %}

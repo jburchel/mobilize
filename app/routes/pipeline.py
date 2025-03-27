@@ -352,6 +352,31 @@ def add_contact_page(contact_id):
     if existing_pipeline_ids:
         query = query.filter(~Pipeline.id.in_(existing_pipeline_ids))
     
+    # Get the contact's main pipeline stage (if any)
+    main_pipeline_stage = None
+    if contact_type == 'person':
+        main_pipeline = Pipeline.get_main_pipeline('person')
+    else:
+        main_pipeline = Pipeline.get_main_pipeline('church')
+    
+    if main_pipeline:
+        # Check if contact is in the main pipeline
+        pipeline_contact = PipelineContact.query.filter_by(
+            contact_id=contact_id,
+            pipeline_id=main_pipeline.id
+        ).first()
+        
+        if pipeline_contact and pipeline_contact.current_stage:
+            main_pipeline_stage = pipeline_contact.current_stage.name
+    
+    # If we found a main pipeline stage, filter custom pipelines by that stage
+    if main_pipeline_stage:
+        # Include pipelines with matching parent_pipeline_stage or None (for backwards compatibility)
+        query = query.filter(
+            (Pipeline.parent_pipeline_stage == main_pipeline_stage) | 
+            (Pipeline.parent_pipeline_stage == None)
+        )
+    
     # Get all matching pipelines
     pipelines = query.all()
     
@@ -360,6 +385,15 @@ def add_contact_page(contact_id):
                          contact=contact,
                          pipelines=pipelines,
                          contact_type=contact_type)
+
+@pipeline_bp.route('/view')
+@login_required
+def view_by_query():
+    """View a pipeline using query parameters instead of path parameters"""
+    pipeline_id = request.args.get('pipeline_id', type=int)
+    if not pipeline_id:
+        return jsonify({"error": "Pipeline ID is required"}), 400
+    return pipeline_view(pipeline_id)
 
 # Import the pipeline_bp from the controller
 # All routes are defined in the controller 

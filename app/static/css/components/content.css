@@ -239,8 +239,7 @@
 /* Stat cards */
 .stat-card {
   display: flex;
-  align-items: center;
-  padding: var(--spacing-md);
+  align-items: stretch;
   border-radius: var(--border-radius-md);
   background-color: var(--color-surface);
   box-shadow: var(--shadow-sm);
@@ -248,7 +247,9 @@
               box-shadow var(--transition-duration-base) var(--transition-timing-ease);
   position: relative;
   overflow: hidden;
-  gap: var(--spacing-md);
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
 }
 
 .stat-card:hover {
@@ -257,61 +258,72 @@
 }
 
 .stat-card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--border-radius, 8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-xl);
-  color: white;
-  flex-shrink: 0;
+  width: 60px;
+  font-size: var(--font-size-lg);
+  color: var(--color-white);
+  padding: var(--spacing-sm);
 }
 
+.stat-card-icon.bg-primary,
 .stat-card-icon.primary {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-blue);
 }
 
+.stat-card-icon.bg-success,
 .stat-card-icon.success {
-  background-color: var(--color-success);
+  background-color: var(--color-primary-green);
 }
 
+.stat-card-icon.bg-warning,
 .stat-card-icon.warning {
   background-color: var(--color-warning);
 }
 
+.stat-card-icon.bg-danger,
 .stat-card-icon.danger {
   background-color: var(--color-danger);
 }
 
+.stat-card-icon.bg-info,
 .stat-card-icon.info {
   background-color: var(--color-info);
 }
 
 .stat-card-content {
   flex: 1;
-  min-width: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .stat-card-value {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  margin-bottom: 4px;
-  line-height: 1.2;
   color: var(--color-text);
+  margin: 0;
+  line-height: 1.2;
 }
 
 .stat-card-label {
-  color: var(--color-text-light);
   font-size: var(--font-size-sm);
+  color: var(--color-text-light);
+  margin: var(--spacing-2xs) 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dark-theme .stat-card {
   background-color: var(--color-gray-800);
+  border: 1px solid var(--color-gray-700);
 }
 
 .dark-theme .stat-card-value {
-  color: var(--color-gray-100);
+  color: var(--color-white);
 }
 
 .dark-theme .stat-card-label {

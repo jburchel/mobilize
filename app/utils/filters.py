@@ -14,6 +14,7 @@ def register_filters(app):
     app.jinja_env.filters['initials'] = get_initials
     app.jinja_env.filters['status_class'] = status_class
     app.jinja_env.filters['nl2br'] = nl2br
+    app.jinja_env.filters['format_location'] = format_location
     
 def register_template_functions(app):
     """Register custom Jinja2 functions with the Flask application."""
@@ -60,6 +61,42 @@ def truncate_html(value, length=100, killwords=False, end='...'):
         text = text[:length].rsplit(' ', 1)[0]
         
     return text + end
+
+def format_location(church):
+    """Format location based on church city, state, and country.
+    
+    For US: City, State
+    For Canada: City, Province
+    For others: City, Country
+    """
+    if not church:
+        return ''
+    
+    # If location is already provided, use it
+    if getattr(church, 'location', None):
+        return church.location
+    
+    city = getattr(church, 'city', '')
+    state = getattr(church, 'state', '')
+    country = getattr(church, 'country', '')
+    
+    if not city:
+        return ''
+    
+    # For US addresses
+    if country == 'United States' or country == 'USA' or country == 'US' or not country:
+        if state:
+            return f"{city}, {state}"
+        return city
+    
+    # For Canadian addresses
+    if country == 'Canada' or country == 'CA':
+        if state:  # In this case, state field contains the province
+            return f"{city}, {state}"
+        return city
+    
+    # For all other countries
+    return f"{city}, {country}" if country else city
 
 def get_initials(value):
     """Get initials from a name."""

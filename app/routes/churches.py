@@ -336,6 +336,36 @@ def delete(id):
     flash('Church deleted successfully', 'success')
     return redirect(url_for('churches.index'))
 
+@churches_bp.route('/<int:id>/set-primary-contact', methods=['POST'])
+@login_required
+@office_required
+def set_primary_contact(id):
+    """Set the primary contact for a church."""
+    church = Church.query.get_or_404(id)
+    
+    # Check modification permissions (allow super admins to edit all)
+    if not current_user.is_super_admin() and church.office_id != current_user.office_id:
+        flash('You do not have permission to modify this church', 'danger')
+        return redirect(url_for('churches.index'))
+    
+    main_contact_id = request.form.get('main_contact_id')
+    
+    if main_contact_id:
+        # Verify that the person exists and belongs to this church
+        person = Person.query.filter_by(id=main_contact_id, church_id=church.id).first()
+        
+        if person:
+            # Set this person as the primary contact
+            church.main_contact_id = person.id
+            db.session.commit()
+            flash(f'{person.full_name} set as primary contact for {church.name}', 'success')
+        else:
+            flash('Selected person does not exist or is not associated with this church', 'danger')
+    else:
+        flash('No contact selected', 'warning')
+    
+    return redirect(url_for('churches.show', id=church.id))
+
 @churches_bp.route('/search')
 @login_required
 @office_required
@@ -366,11 +396,38 @@ def search():
             )
         ).limit(10).all()
     
+    # Format the location based on city, state, and country
+    def format_location(church):
+        if church.location:
+            return church.location
+            
+        city = church.city or ''
+        state = church.state or ''
+        country = church.country or ''
+        
+        if not city:
+            return ""
+            
+        # For US addresses
+        if country in ('United States', 'USA', 'US') or not country:
+            if state:
+                return f"{city}, {state}"
+            return city
+            
+        # For Canadian addresses
+        if country in ('Canada', 'CA'):
+            if state:
+                return f"{city}, {state}"
+            return city
+            
+        # For all other countries
+        return f"{city}, {country}" if country else city
+    
     result = [
         {
             'id': c.id,
             'name': c.name,
-            'address': f"{c.city}, {c.state}" if c.city and c.state else ""
+            'address': format_location(c)
         } for c in churches
     ]
     

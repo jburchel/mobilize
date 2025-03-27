@@ -2,6 +2,8 @@
 
 {% block title %}Pipelines{% endblock %}
 
+{% block page_title %}Pipeline Management{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-4">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -32,11 +34,23 @@
                                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                                 People Pipeline</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                {{ people_main_pipeline.name if people_main_pipeline else "Not Created" }}
+                                                {% if people_main_pipeline %}
+                                                    {{ people_main_pipeline.name }}
+                                                {% else %}
+                                                    NOT CREATED
+                                                {% endif %}
                                             </div>
                                             {% if people_main_pipeline %}
                                                 <div class="mt-2">
-                                                    <span class="badge bg-info">{{ people_main_pipeline.contact_count() }} Contacts</span>
+                                                    <span class="badge bg-info">
+                                                        {% if people_main_pipeline.count_contacts() == 0 %}
+                                                            {% set sql_count = get_pipeline_count(people_main_pipeline.id) %}
+                                                            {{ sql_count }}
+                                                        {% else %}
+                                                            {{ people_main_pipeline.count_contacts() }}
+                                                        {% endif %}
+                                                        Contacts
+                                                    </span>
                                                     <a href="{{ url_for('pipeline.view', pipeline_id=people_main_pipeline.id) }}" class="btn btn-sm btn-outline-primary mt-3">
                                                         <i class="bi bi-eye me-1"></i> View Pipeline
                                                     </a>
@@ -60,11 +74,15 @@
                                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                                 Church Pipeline</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                {{ church_main_pipeline.name if church_main_pipeline else "Not Created" }}
+                                                {% if church_main_pipeline %}
+                                                    {{ church_main_pipeline.name }}
+                                                {% else %}
+                                                    NOT CREATED
+                                                {% endif %}
                                             </div>
                                             {% if church_main_pipeline %}
                                                 <div class="mt-2">
-                                                    <span class="badge bg-info">{{ church_main_pipeline.contact_count() }} Contacts</span>
+                                                    <span class="badge bg-info">{{ church_main_pipeline.count_contacts() }} Contacts</span>
                                                     <a href="{{ url_for('pipeline.view', pipeline_id=church_main_pipeline.id) }}" class="btn btn-sm btn-outline-success mt-3">
                                                         <i class="bi bi-eye me-1"></i> View Pipeline
                                                     </a>
@@ -109,7 +127,7 @@
                 <div class="card-body">
                     {% if custom_pipelines %}
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="pipelinesTable" width="100%" cellspacing="0">
+                            <table class="table" id="pipelinesTable" width="100%" cellspacing="0">
                                 <thead>
                                     <tr>
                                         <th>Name</th>
