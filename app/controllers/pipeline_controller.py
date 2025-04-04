@@ -121,6 +121,11 @@ def view(pipeline_id):
     try:
         pipeline = Pipeline.query.get_or_404(pipeline_id)
         
+        # Verify database connection
+        db_path = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if 'sqlite' in db_path:
+            current_app.logger.info(f"Using database: {db_path}")
+        
         # Add debug info
         contact_count = db.session.execute(
             db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
@@ -144,7 +149,7 @@ def view(pipeline_id):
             # Check contact type compatibility with pipeline
             contact_model_type = getattr(contact, 'type', None) or getattr(contact, 'contact_type', None)
             
-            if pipeline.pipeline_type != 'both' and pipeline.pipeline_type != contact_model_type:
+            if pipeline.pipeline_type not in ['both', 'person', 'people'] and pipeline.pipeline_type != contact_model_type:
                 flash(f'Cannot add {contact_type} to a {pipeline.pipeline_type} pipeline', 'danger')
                 return redirect(url_for('pipeline.view', pipeline_id=pipeline_id))
             
@@ -200,7 +205,46 @@ def view(pipeline_id):
         # Get pipeline contacts based on user role
         if current_user.is_super_admin():
             # Super admins see all contacts
-            pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+            # Use direct SQL to guarantee we get all contacts
+            contact_records = db.session.execute(
+                db.text("""
+                    SELECT id, contact_id, current_stage_id
+                    FROM pipeline_contacts 
+                    WHERE pipeline_id = :pipeline_id
+                """),
+                {"pipeline_id": pipeline_id}
+            ).fetchall()
+            
+            # Create PipelineContact objects from the SQL results
+            pipeline_contacts = []
+            for record in contact_records:
+                pc = PipelineContact.query.get(record[0])
+                if pc:
+                    pipeline_contacts.append(pc)
+                else:
+                    current_app.logger.warning(f"Could not find PipelineContact with ID {record[0]}")
+            
+            # Count church contacts for debugging
+            if pipeline.pipeline_type == 'church':
+                from app.models.church import Church
+                all_churches = Church.query.count()
+                church_contacts = db.session.query(PipelineContact.contact_id).filter_by(pipeline_id=pipeline_id).all()
+                church_contact_ids = [c[0] for c in church_contacts]
+                current_app.logger.info(f"Super admin church pipeline debug: Total churches in DB: {all_churches}")
+                current_app.logger.info(f"Church contacts in pipeline: {len(church_contact_ids)}")
+                current_app.logger.info(f"Church contact IDs: {church_contact_ids}")
+                
+                # Additional verification with direct SQL
+                direct_sql_count = db.session.execute(
+                    db.text("""
+                        SELECT COUNT(*) 
+                        FROM pipeline_contacts 
+                        WHERE pipeline_id = :pipeline_id
+                    """),
+                    {"pipeline_id": pipeline_id}
+                ).scalar() or 0
+                current_app.logger.info(f"Direct SQL count for church pipeline: {direct_sql_count}")
+            
             current_app.logger.info(f"Super admin view: found {len(pipeline_contacts)} contacts for pipeline {pipeline_id}")
         elif current_user.is_office_admin():
             # Office admins see contacts from their office
@@ -252,16 +296,24 @@ def view(pipeline_id):
             stage = next((s for s in stages if s.id == stage_id), None)
             stage_name = stage.name if stage else "Unknown"
             current_app.logger.info(f"Stage {stage_id} ({stage_name}) has {len(contacts)} contacts")
-            
-            # Log the first few contacts to check what they are
-            for i, contact in enumerate(contacts[:5]):
-                contact_name = "Unknown"
-                contact_type = "Unknown"
-                if contact.contact:
-                    contact_name = getattr(contact.contact, 'get_name', lambda: "No Name")()
-                    contact_type = getattr(contact.contact, 'contact_type', "Unknown")
-                current_app.logger.info(f"  Contact {i+1}: ID={contact.contact_id}, Name={contact_name}, Type={contact_type}")
         
+        # Debug contact entries
+        if contact_count > 0 and len(pipeline_contacts) < contact_count:
+            current_app.logger.warning(f"Pipeline {pipeline_id} has {contact_count} contacts in DB but only {len(pipeline_contacts)} were loaded for display")
+            
+            # Check if some contacts weren't loaded correctly
+            missing_contacts = db.session.execute(
+                db.text("""
+                SELECT pc.id, pc.contact_id, pc.current_stage_id
+                FROM pipeline_contacts pc 
+                WHERE pc.pipeline_id = :pipeline_id
+                """), 
+                {"pipeline_id": pipeline_id}
+            ).fetchall()
+            
+            if missing_contacts:
+                current_app.logger.info(f"First 5 pipeline contacts DB records: {missing_contacts[:5]}")
+
         # Get available contacts to populate the Add Contact dropdown based on user role
         people = []
         churches = []
@@ -335,7 +387,7 @@ def view(pipeline_id):
         current_app.logger.error(f"Error viewing pipeline: {str(e)}")
         import traceback
         current_app.logger.error(traceback.format_exc())
-        flash(f"Error loading pipeline view: {str(e)}", 'danger')
+        flash(f"Error loading pipeline: {str(e)}", "danger")
         return redirect(url_for('pipeline.index'))
 
 @pipeline_bp.route('/<int:pipeline_id>/edit', methods=['GET', 'POST'])
