@@ -9,6 +9,11 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from flask import current_app, url_for, session
+from typing import Dict, Any, Optional
+from app.auth.google_oauth import get_google_credentials
+import logging
+
+logger = logging.getLogger(__name__)
 
 class GoogleAPIService:
     """
@@ -25,6 +30,36 @@ class GoogleAPIService:
     
     # Constants
     GOOGLE_CLIENT_SECRETS_FILE = 'client_secret.json'
+    
+    def __init__(self, user_id, api_name, api_version, scopes=None):
+        """Initialize the service with user credentials."""
+        self.user_id = user_id
+        self.api_name = api_name
+        self.api_version = api_version
+        self.scopes = scopes
+        self.service = None
+        self._initialize_service()
+    
+    def _initialize_service(self):
+        """Initialize the Google API service."""
+        try:
+            # Get credentials using the helper function
+            credentials = get_google_credentials(self.user_id)
+            
+            if not credentials:
+                raise ValueError(f"User {self.user_id} does not have valid Google credentials")
+            
+            self.service = build(self.api_name, self.api_version, credentials=credentials)
+            logger.info(f"Google {self.api_name} API service initialized for user {self.user_id}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Google {self.api_name} API service: {str(e)}")
+            raise
+    
+    def get_service(self):
+        """Get the Google API service object."""
+        if not self.service:
+            self._initialize_service()
+        return self.service
     
     @classmethod
     def get_oauth_flow(cls, redirect_uri=None):

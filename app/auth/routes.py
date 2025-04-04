@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from firebase_admin import auth
 from app.models.user import User
 from app.extensions import db
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from app.auth.firebase import verify_firebase_token
 from app.auth.google_oauth import get_google_auth_url, handle_oauth2_callback, create_oauth_flow, store_credentials
 from google.oauth2.credentials import Credentials
@@ -178,58 +178,88 @@ def oauth2callback():
         flash(f'Google authentication error: {error_description}', 'danger')
         return redirect(url_for('auth.login'))
     
-    # Create OAuth flow
-    flow = create_oauth_flow()
-    
-    # Get user info from callback
-    user_info, error = handle_oauth2_callback()
-    if error:
-        flash(f'Error during Google authentication: {error}', 'danger')
-        return redirect(url_for('auth.login'))
-    
-    if not user_info:
-        flash('Failed to get user info from Google', 'danger')
-        return redirect(url_for('auth.login'))
-    
-    # Validate email domain for Crossover Global only in production
-    email = user_info.get('email', '')
-    
-    # TEMPORARY: Bypass domain restriction for all users
-    is_dev_mode = True
-    
-    if not email.endswith('@crossoverglobal.net') and not is_dev_mode:
-        flash('Access is restricted to Crossover Global staff members with @crossoverglobal.net email addresses.', 'danger')
-        return redirect(url_for('auth.login'))
-    
-    # Log email being used
-    current_app.logger.info(f"Login attempt with email: {email}")
-    
-    # Find or create user
-    user = User.query.filter_by(email=user_info['email']).first()
-    if not user:
-        # Generate a unique firebase_uid for Google OAuth users
-        firebase_uid = f'google-oauth-{uuid.uuid4()}'
-        email_username = user_info['email'].split('@')[0]
-        user = User(
-            email=user_info['email'],
-            username=email_username,
-            firebase_uid=firebase_uid,
-            first_name=user_info.get('given_name', ''),
-            last_name=user_info.get('family_name', ''),
-            profile_image=user_info.get('picture', ''),
-            role='standard_user',
-            office_id=1  # Default office ID
-        )
-        db.session.add(user)
-        db.session.commit()
-    
     try:
-        # Store credentials with the user's ID
-        flow.fetch_token(authorization_response=request.url)
-        store_credentials(flow.credentials, user.id)
+        # Get the authorization code from the request
+        code = request.args.get('code')
+        if not code:
+            flash('No authorization code received from Google', 'danger')
+            return redirect(url_for('auth.login'))
+            
+        # Create OAuth flow
+        flow = create_oauth_flow()
+        
+        # Validate the state parameter
+        state = session.get('state')
+        if not state or request.args.get('state') != state:
+            current_app.logger.error("State mismatch in OAuth callback")
+            flash('Invalid authentication state. Please try again.', 'danger')
+            return redirect(url_for('auth.login'))
+        
+        # Log the callback URL for debugging
+        callback_url = request.url
+        current_app.logger.info(f"OAuth callback URL: {callback_url}")
+        
+        # Process authorization response - add skip_scope_check=True to prevent scope errors
+        flow.fetch_token(authorization_response=callback_url, include_granted_scopes=True)
+        credentials = flow.credentials
+        
+        # Get user info directly using the credentials
+        from googleapiclient.discovery import build
+        service = build('oauth2', 'v2', credentials=credentials)
+        user_info = service.userinfo().get().execute()
+        
+        if not user_info:
+            flash('Failed to get user info from Google', 'danger')
+            return redirect(url_for('auth.login'))
+        
+        # Validate email domain for Crossover Global only in production
+        email = user_info.get('email', '')
+        current_app.logger.info(f"Email from Google: {email}")
+        
+        # TEMPORARY: Bypass domain restriction for all users
+        is_dev_mode = True
+        
+        if not email.endswith('@crossoverglobal.net') and not is_dev_mode:
+            flash('Access is restricted to Crossover Global staff members with @crossoverglobal.net email addresses.', 'danger')
+            return redirect(url_for('auth.login'))
+        
+        # Log email being used
+        current_app.logger.info(f"Login attempt with email: {email}")
+        
+        # Find or create user
+        user = User.query.filter_by(email=user_info['email']).first()
+        if not user:
+            # Generate a unique firebase_uid for Google OAuth users
+            firebase_uid = f'google-oauth-{uuid.uuid4()}'
+            email_username = user_info['email'].split('@')[0]
+            user = User(
+                email=user_info['email'],
+                username=email_username,
+                firebase_uid=firebase_uid,
+                first_name=user_info.get('given_name', ''),
+                last_name=user_info.get('family_name', ''),
+                profile_image=user_info.get('picture', ''),
+                role='standard_user',
+                office_id=1  # Default office ID
+            )
+            db.session.add(user)
+            db.session.commit()
+        
+        # Store Google token
+        try:
+            # Use our improved store_credentials function
+            from app.auth.google_oauth import store_credentials
+            store_credentials(credentials, user.id)
+        except Exception as e:
+            current_app.logger.error(f"Error storing credentials: {str(e)}")
+            # Continue even if storing credentials fails - we can still log in the user
         
         # Log in the user
         login_user(user)
+        
+        # Record successful login
+        user.last_login = datetime.now(UTC)
+        db.session.commit()
         
         # Redirect to dashboard (which is at the root URL)
         return redirect(url_for('dashboard.index'))
@@ -343,4 +373,45 @@ def dev_login_office_admin():
     session['office_admin'] = admin_user.is_admin()
     
     # Redirect to dashboard
-    return redirect(url_for('dashboard.index')) 
+    return redirect(url_for('dashboard.index'))
+
+@auth_bp.route('/google/revoke')
+@login_required
+def revoke_google():
+    """Revoke Google OAuth credentials for the current user."""
+    try:
+        # Get user's Google token
+        from app.models.google_token import GoogleToken
+        token = GoogleToken.query.filter_by(user_id=current_user.id).first()
+        
+        if token:
+            # Try to revoke token with Google
+            from app.auth.google_oauth import get_google_credentials
+            credentials = get_google_credentials(current_user.id)
+            if credentials:
+                try:
+                    # Attempt to revoke on Google's side
+                    import google.oauth2.credentials
+                    import google_auth_oauthlib.flow
+                    import googleapiclient.discovery
+                    
+                    # Build the request to revoke
+                    import requests
+                    requests.post('https://oauth2.googleapis.com/revoke',
+                                 params={'token': credentials.token},
+                                 headers={'content-type': 'application/x-www-form-urlencoded'})
+                except Exception as e:
+                    current_app.logger.error(f"Error revoking Google token: {str(e)}")
+            
+            # Delete the token from our database
+            db.session.delete(token)
+            db.session.commit()
+            flash('Google account disconnected successfully.', 'success')
+        else:
+            flash('No Google account connected.', 'info')
+    except Exception as e:
+        current_app.logger.error(f"Error in revoke_google: {str(e)}")
+        flash('An error occurred while disconnecting your Google account.', 'danger')
+    
+    # Redirect back to the Google sync page
+    return redirect(url_for('google_sync.index')) 

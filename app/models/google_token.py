@@ -11,6 +11,7 @@ class GoogleToken(Base):
     token_type = db.Column(db.String, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    scopes = db.Column(db.Text, nullable=True)  # Store scopes as a JSON string
 
     # Relationships
     user = db.relationship("User", back_populates="google_tokens")
@@ -27,6 +28,7 @@ class GoogleToken(Base):
             'token_type': self.token_type,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
             'user_id': self.user_id,
+            'scopes': self.scopes,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         } 

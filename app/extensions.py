@@ -7,6 +7,9 @@ from flask_wtf.csrf import CSRFProtect
 from celery import Celery
 from flask_apscheduler import APScheduler
 from flask_mail import Mail
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
 import logging
 
 # Initialize extensions
@@ -19,6 +22,13 @@ csrf = CSRFProtect()
 celery = Celery('app')
 scheduler = APScheduler()
 mail = Mail()  # Initialize Flask-Mail
+limiter = Limiter(key_func=get_remote_address)
+talisman = Talisman()
+
+# Configure cache
+def configure_cache(app):
+    """Configure cache based on app config."""
+    pass  # Implementation details will be added later
 
 # Create base model class
 Base = db.Model

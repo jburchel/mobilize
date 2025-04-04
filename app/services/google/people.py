@@ -4,6 +4,8 @@ from google.oauth2.credentials import Credentials
 from app.models.person import Person
 from app.models.contact import Contact
 from app.models.user import User
+from app.models.google_token import GoogleToken
+from app.auth.google_oauth import get_google_credentials
 from app.extensions import db
 from datetime import datetime
 import logging
@@ -17,34 +19,28 @@ class GooglePeopleService:
     API_VERSION = 'v1'
     API_SERVICE = 'people'
     
-    def __init__(self, user: User):
+    def __init__(self, user_id):
         """Initialize the service with user credentials."""
-        self.user = user
+        self.user_id = user_id
         self.service = None
         self._initialize_service()
     
     def _initialize_service(self):
         """Initialize the Google People API service."""
         try:
-            if not self.user.google_refresh_token:
-                raise ValueError("User does not have Google credentials")
-                
-            credentials = Credentials(
-                None,  # No access token needed as we'll use refresh token
-                refresh_token=self.user.google_refresh_token,
-                token_uri="https://oauth2.googleapis.com/token",
-                client_id=self.user.google_client_id,
-                client_secret=self.user.google_client_secret,
-                scopes=self.SCOPES
-            )
+            # Get credentials using the helper function
+            credentials = get_google_credentials(self.user_id)
+            
+            if not credentials:
+                raise ValueError(f"User {self.user_id} does not have valid Google credentials")
             
             self.service = build(self.API_SERVICE, self.API_VERSION, credentials=credentials)
-            logger.info(f"Google People API service initialized for user {self.user.id}")
+            logger.info(f"Google People API service initialized for user {self.user_id}")
         except Exception as e:
             logger.error(f"Failed to initialize Google People API service: {str(e)}")
             raise
     
-    def list_contacts(self, page_size: int = 100, sync_token: str = None) -> Dict[str, Any]:
+    def list_contacts(self, page_size: int = 100, sync_token: str = None, max_results: int = None) -> List[Dict[str, Any]]:
         """List Google contacts with pagination support."""
         try:
             request = self.service.people().connections().list(
@@ -54,10 +50,29 @@ class GooglePeopleService:
                 syncToken=sync_token
             )
             
-            return request.execute()
+            response = request.execute()
+            connections = response.get('connections', [])
+            
+            # If max_results is specified, limit the results
+            if max_results is not None:
+                connections = connections[:max_results]
+                
+            return connections
         except Exception as e:
             logger.error(f"Failed to list Google contacts: {str(e)}")
             raise
+    
+    def get_contacts_by_ids(self, resource_names: List[str]) -> List[Dict[str, Any]]:
+        """Get details for multiple contacts by their resource names."""
+        contacts = []
+        for resource_name in resource_names:
+            try:
+                contact = self.get_contact(resource_name)
+                contacts.append(contact)
+            except Exception as e:
+                logger.error(f"Error getting contact {resource_name}: {str(e)}")
+                # Continue with other contacts even if one fails
+        return contacts
     
     def get_contact(self, resource_name: str) -> Dict[str, Any]:
         """Get a specific Google contact by resource name."""

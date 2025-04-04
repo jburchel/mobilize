@@ -1,7 +1,7 @@
 """Template filters and functions for the application."""
 
 from datetime import datetime
-from flask import Markup
+from markupsafe import Markup
 import re
 from .utilities import format_date, format_phone
 

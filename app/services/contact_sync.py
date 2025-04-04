@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 class ContactSyncService:
     """Service for synchronizing contacts between CRM and Google Contacts."""
     
-    def __init__(self, user: User):
-        self.user = user
-        self.google_service = GooglePeopleService(user)
+    def __init__(self, user_id):
+        self.user_id = user_id
+        self.google_service = GooglePeopleService(user_id)
         
     def _create_sync_history(self, action: str, status: str, details: Dict[str, Any]) -> SyncHistory:
         """Create a sync history record."""
         history = SyncHistory(
-            user_id=self.user.id,
+            user_id=self.user_id,
             sync_type='contacts',
             action=action,
             status=status,
@@ -129,9 +129,10 @@ class ContactSyncService:
                             stats['updated'] += 1
                         else:
                             # Create new person
+                            user = User.query.get(self.user_id)
                             person = Person(
-                                user_id=self.user.id,
-                                office_id=self.user.office_id,
+                                user_id=self.user_id,
+                                office_id=user.office_id if user else 1,  # Default to office 1 if not found
                                 **contact_data
                             )
                             db.session.add(person)
@@ -177,7 +178,7 @@ class ContactSyncService:
     def sync_to_google(self, person_ids: List[int] = None) -> Dict[str, Any]:
         """Sync contacts from CRM to Google."""
         try:
-            query = Person.query.filter_by(user_id=self.user.id)
+            query = Person.query.filter_by(user_id=self.user_id)
             if person_ids:
                 query = query.filter(Person.id.in_(person_ids))
                 

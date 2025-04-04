@@ -28,12 +28,9 @@ from app.utils.context_processors import register_template_utilities
 from app.utils.setup_main_pipelines import setup_main_pipelines
 from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
 from app.cli import register_commands
-from flask_sqlalchemy import SQLAlchemy
 
-# Initialize extensions
-migrate = Migrate()
-login_manager = LoginManager()
-jwt = JWTManager()
+# Initialize extensions that aren't in extensions.py
+# (Remove this as we're using the ones from extensions.py)
 
 def create_app(test_config=None):
     """Create and configure the Flask application"""
@@ -91,7 +88,8 @@ def create_app(test_config=None):
     # Create all database tables (if they don't exist)
     if not skip_db_init:
         app.logger.info("Creating database tables...")
-        db.create_all()
+        with app.app_context():
+            db.create_all()
     else:
         app.logger.info("Skipping database initialization...")
     
@@ -100,13 +98,6 @@ def create_app(test_config=None):
     
     # Configure URL handling
     app.url_map.strict_slashes = False
-    
-    # Initialize extensions with app
-    db.init_app(app)
-    migrate.init_app(app, db)
-    cors.init_app(app)
-    csrf.init_app(app)
-    limiter.init_app(app)
     
     # Initialize cache - based on config settings
     configure_cache(app)
@@ -185,8 +176,6 @@ def create_app(test_config=None):
             app.logger.info("Skipping database initialization within app context...")
     
     # Setup login manager
-    login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
     login_manager.session_protection = 'strong'
     
     @login_manager.user_loader

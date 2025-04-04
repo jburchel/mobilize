@@ -5,14 +5,19 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 import os
 import json
+from datetime import datetime, UTC, timedelta
 
 # OAuth 2.0 scopes for various Google services we'll use
 SCOPES = [
+    'openid',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/contacts'
+    'https://www.googleapis.com/auth/contacts',
+    'https://www.googleapis.com/auth/contacts.readonly',
+    'https://www.googleapis.com/auth/contacts.other.readonly'
 ]
 
 def create_oauth_flow():
@@ -27,6 +32,10 @@ def create_oauth_flow():
         }
     }
     
+    # Print the redirect URI for debugging
+    redirect_uri = url_for('auth.oauth2callback', _external=True)
+    current_app.logger.debug(f"Using redirect URI: {redirect_uri}")
+    
     flow = Flow.from_client_config(
         client_config=client_config,
         scopes=SCOPES
@@ -40,9 +49,14 @@ def get_google_auth_url():
     flow = create_oauth_flow()
     auth_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true'
+        include_granted_scopes='true',
+        prompt='consent'  # Force consent screen to ensure refresh_token
     )
     session['state'] = state
+    
+    # Print the auth URL for debugging
+    current_app.logger.debug(f"Auth URL: {auth_url}")
+    
     return auth_url
 
 def handle_oauth2_callback():
@@ -72,40 +86,54 @@ def store_credentials(credentials, user_id=None):
     from app.config.database import db
     from app.models.google_token import GoogleToken
     from flask_login import current_user
+    import json
     
     # Use provided user_id or fall back to current_user.id
     user_id = user_id or current_user.id
     
-    # Convert credentials to dict for storage
-    creds_dict = {
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes
-    }
+    # Log credential details for debugging - remove sensitive info
+    current_app.logger.debug(f"Credentials received - has token: {'Yes' if hasattr(credentials, 'token') else 'No'}")
+    current_app.logger.debug(f"Credentials received - has refresh_token: {'Yes' if hasattr(credentials, 'refresh_token') else 'No'}")
+    current_app.logger.debug(f"Credentials received - has expiry: {'Yes' if hasattr(credentials, 'expiry') else 'No'}")
+    current_app.logger.debug(f"Credentials received - has scopes: {'Yes' if hasattr(credentials, 'scopes') else 'No'}")
+    
+    # Get token attributes with safety checks
+    token = getattr(credentials, 'token', None)
+    refresh_token = getattr(credentials, 'refresh_token', None)
+    token_type = getattr(credentials, 'token_type', 'Bearer')  # Default to Bearer
+    expiry = getattr(credentials, 'expiry', datetime.now(UTC) + timedelta(hours=1))
+    
+    # Convert scopes list to JSON string for storage
+    scopes = getattr(credentials, 'scopes', SCOPES)
+    scopes_json = json.dumps(scopes) if scopes else json.dumps(SCOPES)
     
     # Update or create token record
-    token = GoogleToken.query.filter_by(user_id=user_id).first()
-    if token:
-        token.access_token = credentials.token
-        token.refresh_token = credentials.refresh_token
-        token.token_type = credentials.token_type
-        token.expires_at = credentials.expiry
-        token.scopes = credentials.scopes
+    token_record = GoogleToken.query.filter_by(user_id=user_id).first()
+    
+    if token_record:
+        # Update existing token
+        token_record.access_token = token
+        # Only update refresh_token if we got a new one (Google doesn't always return it)
+        if refresh_token:
+            token_record.refresh_token = refresh_token
+        token_record.token_type = token_type
+        token_record.expires_at = expiry
+        token_record.scopes = scopes_json
     else:
-        token = GoogleToken(
+        # Create new token record
+        token_record = GoogleToken(
             user_id=user_id,
-            access_token=credentials.token,
-            refresh_token=credentials.refresh_token,
-            token_type=credentials.token_type,
-            expires_at=credentials.expiry,
-            scopes=credentials.scopes
+            access_token=token,
+            refresh_token=refresh_token,
+            token_type=token_type,
+            expires_at=expiry,
+            scopes=scopes_json
         )
-        db.session.add(token)
+        db.session.add(token_record)
     
     db.session.commit()
+    current_app.logger.info(f"Stored/updated Google credentials for user {user_id}")
+    return token_record
 
 def get_user_info(credentials):
     """Get Google user information using OAuth2 credentials."""
@@ -121,18 +149,28 @@ def get_google_credentials(user_id):
     """Retrieve and refresh Google OAuth credentials if necessary."""
     from app.models.google_token import GoogleToken
     from app.config.database import db
+    import json
     
     token = GoogleToken.query.filter_by(user_id=user_id).first()
     if not token:
         return None
-        
+
+    # Handle token scopes - use stored scopes if available, otherwise use default SCOPES
+    token_scopes = SCOPES
+    if token.scopes:
+        try:
+            token_scopes = json.loads(token.scopes)
+        except:
+            # If JSON loading fails, use default scopes
+            pass
+
     credentials = Credentials(
         token=token.access_token,
         refresh_token=token.refresh_token,
         token_uri="https://oauth2.googleapis.com/token",
         client_id=os.getenv('GOOGLE_CLIENT_ID'),
         client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-        scopes=token.scopes
+        scopes=token_scopes
     )
     
     if credentials.expired:
