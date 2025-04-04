@@ -52,8 +52,8 @@ class Person(Contact):
 
     # Ensure explicit relationships
     church = db.relationship("Church", foreign_keys=[church_id], backref="church_members")
-    tasks = db.relationship("Task", backref="related_person", primaryjoin="Task.person_id==Person.id")
-    communications = db.relationship("Communication", backref="related_person", primaryjoin="Communication.person_id==Person.id")
+    tasks = db.relationship("Task", backref=db.backref("task_person", lazy="joined"), primaryjoin="Task.person_id==Person.id")
+    communications = db.relationship("Communication", backref=db.backref("comm_person", lazy="joined"), primaryjoin="Communication.person_id==Person.id")
 
     @hybrid_property
     def person_first_name(self):
