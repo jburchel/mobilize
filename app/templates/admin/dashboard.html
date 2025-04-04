@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/admin_filters.html" import admin_filters %}
 
 {% block title %}Admin Dashboard - Mobilize CRM{% endblock %}
 
@@ -19,6 +20,31 @@
             </div>
         </div>
     </div>
+
+    {% if current_user.is_super_admin() or current_user.role == 'office_admin' %}
+    <div class="row mb-4">
+        <div class="col-12">
+            {{ admin_filters(offices=offices, users=users, selected_office=selected_office, selected_user=selected_user) }}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if filtered %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                Showing filtered results:
+                {% if selected_office_name %}
+                <strong>Office:</strong> {{ selected_office_name }}
+                {% endif %}
+                {% if selected_user_name %}
+                <strong>User:</strong> {{ selected_user_name }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="row">
         <!-- User Management -->

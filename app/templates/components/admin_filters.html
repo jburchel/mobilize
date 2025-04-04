@@ -1,0 +1,83 @@
+{% macro admin_filters(offices=None, users=None, selected_office=None, selected_user=None) %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Filter Data</h5>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="reset-filters">Reset</button>
+    </div>
+    <div class="card-body">
+        <form id="admin-filter-form" method="get">
+            <div class="row">
+                {% if offices and current_user.is_super_admin() %}
+                <div class="col-md-6 mb-3">
+                    <label for="office_filter" class="form-label">Office</label>
+                    <select class="form-select" id="office_filter" name="office_id">
+                        <option value="">All Offices</option>
+                        {% for office in offices %}
+                        <option value="{{ office.id }}" {% if selected_office and selected_office|int == office.id %}selected{% endif %}>
+                            {{ office.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                {% if users %}
+                <div class="col-md-6 mb-3">
+                    <label for="user_filter" class="form-label">User</label>
+                    <select class="form-select" id="user_filter" name="user_id">
+                        <option value="">All Users</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if selected_user and selected_user|int == user.id %}selected{% endif %}>
+                            {{ user.full_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Reset filters button
+        document.getElementById('reset-filters').addEventListener('click', function() {
+            window.location.href = window.location.pathname;
+        });
+        
+        // Office filter change handler
+        const officeFilter = document.getElementById('office_filter');
+        if (officeFilter) {
+            officeFilter.addEventListener('change', function() {
+                // If office filter changes, update the user filter via AJAX
+                const officeId = this.value;
+                if (officeId) {
+                    // Fetch users for the selected office
+                    fetch(`/api/offices/${officeId}/users`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const userFilter = document.getElementById('user_filter');
+                            // Clear user filter except the first "All Users" option
+                            while (userFilter.options.length > 1) {
+                                userFilter.remove(1);
+                            }
+                            
+                            // Add users from the selected office
+                            data.forEach(user => {
+                                const option = document.createElement('option');
+                                option.value = user.id;
+                                option.textContent = user.full_name;
+                                userFilter.appendChild(option);
+                            });
+                        })
+                        .catch(error => console.error('Error fetching users:', error));
+                }
+            });
+        }
+    });
+</script>
+{% endmacro %} 

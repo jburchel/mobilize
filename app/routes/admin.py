@@ -79,9 +79,87 @@ def offices():
 @admin_required
 def dashboard():
     """Render the admin dashboard page."""
-    user_count = User.query.count()
-    office_count = Office.query.count()
-    return render_template('admin/dashboard.html', user_count=user_count, office_count=office_count)
+    # Get filter parameters
+    office_id = request.args.get('office_id', type=int)
+    user_id = request.args.get('user_id', type=int)
+    
+    # Track if we're filtering
+    filtered = False
+    selected_office_name = None
+    selected_user_name = None
+    
+    # Get all offices for super admin filter
+    if current_user.is_super_admin():
+        offices = Office.query.all()
+    else:
+        # Office admins only see their own office
+        offices = [current_user.office] if current_user.office else []
+    
+    # Determine which users to show based on filters and permissions
+    if current_user.is_super_admin():
+        if office_id:
+            # Super admin filtered by office
+            users = User.query.filter_by(office_id=office_id, is_active=True).all()
+            selected_office = Office.query.get(office_id)
+            if selected_office:
+                selected_office_name = selected_office.name
+                filtered = True
+        else:
+            # Super admin, no office filter
+            users = User.query.filter_by(is_active=True).all()
+    else:
+        # Office admin only sees users in their office
+        office_id = current_user.office_id
+        users = User.query.filter_by(office_id=office_id, is_active=True).all()
+    
+    # Filter by user if specified
+    if user_id:
+        user = User.query.get(user_id)
+        if user:
+            selected_user_name = user.full_name
+            filtered = True
+    
+    # Get counts based on filters
+    if current_user.is_super_admin():
+        if office_id:
+            # Filtered by office
+            user_count = User.query.filter_by(office_id=office_id, is_active=True).count()
+            if user_id:
+                # Further filtered by user
+                user_count = 1 if User.query.filter_by(id=user_id, office_id=office_id, is_active=True).first() else 0
+        else:
+            # All offices
+            if user_id:
+                # Filtered by user only
+                user_count = 1 if User.query.filter_by(id=user_id, is_active=True).first() else 0
+            else:
+                # No filters
+                user_count = User.query.filter_by(is_active=True).count()
+    else:
+        # Office admin
+        if user_id:
+            # Filtered by user
+            user_count = 1 if User.query.filter_by(id=user_id, office_id=current_user.office_id, is_active=True).first() else 0
+        else:
+            # All users in this office
+            user_count = User.query.filter_by(office_id=current_user.office_id, is_active=True).count()
+    
+    # Office count - only for super admins
+    if current_user.is_super_admin():
+        office_count = Office.query.count()
+    else:
+        office_count = 1  # Office admins only see their own office
+    
+    return render_template('admin/dashboard.html', 
+                           user_count=user_count, 
+                           office_count=office_count,
+                           offices=offices,
+                           users=users,
+                           selected_office=office_id,
+                           selected_user=user_id,
+                           selected_office_name=selected_office_name,
+                           selected_user_name=selected_user_name,
+                           filtered=filtered)
 
 @admin_bp.route('/offices/<int:office_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -271,89 +349,93 @@ def office_settings(office_id):
 @login_required
 @admin_required
 def users():
-    if current_user.role not in ['admin', 'office_admin', 'super_admin']:
-        flash('You do not have permission to access this page.', 'danger')
-        return redirect(url_for('dashboard.index'))
+    """Render the user management page and handle user creation."""
+    # Get filter parameters
+    office_id = request.args.get('office_id', type=int)
+    filtered = False
+    selected_office_name = None
     
-    # Filter users based on role permissions
-    if current_user.role == 'super_admin':
-        # Super admins can see all users
-        users = User.query.all()
+    # Get all offices for super admin filter
+    if current_user.is_super_admin():
         offices = Office.query.all()
-    elif current_user.role == 'office_admin':
-        # Office admins can only see users from their office
-        users = User.query.filter_by(office_id=current_user.office_id).all()
-        offices = Office.query.filter_by(id=current_user.office_id).all()
     else:
-        # Safety fallback
-        users = []
-        offices = []
+        # Office admins only see their own office
+        offices = [current_user.office] if current_user.office else []
     
-    # Handle add user form submission
-    if request.method == 'POST' and request.args.get('action') == 'add':
-        # Get form data
-        first_name = request.form.get('first_name')
-        last_name = request.form.get('last_name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        role = request.form.get('role')
-        office_id = request.form.get('office_id')
-        
-        # Validation for office admins
-        if current_user.role == 'office_admin':
-            # Ensure office_id is their own office
-            office_id = current_user.office_id
-            
-            # Restrict role assignment - office admins can't create super_admins
-            if role == 'super_admin':
-                flash('You do not have permission to create super admin users.', 'danger')
-                return redirect(url_for('admin.users'))
-        
-        # Validate required fields
-        if not all([first_name, last_name, email, password, role]):
-            flash('All fields are required', 'danger')
-            return redirect(url_for('admin.users'))
-        
-        # Check if user already exists
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            flash('A user with this email already exists', 'danger')
-            return redirect(url_for('admin.users'))
-        
-        # Create new user
-        username = email.split('@')[0]  # Use part of email before @ as username
-        
-        # Check if username already exists and modify if needed
-        existing_username = User.query.filter_by(username=username).first()
-        if existing_username:
-            username = f"{username}{random.randint(1, 9999)}"
-            
-        new_user = User(
-            username=username,
-            first_name=first_name,
-            last_name=last_name,
-            email=email,
-            role=role
-        )
-        new_user.set_password(password)
-        
-        # Associate with office if provided
+    # Get users based on role and filters
+    if current_user.is_super_admin():
         if office_id:
-            office = Office.query.get(office_id)
-            if office:
-                new_user.office_id = office.id
-        
-        try:
-            db.session.add(new_user)
-            db.session.commit()
-            flash('User added successfully', 'success')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error adding user: {str(e)}', 'danger')
-        
-        return redirect(url_for('admin.users'))
+            # Super admin filtered by office
+            users_query = User.query.filter_by(office_id=office_id)
+            selected_office = Office.query.get(office_id)
+            if selected_office:
+                selected_office_name = selected_office.name
+                filtered = True
+        else:
+            # Super admin sees all users
+            users_query = User.query
+    else:
+        # Office admin only sees users in their office
+        office_id = current_user.office_id
+        users_query = User.query.filter_by(office_id=office_id)
     
-    return render_template('admin/users.html', users=users, offices=offices)
+    # Execute the query
+    users = users_query.all()
+    
+    if request.method == 'POST':
+        action = request.args.get('action')
+        if action == 'add':
+            # Handle user creation
+            first_name = request.form.get('first_name')
+            last_name = request.form.get('last_name')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            role = request.form.get('role')
+            office_id = request.form.get('office_id')
+            
+            # Validate inputs
+            if not all([first_name, last_name, email, password]):
+                flash('All fields are required', 'danger')
+                return redirect(url_for('admin.users'))
+            
+            # Check if user with email already exists
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                flash('A user with this email already exists', 'danger')
+                return redirect(url_for('admin.users'))
+            
+            # Enforce role permissions
+            if current_user.role != 'super_admin' and role == 'super_admin':
+                flash('You do not have permission to create a super admin', 'danger')
+                return redirect(url_for('admin.users'))
+            
+            # Create the new user
+            new_user = User(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                role=role,
+                office_id=office_id if office_id else None,
+                username=email  # Use email as username
+            )
+            new_user.set_password(password)
+            
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+                flash('User created successfully', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error creating user: {str(e)}', 'danger')
+            
+            return redirect(url_for('admin.users'))
+    
+    return render_template('admin/users.html', 
+                          users=users, 
+                          offices=offices,
+                          selected_office=office_id,
+                          selected_office_name=selected_office_name,
+                          filtered=filtered)
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required

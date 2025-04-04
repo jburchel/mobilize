@@ -17,6 +17,7 @@ from app.routes.settings import settings_bp
 from app.routes.pipeline import pipeline_bp
 from app.routes.reports import reports_bp
 from app.routes.emails import emails_bp
+from app.routes.api.admin import admin_api_bp
 
 test_bp = Blueprint('test', __name__)
 
@@ -36,6 +37,7 @@ def test():
 blueprints = [
     test_bp,
     admin_bp,
+    admin_api_bp,
     dashboard_bp,
     people_bp,
     churches_bp,
