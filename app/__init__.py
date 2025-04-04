@@ -27,6 +27,7 @@ from app.utils.firebase import firebase_setup
 from app.utils.context_processors import register_template_utilities
 from app.utils.setup_main_pipelines import setup_main_pipelines
 from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
+from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
 
 # Initialize extensions that aren't in extensions.py
@@ -293,8 +294,12 @@ def create_app(test_config=None):
                 else:
                     app.logger.warning("Skipping contact migration - required tables don't exist yet")
                 
+            # Ensure all churches are in the church pipeline
+            init_church_pipeline(app)
+            
+            app.logger.info("Pipeline initialization complete")
         except Exception as e:
-            app.logger.error(f"Error during startup database setup: {str(e)}")
+            app.logger.error(f"Error initializing pipelines: {str(e)}")
 
     # Register template utilities
     register_template_utilities(app)
