@@ -25,6 +25,9 @@ class Communication(Base):
     attachments = db.Column(db.String, nullable=True)  # JSON string of attachment info
     last_synced_at = db.Column(db.DateTime, nullable=True)  # Timestamp for last sync
 
+    # Relationships
+    person = db.relationship("Person", foreign_keys=[person_id], viewonly=True)
+
     def __repr__(self):
         return f"<Communication(type='{self.type}', date_sent='{self.date_sent}')>"
 

@@ -39,6 +39,7 @@ class Task(Base):
     last_synced_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
+    person = db.relationship("Person", foreign_keys=[person_id], viewonly=True)
     assigned_user = db.relationship('User', 
                                    primaryjoin="foreign(Task.assigned_to) == User.id",
                                    backref=db.backref('assigned_tasks', lazy='dynamic'),
