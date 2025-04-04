@@ -126,7 +126,7 @@ def view(pipeline_id):
             db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
             {"pipeline_id": pipeline_id}
         ).scalar() or 0
-        current_app.logger.info(f"View pipeline {pipeline_id}, SQL count: {contact_count}")
+        current_app.logger.info(f"View pipeline {pipeline_id}, name={pipeline.name}, type={pipeline.pipeline_type}, SQL count: {contact_count}")
         
         # Check if user has permission to view this pipeline
         if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
@@ -201,12 +201,14 @@ def view(pipeline_id):
         if current_user.is_super_admin():
             # Super admins see all contacts
             pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+            current_app.logger.info(f"Super admin view: found {len(pipeline_contacts)} contacts for pipeline {pipeline_id}")
         elif current_user.is_office_admin():
             # Office admins see contacts from their office
             office_id = current_user.office_id
             
             # First get all pipeline contacts for this pipeline
             all_pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+            current_app.logger.info(f"Office admin view: total contacts in pipeline before filtering: {len(all_pipeline_contacts)}")
             
             # Filter to only include contacts from the user's office
             pipeline_contacts = []
@@ -215,6 +217,8 @@ def view(pipeline_id):
                 contact_office_id = getattr(contact, 'office_id', None)
                 if contact_office_id == office_id:
                     pipeline_contacts.append(pc)
+            
+            current_app.logger.info(f"Office admin view: after filtering by office_id {office_id}, found {len(pipeline_contacts)} contacts")
         else:
             # Regular users see only their assigned contacts
             user_id = current_user.id
@@ -222,6 +226,7 @@ def view(pipeline_id):
             
             # First get all pipeline contacts for this pipeline
             all_pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+            current_app.logger.info(f"Regular user view: total contacts in pipeline before filtering: {len(all_pipeline_contacts)}")
             
             # Filter to only include contacts assigned to this user
             pipeline_contacts = []
@@ -233,6 +238,8 @@ def view(pipeline_id):
                 # Include if assigned to this user and from the same office
                 if contact_user_id == user_id and contact_office_id == office_id:
                     pipeline_contacts.append(pc)
+            
+            current_app.logger.info(f"Regular user view: after filtering by user_id {user_id} and office_id {office_id}, found {len(pipeline_contacts)} contacts")
         
         # Organize contacts by stage
         contacts_by_stage = {stage.id: [] for stage in stages}
@@ -242,7 +249,18 @@ def view(pipeline_id):
         
         # Log contact counts for debugging
         for stage_id, contacts in contacts_by_stage.items():
-            current_app.logger.info(f"Stage {stage_id} has {len(contacts)} contacts")
+            stage = next((s for s in stages if s.id == stage_id), None)
+            stage_name = stage.name if stage else "Unknown"
+            current_app.logger.info(f"Stage {stage_id} ({stage_name}) has {len(contacts)} contacts")
+            
+            # Log the first few contacts to check what they are
+            for i, contact in enumerate(contacts[:5]):
+                contact_name = "Unknown"
+                contact_type = "Unknown"
+                if contact.contact:
+                    contact_name = getattr(contact.contact, 'get_name', lambda: "No Name")()
+                    contact_type = getattr(contact.contact, 'contact_type', "Unknown")
+                current_app.logger.info(f"  Contact {i+1}: ID={contact.contact_id}, Name={contact_name}, Type={contact_type}")
         
         # Get available contacts to populate the Add Contact dropdown based on user role
         people = []
