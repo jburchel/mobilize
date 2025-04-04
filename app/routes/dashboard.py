@@ -19,9 +19,56 @@ def index():
     # Get dashboard statistics
     stats = get_dashboard_stats()
     
-    # Get the main pipelines for people and churches
-    people_pipeline = Pipeline.query.filter_by(is_main_pipeline=True, pipeline_type='person').first()
-    church_pipeline = Pipeline.query.filter_by(is_main_pipeline=True, pipeline_type='church').first()
+    # Get the main pipelines for people and churches from user's office if not super admin
+    if current_user.is_super_admin():
+        # Super admins see Main Office pipelines by default
+        # Try to find a person pipeline first
+        people_pipeline = Pipeline.query.filter_by(
+            is_main_pipeline=True, 
+            pipeline_type='person',
+            office_id=1  # Main Office
+        ).first()
+        
+        # If not found, try looking for a 'people' pipeline (legacy type)
+        if not people_pipeline:
+            people_pipeline = Pipeline.query.filter_by(
+                is_main_pipeline=True, 
+                pipeline_type='people',
+                office_id=1  # Main Office
+            ).first()
+        
+        church_pipeline = Pipeline.query.filter_by(
+            is_main_pipeline=True, 
+            pipeline_type='church',
+            office_id=1  # Main Office
+        ).first()
+    else:
+        # Regular users see their office's pipelines
+        # Try to find a person pipeline first
+        people_pipeline = Pipeline.query.filter_by(
+            is_main_pipeline=True, 
+            pipeline_type='person',
+            office_id=office_id
+        ).first()
+        
+        # If not found, try looking for a 'people' pipeline (legacy type)
+        if not people_pipeline:
+            people_pipeline = Pipeline.query.filter_by(
+                is_main_pipeline=True, 
+                pipeline_type='people',
+                office_id=office_id
+            ).first()
+        
+        church_pipeline = Pipeline.query.filter_by(
+            is_main_pipeline=True, 
+            pipeline_type='church',
+            office_id=office_id
+        ).first()
+    
+    # Log pipeline information for debugging
+    current_app.logger.info(f"Dashboard - User: {current_user.id}, Office: {office_id}")
+    current_app.logger.info(f"People Pipeline: {people_pipeline.id if people_pipeline else 'None'}")
+    current_app.logger.info(f"Church Pipeline: {church_pipeline.id if church_pipeline else 'None'}")
     
     # Get pending tasks for the current user
     pending_tasks = Task.query.filter_by(
@@ -126,18 +173,25 @@ def pipeline_chart_data():
     # Log the original request
     current_app.logger.info(f"Pipeline chart data requested for type: {pipeline_type}")
     
-    # Normalize pipeline type for database query
-    db_pipeline_type = 'people' if pipeline_type == 'person' else pipeline_type
+    # Determine the pipeline type values to search for
+    if pipeline_type == 'person':
+        # Search for both 'person' and 'people' pipeline types
+        db_pipeline_types = ['person', 'people']
+    else:
+        db_pipeline_types = [pipeline_type]
     
     office_id = current_user.office_id
     
     try:
+        # Build query to find pipeline of either type
+        pipeline_condition = " OR ".join([f"pipeline_type = '{pt}'" for pt in db_pipeline_types])
+        
         # Direct SQL query to get main pipeline, its stages, and contact counts in one go
-        query = """
+        query = f"""
         WITH pipeline AS (
             SELECT id, name
             FROM pipelines
-            WHERE pipeline_type = :pipeline_type
+            WHERE ({pipeline_condition})
             AND is_main_pipeline = 1
             AND office_id = :office_id
             LIMIT 1
@@ -145,7 +199,7 @@ def pipeline_chart_data():
         fallback_pipeline AS (
             SELECT id, name
             FROM pipelines
-            WHERE pipeline_type = :pipeline_type
+            WHERE ({pipeline_condition})
             AND is_main_pipeline = 1
             LIMIT 1
         ),
@@ -170,15 +224,14 @@ def pipeline_chart_data():
         ORDER BY ps."order"
         """
         
-        current_app.logger.info(f"Executing direct SQL query for pipeline type '{db_pipeline_type}' and office {office_id}")
+        current_app.logger.info(f"Executing direct SQL query for pipeline types '{db_pipeline_types}' and office {office_id}")
         results = db.session.execute(db.text(query), {
-            "pipeline_type": db_pipeline_type,
             "office_id": office_id
         }).fetchall()
         
         # If no results, return empty response
         if not results:
-            current_app.logger.error(f"No pipeline or stages found for type: {db_pipeline_type}")
+            current_app.logger.error(f"No pipeline or stages found for types: {db_pipeline_types}")
             return jsonify({
                 'pipeline_id': None,
                 'pipeline_name': f"No {pipeline_type} pipeline found",
