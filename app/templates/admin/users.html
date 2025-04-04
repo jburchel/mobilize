@@ -8,7 +8,7 @@
 {% block content %}
 <div class="container-fluid">
     <!-- Filters section -->
-    {% if current_user.is_super_admin() or current_user.role == 'office_admin' %}
+    {% if current_user is defined and (current_user.is_super_admin() or current_user.role == 'office_admin') %}
     <div class="row mb-4">
         <div class="col-12">
             {{ admin_filters(offices=offices, users=None, selected_office=selected_office, selected_user=None) }}

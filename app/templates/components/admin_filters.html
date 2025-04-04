@@ -7,7 +7,7 @@
     <div class="card-body">
         <form id="admin-filter-form" method="get">
             <div class="row">
-                {% if offices and current_user.is_super_admin() %}
+                {% if offices and current_user is defined and current_user.is_super_admin() %}
                 <div class="col-md-6 mb-3">
                     <label for="office_filter" class="form-label">Office</label>
                     <select class="form-select" id="office_filter" name="office_id">
