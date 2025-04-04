@@ -99,12 +99,29 @@
                     <div id="people-chart-error" class="alert alert-danger" style="display: none;"></div>
                     <div id="people-chart-empty" class="alert alert-info" style="display: none;">No data available</div>
                 </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('pipeline.view', pipeline_id=people_pipeline.id) if people_pipeline else '#' }}" 
-                       id="people-view-pipeline" 
-                       class="btn btn-sm btn-primary">
-                        <i class="fas fa-eye"></i> View Pipeline
-                    </a>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary fs-6 p-2" id="people-total-count">Total: 0 contacts</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <a href="{{ url_for('pipeline.view', pipeline_id=people_pipeline.id) if people_pipeline else '#' }}" 
+                               id="people-view-pipeline" 
+                               class="btn btn-sm btn-primary me-2">
+                                <i class="fas fa-eye"></i> View Pipeline
+                            </a>
+                            <div class="btn-group btn-group-sm" id="people-chart-buttons">
+                                <button type="button" class="btn btn-outline-primary chart-style-btn active" 
+                                        data-chart-type="pie" data-pipeline="person">
+                                    Pie
+                                </button>
+                                <button type="button" class="btn btn-outline-primary chart-style-btn" 
+                                        data-chart-type="bar" data-pipeline="person">
+                                    Bar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -133,12 +150,29 @@
                     <div id="church-chart-error" class="alert alert-danger" style="display: none;"></div>
                     <div id="church-chart-empty" class="alert alert-info" style="display: none;">No data available</div>
                 </div>
-                <div class="card-footer text-center">
-                    <a href="{{ url_for('pipeline.view', pipeline_id=church_pipeline.id) if church_pipeline else '#' }}" 
-                       id="church-view-pipeline" 
-                       class="btn btn-sm btn-primary">
-                        <i class="fas fa-eye"></i> View Pipeline
-                    </a>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary fs-6 p-2" id="church-total-count">Total: 0 contacts</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <a href="{{ url_for('pipeline.view', pipeline_id=church_pipeline.id) if church_pipeline else '#' }}" 
+                               id="church-view-pipeline" 
+                               class="btn btn-sm btn-primary me-2">
+                                <i class="fas fa-eye"></i> View Pipeline
+                            </a>
+                            <div class="btn-group btn-group-sm" id="church-chart-buttons">
+                                <button type="button" class="btn btn-outline-primary chart-style-btn active" 
+                                        data-chart-type="pie" data-pipeline="church">
+                                    Pie
+                                </button>
+                                <button type="button" class="btn btn-outline-primary chart-style-btn" 
+                                        data-chart-type="bar" data-pipeline="church">
+                                    Bar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -556,33 +590,31 @@ function renderPipelineChart(chartType, containerSelector, data) {
     
     console.log(`Rendered ${chartStyle} chart for ${chartType} pipeline with ${labels.length} stages`);
     
-    // Add total contacts summary below the chart
-    const summaryDiv = document.createElement('div');
-    summaryDiv.className = 'text-center mt-3';
-    summaryDiv.innerHTML = `
-        <span class="badge bg-secondary fs-6 p-2">Total: ${data.total_contacts} contacts</span>
-        <div class="btn-group btn-group-sm ms-2" role="group">
-            <button type="button" class="btn btn-outline-primary chart-style-btn ${chartStyle === 'pie' ? 'active' : ''}" 
-                    data-chart-type="pie" data-pipeline="${chartType}">
-                Pie
-            </button>
-            <button type="button" class="btn btn-outline-primary chart-style-btn ${chartStyle === 'bar' ? 'active' : ''}" 
-                    data-chart-type="bar" data-pipeline="${chartType}">
-                Bar
-            </button>
-        </div>
-    `;
-    container.appendChild(summaryDiv);
+    // Update total contacts in the footer
+    const totalCountId = chartType === 'person' ? 'people-total-count' : 'church-total-count';
+    const totalCountElem = document.getElementById(totalCountId);
+    if (totalCountElem) {
+        totalCountElem.textContent = `Total: ${data.total_contacts} contacts`;
+    }
     
-    // Add event listeners to chart style buttons
-    const styleButtons = container.querySelectorAll('.chart-style-btn');
-    styleButtons.forEach(button => {
+    // Update the chart style buttons active state
+    const chartButtonsId = chartType === 'person' ? 'people-chart-buttons' : 'church-chart-buttons';
+    const chartButtons = document.querySelectorAll(`#${chartButtonsId} .chart-style-btn`);
+    chartButtons.forEach(button => {
+        const buttonType = button.getAttribute('data-chart-type');
+        if (buttonType === chartStyle) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+        
+        // Add event listener
         button.addEventListener('click', function() {
             const newChartType = this.getAttribute('data-chart-type');
             const pipeline = this.getAttribute('data-pipeline');
             
             // Update active state
-            styleButtons.forEach(btn => btn.classList.remove('active'));
+            chartButtons.forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             
             // Save preference

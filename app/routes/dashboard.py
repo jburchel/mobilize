@@ -330,109 +330,180 @@ def debug_pipeline_data():
         return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/dashboard/debug/chart-data/<chart_type>')
+@login_required
 def debug_chart_data(chart_type):
-    """Debug endpoint to get pipeline chart data without authentication."""
-    current_app.logger.info(f"DEBUG: Pipeline chart data requested for type: {chart_type}")
+    """Endpoint to get pipeline chart data based on user role."""
+    current_app.logger.info(f"Pipeline chart data requested for type: {chart_type} by user {current_user.id}")
     try:
-        # Normalize pipeline type for the database
-        pipeline_type = chart_type
+        # Get statistics for totals
+        stats = get_dashboard_stats()
+        office_id = current_user.office_id
+        
+        # Choose the right query and parameters based on chart type
         if chart_type == 'person':
-            pipeline_type = 'people'
-        
-        # First run the script to ensure data is present - DEBUG ONLY
-        try:
-            from sqlalchemy import text
-            # Quick count to check if we have contacts
-            count_query = "SELECT COUNT(*) FROM pipeline_contacts"
-            count_result = db.session.execute(text(count_query)).scalar()
+            # Query directly from the people table using the people_pipeline field
+            if current_user.is_super_admin():
+                # Super admin sees all people
+                query = """
+                SELECT 
+                    people_pipeline as stage_name,
+                    COUNT(*) as count
+                FROM people
+                GROUP BY people_pipeline
+                ORDER BY people_pipeline
+                """
+                params = {}
+            elif current_user.is_office_admin():
+                # Office admin sees people in their office
+                query = """
+                SELECT 
+                    people_pipeline as stage_name,
+                    COUNT(*) as count
+                FROM people
+                WHERE office_id = :office_id
+                GROUP BY people_pipeline
+                ORDER BY people_pipeline
+                """
+                params = {"office_id": office_id}
+            else:
+                # Regular user sees only their people
+                query = """
+                SELECT 
+                    people_pipeline as stage_name,
+                    COUNT(*) as count
+                FROM people
+                WHERE user_id = :user_id
+                GROUP BY people_pipeline
+                ORDER BY people_pipeline
+                """
+                params = {"user_id": current_user.id}
+                
+            # Get the main pipeline name
+            pipeline_name = "People Pipeline"
+            total_contacts = stats['people_count']
             
-            current_app.logger.info(f"DEBUG: Current pipeline_contacts count: {count_result}")
-            
-            # If no contacts, automatically run the script to add them
-            if count_result == 0:
-                current_app.logger.warning("No pipeline contacts found - running assign_random_stages script")
-                try:
-                    import subprocess
-                    import os
-                    script_path = os.path.join(current_app.root_path, '..', 'scripts', 'assign_random_stages.py')
-                    result = subprocess.run(['python', script_path], capture_output=True, text=True)
-                    current_app.logger.info(f"Script output: {result.stdout}")
-                    current_app.logger.info(f"Script errors: {result.stderr}")
-                    if result.returncode != 0:
-                        current_app.logger.error(f"Script failed with return code {result.returncode}")
-                except Exception as script_e:
-                    current_app.logger.error(f"Failed to run script: {script_e}")
-        except Exception as count_e:
-            current_app.logger.error(f"Failed to check or restore data: {count_e}")
+        else:  # church type
+            # Query directly from the churches table using the church_pipeline field
+            if current_user.is_super_admin():
+                # Super admin sees all churches
+                query = """
+                SELECT 
+                    church_pipeline as stage_name,
+                    COUNT(*) as count
+                FROM churches
+                GROUP BY church_pipeline
+                ORDER BY church_pipeline
+                """
+                params = {}
+            elif current_user.is_office_admin() or True:  # Regular users see office churches
+                # Office admin or regular user sees churches in their office
+                query = """
+                SELECT 
+                    church_pipeline as stage_name,
+                    COUNT(*) as count
+                FROM churches
+                WHERE office_id = :office_id
+                GROUP BY church_pipeline
+                ORDER BY church_pipeline
+                """
+                params = {"office_id": office_id}
+                
+            # Get the main pipeline name
+            pipeline_name = "Church Pipeline"
+            total_contacts = stats['church_count']
         
-        # Find the main pipeline for the given type
-        query = """
-        WITH pipeline AS (
-            SELECT id, name
-            FROM pipelines
-            WHERE pipeline_type = :pipeline_type
-            AND is_main_pipeline = 1
-            LIMIT 1
-        )
-        SELECT 
-            p.id as pipeline_id,
-            p.name as pipeline_name,
-            ps.id as stage_id,
-            ps.name as stage_name,
-            ps.color,
-            ps."order" as stage_order,
-            COUNT(pc.id) as contact_count
-        FROM pipeline p
-        LEFT JOIN pipeline_stages ps ON p.id = ps.pipeline_id
-        LEFT JOIN pipeline_contacts pc ON ps.id = pc.current_stage_id
-        GROUP BY p.id, p.name, ps.id, ps.name, ps.color, ps."order"
-        ORDER BY ps."order"
-        """
-        
-        # Execute the query with explicit connection management
+        # Execute the query
         connection = db.engine.connect()
         try:
-            # Execute the query
-            result = connection.execute(text(query), {"pipeline_type": pipeline_type})
+            result = connection.execute(text(query), params)
             results = result.fetchall()
         finally:
             connection.close()
         
         if not results:
-            current_app.logger.warning(f"No results found for pipeline type: {pipeline_type}")
+            current_app.logger.warning(f"No results found for {chart_type} pipeline stages")
             return jsonify({
-                "pipeline_id": None,
-                "pipeline_name": f"No {chart_type} pipeline found",
+                "pipeline_id": 1,  # Use dummy ID
+                "pipeline_name": pipeline_name,
                 "stages": [],
-                "total_contacts": 0
+                "total_contacts": total_contacts
             })
-        
-        # Format the results
-        pipeline_id = results[0].pipeline_id
-        pipeline_name = results[0].pipeline_name
-        total_contacts = sum(row.contact_count for row in results)
         
         # Format stages data
         stages = []
+        stage_total = sum(row.count for row in results)
+        
+        # Define stage colors based on pipeline choices
+        stage_colors = {
+            # People pipeline stages
+            'INFORMATION': '#2ecc71',  # Green
+            'INVITATION': '#f1c40f',   # Yellow
+            'CONFIRMATION': '#e67e22', # Orange
+            'PROMOTION': '#3498db',    # Blue
+            'AUTOMATION': '#1abc9c',   # Teal
+            'EN42': '#9b59b6',         # Purple
+            
+            # Church pipeline stages
+            'RESEARCH': '#3498db',     # Blue
+            'CONTACT': '#2ecc71',      # Green
+            'CONNECT': '#f1c40f',      # Yellow
+            'COMMITTED': '#e67e22',    # Orange
+            'COACHING': '#9b59b6',     # Purple
+            'MULTIPLYING': '#1abc9c',  # Teal
+        }
+        
         for row in results:
+            stage_name = row.stage_name or 'Unknown'
+            count = row.count or 0
+            
+            # Calculate percentage
+            percentage = 0
+            if stage_total > 0:
+                percentage = round((count / stage_total * 100), 1)
+                
+            # Get color for this stage
+            color = stage_colors.get(stage_name, '#95a5a6')  # Default gray if not found
+                
             stage_data = {
-                "id": row.stage_id,
-                "name": row.stage_name,
-                "color": row.color or get_default_color(row.stage_name),
-                "count": row.contact_count,
-                "percentage": round((row.contact_count / total_contacts * 100) if total_contacts > 0 else 0, 1)
+                "id": ord(stage_name[0]) if stage_name else 0,  # Use dummy ID based on first letter
+                "name": stage_name,
+                "color": color,
+                "count": count,
+                "percentage": percentage
             }
             stages.append(stage_data)
         
+        # Sort stages by predefined order if needed
+        stage_order = {
+            # People pipeline order
+            'INFORMATION': 1,
+            'INVITATION': 2,
+            'CONFIRMATION': 3,
+            'PROMOTION': 4,
+            'AUTOMATION': 5,
+            'EN42': 6,
+            
+            # Church pipeline order
+            'RESEARCH': 1,
+            'CONTACT': 2,
+            'CONNECT': 3,
+            'COMMITTED': 4,
+            'COACHING': 5,
+            'MULTIPLYING': 6
+        }
+        
+        # Sort stages by defined order
+        stages.sort(key=lambda x: stage_order.get(x['name'], 999))
+        
         response_data = {
-            "pipeline_id": pipeline_id,
+            "pipeline_id": 1,  # Use dummy ID
             "pipeline_name": pipeline_name,
             "stages": stages,
             "total_contacts": total_contacts
         }
         
         # Log the response data for debugging
-        current_app.logger.info(f"DEBUG: Returning {len(stages)} stages for {chart_type} pipeline. Total contacts: {total_contacts}")
+        current_app.logger.info(f"Returning {len(stages)} stages for {chart_type} pipeline. Total contacts: {total_contacts}")
         
         return jsonify(response_data)
     
