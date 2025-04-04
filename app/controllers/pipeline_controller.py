@@ -129,7 +129,7 @@ def view(pipeline_id):
         current_app.logger.info(f"View pipeline {pipeline_id}, SQL count: {contact_count}")
         
         # Check if user has permission to view this pipeline
-        if pipeline.office_id != current_user.office_id and not current_user.is_super_admin():
+        if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
             flash('You do not have permission to view this pipeline', 'danger')
             return redirect(url_for('pipeline.index'))
         
@@ -197,8 +197,42 @@ def view(pipeline_id):
         # Get stages with their contacts
         stages = pipeline.get_active_stages()
         
-        # Get only active contacts for this pipeline
-        pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+        # Get pipeline contacts based on user role
+        if current_user.is_super_admin():
+            # Super admins see all contacts
+            pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+        elif current_user.is_office_admin():
+            # Office admins see contacts from their office
+            office_id = current_user.office_id
+            
+            # First get all pipeline contacts for this pipeline
+            all_pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+            
+            # Filter to only include contacts from the user's office
+            pipeline_contacts = []
+            for pc in all_pipeline_contacts:
+                contact = pc.contact
+                contact_office_id = getattr(contact, 'office_id', None)
+                if contact_office_id == office_id:
+                    pipeline_contacts.append(pc)
+        else:
+            # Regular users see only their assigned contacts
+            user_id = current_user.id
+            office_id = current_user.office_id
+            
+            # First get all pipeline contacts for this pipeline
+            all_pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+            
+            # Filter to only include contacts assigned to this user
+            pipeline_contacts = []
+            for pc in all_pipeline_contacts:
+                contact = pc.contact
+                contact_user_id = getattr(contact, 'assigned_to_id', None)
+                contact_office_id = getattr(contact, 'office_id', None)
+                
+                # Include if assigned to this user and from the same office
+                if contact_user_id == user_id and contact_office_id == office_id:
+                    pipeline_contacts.append(pc)
         
         # Organize contacts by stage
         contacts_by_stage = {stage.id: [] for stage in stages}
@@ -210,7 +244,7 @@ def view(pipeline_id):
         for stage_id, contacts in contacts_by_stage.items():
             current_app.logger.info(f"Stage {stage_id} has {len(contacts)} contacts")
         
-        # Get available contacts to populate the Add Contact dropdown
+        # Get available contacts to populate the Add Contact dropdown based on user role
         people = []
         churches = []
         
@@ -230,9 +264,19 @@ def view(pipeline_id):
             if existing_contact_ids:
                 people_query = people_query.filter(~Person.id.in_(existing_contact_ids))
             
-            # Apply office filter for non-super-admins
-            if not current_user.is_super_admin():
+            # Apply filters based on user role
+            if current_user.is_super_admin():
+                # Super admins see all people
+                pass
+            elif current_user.is_office_admin():
+                # Office admins see people from their office
                 people_query = people_query.filter(Person.office_id == current_user.office_id)
+            else:
+                # Regular users see only their assigned people
+                people_query = people_query.filter(
+                    Person.office_id == current_user.office_id,
+                    Person.assigned_to_id == current_user.id
+                )
                 
             people = people_query.all()
             current_app.logger.info(f"Found {len(people)} available people for dropdown")
@@ -245,22 +289,35 @@ def view(pipeline_id):
             if existing_contact_ids:
                 church_query = church_query.filter(~Church.id.in_(existing_contact_ids))
                 
-            # Apply office filter for non-super-admins
-            if not current_user.is_super_admin():
+            # Apply filters based on user role
+            if current_user.is_super_admin():
+                # Super admins see all churches
+                pass
+            elif current_user.is_office_admin():
+                # Office admins see churches from their office
                 church_query = church_query.filter(Church.office_id == current_user.office_id)
+            else:
+                # Regular users see only their assigned churches
+                church_query = church_query.filter(
+                    Church.office_id == current_user.office_id,
+                    Church.assigned_to_id == current_user.id
+                )
                 
             churches = church_query.all()
             current_app.logger.info(f"Found {len(churches)} available churches for dropdown")
-        
-        return render_template('pipeline/view.html', 
-                          pipeline=pipeline,
-                          stages=stages,
-                          contacts_by_stage=contacts_by_stage,
-                          people=people,
-                          churches=churches)
+            
+        # Render the template with the data
+        return render_template('pipeline/view.html',
+                            pipeline=pipeline,
+                            stages=stages,
+                            contacts_by_stage=contacts_by_stage,
+                            people=people,
+                            churches=churches)
     except Exception as e:
-        current_app.logger.error(f"Error viewing pipeline {pipeline_id}: {str(e)}")
-        flash(f'Error viewing pipeline: {str(e)}', 'danger')
+        current_app.logger.error(f"Error viewing pipeline: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f"Error loading pipeline view: {str(e)}", 'danger')
         return redirect(url_for('pipeline.index'))
 
 @pipeline_bp.route('/<int:pipeline_id>/edit', methods=['GET', 'POST'])
