@@ -70,6 +70,14 @@ def index():
     current_app.logger.info(f"People Pipeline: {people_pipeline.id if people_pipeline else 'None'}")
     current_app.logger.info(f"Church Pipeline: {church_pipeline.id if church_pipeline else 'None'}")
     
+    # Enhanced debugging for pipeline IDs
+    current_app.logger.info(f"[DASHBOARD DEBUG] Passing to template - People Pipeline ID: {people_pipeline.id if people_pipeline else 'None'}")
+    current_app.logger.info(f"[DASHBOARD DEBUG] Passing to template - Church Pipeline ID: {church_pipeline.id if church_pipeline else 'None'}")
+    if people_pipeline and church_pipeline:
+        current_app.logger.info(f"[DASHBOARD DEBUG] Pipelines are {'SAME' if people_pipeline.id == church_pipeline.id else 'DIFFERENT'}")
+        current_app.logger.info(f"[DASHBOARD DEBUG] People pipeline type: {people_pipeline.pipeline_type}")
+        current_app.logger.info(f"[DASHBOARD DEBUG] Church pipeline type: {church_pipeline.pipeline_type}")
+    
     # Get pending tasks for the current user
     pending_tasks = Task.query.filter_by(
         assigned_to=current_user.id, 
@@ -150,7 +158,9 @@ def index():
         pending_tasks=pending_tasks,
         recent_activities=recent_activities,
         people_pipeline=people_pipeline,
-        church_pipeline=church_pipeline
+        church_pipeline=church_pipeline,
+        people_main_pipeline=people_pipeline,
+        church_main_pipeline=church_pipeline
     )
 
 # Since dashboard_bp is mounted at '/', 

@@ -121,6 +121,10 @@ def view(pipeline_id):
     try:
         pipeline = Pipeline.query.get_or_404(pipeline_id)
         
+        # Enhanced debug logging to troubleshoot church pipeline issue
+        current_app.logger.info(f"[PIPELINE DEBUG] View request for pipeline_id: {pipeline_id}")
+        current_app.logger.info(f"[PIPELINE DEBUG] Pipeline details: name={pipeline.name}, type={pipeline.pipeline_type}, id={pipeline.id}")
+        
         # Verify database connection
         db_path = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
         if 'sqlite' in db_path:

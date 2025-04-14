@@ -51,7 +51,7 @@ def create():
             address=form.address.data,
             city=form.city.data,
             state=form.state.data,
-            zipcode=form.zip_code.data,
+            zip_code=form.zip_code.data,
             country=form.country.data,
             title=form.title.data,
             marital_status=form.marital_status.data,
@@ -65,7 +65,7 @@ def create():
             desired_service=form.desired_service.data,
             reason_closed=form.reason_closed.data,
             date_closed=form.date_closed.data,
-            tags=form.tags.data,
+            tags=form.tags.data if hasattr(form, 'tags') else None,
             notes=form.notes.data,
             type='person',  # Explicitly set type for the polymorphic model
             office_id=current_user.office_id,
@@ -199,7 +199,7 @@ def edit(id):
         person.address = form.address.data
         person.city = form.city.data
         person.state = form.state.data
-        person.zipcode = form.zip_code.data
+        person.zip_code = form.zip_code.data
         person.country = form.country.data
         person.notes = form.notes.data
         
@@ -216,7 +216,7 @@ def edit(id):
         person.desired_service = form.desired_service.data
         person.reason_closed = form.reason_closed.data
         person.date_closed = form.date_closed.data
-        person.tags = form.tags.data
+        person.tags = form.tags.data if hasattr(form, 'tags') else None
         
         # Update status based on pipeline status
         if form.pipeline_status.data:
@@ -392,9 +392,9 @@ def add_note(id):
     if content:
         # Add note to existing notes or create new notes
         if person.notes:
-            person.notes = f"{person.notes}\n\n{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.name}:\n{content}"
+            person.notes = f"{person.notes}\n\n{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.full_name}:\n{content}"
         else:
-            person.notes = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.name}:\n{content}"
+            person.notes = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.full_name}:\n{content}"
         
         person.updated_at = datetime.now()
         db.session.commit()
@@ -534,7 +534,7 @@ def import_people():
                                 person.state = row[mappings['state']]
                             
                             if mappings.get('zipcode') and not pd.isna(row[mappings['zipcode']]):
-                                person.zipcode = str(row[mappings['zipcode']])
+                                person.zip_code = str(row[mappings['zipcode']])
                             
                             if mappings.get('country') and not pd.isna(row[mappings['country']]):
                                 person.country = row[mappings['country']]
@@ -559,7 +559,7 @@ def import_people():
                                     address=row[mappings['address']] if mappings.get('address') and not pd.isna(row[mappings['address']]) else None,
                                     city=row[mappings['city']] if mappings.get('city') and not pd.isna(row[mappings['city']]) else None,
                                     state=row[mappings['state']] if mappings.get('state') and not pd.isna(row[mappings['state']]) else None,
-                                    zipcode=str(row[mappings['zipcode']]) if mappings.get('zipcode') and not pd.isna(row[mappings['zipcode']]) else None,
+                                    zip_code=str(row[mappings['zipcode']]) if mappings.get('zipcode') and not pd.isna(row[mappings['zipcode']]) else None,
                                     country=row[mappings['country']] if mappings.get('country') and not pd.isna(row[mappings['country']]) else None,
                                     notes=row[mappings['notes']] if mappings.get('notes') and not pd.isna(row[mappings['notes']]) else None,
                                     status='active',

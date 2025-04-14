@@ -140,6 +140,7 @@
                 </div>
                 <form id="exportForm" method="post">
                     <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" id="entity-type" name="entity_type" value="">
                         
                         <div class="form-group">
@@ -218,6 +219,13 @@
                 method: 'post',
                 action: '/reports/export/' + entityType
             });
+            
+            // Add the CSRF token
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'csrf_token',
+                value: '{{ csrf_token }}'
+            }).appendTo(form);
             
             // Add the format field
             $('<input>').attr({

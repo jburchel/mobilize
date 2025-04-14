@@ -17,8 +17,14 @@
                             <i class="bi bi-chat-dots me-2"></i>
                         {% elif communication.type == 'phone' %}
                             <i class="bi bi-telephone me-2"></i>
+                        {% elif communication.type == 'video_conference' %}
+                            <i class="bi bi-camera-video me-2"></i>
+                        {% elif communication.type == 'in_person' %}
+                            <i class="bi bi-people me-2"></i>
                         {% elif communication.type == 'letter' %}
                             <i class="bi bi-file-text me-2"></i>
+                        {% else %}
+                            <i class="bi bi-chat me-2"></i>
                         {% endif %}
                         {{ communication.subject or "Communication Details" }}
                     </h5>

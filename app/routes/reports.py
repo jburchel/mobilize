@@ -10,6 +10,7 @@ from ..models.church import Church
 from ..models.task import Task
 from ..models.communication import Communication
 from ..models.office import Office
+from ..models.pipeline import Pipeline, PipelineStage, PipelineContact
 from ..auth.permissions import admin_required, office_member_required
 from ..utils.export import generate_csv, generate_excel
 from ..extensions import db
@@ -35,7 +36,7 @@ def contacts_widget():
     """
     Widget showing contact statistics
     """
-    office_id = current_user.current_office_id
+    office_id = current_user.office_id
     total_contacts = Person.query.filter_by(office_id=office_id).count()
     new_contacts_30d = Person.query.filter_by(office_id=office_id).filter(
         Person.created_at >= datetime.datetime.now() - datetime.timedelta(days=30)
@@ -54,7 +55,7 @@ def churches_widget():
     """
     Widget showing church statistics
     """
-    office_id = current_user.current_office_id
+    office_id = current_user.office_id
     total_churches = Church.query.filter_by(office_id=office_id).count()
     new_churches_30d = Church.query.filter_by(office_id=office_id).filter(
         Church.created_at >= datetime.datetime.now() - datetime.timedelta(days=30)
@@ -73,7 +74,7 @@ def tasks_widget():
     """
     Widget showing task statistics
     """
-    office_id = current_user.current_office_id
+    office_id = current_user.office_id
     total_tasks = Task.query.filter_by(office_id=office_id).count()
     completed_tasks = Task.query.filter_by(office_id=office_id, status='completed').count()
     overdue_tasks = Task.query.filter_by(office_id=office_id, status='open').filter(
@@ -95,7 +96,7 @@ def communications_widget():
     """
     Widget showing communication statistics
     """
-    office_id = current_user.current_office_id
+    office_id = current_user.office_id
     total_comms = Communication.query.filter_by(office_id=office_id).count()
     emails = Communication.query.filter_by(office_id=office_id, type='email').count()
     calls = Communication.query.filter_by(office_id=office_id, type='call').count()
@@ -117,7 +118,9 @@ def export_data(entity_type):
     Export data in CSV or Excel format
     """
     format_type = request.form.get('format', 'csv')
-    office_id = current_user.current_office_id
+    
+    # Use office_id directly 
+    office_id = current_user.office_id
     
     if entity_type == 'contacts':
         data = Person.query.filter_by(office_id=office_id).all()
@@ -158,6 +161,90 @@ def export_data(entity_type):
         return jsonify({'error': 'Invalid format type'}), 400
 
 
+@reports_bp.route('/export/pipeline/<int:pipeline_id>', methods=['POST'])
+@login_required
+@office_member_required
+def export_pipeline(pipeline_id):
+    """
+    Export pipeline contacts with their stages in CSV or Excel format
+    """
+    format_type = request.form.get('format', 'csv')
+    office_id = current_user.office_id
+    
+    # Get pipeline and verify access
+    pipeline = Pipeline.query.get_or_404(pipeline_id)
+    if pipeline.office_id != office_id and not current_user.is_super_admin():
+        flash('You do not have permission to export this pipeline.', 'danger')
+        return redirect(url_for('pipeline.index'))
+    
+    # Get all contacts in this pipeline
+    pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
+    
+    # Prepare data for export
+    data_list = []
+    for pc in pipeline_contacts:
+        contact = pc.contact
+        stage = pc.current_stage
+        
+        if not contact or not stage:
+            continue
+            
+        # Skip if contact type doesn't match pipeline type
+        if pipeline.pipeline_type not in ['both', contact.contact_type]:
+            continue
+            
+        contact_data = {
+            'pipeline_contact_id': pc.id,
+            'stage_name': stage.name,
+            'days_in_stage': (datetime.datetime.utcnow() - pc.last_updated).days if pc.last_updated else 0,
+            'entered_pipeline': pc.entered_at.strftime('%Y-%m-%d') if pc.entered_at else '',
+            'last_updated': pc.last_updated.strftime('%Y-%m-%d') if pc.last_updated else ''
+        }
+        
+        # Add contact-specific fields based on type
+        if contact.contact_type == 'person':
+            contact_data.update({
+                'contact_id': contact.id,
+                'contact_type': 'Person',
+                'first_name': getattr(contact, 'first_name', ''),
+                'last_name': getattr(contact, 'last_name', ''),
+                'email': getattr(contact, 'email', ''),
+                'phone': getattr(contact, 'phone', ''),
+                'status': getattr(contact, 'status', '')
+            })
+        else:  # church
+            contact_data.update({
+                'contact_id': contact.id,
+                'contact_type': 'Church',
+                'name': getattr(contact, 'name', ''),
+                'pastor_name': getattr(contact, 'pastor_name', ''),
+                'email': getattr(contact, 'email', ''),
+                'phone': getattr(contact, 'phone', '')
+            })
+            
+        data_list.append(contact_data)
+    
+    # Define columns based on pipeline type
+    if pipeline.pipeline_type == 'person':
+        columns = ['pipeline_contact_id', 'contact_id', 'first_name', 'last_name', 'email', 'phone', 
+                  'status', 'stage_name', 'days_in_stage', 'entered_pipeline', 'last_updated']
+    elif pipeline.pipeline_type == 'church':
+        columns = ['pipeline_contact_id', 'contact_id', 'name', 'pastor_name', 'email', 'phone',
+                  'stage_name', 'days_in_stage', 'entered_pipeline', 'last_updated']
+    else:  # both
+        columns = ['pipeline_contact_id', 'contact_id', 'contact_type', 'first_name', 'last_name', 'name', 
+                  'pastor_name', 'email', 'phone', 'stage_name', 'days_in_stage', 'entered_pipeline', 'last_updated']
+    
+    filename = f"{pipeline.name.replace(' ', '_')}_export_{datetime.datetime.now().strftime('%Y%m%d')}"
+    
+    if format_type == 'csv':
+        return generate_csv(data_list, columns, filename)
+    elif format_type == 'excel':
+        return generate_excel(data_list, columns, filename)
+    else:
+        return jsonify({'error': 'Invalid format type'}), 400
+
+
 @reports_bp.route('/custom', methods=['GET', 'POST'])
 @login_required
 @office_member_required
@@ -180,7 +267,8 @@ def custom_report():
             flash('Invalid date format', 'error')
             return redirect(url_for('reports.custom_report'))
         
-        office_id = current_user.current_office_id
+        # Ensure we use office_id
+        office_id = current_user.office_id
         
         # Generate the appropriate report based on report type
         if report_type == 'contact_activity':

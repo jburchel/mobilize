@@ -53,6 +53,13 @@
                                 <input type="date" class="form-control" id="task-due-date" name="due_date">
                             </div>
                             <div class="col-md-6">
+                                <label for="task-due-time" class="form-label">Due Time</label>
+                                <input type="time" class="form-control" id="task-due-time" name="due_time">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
                                 <label for="task-assigned-to" class="form-label">Assigned To</label>
                                 <select class="form-select" id="task-assigned-to" name="assigned_to">
                                     <option value="">Unassigned</option>
@@ -111,6 +118,11 @@
                                 <option value="3_days">3 days before</option>
                                 <option value="1_week">1 week before</option>
                             </select>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="google_calendar_sync" name="google_calendar_sync_enabled" value="true">
+                            <label class="form-check-label" for="google_calendar_sync">Sync with Google Calendar</label>
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">

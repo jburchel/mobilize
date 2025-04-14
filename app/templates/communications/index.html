@@ -37,6 +37,38 @@
                         </div>
                     </div>
                     
+                    <!-- Date Range Filter -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0"><i class="bi bi-calendar3 me-1"></i>Date Range:</label>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <input type="date" class="form-control form-control-sm" id="start-date" placeholder="Start Date">
+                                        </div>
+                                        <div class="col-auto">
+                                            <span>to</span>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <input type="date" class="form-control form-control-sm" id="end-date" placeholder="End Date">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="button" class="btn btn-sm btn-primary" id="apply-date-filter">
+                                                <i class="bi bi-funnel-fill me-1"></i>Apply
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-date-filter">
+                                                <i class="bi bi-x-circle me-1"></i>Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <div class="btn-group" role="group">
@@ -44,6 +76,8 @@
                                 <button type="button" class="btn btn-outline-primary" data-filter="email">Email</button>
                                 <button type="button" class="btn btn-outline-primary" data-filter="sms">SMS</button>
                                 <button type="button" class="btn btn-outline-primary" data-filter="phone">Phone</button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="video_conference">Video</button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="in_person">In Person</button>
                                 <button type="button" class="btn btn-outline-primary" data-filter="letter">Letter</button>
                             </div>
                             <div class="float-end">
@@ -60,13 +94,13 @@
                         <table class="table table-hover" id="communications-table">
                             <thead>
                                 <tr>
-                                    <th>Type</th>
-                                    <th>Subject/Summary</th>
-                                    <th>Contact</th>
-                                    <th>Direction</th>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
+                                    <th class="sortable" data-sort="type" style="width: 10%">Type</th>
+                                    <th class="sortable" data-sort="contact" style="width: 18%">Contact</th>
+                                    <th class="sortable" data-sort="subject" style="width: 25%">Subject/Summary</th>
+                                    <th class="sortable" data-sort="direction" style="width: 10%">Direction</th>
+                                    <th class="sortable" data-sort="date" style="width: 15%">Date</th>
+                                    <th class="sortable" data-sort="status" style="width: 10%">Status</th>
+                                    <th style="width: 12%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -75,7 +109,9 @@
                                     <tr data-type="{{ comm.type|lower }}" data-direction="{{ comm.direction|lower }}" 
                                         data-subject="{{ comm.subject|default('') }}" 
                                         data-contact="{{ comm.person.first_name ~ ' ' ~ comm.person.last_name if comm.person_id else comm.church.name if comm.church_id else 'Unknown' }}"
-                                        data-message="{{ comm.message|striptags|truncate(500) }}">
+                                        data-message="{{ comm.message|striptags|truncate(500) }}"
+                                        data-date="{{ comm.date_sent.strftime('%Y-%m-%d %H:%M') }}"
+                                        data-status="{{ comm.email_status|default('unknown') }}">
                                         <td>
                                             {% if comm.type == 'email' %}
                                                 <i class="bi bi-envelope text-primary"></i>
@@ -83,15 +119,16 @@
                                                 <i class="bi bi-chat-dots text-success"></i>
                                             {% elif comm.type == 'phone' %}
                                                 <i class="bi bi-telephone text-info"></i>
+                                            {% elif comm.type == 'video_conference' %}
+                                                <i class="bi bi-camera-video text-warning"></i>
+                                            {% elif comm.type == 'in_person' %}
+                                                <i class="bi bi-people text-danger"></i>
                                             {% elif comm.type == 'letter' %}
                                                 <i class="bi bi-file-text text-secondary"></i>
+                                            {% else %}
+                                                <i class="bi bi-chat text-dark"></i>
                                             {% endif %}
                                             {{ comm.type }}
-                                        </td>
-                                        <td>
-                                            <a href="{{ url_for('communications.view', id=comm.id) }}">
-                                                {{ comm.subject if comm.subject else '(No Subject)' }}
-                                            </a>
                                         </td>
                                         <td>
                                             {% if comm.person_id %}
@@ -105,6 +142,11 @@
                                             {% else %}
                                                 Unknown
                                             {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('communications.view', id=comm.id) }}">
+                                                {{ comm.subject if comm.subject else '(No Subject)' }}
+                                            </a>
                                         </td>
                                         <td>
                                             {% if comm.direction == 'inbound' %}
@@ -153,27 +195,6 @@
         
         <div class="col-md-4">
             <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-cloud-arrow-down me-2"></i>Gmail Sync Status
-                    </h5>
-                </div>
-                <div class="card-body" id="sync-status-panel">
-                    <div class="text-center p-3">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2">Loading sync status...</p>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <button class="btn btn-primary w-100" id="trigger-sync">
-                        <i class="bi bi-arrow-repeat me-2"></i>Sync Now
-                    </button>
-                </div>
-            </div>
-            
-            <div class="card">
                 <div class="card-header bg-success text-white">
                     <h5 class="card-title mb-0">
                         <i class="bi bi-file-earmark-text me-2"></i>Email Templates
@@ -201,45 +222,8 @@
     </div>
 </div>
 
-<!-- JavaScript for Gmail sync status checking -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Function to update the sync status panel
-    function updateSyncStatus(status) {
-        let statusHtml = `
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span><strong>Status:</strong></span>
-                <span class="badge bg-${status.status === 'synced' ? 'success' : 'warning'}">${status.status === 'synced' ? 'Synced' : 'Pending'}</span>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span><strong>Last Sync:</strong></span>
-                <span>${new Date(status.last_sync).toLocaleString()}</span>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span><strong>Messages Synced:</strong></span>
-                <span class="badge bg-primary rounded-pill">${status.count}</span>
-            </div>
-        `;
-        
-        document.getElementById('sync-status-panel').innerHTML = statusHtml;
-    }
-    
-    // Initial fetch of sync status
-    fetch('{{ url_for("communications.sync_status") }}')
-        .then(response => response.json())
-        .then(status => {
-            updateSyncStatus(status);
-        })
-        .catch(error => {
-            console.error('Failed to fetch sync status:', error);
-            document.getElementById('sync-status-panel').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    Failed to load sync status.
-                </div>
-            `;
-        });
-    
     // Set up filter buttons
     const typeFilters = document.querySelectorAll('[data-filter]');
     const directionFilters = document.querySelectorAll('[data-direction]');
@@ -248,6 +232,61 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchFeedback = document.getElementById('search-feedback');
     const searchTerm = document.getElementById('search-term');
     const resultCount = document.getElementById('result-count');
+    
+    // Date filter elements
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const applyDateFilterBtn = document.getElementById('apply-date-filter');
+    const clearDateFilterBtn = document.getElementById('clear-date-filter');
+    
+    // Initialize date range from URL parameters if present
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('start_date')) {
+        startDateInput.value = urlParams.get('start_date');
+    }
+    if (urlParams.has('end_date')) {
+        endDateInput.value = urlParams.get('end_date');
+    }
+    
+    // Apply date filter
+    applyDateFilterBtn.addEventListener('click', function() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        
+        // Validate dates
+        if (startDate && endDate && startDate > endDate) {
+            alert('Start date cannot be after end date');
+            return;
+        }
+        
+        // Redirect with date filter params
+        const url = new URL(window.location);
+        if (startDate) {
+            url.searchParams.set('start_date', startDate);
+        } else {
+            url.searchParams.delete('start_date');
+        }
+        
+        if (endDate) {
+            url.searchParams.set('end_date', endDate);
+        } else {
+            url.searchParams.delete('end_date');
+        }
+        
+        window.location.href = url.toString();
+    });
+    
+    // Clear date filter
+    clearDateFilterBtn.addEventListener('click', function() {
+        startDateInput.value = '';
+        endDateInput.value = '';
+        
+        const url = new URL(window.location);
+        url.searchParams.delete('start_date');
+        url.searchParams.delete('end_date');
+        
+        window.location.href = url.toString();
+    });
     
     // Search functionality
     searchInput.addEventListener('input', function() {
@@ -412,28 +451,457 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Set up sync trigger
-    document.getElementById('trigger-sync').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Syncing...';
-        
-        // Here you would actually call an endpoint to trigger the sync
-        // For now, we'll just simulate it with a timeout
-        setTimeout(() => {
-            this.disabled = false;
-            this.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Sync Now';
+    // Table sorting functionality
+    let currentSort = { column: 'date', direction: 'desc' };
+
+    // Set default sort on page load (by date, newest first)
+    const dateHeader = document.querySelector('th[data-sort="date"]');
+    if (dateHeader) {
+        dateHeader.classList.add('desc');
+        // Sort the table initially by date descending
+        sortTable('date', 'desc');
+    }
+
+    // Add click handlers to sortable headers
+    document.querySelectorAll('th.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.getAttribute('data-sort');
             
-            // Update the status after "sync"
-            updateSyncStatus({
-                status: 'synced',
-                last_sync: new Date().toISOString(),
-                count: Math.floor(Math.random() * 50) + 100 
+            // If clicking the same column, toggle direction
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Otherwise, set new column with default 'asc' direction
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            // Update header styling
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
             });
+            this.classList.add(currentSort.direction);
             
-            // Show success message
-            alert('Sync completed successfully!');
-        }, 2000);
+            // Sort the table
+            sortTable(column, currentSort.direction);
+        });
     });
+
+    function sortTable(column, direction) {
+        const table = document.getElementById('communications-table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr:not(.no-results)'));
+        
+        // Sort rows based on data attributes
+        rows.sort((a, b) => {
+            // Skip special rows
+            if (a.querySelector('td[colspan]') || b.querySelector('td[colspan]')) return 0;
+            
+            let valueA = a.getAttribute(`data-${column}`) || '';
+            let valueB = b.getAttribute(`data-${column}`) || '';
+            
+            // For date sorting, we need to ensure proper comparison
+            if (column === 'date') {
+                valueA = new Date(valueA).getTime() || 0;
+                valueB = new Date(valueB).getTime() || 0;
+                return direction === 'asc' ? valueA - valueB : valueB - valueA;
+            }
+            
+            // For other columns, use string comparison
+            if (direction === 'asc') {
+                return valueA.localeCompare(valueB);
+            } else {
+                return valueB.localeCompare(valueA);
+            }
+        });
+        
+        // Reappend rows in the new order
+        rows.forEach(row => {
+            tbody.appendChild(row);
+        });
+        
+        // Ensure "No results" row always stays at the bottom
+        const noResultsRow = tbody.querySelector('tr.no-results');
+        if (noResultsRow) {
+            tbody.appendChild(noResultsRow);
+        }
+    }
+});
+</script>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    /* Sortable columns styling */
+    .sortable {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+    }
+    .sortable:hover {
+        background-color: rgba(0,0,0,0.05);
+    }
+    .sortable::after {
+        content: "";
+        opacity: 0.3;
+        font-family: "bootstrap-icons";
+        margin-left: 5px;
+        font-size: 0.8em;
+    }
+    .sortable.asc::after {
+        content: "\F12D"; /* bi-arrow-up */
+        opacity: 1;
+    }
+    .sortable.desc::after {
+        content: "\F131"; /* bi-arrow-down */
+        opacity: 1;
+    }
+    .badge.message-match-indicator {
+        font-size: 0.7em;
+    }
+    
+    /* Table layout improvements */
+    #communications-table th, 
+    #communications-table td {
+        white-space: normal;
+        word-break: break-word;
+        vertical-align: middle;
+    }
+    
+    #communications-table td:nth-child(5) {  /* Date column */
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    
+    #communications-table td:nth-child(3) {  /* Subject column */
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    #communications-table td:nth-child(2) {  /* Contact column */
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    @media (max-width: 992px) {
+        #communications-table td:nth-child(1),  /* Type */
+        #communications-table td:nth-child(4),  /* Direction */
+        #communications-table td:nth-child(6) { /* Status */
+            white-space: nowrap;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block javascripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up filter buttons
+    const typeFilters = document.querySelectorAll('[data-filter]');
+    const directionFilters = document.querySelectorAll('[data-direction]');
+    const searchInput = document.getElementById('search-communications');
+    const clearSearchBtn = document.getElementById('clear-search');
+    const searchFeedback = document.getElementById('search-feedback');
+    const searchTerm = document.getElementById('search-term');
+    const resultCount = document.getElementById('result-count');
+    
+    // Date filter elements
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const applyDateFilterBtn = document.getElementById('apply-date-filter');
+    const clearDateFilterBtn = document.getElementById('clear-date-filter');
+    
+    // Initialize date range from URL parameters if present
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('start_date')) {
+        startDateInput.value = urlParams.get('start_date');
+    }
+    if (urlParams.has('end_date')) {
+        endDateInput.value = urlParams.get('end_date');
+    }
+    
+    // Apply date filter
+    applyDateFilterBtn.addEventListener('click', function() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        
+        // Validate dates
+        if (startDate && endDate && startDate > endDate) {
+            alert('Start date cannot be after end date');
+            return;
+        }
+        
+        // Redirect with date filter params
+        const url = new URL(window.location);
+        if (startDate) {
+            url.searchParams.set('start_date', startDate);
+        } else {
+            url.searchParams.delete('start_date');
+        }
+        
+        if (endDate) {
+            url.searchParams.set('end_date', endDate);
+        } else {
+            url.searchParams.delete('end_date');
+        }
+        
+        window.location.href = url.toString();
+    });
+    
+    // Clear date filter
+    clearDateFilterBtn.addEventListener('click', function() {
+        startDateInput.value = '';
+        endDateInput.value = '';
+        
+        const url = new URL(window.location);
+        url.searchParams.delete('start_date');
+        url.searchParams.delete('end_date');
+        
+        window.location.href = url.toString();
+    });
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        
+        // Show/hide clear button based on search input
+        clearSearchBtn.style.display = query ? 'block' : 'none';
+        
+        // Apply search filter
+        filterCommunications();
+    });
+    
+    // Clear search button
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        searchFeedback.style.display = 'none';
+        clearSearchBtn.style.display = 'none';
+        filterCommunications();
+    });
+    
+    typeFilters.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            typeFilters.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Apply filter
+            filterCommunications();
+        });
+    });
+    
+    directionFilters.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            directionFilters.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Apply filter
+            filterCommunications();
+        });
+    });
+    
+    function filterCommunications() {
+        const activeTypeFilter = document.querySelector('[data-filter].active').getAttribute('data-filter');
+        const activeDirectionFilter = document.querySelector('[data-direction].active').getAttribute('data-direction');
+        const searchQuery = searchInput.value.toLowerCase().trim();
+        
+        const rows = document.querySelectorAll('#communications-table tbody tr');
+        let visibleCount = 0;
+        let messageMatches = 0;
+        
+        rows.forEach(row => {
+            // Skip if it's the "No communications found" row
+            if (row.querySelector('td[colspan]')) return;
+            
+            const rowType = row.getAttribute('data-type');
+            const rowDirection = row.getAttribute('data-direction');
+            const messageContent = row.getAttribute('data-message')?.toLowerCase() || '';
+            const rowAttrs = {
+                type: rowType,
+                direction: rowDirection,
+                subject: row.getAttribute('data-subject')?.toLowerCase() || '',
+                contact: row.getAttribute('data-contact')?.toLowerCase() || ''
+            };
+            
+            // Check if the search matches any specific attribute first
+            let isTypeSearch = rowType === searchQuery || 
+                              (searchQuery === 'email' && rowType === 'email') ||
+                              (searchQuery === 'text' && rowType === 'sms') ||
+                              (searchQuery === 'phone' && rowType === 'phone') ||
+                              (searchQuery === 'letter' && rowType === 'letter');
+                              
+            let isDirectionSearch = searchQuery === 'inbound' && rowDirection === 'inbound' ||
+                                   searchQuery === 'outbound' && rowDirection === 'outbound';
+                                   
+            let isContactSearch = rowAttrs.contact.includes(searchQuery);
+            let isSubjectSearch = rowAttrs.subject.includes(searchQuery);
+            let isMessageSearch = messageContent.includes(searchQuery);
+            
+            const typeMatch = activeTypeFilter === 'all' || activeTypeFilter === rowType;
+            const directionMatch = activeDirectionFilter === 'all' || activeDirectionFilter === rowDirection;
+            const searchMatch = !searchQuery || isTypeSearch || isDirectionSearch || isContactSearch || isSubjectSearch || isMessageSearch;
+            
+            // Remove any previous matches
+            row.classList.remove('table-info', 'table-warning', 'message-match');
+            
+            // Highlight the row if it contains the search term in the message content
+            if (searchQuery && isMessageSearch) {
+                row.classList.add('table-info', 'message-match');
+                messageMatches++;
+                
+                // Add a tooltip or indicator that shows this matched in message content
+                const messageIndicator = row.querySelector('.message-match-indicator');
+                if (!messageIndicator) {
+                    const cell = row.querySelector('td:nth-child(2)'); // Subject column
+                    if (cell) {
+                        const indicator = document.createElement('span');
+                        indicator.className = 'badge bg-info ms-2 message-match-indicator';
+                        indicator.textContent = 'Message match';
+                        indicator.title = 'Search term found in message content';
+                        cell.appendChild(indicator);
+                    }
+                }
+            } else {
+                // Remove any existing message match indicators
+                const indicator = row.querySelector('.message-match-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            }
+            
+            if (typeMatch && directionMatch && searchMatch) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update search feedback with additional info about what was matched
+        if (searchQuery) {
+            let matchType = "";
+            if (searchQuery === 'email' || searchQuery === 'phone' || searchQuery === 'text' || searchQuery === 'sms' || searchQuery === 'letter') {
+                matchType = " (matching communication type)";
+            } else if (searchQuery === 'inbound' || searchQuery === 'outbound') {
+                matchType = " (matching direction)";
+            } else if (messageMatches > 0) {
+                matchType = ` (including ${messageMatches} message content ${messageMatches === 1 ? 'match' : 'matches'})`;
+            }
+            
+            searchTerm.textContent = searchQuery;
+            resultCount.textContent = visibleCount;
+            searchFeedback.style.display = 'block';
+            
+            // Add match type info if available
+            if (matchType) {
+                document.getElementById('match-type').textContent = matchType;
+            } else {
+                document.getElementById('match-type').textContent = '';
+            }
+        } else {
+            searchFeedback.style.display = 'none';
+            
+            // Remove all message match indicators when search is cleared
+            document.querySelectorAll('.message-match-indicator').forEach(el => el.remove());
+        }
+        
+        // Show/hide "No results" message
+        const noResultsRow = document.querySelector('#communications-table tbody tr.no-results');
+        if (visibleCount === 0 && rows.length > 0) {
+            if (!noResultsRow) {
+                const tbody = document.querySelector('#communications-table tbody');
+                const newRow = document.createElement('tr');
+                newRow.className = 'no-results';
+                newRow.innerHTML = '<td colspan="7" class="text-center">No communications match your filters.</td>';
+                tbody.appendChild(newRow);
+            } else {
+                noResultsRow.style.display = '';
+            }
+        } else if (noResultsRow) {
+            noResultsRow.style.display = 'none';
+        }
+    }
+    
+    // Table sorting functionality
+    let currentSort = { column: 'date', direction: 'desc' };
+
+    // Set default sort on page load (by date, newest first)
+    const dateHeader = document.querySelector('th[data-sort="date"]');
+    if (dateHeader) {
+        dateHeader.classList.add('desc');
+        // Sort the table initially by date descending
+        sortTable('date', 'desc');
+    }
+
+    // Add click handlers to sortable headers
+    document.querySelectorAll('th.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.getAttribute('data-sort');
+            
+            // If clicking the same column, toggle direction
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Otherwise, set new column with default 'asc' direction
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            // Update header styling
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+            });
+            this.classList.add(currentSort.direction);
+            
+            // Sort the table
+            sortTable(column, currentSort.direction);
+        });
+    });
+
+    function sortTable(column, direction) {
+        const table = document.getElementById('communications-table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr:not(.no-results)'));
+        
+        // Sort rows based on data attributes
+        rows.sort((a, b) => {
+            // Skip special rows
+            if (a.querySelector('td[colspan]') || b.querySelector('td[colspan]')) return 0;
+            
+            let valueA = a.getAttribute(`data-${column}`) || '';
+            let valueB = b.getAttribute(`data-${column}`) || '';
+            
+            // For date sorting, we need to ensure proper comparison
+            if (column === 'date') {
+                valueA = new Date(valueA).getTime() || 0;
+                valueB = new Date(valueB).getTime() || 0;
+                return direction === 'asc' ? valueA - valueB : valueB - valueA;
+            }
+            
+            // For other columns, use string comparison
+            if (direction === 'asc') {
+                return valueA.localeCompare(valueB);
+            } else {
+                return valueB.localeCompare(valueA);
+            }
+        });
+        
+        // Reappend rows in the new order
+        rows.forEach(row => {
+            tbody.appendChild(row);
+        });
+        
+        // Ensure "No results" row always stays at the bottom
+        const noResultsRow = tbody.querySelector('tr.no-results');
+        if (noResultsRow) {
+            tbody.appendChild(noResultsRow);
+        }
+    }
 });
 </script>
 {% endblock %} 

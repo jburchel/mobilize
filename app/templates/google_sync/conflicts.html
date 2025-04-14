@@ -28,6 +28,7 @@
                 <div class="card-body">
                     {% if conflicted_contacts %}
                     <form action="{{ url_for('google_sync.resolve_conflicts') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         {% for contact in conflicted_contacts %}
                         <div class="card mb-4">
                             <div class="card-header bg-warning">

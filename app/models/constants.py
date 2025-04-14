@@ -91,6 +91,18 @@ STATE_CHOICES = [
     ('wi', 'WI'), ('wy', 'WY'), ('dc', 'DC')
 ]
 
+# Communication type choices
+COMMUNICATION_TYPE_CHOICES = [
+    ('email', 'Email'),
+    ('phone', 'Phone Call'),
+    ('sms', 'Text Message'),
+    ('meeting', 'Meeting'),
+    ('letter', 'Letter'),
+    ('video_conference', 'Video Conference'),
+    ('in_person', 'In Person'),
+    ('other', 'Other')
+]
+
 PREFERRED_CONTACT_METHODS = [
     ('email', 'Email'), ('phone', 'Phone'), ('text', 'Text'), ('facebook_messenger', 'Facebook Messenger'),
     ('whatsapp', 'Whatsapp'), ('groupme', 'Groupme'), ('signal', 'Signal'), ('other', 'Other')

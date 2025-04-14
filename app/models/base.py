@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.extensions import db
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declared_attr
@@ -11,16 +11,16 @@ from app.models.constants import (
 
 class TimestampMixin:
     """Mixin for adding timestamp fields to models."""
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC))
-    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class Base(db.Model):
     """Base model class that includes common fields."""
     __abstract__ = True
 
     id = db.Column(db.Integer, primary_key=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def save(self):
         """Save the model instance to the database."""
@@ -57,10 +57,10 @@ class Contact(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     image = db.Column(db.String, nullable=True)
     preferred_contact_method = db.Column(db.String(100), nullable=True)
-    date_created = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
-    date_modified = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    date_created = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    date_modified = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     google_contact_id = db.Column(db.String(255), nullable=True)
     has_conflict = db.Column(db.Boolean, default=False)
     conflict_data = db.Column(db.JSON, nullable=True)

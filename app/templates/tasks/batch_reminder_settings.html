@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Update Task Reminder Settings - Mobilize CRM{% endblock %}
+
+{% block page_title %}Batch Update Task Reminder Settings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-fill me-2"></i>Update Reminder Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="batch-reminder-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Selected Tasks: <strong id="selected-tasks-count">{{ tasks|length }}</strong>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reminder_option" class="form-label">Reminder</label>
+                            <select class="form-select" id="reminder_option" name="reminder_option" required>
+                                <option value="" selected disabled>Select reminder option...</option>
+                                <option value="none">No reminder</option>
+                                <option value="15_min">15 minutes before</option>
+                                <option value="30_min">30 minutes before</option>
+                                <option value="1_hour">1 hour before</option>
+                                <option value="2_hours">2 hours before</option>
+                                <option value="1_day">1 day before</option>
+                                <option value="3_days">3 days before</option>
+                                <option value="1_week">1 week before</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="google_calendar_sync" name="google_calendar_sync_enabled" value="true">
+                            <label class="form-check-label" for="google_calendar_sync">Sync with Google Calendar</label>
+                        </div>
+                        
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="5%">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="select-all-tasks" checked>
+                                            </div>
+                                        </th>
+                                        <th width="45%">Task</th>
+                                        <th width="20%">Due Date</th>
+                                        <th width="15%">Current Reminder</th>
+                                        <th width="15%">Sync Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for task in tasks %}
+                                    <tr>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input task-checkbox" type="checkbox" name="task_ids" value="{{ task.id }}" checked>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('tasks.edit', id=task.id) }}">{{ task.title }}</a>
+                                            {% if task.person_id %}
+                                            <span class="badge bg-info ms-2">Person</span>
+                                            {% elif task.church_id %}
+                                            <span class="badge bg-secondary ms-2">Church</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else 'No due date' }}</td>
+                                        <td>
+                                            {% if task.reminder_option == 'none' or task.reminder_option is none %}
+                                                <span class="badge bg-secondary">None</span>
+                                            {% elif task.reminder_option == '15_min' %}
+                                                <span class="badge bg-info">15 min</span>
+                                            {% elif task.reminder_option == '30_min' %}
+                                                <span class="badge bg-info">30 min</span>
+                                            {% elif task.reminder_option == '1_hour' %}
+                                                <span class="badge bg-info">1 hour</span>
+                                            {% elif task.reminder_option == '2_hours' %}
+                                                <span class="badge bg-info">2 hours</span>
+                                            {% elif task.reminder_option == '1_day' %}
+                                                <span class="badge bg-info">1 day</span>
+                                            {% elif task.reminder_option == '3_days' %}
+                                                <span class="badge bg-info">3 days</span>
+                                            {% elif task.reminder_option == '1_week' %}
+                                                <span class="badge bg-info">1 week</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if task.google_calendar_sync_enabled %}
+                                                <span class="badge bg-success">Enabled</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Disabled</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('tasks.index') }}" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <button type="button" id="submit-btn" class="btn btn-success">
+                                <i class="bi bi-check-circle me-2"></i>Update Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-lightbulb me-2"></i>About Batch Updates</h6>
+                        <p>This page allows you to update reminder settings for multiple tasks at once. Only tasks with due dates can have reminders.</p>
+                    </div>
+                    
+                    <h6 class="border-bottom pb-2 mb-3">Reminder Options</h6>
+                    <div class="mb-2">
+                        <span class="badge bg-secondary">None</span>
+                        <span class="ms-2">No reminder will be set</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">15 min</span>
+                        <span class="ms-2">15 minutes before due time</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">30 min</span>
+                        <span class="ms-2">30 minutes before due time</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">1 hour</span>
+                        <span class="ms-2">1 hour before due time</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">2 hours</span>
+                        <span class="ms-2">2 hours before due time</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">1 day</span>
+                        <span class="ms-2">1 day before due date</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">3 days</span>
+                        <span class="ms-2">3 days before due date</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info">1 week</span>
+                        <span class="ms-2">1 week before due date</span>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Note:</strong> Tasks without due dates cannot have reminders. If you set a reminder for a task without a due date, it will be ignored.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-tasks');
+    const taskCheckboxes = document.querySelectorAll('.task-checkbox');
+    const selectedTasksCount = document.getElementById('selected-tasks-count');
+    const submitBtn = document.getElementById('submit-btn');
+    const form = document.getElementById('batch-reminder-form');
+    
+    // Handle select all checkbox
+    selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        taskCheckboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        updateSelectedCount();
+    });
+    
+    // Handle individual checkboxes
+    taskCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateSelectedCount();
+            
+            // Update "select all" checkbox state
+            const allChecked = Array.from(taskCheckboxes).every(cb => cb.checked);
+            const noneChecked = Array.from(taskCheckboxes).every(cb => !cb.checked);
+            
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+        });
+    });
+    
+    // Update the count of selected tasks
+    function updateSelectedCount() {
+        const selectedCount = Array.from(taskCheckboxes).filter(cb => cb.checked).length;
+        selectedTasksCount.textContent = selectedCount;
+        
+        // Disable submit button if no tasks are selected
+        submitBtn.disabled = selectedCount === 0;
+    }
+    
+    // Handle form submission
+    submitBtn.addEventListener('click', function() {
+        // Validate form
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+        
+        // Get selected task ids
+        const selectedTaskIds = Array.from(taskCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+            
+        if (selectedTaskIds.length === 0) {
+            alert('Please select at least one task to update.');
+            return;
+        }
+        
+        const reminderOption = document.getElementById('reminder_option').value;
+        const googleCalendarSync = document.getElementById('google_calendar_sync').checked;
+        
+        // Make AJAX request to update reminder settings
+        fetch('/api/v1/calendar/sync-reminder-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+            },
+            body: JSON.stringify({
+                task_ids: selectedTaskIds,
+                reminder_option: reminderOption,
+                google_calendar_sync_enabled: googleCalendarSync
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Reminder settings updated successfully for ' + data.updated_count + ' tasks.');
+                window.location.href = '{{ url_for("tasks.index") }}';
+            } else {
+                alert('Error updating reminder settings: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating reminder settings. Please try again.');
+        });
+    });
+    
+    // Initialize
+    updateSelectedCount();
+});
+</script>
+{% endblock %} 

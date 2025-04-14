@@ -16,7 +16,6 @@ class Church(Contact):
     location = db.Column(db.String(200))
     main_contact_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=True)
     senior_pastor_name = db.Column(db.String(100))
-    associate_pastor_name = db.Column(db.String(100))
     denomination = db.Column(db.String(100))
     weekly_attendance = db.Column(db.Integer)
     website = db.Column(db.String(200))
@@ -90,7 +89,6 @@ class Church(Contact):
             'name': self.name,
             'location': self.location,
             'senior_pastor_name': self.senior_pastor_name,
-            'associate_pastor_name': self.associate_pastor_name,
             'denomination': self.denomination,
             'weekly_attendance': self.weekly_attendance,
             'website': self.website,
@@ -121,7 +119,7 @@ class Church(Contact):
             'date_closed': self.date_closed.isoformat() if self.date_closed else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        } 
+        }
         
     def debug_members(self):
         """Debug method to check church members"""

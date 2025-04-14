@@ -50,24 +50,19 @@ def create():
             address=form.address.data,
             city=form.city.data,
             state=form.state.data,
-            zipcode=form.zip_code.data,
+            zip_code=form.zip_code.data,
             country=form.country.data,
             phone=form.phone.data,
             email=form.email.data,
             website=form.website.data,
             location=form.location.data,
-            senior_pastor_name=form.senior_pastor_name.data,
+            senior_pastor_name=(f"{form.senior_pastor_first_name.data} {form.senior_pastor_last_name.data}").strip(),
             senior_pastor_phone=form.senior_pastor_phone.data,
             senior_pastor_email=form.senior_pastor_email.data,
-            associate_pastor_name=form.associate_pastor_name.data,
             missions_pastor_first_name=form.missions_pastor_first_name.data,
             missions_pastor_last_name=form.missions_pastor_last_name.data,
             mission_pastor_phone=form.mission_pastor_phone.data,
             mission_pastor_email=form.mission_pastor_email.data,
-            primary_contact_first_name=form.primary_contact_first_name.data,
-            primary_contact_last_name=form.primary_contact_last_name.data,
-            primary_contact_phone=form.primary_contact_phone.data,
-            primary_contact_email=form.primary_contact_email.data,
             denomination=form.denomination.data,
             weekly_attendance=form.weekly_attendance.data,
             priority=form.priority.data,
@@ -80,10 +75,10 @@ def create():
             year_founded=form.year_founded.data,
             date_closed=form.date_closed.data,
             notes=form.notes.data,
-            tags=form.tags.data,
             type='church',  # Explicitly set type for the polymorphic model
             office_id=current_user.office_id,
             user_id=current_user.id,
+            owner_id=current_user.id,  # Ensure owner_id is set to the current user's ID
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
@@ -171,7 +166,20 @@ def show(id):
     # Get people associated with this church
     church.people = Person.query.filter_by(church_id=church.id).all()
     
-    return render_template('churches/detail.html', church=church, contact_person=contact_person)
+    # Get all people for the add member modal
+    if current_user.is_super_admin():
+        people = Person.query.order_by(Person.first_name, Person.last_name).all()
+    else:
+        people = Person.query.filter_by(office_id=current_user.office_id).order_by(Person.first_name, Person.last_name).all()
+    
+    # Get church roles for the modal
+    from app.models.constants import CHURCH_ROLE_CHOICES
+    
+    return render_template('churches/detail.html', 
+                          church=church, 
+                          contact_person=contact_person,
+                          people=people,
+                          church_roles=CHURCH_ROLE_CHOICES)
 
 @churches_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -195,29 +203,56 @@ def edit(id):
         form.main_contact_id.choices = [(0, 'None')] + [(p.id, f"{p.first_name} {p.last_name}") 
                                                          for p in Person.query.filter_by(office_id=current_user.office_id).all()]
     
+    # Fill form with existing church data
+    form.name.data = church.name
+    form.address.data = church.address
+    form.city.data = church.city
+    form.state.data = church.state
+    form.zip_code.data = church.zip_code
+    form.country.data = church.country
+    form.phone.data = church.phone
+    form.email.data = church.email
+    form.website.data = church.website
+    form.location.data = church.location
+    
+    # Handle senior pastor name (split into first and last if possible)
+    if church.senior_pastor_name:
+        name_parts = church.senior_pastor_name.split(' ', 1)
+        if len(name_parts) > 1:
+            form.senior_pastor_first_name.data = name_parts[0]
+            form.senior_pastor_last_name.data = name_parts[1]
+        else:
+            form.senior_pastor_first_name.data = name_parts[0]
+            form.senior_pastor_last_name.data = ""
+    
+    form.senior_pastor_phone.data = church.senior_pastor_phone
+    form.senior_pastor_email.data = church.senior_pastor_email
+    form.missions_pastor_first_name.data = church.missions_pastor_first_name
+    form.missions_pastor_last_name.data = church.missions_pastor_last_name
+    form.mission_pastor_phone.data = church.mission_pastor_phone
+    form.mission_pastor_email.data = church.mission_pastor_email
+    
     if form.validate_on_submit():
         church.name = form.name.data
         church.address = form.address.data
         church.city = form.city.data
         church.state = form.state.data
-        church.zipcode = form.zip_code.data
+        church.zip_code = form.zip_code.data
         church.country = form.country.data
         church.phone = form.phone.data
         church.email = form.email.data
         church.website = form.website.data
         church.location = form.location.data
-        church.senior_pastor_name = form.senior_pastor_name.data
+        
+        # Combine first and last name into single senior pastor name field
+        church.senior_pastor_name = (f"{form.senior_pastor_first_name.data} {form.senior_pastor_last_name.data}").strip()
+        
         church.senior_pastor_phone = form.senior_pastor_phone.data
         church.senior_pastor_email = form.senior_pastor_email.data
-        church.associate_pastor_name = form.associate_pastor_name.data
         church.missions_pastor_first_name = form.missions_pastor_first_name.data
         church.missions_pastor_last_name = form.missions_pastor_last_name.data
         church.mission_pastor_phone = form.mission_pastor_phone.data
         church.mission_pastor_email = form.mission_pastor_email.data
-        church.primary_contact_first_name = form.primary_contact_first_name.data
-        church.primary_contact_last_name = form.primary_contact_last_name.data
-        church.primary_contact_phone = form.primary_contact_phone.data
-        church.primary_contact_email = form.primary_contact_email.data
         church.denomination = form.denomination.data
         church.weekly_attendance = form.weekly_attendance.data
         church.priority = form.priority.data
@@ -230,7 +265,6 @@ def edit(id):
         church.year_founded = form.year_founded.data
         church.date_closed = form.date_closed.data
         church.notes = form.notes.data
-        church.tags = form.tags.data
         church.updated_at = datetime.now()
         
         # Handle contact person relationship
@@ -360,9 +394,60 @@ def set_primary_contact(id):
             db.session.commit()
             flash(f'{person.full_name} set as primary contact for {church.name}', 'success')
         else:
-            flash('Selected person does not exist or is not associated with this church', 'danger')
+            flash('Person not found or not a member of this church', 'danger')
     else:
-        flash('No contact selected', 'warning')
+        flash('No person selected', 'danger')
+    
+    return redirect(url_for('churches.show', id=church.id))
+
+@churches_bp.route('/<int:id>/add-member', methods=['POST'])
+@login_required
+@office_required
+def add_member(id):
+    """Add an existing person as a member of this church."""
+    church = Church.query.get_or_404(id)
+    
+    # Check modification permissions (allow super admins to edit all)
+    if not current_user.is_super_admin() and church.office_id != current_user.office_id:
+        flash('You do not have permission to modify this church', 'danger')
+        return redirect(url_for('churches.index'))
+    
+    person_id = request.form.get('person_id')
+    church_role = request.form.get('church_role')
+    set_primary = request.form.get('set_primary') == 'true'
+    
+    if not person_id:
+        flash('No person selected', 'danger')
+        return redirect(url_for('churches.show', id=church.id))
+    
+    # Verify the person exists
+    person = Person.query.get(person_id)
+    
+    if not person:
+        flash('Person not found', 'danger')
+        return redirect(url_for('churches.show', id=church.id))
+    
+    # Check if person is already a member
+    if person.church_id == church.id:
+        # Just update the role if provided
+        if church_role:
+            person.church_role = church_role
+            db.session.commit()
+            flash(f"{person.full_name}'s role updated to {church_role}", 'success')
+    else:
+        # Add person to this church
+        person.church_id = church.id
+        if church_role:
+            person.church_role = church_role
+        
+        db.session.commit()
+        flash(f'{person.full_name} added as a member of {church.name}', 'success')
+    
+    # Set as primary contact if requested
+    if set_primary:
+        church.main_contact_id = person.id
+        db.session.commit()
+        flash(f'{person.full_name} set as primary contact for {church.name}', 'success')
     
     return redirect(url_for('churches.show', id=church.id))
 
@@ -475,7 +560,7 @@ def import_churches():
         ('phone', 'Phone'),
         ('website', 'Website'),
         ('senior_pastor_name', 'Senior Pastor'),
-        ('associate_pastor_name', 'Associate Pastor'),
+        ('missions_pastor_first_name', 'Mission Pastor'),
         ('denomination', 'Denomination'),
         ('weekly_attendance', 'Weekly Attendance'),
         ('address', 'Street Address'),
@@ -603,6 +688,10 @@ def process_church_import(df, import_data):
                 if not church_data.get('name'):
                     stats['skipped'] += 1
                     continue
+                
+                # Remove fields that don't exist in the Church model
+                if 'tags' in church_data:
+                    church_data.pop('tags')
                 
                 # Check if church exists when updating
                 existing_church = None

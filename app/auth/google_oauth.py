@@ -12,8 +12,10 @@ SCOPES = [
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/gmail.compose',
     'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/contacts',
     'https://www.googleapis.com/auth/contacts.readonly',
@@ -107,6 +109,23 @@ def store_credentials(credentials, user_id=None):
     scopes = getattr(credentials, 'scopes', SCOPES)
     scopes_json = json.dumps(scopes) if scopes else json.dumps(SCOPES)
     
+    # Get the user's email from their profile
+    user_email = None
+    try:
+        user_info = get_user_info(credentials)
+        if user_info and 'email' in user_info:
+            user_email = user_info['email']
+            current_app.logger.info(f"Got user email: {user_email}")
+    except Exception as e:
+        current_app.logger.error(f"Error getting user email: {str(e)}")
+    
+    if not user_email:
+        current_app.logger.error("CRITICAL: Failed to get user email from profile!")
+        
+    # For debugging - check if user_info contains expected fields
+    if user_info:
+        current_app.logger.info(f"USER INFO FIELDS: {', '.join(user_info.keys())}")
+    
     # Update or create token record
     token_record = GoogleToken.query.filter_by(user_id=user_id).first()
     
@@ -119,6 +138,9 @@ def store_credentials(credentials, user_id=None):
         token_record.token_type = token_type
         token_record.expires_at = expiry
         token_record.scopes = scopes_json
+        if user_email:
+            token_record.email = user_email
+            current_app.logger.info(f"Updated email to {user_email} for user {user_id}")
     else:
         # Create new token record
         token_record = GoogleToken(
@@ -127,9 +149,11 @@ def store_credentials(credentials, user_id=None):
             refresh_token=refresh_token,
             token_type=token_type,
             expires_at=expiry,
-            scopes=scopes_json
+            scopes=scopes_json,
+            email=user_email
         )
         db.session.add(token_record)
+        current_app.logger.info(f"Created new token record with email {user_email} for user {user_id}")
     
     db.session.commit()
     current_app.logger.info(f"Stored/updated Google credentials for user {user_id}")

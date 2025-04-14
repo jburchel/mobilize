@@ -22,6 +22,7 @@
                 </div>
                 <div class="card-body">
                     <form id="report-form" method="post" action="{{ url_for('reports.custom_report') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="form-group">
                             <label for="report-type">Report Type</label>
                             <select class="form-control" id="report-type" name="report_type" required>

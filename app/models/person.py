@@ -29,6 +29,7 @@ class Person(Contact):
     virtuous = db.Column(db.Boolean, default=False)
     title = db.Column(db.String(100))
     marital_status = db.Column(db.String(100))  # Uses MARITAL_STATUS_CHOICES
+    date_of_birth = db.Column(db.Date, nullable=True)
     referred_by = db.Column(db.String(100))
     info_given = db.Column(db.Text)
     desired_service = db.Column(db.Text)
@@ -49,6 +50,7 @@ class Person(Contact):
     source = db.Column(db.String(50), default='UNKNOWN')  # Uses SOURCE_CHOICES
     reason_closed = db.Column(db.Text)
     date_closed = db.Column(db.Date)
+    tags = db.Column(db.Text, nullable=True)
 
     # Ensure explicit relationships
     church = db.relationship("Church", foreign_keys=[church_id], backref="church_members")
@@ -112,6 +114,7 @@ class Person(Contact):
             'virtuous': self.virtuous,
             'title': self.title,
             'marital_status': self.marital_status,
+            'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
             'referred_by': self.referred_by,
             'info_given': self.info_given,
             'desired_service': self.desired_service,
@@ -127,5 +130,6 @@ class Person(Contact):
             'assigned_to': self.assigned_to,
             'source': self.source,
             'reason_closed': self.reason_closed,
-            'date_closed': self.date_closed.isoformat() if self.date_closed else None
+            'date_closed': self.date_closed.isoformat() if self.date_closed else None,
+            'tags': self.tags
         } 

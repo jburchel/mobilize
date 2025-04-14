@@ -1,0 +1,44 @@
+# Debug/Fixes for App in Dev
+
+- [x] 1. From Dashboard click on View Pipeline under Church Pipeline and it takes you to the People Pipeline
+- [x] 2. Adding person got an error when I click on Add Person
+- [x] 3. Nothing happens when you click on Export (People page)
+- [x] 4. From a person's detail page when you 'Add Task' you can fill out the form, but when you actually click add it takes you to a page that says 'error bad requests'
+- [x] 5. Same as above when you click on Add Note and click Add Note from the modal
+- [x] 6. Same as above with Log Communication
+- [x] 7. From Test Person there is some question about clicking on a person's email address... it does try to open my detail email app but will it keep track of email... Lots of work around email
+- [x] 8. On the Add Church form I noticed there's not First and Last name fields for Senior Pastor
+- [x] 9. Get rid of Associate Pastor field
+- [x] 10. Need a way on the Church form to associate the primary contact
+- [x] 11. Complete form and click Add Church and get errors
+- [x] 12. On tasks, when you click overdue it is not filtering these... (other filters seem to be working... Overdue does appear in red, but doesn't filter when you click on it)
+- [x] 13. When you click Reminders in tasks it says 'Successfully sent 0 task reminders'... test integration with Google calendar
+- [x] 14. In Tasks table, we should be able to click on the header to sort by column
+- [x] 15. What is 'Related to'?
+- [x] 16. Communications we need to add a couple types: Video Conference (hook up Google Meet), and In Person
+- [x] 17. Search by date?
+- [x] 18. Comm. Table headers should have sort function
+- [x] 19. Clicked 'All Templates' and brought up an error
+- [x] 20. Same thing (above) true for any template I selected including if I clicked the 'New Template' button
+- [ ] 21. All 'Users' should be people in the database
+- [ ] 22. Need 'Signature' functionality... under Settings or Communications or both
+- [ ] 23. When creating a new pipeline you get to a page that says 'Manage Pipeline Stages' and you click on Add Stage and nothing happens
+- [ ] 24. Tried to add a church to a custom pipeline and returned 'Pipeline has no stages, success: false' ... see above
+- [ ] 25. In Pipeline Management page 'View' works, 'Edit' does not, 'Manage Stages' works, and 'Delete' doesn't
+- [ ] 26. In Google Sync page... Contacts 'Sync Now' returns bad request
+- [ ] 27. Import Contacts pulls up what appears to be a placeholder page
+- [ ] 28. Sync Calendar = 'bad request'
+- [ ] 29. Sync Emails = 'bad request'
+- [ ] 30. Reports: clicked on 'Create Custom Report' tried to create one and it didn't work 'give me a preview or generate a report (bad request)
+- [ ] 31. ON Reports dashboard, none of the cards at the top of the page are loading anything
+- [ ] 32. For Email Management, I clicked on Manage Signatures and it just pulls up a page that says 'Profile Settings'... there is not a list of signatures or any way to create a new signature that I can see?
+- [ ] 33. Same page, click on Manage Templates and get error (see also above)
+- [ ] 34. Under Settings, you can pull up a Notifications Settings page. It doesn't currently allow you to toggle on any of the notifications.
+- [ ] 35. Admin Panel: View All Users... Delete user got an error
+- [ ] 36. When viewing all offices clicking the Users button doesn't do anything
+- [ ] 37. Above, same with Edit, and Delete
+- [ ] 38. Under Logs and Monitoring none of the links do anything
+- [ ] 39. Same under 'System Settings'
+- [ ] 40. Same for Manage Roles & Permissions under User Management
+- [ ] 41. Clicking on the hamburger menu button in the sidebar does not correctly collapse the sidebar 
+- [ ] 42. Fix the video conference scheduling to be intuitive when you add a New Message and select Video it should allow you to shedule a Google Meet from there.

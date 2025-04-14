@@ -105,7 +105,7 @@
                             <span class="badge bg-secondary fs-6 p-2" id="people-total-count">Total: 0 contacts</span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <a href="{{ url_for('pipeline.view', pipeline_id=people_pipeline.id) if people_pipeline else '#' }}" 
+                            <a href="{{ url_for('pipeline.view_by_query', pipeline_id=people_pipeline.id, pipeline_type='person') if people_pipeline else '#' }}" 
                                id="people-view-pipeline" 
                                class="btn btn-sm btn-primary me-2">
                                 <i class="fas fa-eye"></i> View Pipeline
@@ -156,9 +156,11 @@
                             <span class="badge bg-secondary fs-6 p-2" id="church-total-count">Total: 0 contacts</span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <a href="{{ url_for('pipeline.view', pipeline_id=church_pipeline.id) if church_pipeline else '#' }}" 
+                            <!-- Direct hardcoded link to Church Pipeline using both URL and onclick -->
+                            <a href="/pipeline/2" 
                                id="church-view-pipeline" 
-                               class="btn btn-sm btn-primary me-2">
+                               class="btn btn-sm btn-primary me-2"
+                               onclick="event.preventDefault(); window.location.href='/pipeline/2'; return false;">
                                 <i class="fas fa-eye"></i> View Pipeline
                             </a>
                             <div class="btn-group btn-group-sm" id="church-chart-buttons">
@@ -279,14 +281,48 @@
             </div>
         </div>
     </div>
+
+    <!-- Google Services Card -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">Google Services</h5>
+        </div>
+        <div class="card-body">
+            <p>Manage your Google integrations:</p>
+            <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Gmail Integration
+                    <a href="{{ url_for('auth.google_auth') }}" class="btn btn-sm btn-primary">Connect</a>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Reauthorize Google Services
+                    <a href="{{ url_for('auth.reauth_google') }}" class="btn btn-sm btn-warning">Reauthorize</a>
+                </li>
+            </ul>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Global variables to store chart instances
+// Debug logging - run immediately on script load
+console.log('[CHURCH PIPELINE DEBUG] Script loaded');
+// Immediately update the church button to force it to pipeline/2
+setTimeout(function() {
+    const churchButton = document.getElementById('church-view-pipeline');
+    if (churchButton) {
+        churchButton.href = '/pipeline/2';
+        churchButton.setAttribute('onclick', "event.preventDefault(); window.location.href='/pipeline/2'; return false;");
+        console.log('[CHURCH PIPELINE DEBUG] Forced church button URL to /pipeline/2');
+    } else {
+        console.log('[CHURCH PIPELINE DEBUG] Church button not found in DOM');
+    }
+}, 100);
+
+// Chart variables
 let peopleChart = null;
 let churchChart = null;
 
@@ -424,10 +460,20 @@ function updateViewButtons(chartType, pipelineId) {
     const button = document.getElementById(buttonId);
     
     if (button) {
-        // Format the correct URL
-        const url = `/pipeline/view?pipeline_id=${pipelineId}`;
-        button.setAttribute('href', url);
-        console.log(`Updated ${buttonId} button to URL: ${url}`);
+        // Special case for church pipeline - always go directly to pipeline ID 2
+        if (chartType === 'church') {
+            const url = `/pipeline/2`;
+            button.setAttribute('href', url);
+            console.log(`SPECIAL CASE: Setting ${buttonId} button to fixed URL: ${url}`);
+            
+            // Ensure the onclick handler takes precedence
+            button.setAttribute('onclick', "event.preventDefault(); window.location.href='/pipeline/2';");
+        } else {
+            // Format the correct URL for person pipeline
+            const url = `/pipeline/view?pipeline_id=${pipelineId}`;
+            button.setAttribute('href', url);
+            console.log(`Updated ${buttonId} button to URL: ${url}`);
+        }
     }
 }
 

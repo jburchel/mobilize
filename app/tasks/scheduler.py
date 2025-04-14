@@ -9,10 +9,14 @@ def init_scheduler(app):
     scheduler.init_app(app)
     scheduler.start()
 
-    # Add jobs
+    # Add jobs with app context wrappers
+    def sync_all_users_with_context():
+        with app.app_context():
+            sync_all_users()
+    
     scheduler.add_job(
         id='sync_all_users',
-        func=sync_all_users,
+        func=sync_all_users_with_context,  # Use the wrapper function
         trigger='interval',
         minutes=30,
         replace_existing=True

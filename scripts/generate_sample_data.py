@@ -214,27 +214,29 @@ def create_sample_churches(offices, users):
                     # Base Contact fields
                     print("Setting base contact fields...", flush=True)
                     church.type = "church"  # Required for polymorphic identity
-                    church.name = church_name
-                    church.email = email
+                    church.name = fake.company()
+                    church.location = fake.city()
+                    church.denomination = random.choice(["Baptist", "Methodist", "Presbyterian", "Catholic", "Non-denominational", "Lutheran", "Episcopal", "Assemblies of God", "Pentecostal", "Other"])
+                    church.weekly_attendance = random.randint(50, 2000)
+                    church.website = fake.url()
                     church.phone = fake.phone_number()
+                    church.email = fake.company_email()
                     church.address = fake.street_address()
                     church.city = fake.city()
-                    church.state = random.choice(states)
+                    church.state = fake.state_abbr()
                     church.zip_code = fake.zipcode()
+                    church.country = "USA"
                     church.notes = fake.paragraph()
                     church.office_id = office.id
                     
                     # Church-specific fields
                     print("Setting church-specific fields...", flush=True)
                     church.website = website
-                    church.denomination = random.choice(denominations)
-                    church.weekly_attendance = random.randint(50, 2000)
                     church.owner_id = owner.id
                     church.church_pipeline = random.choice([choice[0] for choice in CHURCH_PIPELINE_CHOICES])
                     church.priority = random.choice([choice[0] for choice in PRIORITY_CHOICES])
                     church.source = random.choice([choice[0] for choice in SOURCE_CHOICES])
                     church.senior_pastor_name = fake.name()
-                    church.associate_pastor_name = fake.name()
                     church.year_founded = random.randint(1900, 2020)
                     
                     # Important: Do not set main_contact_id yet to avoid circular dependency

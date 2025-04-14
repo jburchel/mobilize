@@ -40,6 +40,7 @@ class Task(Base):
 
     # Relationships
     person = db.relationship("Person", foreign_keys=[person_id], viewonly=True)
+    church = db.relationship("Church", foreign_keys=[church_id], viewonly=True)
     assigned_user = db.relationship('User', 
                                    primaryjoin="foreign(Task.assigned_to) == User.id",
                                    backref=db.backref('assigned_tasks', lazy='dynamic'),
@@ -51,6 +52,20 @@ class Task(Base):
 
     def __repr__(self):
         return f"<Task(title='{self.title}', due_date='{self.due_date}')>"
+
+    def get_reminder_display(self):
+        """Return a human-readable representation of the reminder option."""
+        reminder_map = {
+            '15_min': '15 minutes before',
+            '30_min': '30 minutes before',
+            '1_hour': '1 hour before',
+            '2_hours': '2 hours before',
+            '1_day': '1 day before',
+            '3_days': '3 days before',
+            '1_week': '1 week before',
+            'none': 'No reminder'
+        }
+        return reminder_map.get(self.reminder_option, 'No reminder')
 
     def to_dict(self):
         """Convert task to dictionary."""

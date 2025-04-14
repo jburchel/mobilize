@@ -17,10 +17,10 @@ class ChurchForm(FlaskForm):
     website = URLField('Website', validators=[Optional(), Length(max=200)])
     
     # Pastor Information
-    senior_pastor_name = StringField('Senior Pastor', validators=[Optional(), Length(max=100)])
+    senior_pastor_first_name = StringField('Senior Pastor First Name', validators=[Optional(), Length(max=100)])
+    senior_pastor_last_name = StringField('Senior Pastor Last Name', validators=[Optional(), Length(max=100)])
     senior_pastor_phone = TelField('Senior Pastor Phone', validators=[Optional(), Length(max=50)])
     senior_pastor_email = EmailField('Senior Pastor Email', validators=[Optional(), Email()])
-    associate_pastor_name = StringField('Associate Pastor', validators=[Optional(), Length(max=100)])
     
     # Missions Pastor Information
     missions_pastor_first_name = StringField('Missions Pastor First Name', validators=[Optional(), Length(max=100)])
@@ -28,11 +28,8 @@ class ChurchForm(FlaskForm):
     mission_pastor_phone = TelField('Missions Pastor Phone', validators=[Optional(), Length(max=50)])
     mission_pastor_email = EmailField('Missions Pastor Email', validators=[Optional(), Email()])
     
-    # Primary Contact Information
-    primary_contact_first_name = StringField('Primary Contact First Name', validators=[Optional(), Length(max=100)])
-    primary_contact_last_name = StringField('Primary Contact Last Name', validators=[Optional(), Length(max=100)])
-    primary_contact_phone = TelField('Primary Contact Phone', validators=[Optional(), Length(max=50)])
-    primary_contact_email = EmailField('Primary Contact Email', validators=[Optional(), Email()])
+    # Primary Contact Selection (replaces individual primary contact fields)
+    main_contact_id = SelectField('Main Contact Person', validators=[Optional()], coerce=int)
     
     # Denomination and Size
     denomination = StringField('Denomination', validators=[Optional(), Length(max=100)])
@@ -53,7 +50,6 @@ class ChurchForm(FlaskForm):
                         validators=[Optional()])
     
     # Additional Fields
-    main_contact_id = SelectField('Main Contact Person', validators=[Optional()], coerce=int)
     virtuous = BooleanField('Virtuous', default=False)
     referred_by = StringField('Referred By', validators=[Optional(), Length(max=100)])
     info_given = TextAreaField('Information Given', validators=[Optional()])

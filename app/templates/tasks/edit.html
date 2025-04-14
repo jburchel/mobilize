@@ -55,6 +55,14 @@
                                        value="{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else '' }}">
                             </div>
                             <div class="col-md-6">
+                                <label for="task-due-time" class="form-label">Due Time</label>
+                                <input type="time" class="form-control" id="task-due-time" name="due_time" 
+                                       value="{{ task.due_time if task.due_time else '' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
                                 <label for="task-assigned-to" class="form-label">Assigned To</label>
                                 <select class="form-select" id="task-assigned-to" name="assigned_to">
                                     <option value="">Unassigned</option>
@@ -122,6 +130,11 @@
                                 <option value="3_days" {% if task.reminder_option == '3_days' %}selected{% endif %}>3 days before</option>
                                 <option value="1_week" {% if task.reminder_option == '1_week' %}selected{% endif %}>1 week before</option>
                             </select>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="google_calendar_sync" name="google_calendar_sync_enabled" value="true" {% if task.google_calendar_sync_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="google_calendar_sync">Sync with Google Calendar</label>
                         </div>
 
                         {% if task.status == 'completed' %}

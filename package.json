@@ -9,7 +9,8 @@
     "build": "react-scripts build",
     "start": "react-scripts start",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "export FLASK_APP=app.py && export FLASK_ENV=development && export FLASK_DEBUG=1 && concurrently \"npm run css:dev\" \"python3.11 app.py\""
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",
@@ -25,6 +26,7 @@
     "@storybook/html-webpack5": "^8.6.9",
     "autoprefixer": "^10.4.14",
     "babel-loader": "^9.2.1",
+    "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "cssnano": "^6.0.1",
     "imagemin": "^8.0.1",

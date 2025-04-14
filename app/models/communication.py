@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.extensions import db
 from app.models.base import Base
 
@@ -8,8 +8,8 @@ class Communication(Base):
 
     type = db.Column(db.String, nullable=False)  # Email, SMS, Phone, Letter
     message = db.Column(db.String, nullable=False)
-    date_sent = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
-    date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    date_sent = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     person_id = db.Column(db.Integer, db.ForeignKey('people.id'))
     church_id = db.Column(db.Integer, db.ForeignKey('churches.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -24,6 +24,10 @@ class Communication(Base):
     subject = db.Column(db.String, nullable=True)  # Email subject
     attachments = db.Column(db.String, nullable=True)  # JSON string of attachment info
     last_synced_at = db.Column(db.DateTime, nullable=True)  # Timestamp for last sync
+    
+    # Video conference fields
+    google_meet_link = db.Column(db.String, nullable=True)  # For video conference calls
+    google_calendar_event_id = db.Column(db.String, nullable=True)  # Reference to calendar event
 
     # Relationships
     person = db.relationship("Person", foreign_keys=[person_id], viewonly=True)

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app.controllers.pipeline_controller import (
     index as pipeline_index,
@@ -33,7 +33,39 @@ def create():
 @pipeline_bp.route('/<int:pipeline_id>')
 @login_required
 def view(pipeline_id):
-    return pipeline_view(pipeline_id)
+    """View a pipeline with all its stages and contacts."""
+    try:
+        # Additional debugging to troubleshoot church pipeline issue
+        current_app.logger.info(f"[PIPELINE DEBUG] Direct view request for pipeline_id: {pipeline_id}")
+        
+        pipeline = Pipeline.query.get_or_404(pipeline_id)
+        
+        # Enhanced debug logging to troubleshoot church pipeline issue
+        current_app.logger.info(f"[PIPELINE DEBUG] View request for pipeline_id: {pipeline_id}")
+        current_app.logger.info(f"[PIPELINE DEBUG] Pipeline details: name={pipeline.name}, type={pipeline.pipeline_type}, id={pipeline.id}")
+        
+        # Verify database connection
+        db_path = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if 'sqlite' in db_path:
+            current_app.logger.info(f"Using database: {db_path}")
+        
+        # Add debug info
+        contact_count = db.session.execute(
+            db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+            {"pipeline_id": pipeline_id}
+        ).scalar() or 0
+        current_app.logger.info(f"View pipeline {pipeline_id}, name={pipeline.name}, type={pipeline.pipeline_type}, SQL count: {contact_count}")
+        
+        # Check if user has permission to view this pipeline
+        if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
+            flash('You do not have permission to view this pipeline', 'danger')
+            return redirect(url_for('pipeline.index'))
+        
+        # Call the controller function
+        return pipeline_view(pipeline_id)
+    except Exception as e:
+        current_app.logger.error(f"Error viewing pipeline: {str(e)}")
+        return redirect(url_for('pipeline.index'))
 
 @pipeline_bp.route('/<int:pipeline_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -391,9 +423,302 @@ def add_contact_page(contact_id):
 def view_by_query():
     """View a pipeline using query parameters instead of path parameters"""
     pipeline_id = request.args.get('pipeline_id', type=int)
+    pipeline_type = request.args.get('pipeline_type')
+    
     if not pipeline_id:
         return jsonify({"error": "Pipeline ID is required"}), 400
-    return pipeline_view(pipeline_id)
+    
+    # Additional debugging
+    current_app.logger.info(f"[PIPELINE_QUERY DEBUG] Requested pipeline_id from query: {pipeline_id}, pipeline_type: {pipeline_type}")
+    
+    # Look up the pipeline and log its type
+    pipeline = Pipeline.query.get(pipeline_id)
+    if pipeline:
+        current_app.logger.info(f"[PIPELINE_QUERY DEBUG] Found pipeline: name={pipeline.name}, type={pipeline.pipeline_type}")
+        
+        # If pipeline_type is specified, check if we need to redirect to a different pipeline
+        if pipeline_type and pipeline_type != pipeline.pipeline_type:
+            current_app.logger.info(f"[PIPELINE_QUERY DEBUG] Requested type {pipeline_type} doesn't match actual type {pipeline.pipeline_type}, looking for correct pipeline")
+            
+            # Try to find a pipeline of the requested type
+            # First look in the same office
+            correct_pipeline = Pipeline.query.filter_by(
+                is_main_pipeline=True, 
+                pipeline_type=pipeline_type,
+                office_id=pipeline.office_id
+            ).first()
+            
+            if correct_pipeline:
+                current_app.logger.info(f"[PIPELINE_QUERY DEBUG] Found correct {pipeline_type} pipeline with ID {correct_pipeline.id}")
+                # Return redirect to the correct pipeline directly 
+                return redirect(url_for('pipeline.view', pipeline_id=correct_pipeline.id))
+            else:
+                # If not found in same office, try any office
+                correct_pipeline = Pipeline.query.filter_by(
+                    is_main_pipeline=True, 
+                    pipeline_type=pipeline_type
+                ).first()
+                
+                if correct_pipeline:
+                    current_app.logger.info(f"[PIPELINE_QUERY DEBUG] Found correct {pipeline_type} pipeline in different office: {correct_pipeline.id}")
+                    # Return redirect to the correct pipeline directly
+                    return redirect(url_for('pipeline.view', pipeline_id=correct_pipeline.id))
+                else:
+                    current_app.logger.warning(f"[PIPELINE_QUERY DEBUG] No {pipeline_type} pipeline found at all")
+    else:
+        current_app.logger.warning(f"[PIPELINE_QUERY DEBUG] Pipeline with ID {pipeline_id} not found!")
+    
+    # Redirect to the standard view endpoint with the pipeline ID in the URL path
+    return redirect(url_for('pipeline.view', pipeline_id=pipeline_id))
+
+@pipeline_bp.route('/church')
+@login_required
+def church_pipeline():
+    """Special route to view church pipeline."""
+    try:
+        # List all pipelines for debugging
+        all_pipelines = Pipeline.query.all()
+        current_app.logger.info(f"[CHURCH_PIPELINE_DEBUG] All pipelines:")
+        for p in all_pipelines:
+            current_app.logger.info(f"[CHURCH_PIPELINE_DEBUG] Pipeline: id={p.id}, name={p.name}, type={p.pipeline_type}, office_id={p.office_id}")
+        
+        # Now try to find the church pipeline
+        church_pipeline = Pipeline.query.filter_by(
+            pipeline_type='church',
+            office_id=current_user.office_id
+        ).first()
+        
+        if church_pipeline:
+            current_app.logger.info(f"[CHURCH_PIPELINE_DEBUG] Found church pipeline in user's office: id={church_pipeline.id}, name={church_pipeline.name}")
+        else:
+            # Try any office if not found in user's office
+            church_pipeline = Pipeline.query.filter_by(pipeline_type='church').first()
+            
+            if church_pipeline:
+                current_app.logger.info(f"[CHURCH_PIPELINE_DEBUG] Found church pipeline in other office: id={church_pipeline.id}, name={church_pipeline.name}")
+            else:
+                # Try the main pipeline with type church
+                church_pipeline = Pipeline.query.filter_by(is_main_pipeline=True).first()
+                if church_pipeline:
+                    current_app.logger.info(f"[CHURCH_PIPELINE_DEBUG] Found main pipeline: id={church_pipeline.id}, name={church_pipeline.name}, type={church_pipeline.pipeline_type}")
+                else:
+                    current_app.logger.info("[CHURCH_PIPELINE_DEBUG] No pipeline found at all")
+                    flash('No church pipeline found.', 'warning')
+                    return redirect(url_for('pipeline.index'))
+            
+        # Log what we found
+        current_app.logger.info(f"[CHURCH_PIPELINE_DEBUG] Redirecting to pipeline: id={church_pipeline.id}, name={church_pipeline.name}, type={church_pipeline.pipeline_type}")
+        
+        # Redirect to the view route with the correct ID
+        return redirect(url_for('pipeline.view', pipeline_id=church_pipeline.id))
+    except Exception as e:
+        current_app.logger.error(f"Error loading church pipeline: {str(e)}")
+        flash(f"Error loading church pipeline: {str(e)}", 'danger')
+        return redirect(url_for('pipeline.index'))
+
+@pipeline_bp.route('/church/view')
+@login_required
+def church_view():
+    """View the church pipeline directly."""
+    try:
+        # List all pipelines for debugging
+        all_pipelines = Pipeline.query.all()
+        current_app.logger.info(f"[CHURCH_VIEW] All pipelines ({len(all_pipelines)}):")
+        for p in all_pipelines:
+            current_app.logger.info(f"[CHURCH_VIEW] Pipeline: id={p.id}, name={p.name}, type={p.pipeline_type}, is_main={p.is_main_pipeline}, office_id={p.office_id}")
+            
+        # First try to find a pipeline with "church" in the type
+        pipeline = Pipeline.query.filter(Pipeline.pipeline_type.ilike('%church%')).first()
+        
+        # If not found, try finding a pipeline with "church" in the name
+        if not pipeline:
+            pipeline = Pipeline.query.filter(Pipeline.name.ilike('%church%')).first()
+            
+        # If still not found, use any available pipeline (we will filter the contacts later)
+        if not pipeline:
+            current_app.logger.info("[CHURCH_VIEW] No church pipeline found, using first pipeline instead")
+            pipeline = Pipeline.query.first()
+            
+        if not pipeline:
+            current_app.logger.info("[CHURCH_VIEW] No pipelines available, redirecting to main page")
+            flash('No pipelines available', 'warning')
+            return redirect(url_for('pipeline.index'))
+            
+        # Log what we found
+        current_app.logger.info(f"[CHURCH_VIEW] Using pipeline: id={pipeline.id}, name={pipeline.name}, type={pipeline.pipeline_type}")
+        
+        # Get all church contacts
+        from app.models.church import Church
+        church_contacts = Church.query.all()
+        current_app.logger.info(f"[CHURCH_VIEW] Found {len(church_contacts)} total churches in the database")
+        
+        # Get stages for the selected pipeline
+        stages = pipeline.get_active_stages()
+        current_app.logger.info(f"[CHURCH_VIEW] Pipeline has {len(stages)} stages")
+        
+        # Get ALL pipeline contacts for church contacts regardless of pipeline
+        pipeline_contacts = PipelineContact.query.join(
+            Church, 
+            Church.id == PipelineContact.contact_id
+        ).filter(
+            PipelineContact.pipeline_id == pipeline.id
+        ).all()
+
+        current_app.logger.info(f"[CHURCH_VIEW] Found {len(pipeline_contacts)} church contacts in pipeline {pipeline.id}")
+        
+        # Apply user permission filtering to the contacts
+        filtered_contacts = []
+        if current_user.is_super_admin():
+            # Super admins see all churches
+            filtered_contacts = pipeline_contacts
+        elif current_user.is_office_admin():
+            # Office admins see contacts from their office
+            filtered_contacts = [
+                pc for pc in pipeline_contacts
+                if hasattr(pc.contact, 'office_id') and pc.contact.office_id == current_user.office_id
+            ]
+        else:
+            # Regular users see only their assigned contacts
+            filtered_contacts = [
+                pc for pc in pipeline_contacts
+                if hasattr(pc.contact, 'assigned_to_id') and pc.contact.assigned_to_id == current_user.id
+                and hasattr(pc.contact, 'office_id') and pc.contact.office_id == current_user.office_id
+            ]
+                    
+        current_app.logger.info(f"[CHURCH_VIEW] After permission filtering: {len(filtered_contacts)} church contacts remaining")
+        
+        # Log the contacts we found for debugging
+        for pc in filtered_contacts[:5]:  # Log up to 5 contacts for debugging
+            contact = pc.contact
+            current_app.logger.info(f"[CHURCH_VIEW] Contact: id={contact.id}, name={contact.get_name() if hasattr(contact, 'get_name') else 'Unknown'}, stage_id={pc.current_stage_id}")
+        
+        # Organize contacts by stage
+        contacts_by_stage = {stage.id: [] for stage in stages}
+        for pc in filtered_contacts:
+            if pc.current_stage_id in contacts_by_stage:
+                contacts_by_stage[pc.current_stage_id].append(pc)
+                
+        # Get available churches to add
+        existing_contact_ids = [pc.contact_id for pc in pipeline_contacts]
+        
+        church_query = Church.query
+        if existing_contact_ids:
+            church_query = church_query.filter(~Church.id.in_(existing_contact_ids))
+            
+        # Apply filters based on user role
+        if current_user.is_super_admin():
+            # Super admins see all churches
+            pass
+        elif current_user.is_office_admin():
+            # Office admins see churches from their office
+            church_query = church_query.filter(Church.office_id == current_user.office_id)
+        else:
+            # Regular users see only their assigned churches
+            church_query = church_query.filter(
+                Church.office_id == current_user.office_id,
+                Church.assigned_to_id == current_user.id
+            )
+            
+        churches = church_query.all()
+        current_app.logger.info(f"[CHURCH_VIEW] Found {len(churches)} available churches to add")
+        
+        # Render the church pipeline view template 
+        return render_template('pipeline/view.html',
+                             pipeline=pipeline,
+                             stages=stages,
+                             contacts_by_stage=contacts_by_stage,
+                             people=[],
+                             churches=churches)
+    except Exception as e:
+        current_app.logger.error(f"Error viewing church pipeline: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f"Error loading church pipeline: {str(e)}", "danger")
+        return redirect(url_for('pipeline.index'))
+
+@pipeline_bp.route('/church-pipeline')
+@login_required
+def church_pipeline_direct():
+    """Directly render the church pipeline view without redirections."""
+    try:
+        # List all pipelines for debugging
+        all_pipelines = Pipeline.query.all()
+        current_app.logger.info(f"[CHURCH_DIRECT] All pipelines ({len(all_pipelines)})")
+        
+        # Look for a church pipeline
+        church_pipeline = None
+        for p in all_pipelines:
+            current_app.logger.info(f"[CHURCH_DIRECT] Pipeline: id={p.id}, name={p.name}, type={p.pipeline_type}")
+            if p.pipeline_type == 'church' or 'church' in p.name.lower():
+                church_pipeline = p
+                current_app.logger.info(f"[CHURCH_DIRECT] Found church pipeline: {p.id}")
+                break
+        
+        # If no church pipeline found, use the first pipeline
+        if not church_pipeline and all_pipelines:
+            church_pipeline = all_pipelines[0]
+            current_app.logger.info(f"[CHURCH_DIRECT] Using first pipeline: {church_pipeline.id}")
+        
+        if not church_pipeline:
+            flash('No pipelines available', 'warning')
+            return redirect(url_for('pipeline.index'))
+        
+        # Get the pipeline stages
+        stages = PipelineStage.query.filter_by(pipeline_id=church_pipeline.id).order_by(PipelineStage.order).all()
+        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(stages)} stages")
+        
+        # Import directly here to make sure it's available
+        from app.models.church import Church
+        
+        # Get all church contacts
+        church_contacts = Church.query.all()
+        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(church_contacts)} total churches in database")
+        
+        # Get church contacts in this pipeline
+        # Use direct SQL for reliability
+        pipeline_contacts = db.session.execute(
+            db.text("""
+                SELECT pc.* 
+                FROM pipeline_contacts pc
+                JOIN contacts c ON pc.contact_id = c.id
+                WHERE pc.pipeline_id = :pipeline_id
+                AND c.type = 'church'
+            """),
+            {"pipeline_id": church_pipeline.id}
+        ).fetchall()
+        
+        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(pipeline_contacts)} church contacts in pipeline")
+        
+        # Convert to PipelineContact objects
+        pc_objects = []
+        for row in pipeline_contacts:
+            pc = PipelineContact.query.get(row[0])
+            if pc:
+                pc_objects.append(pc)
+        
+        # Organize contacts by stage
+        contacts_by_stage = {stage.id: [] for stage in stages}
+        for pc in pc_objects:
+            if pc.current_stage_id in contacts_by_stage:
+                contacts_by_stage[pc.current_stage_id].append(pc)
+        
+        # Get available churches to add
+        existing_ids = [pc.contact_id for pc in pc_objects] 
+        available_churches = Church.query.filter(~Church.id.in_(existing_ids)).all()
+        
+        # Render the template directly with church data
+        return render_template('pipeline/view.html',
+                             pipeline=church_pipeline,
+                             stages=stages,
+                             contacts_by_stage=contacts_by_stage,
+                             people=[],
+                             churches=available_churches)
+    except Exception as e:
+        current_app.logger.error(f"[CHURCH_DIRECT] Error: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f"Error loading church pipeline: {str(e)}", "danger")
+        return redirect(url_for('pipeline.index'))
 
 # Import the pipeline_bp from the controller
 # All routes are defined in the controller 

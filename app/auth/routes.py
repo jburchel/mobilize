@@ -200,7 +200,7 @@ def oauth2callback():
         current_app.logger.info(f"OAuth callback URL: {callback_url}")
         
         # Process authorization response - add skip_scope_check=True to prevent scope errors
-        flow.fetch_token(authorization_response=callback_url, include_granted_scopes=True)
+        flow.fetch_token(authorization_response=callback_url, include_granted_scopes=True, skip_scope_check=True)
         credentials = flow.credentials
         
         # Get user info directly using the credentials
@@ -414,4 +414,27 @@ def revoke_google():
         flash('An error occurred while disconnecting your Google account.', 'danger')
     
     # Redirect back to the Google sync page
-    return redirect(url_for('google_sync.index')) 
+    return redirect(url_for('google_sync.index'))
+
+@auth_bp.route('/google/reauth')
+@login_required
+def reauth_google():
+    """Force re-authorization with Google."""
+    try:
+        # Remove current token to force re-auth
+        token = GoogleToken.query.filter_by(user_id=current_user.id).first()
+        if token:
+            current_app.logger.info(f"Removing Google token for user {current_user.id} to force reauth")
+            db.session.delete(token)
+            db.session.commit()
+            flash('Google token cleared, please re-authorize', 'success')
+        else:
+            current_app.logger.warning(f"No Google token found for user {current_user.id} during reauth")
+            flash('No existing Google authorization found', 'warning')
+        
+        # Redirect to Google OAuth
+        return redirect(url_for('auth.google_auth'))
+    except Exception as e:
+        current_app.logger.error(f"Error during Google reauth: {str(e)}")
+        flash(f'Error during Google reauthorization: {str(e)}', 'error')
+        return redirect(url_for('dashboard.index')) 
