@@ -7,6 +7,7 @@ from app.models.sync_history import SyncHistory
 from app.services.google.people import GooglePeopleService
 from app.extensions import db
 import logging
+import re
 from flask import current_app
 from app.services.google_api import GoogleAPIService
 
@@ -44,11 +45,11 @@ class ContactSyncService:
             'last_name': names.get('familyName', ''),
             'email': emails.get('value', ''),
             'phone': phones.get('value', ''),
-            'address_street': addresses.get('streetAddress', ''),
-            'address_city': addresses.get('city', ''),
-            'address_state': addresses.get('region', ''),
-            'address_zip': addresses.get('postalCode', ''),
-            'address_country': addresses.get('country', ''),
+            'address': addresses.get('streetAddress', ''),
+            'city': addresses.get('city', ''),
+            'state': addresses.get('region', ''),
+            'zip_code': addresses.get('postalCode', ''),
+            'country': addresses.get('country', ''),
             'google_contact_id': google_contact.get('resourceName', '')
         }
         
@@ -260,25 +261,25 @@ class ContactSyncService:
                     'target': target.phone,
                     'different': source_data['phone'] != target.phone
                 },
-                'address_street': {
-                    'source': source_data['address_street'],
-                    'target': target.address_street,
-                    'different': source_data['address_street'] != target.address_street
+                'address': {
+                    'source': source_data['address'],
+                    'target': target.address,
+                    'different': source_data['address'] != target.address
                 },
-                'address_city': {
-                    'source': source_data['address_city'],
-                    'target': target.address_city,
-                    'different': source_data['address_city'] != target.address_city
+                'city': {
+                    'source': source_data['city'],
+                    'target': target.city,
+                    'different': source_data['city'] != target.city
                 },
-                'address_state': {
-                    'source': source_data['address_state'],
-                    'target': target.address_state,
-                    'different': source_data['address_state'] != target.address_state
+                'state': {
+                    'source': source_data['state'],
+                    'target': target.state,
+                    'different': source_data['state'] != target.state
                 },
-                'address_zip': {
-                    'source': source_data['address_zip'],
-                    'target': target.address_zip,
-                    'different': source_data['address_zip'] != target.address_zip
+                'zip_code': {
+                    'source': source_data['zip_code'],
+                    'target': target.zip_code,
+                    'different': source_data['zip_code'] != target.zip_code
                 }
             }
             
@@ -362,12 +363,15 @@ class ContactSyncService:
         if not token_info or not selected_contacts:
             return False, None, "No contacts selected for import"
         
+        # Import Person model
+        from app.models.person import Person
+        
         # Initialize sync history record
         sync_history = SyncHistory(
             user_id=user_id,
             sync_type="contacts_import",
             status="in_progress",
-            start_time=datetime.datetime.now()
+            created_at=datetime.now()
         )
         db.session.add(sync_history)
         db.session.commit()
@@ -396,25 +400,25 @@ class ContactSyncService:
                 formatted_contact = GoogleAPIService.format_google_contact(google_contact)
                 google_id = formatted_contact.get('google_id')
                 
-                # Check if contact already exists
-                existing_contact = Contact.query.filter_by(
+                # Check if person already exists with this Google ID
+                existing_person = Person.query.filter_by(
                     user_id=user_id,
                     google_contact_id=google_id
                 ).first()
                 
-                if existing_contact:
-                    # Update existing contact based on field mapping
+                if existing_person:
+                    # Update existing person based on field mapping
                     try:
-                        updated = cls._update_contact_with_mapping(existing_contact, formatted_contact, field_mapping)
+                        updated = cls._update_contact_with_mapping(existing_person, formatted_contact, field_mapping)
                         if updated:
                             updated_count += 1
                         else:
                             skipped_count += 1
                     except Exception as e:
-                        current_app.logger.error(f"Error updating contact {google_id}: {str(e)}")
+                        current_app.logger.error(f"Error updating person {google_id}: {str(e)}")
                         failed_count += 1
                 else:
-                    # Create new contact based on field mapping
+                    # Create new person based on field mapping
                     try:
                         created = cls._create_contact_with_mapping(user_id, formatted_contact, field_mapping)
                         if created:
@@ -422,17 +426,17 @@ class ContactSyncService:
                         else:
                             skipped_count += 1
                     except Exception as e:
-                        current_app.logger.error(f"Error creating contact {google_id}: {str(e)}")
+                        current_app.logger.error(f"Error creating person {google_id}: {str(e)}")
                         failed_count += 1
             
             # Update sync history
-            sync_history.end_time = datetime.datetime.now()
+            sync_history.completed_at = datetime.now()
             sync_history.status = "completed"
-            sync_history.processed = len(filtered_contacts)
-            sync_history.created = created_count
-            sync_history.updated = updated_count
-            sync_history.skipped = skipped_count
-            sync_history.failed = failed_count
+            sync_history.items_processed = len(filtered_contacts)
+            sync_history.items_created = created_count
+            sync_history.items_updated = updated_count
+            sync_history.items_skipped = skipped_count
+            sync_history.items_failed = failed_count
             
             db.session.commit()
             
@@ -450,7 +454,7 @@ class ContactSyncService:
             current_app.logger.error(f"Error importing contacts: {str(e)}")
             
             # Update sync history with error
-            sync_history.end_time = datetime.datetime.now()
+            sync_history.completed_at = datetime.now()
             sync_history.status = "failed"
             sync_history.error_message = str(e)
             db.session.commit()
@@ -470,37 +474,50 @@ class ContactSyncService:
         Returns:
             bool: True if created, False if skipped
         """
+        # Get the user's office_id
+        from app.models.user import User
+        from app.models.person import Person
+        user = User.query.get(user_id)
+        if not user:
+            current_app.logger.error(f"User {user_id} not found when creating contact")
+            return False
+            
         # Use default mapping if none provided
         mapping = field_mapping or {
             'first_name': 'first_name',
             'last_name': 'last_name',
             'email': 'email',
             'phone': 'phone',
-            'street': 'street',
+            'street': 'address',
             'city': 'city',
             'state': 'state',
             'zip_code': 'zip_code',
-            'country': 'country',
-            'title': 'title',
-            'company': 'company'
+            'country': 'country'
         }
         
-        # Create contact with mapped fields
-        contact = Contact(user_id=user_id)
-        contact.google_contact_id = google_contact.get('google_id')
-        contact.source = 'google_import'
+        # Create a Person object instead of a generic Contact
+        # This ensures the contact will appear in the People list
+        person = Person(user_id=user_id, office_id=user.office_id)
+        person.google_contact_id = google_contact.get('google_id')
+        person.source = 'google_import'
         
         # Apply mapping
         contact_updated = False
         for google_field, local_field in mapping.items():
             if google_field in google_contact and google_contact.get(google_field):
-                setattr(contact, local_field, google_contact.get(google_field))
+                setattr(person, local_field, google_contact.get(google_field))
                 contact_updated = True
         
         if contact_updated:
-            db.session.add(contact)
-            db.session.commit()
-            return True
+            try:
+                db.session.add(person)
+                db.session.commit()
+                current_app.logger.info(f"Created new person from Google: {person.google_contact_id}")
+                return True
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error creating person {person.google_contact_id}: {str(e)}")
+                raise
         
         return False
     
@@ -508,9 +525,10 @@ class ContactSyncService:
     def _update_contact_with_mapping(cls, contact, google_contact, field_mapping=None):
         """
         Update an existing contact based on Google contact data and field mapping.
+        Works with both Contact and Person objects.
         
         Args:
-            contact: Existing Contact object
+            contact: Existing Contact or Person object
             google_contact: Formatted Google contact data
             field_mapping: Dictionary mapping Google fields to local fields
             
@@ -523,13 +541,11 @@ class ContactSyncService:
             'last_name': 'last_name',
             'email': 'email',
             'phone': 'phone',
-            'street': 'street',
+            'street': 'address',
             'city': 'city',
             'state': 'state',
             'zip_code': 'zip_code',
-            'country': 'country',
-            'title': 'title',
-            'company': 'company'
+            'country': 'country'
         }
         
         # Apply mapping
@@ -543,6 +559,7 @@ class ContactSyncService:
         
         if contact_updated:
             db.session.commit()
+            current_app.logger.info(f"Updated {'person' if hasattr(contact, 'type') and contact.type == 'person' else 'contact'} with Google ID: {contact.google_contact_id}")
             return True
         
         return False
@@ -567,7 +584,7 @@ class ContactSyncService:
             user_id=user_id,
             sync_type="contacts_sync",
             status="in_progress",
-            start_time=datetime.datetime.now()
+            created_at=datetime.now()
         )
         db.session.add(sync_history)
         db.session.commit()
@@ -637,22 +654,23 @@ class ContactSyncService:
                         skipped_count += 1
             
             # Update sync history
-            sync_history.end_time = datetime.datetime.now()
+            sync_history.completed_at = datetime.now()
             sync_history.status = "completed"
-            sync_history.processed = len(formatted_google_contacts)
-            sync_history.created = created_count
-            sync_history.updated = updated_count
-            sync_history.skipped = skipped_count
-            sync_history.conflicts = conflict_count
+            sync_history.items_processed = len(formatted_google_contacts)
+            sync_history.items_created = created_count
+            sync_history.items_updated = updated_count
+            sync_history.items_skipped = skipped_count
+            sync_history.items_failed = conflict_count  # Conflicts are counted as failed items
             
             db.session.commit()
             
+            # Use the field names expected by the manual_sync route
             sync_stats = {
-                "processed": len(formatted_google_contacts),
-                "created": created_count,
-                "updated": updated_count,
-                "skipped": skipped_count,
-                "conflicts": conflict_count
+                "items_processed": len(formatted_google_contacts),
+                "items_created": created_count,
+                "items_updated": updated_count,
+                "items_skipped": skipped_count,
+                "items_failed": conflict_count
             }
             
             return True, sync_stats, None
@@ -661,7 +679,7 @@ class ContactSyncService:
             current_app.logger.error(f"Error syncing contacts: {str(e)}")
             
             # Update sync history with error
-            sync_history.end_time = datetime.datetime.now()
+            sync_history.completed_at = datetime.now()
             sync_history.status = "failed"
             sync_history.error_message = str(e)
             db.session.commit()
@@ -686,19 +704,22 @@ class ContactSyncService:
             ('last_name', 'last_name'),
             ('email', 'email'),
             ('phone', 'phone'),
-            ('street', 'street'),
+            ('address', 'street'),
             ('city', 'city'),
             ('state', 'state'),
             ('zip_code', 'zip_code'),
-            ('country', 'country'),
-            ('title', 'title'),
-            ('company', 'company')
+            ('country', 'country')
         ]
         
         # Check each field
         has_conflict = False
         for local_field, google_field in fields_to_check:
-            local_value = getattr(local_contact, local_field)
+            # Handle the special case for 'street' -> 'address' mapping
+            if local_field == 'street':
+                local_value = getattr(local_contact, 'address', None)
+            else:
+                local_value = getattr(local_contact, local_field, None)
+                
             google_value = google_contact.get(google_field)
             
             if local_value and google_value and local_value != google_value:
@@ -710,89 +731,158 @@ class ContactSyncService:
     @classmethod
     def resolve_conflicts(cls, user_id, resolution_data):
         """
-        Resolve conflicts between local and Google contacts.
+        Resolve conflicts based on user selections.
         
         Args:
-            user_id: User ID
-            resolution_data: Dictionary with resolution choices
-            
+            user_id (int): The ID of the user.
+            resolution_data (dict): Dictionary containing conflict resolution data
+                                    in format {contact_id: {action: 'action_type', fields: {...}}}
+        
         Returns:
-            tuple: (success, stats, error_message)
+            dict: Result statistics.
         """
-        # Initialize counters
-        resolved_count = 0
-        failed_count = 0
-        
-        # Initialize sync history record
-        sync_history = SyncHistory(
-            user_id=user_id,
-            sync_type="conflicts_resolution",
-            status="in_progress",
-            start_time=datetime.datetime.now()
-        )
-        db.session.add(sync_history)
-        db.session.commit()
-        
         try:
-            for contact_id, resolution in resolution_data.items():
-                contact = Contact.query.filter_by(id=contact_id, user_id=user_id).first()
+            user = User.query.get(user_id)
+            if not user:
+                return {"status": "error", "message": "User not found"}
                 
-                if not contact or not contact.has_conflict or not contact.google_data:
-                    continue
-                
-                if resolution == 'local':
-                    # Keep local version - just clear the conflict
-                    contact.has_conflict = False
-                    contact.google_data = None
-                    resolved_count += 1
-                    
-                elif resolution == 'google':
-                    # Use Google version
-                    cls._update_contact_with_mapping(contact, contact.google_data)
-                    contact.has_conflict = False
-                    contact.google_data = None
-                    resolved_count += 1
-                    
-                elif resolution == 'merge' and 'field_choices' in resolution_data[contact_id]:
-                    # Merge with field-specific choices
-                    field_choices = resolution_data[contact_id]['field_choices']
-                    
-                    for field, choice in field_choices.items():
-                        if choice == 'google' and field in contact.google_data:
-                            setattr(contact, field, contact.google_data.get(field))
-                    
-                    contact.has_conflict = False
-                    contact.google_data = None
-                    resolved_count += 1
-                    
-                else:
-                    failed_count += 1
+            # Create a sync history record
+            sync_history = SyncHistory(
+                user_id=user_id,
+                sync_type='conflicts_resolution',
+                status='in_progress',
+                created_at=datetime.now()
+            )
+            db.session.add(sync_history)
+            db.session.commit()
             
+            # Counters for statistics
+            resolved_count = 0
+            skipped_count = 0
+            error_count = 0
+            
+            # Process each conflict resolution
+            for contact_id, resolution in resolution_data.items():
+                try:
+                    action = resolution.get('action')
+                    contact_id = int(contact_id)
+                    local_contact = Contact.query.get(contact_id)
+                    
+                    if not local_contact:
+                        skipped_count += 1
+                        continue
+                        
+                    google_id = local_contact.google_contact_id
+                    if not google_id:
+                        skipped_count += 1
+                        continue
+                        
+                    if action == 'keep_local':
+                        # Mark as resolved, no changes needed
+                        local_contact.has_conflict = False
+                        local_contact.google_data = None
+                        resolved_count += 1
+                        
+                    elif action == 'keep_google':
+                        # Update local contact with Google data
+                        google_api = GoogleAPIService()
+                        google_contact = google_api.get_contact(google_id, token_info=cls._get_user_token(user_id))
+                        
+                        if google_contact:
+                            contact_data = google_api.format_google_contact(google_contact)
+                            
+                            local_contact.first_name = contact_data.get('first_name', '')
+                            local_contact.last_name = contact_data.get('last_name', '')
+                            local_contact.email = contact_data.get('email', '')
+                            local_contact.phone = contact_data.get('phone', '')
+                            local_contact.address = contact_data.get('street', '')
+                            local_contact.city = contact_data.get('city', '')
+                            local_contact.state = contact_data.get('state', '')
+                            local_contact.zip_code = contact_data.get('zip_code', '')
+                            local_contact.country = contact_data.get('country', '')
+                            local_contact.has_conflict = False
+                            local_contact.google_data = None
+                            
+                            resolved_count += 1
+                        else:
+                            skipped_count += 1
+                            
+                    elif action == 'merge':
+                        # Merge fields based on selection
+                        google_api = GoogleAPIService()
+                        google_contact = google_api.get_contact(google_id, token_info=cls._get_user_token(user_id))
+                        
+                        if google_contact and 'fields' in resolution:
+                            contact_data = google_api.format_google_contact(google_contact)
+                            fields = resolution.get('fields', {})
+                            
+                            # Update fields based on user selection
+                            for field, source in fields.items():
+                                if source == 'google' and field in contact_data:
+                                    setattr(local_contact, field, contact_data.get(field, ''))
+                                    
+                            local_contact.has_conflict = False
+                            local_contact.google_data = None
+                            resolved_count += 1
+                        else:
+                            skipped_count += 1
+                    else:
+                        # Unknown action
+                        skipped_count += 1
+                        
+                except Exception as e:
+                    print(f"Error resolving conflict for contact {contact_id}: {str(e)}")
+                    error_count += 1
+                    
+            # Commit all changes
             db.session.commit()
             
             # Update sync history
-            sync_history.end_time = datetime.datetime.now()
-            sync_history.status = "completed"
-            sync_history.processed = resolved_count + failed_count
-            sync_history.updated = resolved_count
-            sync_history.failed = failed_count
-            
+            sync_history.status = 'completed'
+            sync_history.completed_at = datetime.now()
+            sync_history.items_processed = resolved_count + skipped_count + error_count
+            sync_history.items_created = 0
+            sync_history.items_updated = resolved_count
+            sync_history.items_skipped = skipped_count
+            sync_history.items_failed = error_count
             db.session.commit()
             
-            stats = {
-                "resolved": resolved_count,
-                "failed": failed_count
+            return {
+                "status": "success", 
+                "message": f"Successfully resolved {resolved_count} conflicts",
+                "items_processed": resolved_count + skipped_count + error_count,
+                "items_updated": resolved_count,
+                "items_skipped": skipped_count,
+                "items_failed": error_count
             }
-            
-            return True, stats, None
-            
+                
         except Exception as e:
-            current_app.logger.error(f"Error resolving conflicts: {str(e)}")
-            
             # Update sync history with error
-            sync_history.end_time = datetime.datetime.now()
-            sync_history.status = "failed"
-            sync_history.error_message = str(e)
-            db.session.commit()
+            if 'sync_history' in locals():
+                sync_history.status = 'failed'
+                sync_history.completed_at = datetime.now()
+                sync_history.error_message = str(e)
+                db.session.commit()
+                
+            return {"status": "error", "message": f"Error resolving conflicts: {str(e)}"}
             
-            return False, None, str(e) 
+    @classmethod
+    def _get_user_token(cls, user_id):
+        """Get the user's Google token information"""
+        from app.models.google_token import GoogleToken
+        import json
+        import os
+        
+        google_token = GoogleToken.query.filter_by(user_id=user_id).first()
+        if not google_token:
+            return None
+            
+        return {
+            'token': google_token.access_token,
+            'refresh_token': google_token.refresh_token,
+            'token_uri': 'https://oauth2.googleapis.com/token',
+            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+            'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+            'scopes': json.loads(google_token.scopes) if google_token.scopes else [],
+            'expiry': google_token.expires_at.isoformat() if google_token.expires_at else None
+        } 

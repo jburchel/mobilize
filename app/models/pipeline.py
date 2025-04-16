@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.extensions import db
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -75,7 +75,7 @@ class Pipeline(db.Model):
         
     def get_available_parent_stages(self):
         """Get available parent pipeline stages based on pipeline type."""
-        if self.pipeline_type == 'people':
+        if self.pipeline_type == 'people' or self.pipeline_type == 'person':
             return [choice[0] for choice in PEOPLE_PIPELINE_CHOICES]
         elif self.pipeline_type == 'church':
             return [choice[0] for choice in CHURCH_PIPELINE_CHOICES]
@@ -145,10 +145,14 @@ class PipelineStage(db.Model):
             'name': self.name,
             'description': self.description,
             'order': self.order,
+            'color': self.color,
             'pipeline_id': self.pipeline_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'contact_count': self.contacts_in_stage.count()
+            'contact_count': self.contacts_in_stage.count(),
+            'auto_move_days': self.auto_move_days,
+            'auto_reminder': self.auto_reminder,
+            'auto_task_template': self.auto_task_template
         }
 
 
@@ -183,16 +187,21 @@ class PipelineContact(db.Model):
                     from_stage_id=previous_stage_id,
                     to_stage_id=stage_id,
                     created_by_id=user_id,
-                    notes=notes
+                    notes=notes,
+                    created_at=datetime.now()
                 )
                 db.session.add(history_entry)
+                # Commit the history record first
+                db.session.commit()
             
             # Update current stage
             self.current_stage_id = stage_id
             self.last_updated = datetime.now()
+            db.session.commit()
             
             return True
         except Exception as e:
+            db.session.rollback()
             import traceback
             traceback.print_exc()
             return False

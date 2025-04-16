@@ -8,9 +8,14 @@
 <div class="container-fluid" id="report-dashboard">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Reports Dashboard</h1>
-        <a href="{{ url_for('reports.custom_report') }}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
-            <i class="fas fa-file-alt fa-sm text-white-50 mr-1"></i> Create Custom Report
-        </a>
+        <div>
+            <button id="refresh-widgets-btn" class="btn btn-sm btn-outline-secondary shadow-sm mr-2">
+                <i class="fas fa-sync-alt fa-sm mr-1"></i> Refresh Widgets
+            </button>
+            <a href="{{ url_for('reports.custom_report') }}" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fas fa-file-alt fa-sm text-white-50 mr-1"></i> Create Custom Report
+            </a>
+        </div>
     </div>
 
     <!-- Widgets Row -->
@@ -134,9 +139,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="exportModalLabel">Export Data</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="exportForm" method="post">
                     <div class="modal-body">
@@ -152,7 +155,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary">Export</button>
                     </div>
                 </form>
@@ -197,15 +200,27 @@
 {% block scripts %}
 <script>
     $(document).ready(function() {
-        // Load widgets data
-        loadWidgetData();
+        // Log for debugging
+        console.log('Dashboard ready, loading widget data...');
+        
+        // Load immediately on page load
+        loadAllWidgets();
+        
+        // Add refresh button functionality
+        $('#refresh-widgets-btn').click(function() {
+            loadAllWidgets();
+        });
         
         // Set up export buttons
-        $('.export-btn').click(function() {
+        $('.export-btn').click(function(e) {
+            e.preventDefault();
             const entityType = $(this).data('type');
             $('#entity-type').val(entityType);
             $('#exportModalLabel').text('Export ' + entityType.charAt(0).toUpperCase() + entityType.slice(1));
-            $('#exportModal').modal('show');
+            
+            // Use Bootstrap 5 modal method
+            var exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+            exportModal.show();
         });
         
         // Set up export form submission
@@ -213,6 +228,8 @@
             e.preventDefault();
             const entityType = $('#entity-type').val();
             const format = $('#format').val();
+            
+            console.log(`Exporting ${entityType} in ${format} format`);
             
             // Create a form to submit the export request
             const form = $('<form></form>').attr({
@@ -235,42 +252,277 @@
             }).appendTo(form);
             
             // Submit the form
-            form.appendTo('body').submit().remove();
+            form.appendTo('body');
+            form.submit();
+            setTimeout(() => form.remove(), 1000); // Clean up after submission
             
-            // Close the modal
-            $('#exportModal').modal('hide');
+            // Close the modal - Bootstrap 5 way
+            var exportModal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+            if (exportModal) {
+                exportModal.hide();
+            }
         });
     });
     
-    function loadWidgetData() {
-        // Load contacts widget data
-        $.get('/reports/widgets/contacts', function(data) {
-            $('#total-contacts').text(data.total_contacts);
-            $('#new-contacts').text(data.new_contacts_30d);
-        });
+    function loadAllWidgets() {
+        console.log('Loading all widgets...');
         
-        // Load churches widget data
-        $.get('/reports/widgets/churches', function(data) {
-            $('#total-churches').text(data.total_churches);
-            $('#new-churches').text(data.new_churches_30d);
-        });
+        // Show loading indicators for all widgets
+        resetWidgetsToLoading();
         
-        // Load tasks widget data
-        $.get('/reports/widgets/tasks', function(data) {
-            $('#total-tasks').text(data.total_tasks);
-            $('#completed-tasks').text(data.completed_tasks);
-            $('#overdue-tasks').text(data.overdue_tasks);
-            
-            // Update progress bar
-            const progressPercent = data.completion_rate;
-            $('#task-progress').css('width', progressPercent + '%').attr('aria-valuenow', progressPercent);
-        });
+        // Set a loading timeout to prevent "Loading..." hanging forever
+        var loadingTimeout = setTimeout(function() {
+            handleTimeoutFailure();
+        }, 15000); // Increased timeout for slower connections
         
-        // Load communications widget data
-        $.get('/reports/widgets/communications', function(data) {
-            $('#total-communications').text(data.total_communications);
-            $('#emails-count').text(data.emails);
-            $('#calls-count').text(data.calls);
+        // Load all widgets with retries
+        loadWidgetWithRetry('contacts', loadContactsWidget, function() {
+            loadWidgetWithRetry('churches', loadChurchesWidget, function() {
+                loadWidgetWithRetry('tasks', loadTasksWidget, function() {
+                    loadWidgetWithRetry('communications', loadCommunicationsWidget, function() {
+                        // All loaded, clear timeout
+                        clearTimeout(loadingTimeout);
+                        console.log('All widgets loaded');
+                    });
+                });
+            });
+        });
+    }
+    
+    function resetWidgetsToLoading() {
+        // Reset all widgets to loading state
+        $('#total-contacts, #total-churches, #total-tasks, #total-communications').addClass('loading-placeholder').text('Loading...');
+        $('#new-contacts, #new-churches, #completed-tasks, #overdue-tasks, #emails-count, #calls-count').addClass('loading-placeholder-details').text('-');
+        $('.widget-error').remove(); // Remove any previous error messages
+    }
+    
+    function handleTimeoutFailure() {
+        console.warn('Widget loading timed out');
+        $('.loading-placeholder').each(function() {
+            if ($(this).text() === 'Loading...') {
+                $(this).removeClass('loading-placeholder').text('0');
+            }
+        });
+        $('.loading-placeholder-details').each(function() {
+            if ($(this).text() === '-') {
+                $(this).removeClass('loading-placeholder-details').text('0');
+            }
+        });
+        // Add error notifications to widgets that failed to load
+        $('.card-body').each(function() {
+            if ($(this).find('.loading-placeholder').length > 0) {
+                $(this).append('<div class="widget-error mt-2 text-danger"><small>Failed to load data</small></div>');
+            }
+        });
+    }
+    
+    function loadWidgetWithRetry(widgetName, loadFn, callback, attempt = 1, maxAttempts = 3) {
+        console.log(`Loading ${widgetName} widget (attempt ${attempt}/${maxAttempts})...`);
+        
+        loadFn(function(success) {
+            if (!success && attempt < maxAttempts) {
+                console.log(`Retrying ${widgetName} widget in ${attempt * 1000}ms...`);
+                setTimeout(function() {
+                    loadWidgetWithRetry(widgetName, loadFn, callback, attempt + 1, maxAttempts);
+                }, attempt * 1000); // Exponential backoff
+            } else {
+                if (!success) {
+                    console.error(`Failed to load ${widgetName} widget after ${maxAttempts} attempts`);
+                } else {
+                    console.log(`Successfully loaded ${widgetName} widget`);
+                }
+                if (callback) callback();
+            }
+        });
+    }
+    
+    function loadContactsWidget(callback) {
+        console.log('Loading contacts widget data...');
+        $.ajax({
+            url: '/reports/widgets/contacts',
+            method: 'GET',
+            cache: false,
+            timeout: 8000,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Cache-Control': 'no-cache'
+            },
+            beforeSend: function() {
+                console.log('Sending contacts widget request...');
+                $('#total-contacts').addClass('loading-placeholder').text('Loading...');
+                $('#new-contacts').addClass('loading-placeholder-details').text('-');
+            },
+            success: function(data) {
+                console.log('Contacts widget data received:', data);
+                
+                // Check if response contains an error
+                if (data.error) {
+                    console.error('API returned error:', data.error);
+                    $('#total-contacts').removeClass('loading-placeholder').text(data.total_contacts || '0');
+                    $('#new-contacts').removeClass('loading-placeholder-details').text(data.new_contacts_30d || '0');
+                    callback(false);
+                } else {
+                    // Ensure values are displayed as numbers
+                    const totalContacts = parseInt(data.total_contacts) || 0;
+                    const newContacts = parseInt(data.new_contacts_30d) || 0;
+                    
+                    $('#total-contacts').removeClass('loading-placeholder').text(totalContacts);
+                    $('#new-contacts').removeClass('loading-placeholder-details').text(newContacts);
+                    callback(true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading contacts widget:', error);
+                console.error('Status:', status);
+                console.error('Response:', xhr.responseText);
+                console.error('Status code:', xhr.status);
+                
+                // Specific handling based on error type
+                if (xhr.status === 403) {
+                    console.error('Authentication error - you may need to log in again');
+                } else if (status === 'timeout') {
+                    console.error('Request timed out - server may be overloaded');
+                }
+                
+                $('#total-contacts').removeClass('loading-placeholder').text('0');
+                $('#new-contacts').removeClass('loading-placeholder-details').text('0');
+                callback(false);
+            }
+        });
+    }
+    
+    function loadChurchesWidget(callback) {
+        console.log('Loading churches widget data...');
+        $.ajax({
+            url: '/reports/widgets/churches',
+            method: 'GET',
+            cache: false,
+            timeout: 8000,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Cache-Control': 'no-cache'
+            },
+            beforeSend: function() {
+                console.log('Sending churches widget request...');
+            },
+            success: function(data) {
+                console.log('Churches widget data received:', data);
+                
+                // Check if response contains an error
+                if (data.error) {
+                    console.error('API returned error:', data.error);
+                    $('#total-churches').removeClass('loading-placeholder').text(data.total_churches || '0');
+                    $('#new-churches').removeClass('loading-placeholder-details').text(data.new_churches_30d || '0');
+                    callback(false);
+                } else {
+                    $('#total-churches').removeClass('loading-placeholder').text(data.total_churches);
+                    $('#new-churches').removeClass('loading-placeholder-details').text(data.new_churches_30d);
+                    callback(true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading churches widget:', error);
+                console.error('Status:', status);
+                console.error('Response:', xhr.responseText);
+                console.error('Status code:', xhr.status);
+                $('#total-churches').removeClass('loading-placeholder').text('0');
+                $('#new-churches').removeClass('loading-placeholder-details').text('0');
+                callback(false);
+            }
+        });
+    }
+    
+    function loadTasksWidget(callback) {
+        console.log('Loading tasks widget data...');
+        $.ajax({
+            url: '/reports/widgets/tasks',
+            method: 'GET',
+            cache: false,
+            timeout: 8000,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Cache-Control': 'no-cache'
+            },
+            beforeSend: function() {
+                console.log('Sending tasks widget request...');
+            },
+            success: function(data) {
+                console.log('Tasks widget data received:', data);
+                
+                // Check if response contains an error
+                if (data.error) {
+                    console.error('API returned error:', data.error);
+                    $('#total-tasks').removeClass('loading-placeholder').text(data.total_tasks || '0');
+                    $('#completed-tasks').removeClass('loading-placeholder-details').text(data.completed_tasks || '0');
+                    $('#overdue-tasks').removeClass('loading-placeholder-details').text(data.overdue_tasks || '0');
+                    $('#task-progress').css('width', '0%').attr('aria-valuenow', 0);
+                    callback(false);
+                } else {
+                    $('#total-tasks').removeClass('loading-placeholder').text(data.total_tasks);
+                    $('#completed-tasks').removeClass('loading-placeholder-details').text(data.completed_tasks);
+                    $('#overdue-tasks').removeClass('loading-placeholder-details').text(data.overdue_tasks);
+                    
+                    // Update progress bar
+                    const progressPercent = data.completion_rate;
+                    $('#task-progress').css('width', progressPercent + '%').attr('aria-valuenow', progressPercent);
+                    callback(true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading tasks widget:', error);
+                console.error('Status:', status);
+                console.error('Response:', xhr.responseText);
+                console.error('Status code:', xhr.status);
+                $('#total-tasks').removeClass('loading-placeholder').text('0');
+                $('#completed-tasks').removeClass('loading-placeholder-details').text('0');
+                $('#overdue-tasks').removeClass('loading-placeholder-details').text('0');
+                $('#task-progress').css('width', '0%').attr('aria-valuenow', 0);
+                callback(false);
+            }
+        });
+    }
+    
+    function loadCommunicationsWidget(callback) {
+        console.log('Loading communications widget data...');
+        $.ajax({
+            url: '/reports/widgets/communications',
+            method: 'GET',
+            cache: false,
+            timeout: 8000,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Cache-Control': 'no-cache'
+            },
+            beforeSend: function() {
+                console.log('Sending communications widget request...');
+            },
+            success: function(data) {
+                console.log('Communications widget data received:', data);
+                
+                // Check if response contains an error
+                if (data.error) {
+                    console.error('API returned error:', data.error);
+                    $('#total-communications').removeClass('loading-placeholder').text(data.total_communications || '0');
+                    $('#emails-count').removeClass('loading-placeholder-details').text(data.emails || '0');
+                    $('#calls-count').removeClass('loading-placeholder-details').text(data.calls || '0');
+                    callback(false);
+                } else {
+                    $('#total-communications').removeClass('loading-placeholder').text(data.total_communications);
+                    $('#emails-count').removeClass('loading-placeholder-details').text(data.emails);
+                    $('#calls-count').removeClass('loading-placeholder-details').text(data.calls);
+                    callback(true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading communications widget:', error);
+                console.error('Status:', status);
+                console.error('Response:', xhr.responseText);
+                console.error('Status code:', xhr.status);
+                $('#total-communications').removeClass('loading-placeholder').text('0');
+                $('#emails-count').removeClass('loading-placeholder-details').text('0');
+                $('#calls-count').removeClass('loading-placeholder-details').text('0');
+                callback(false);
+            }
         });
     }
 </script>

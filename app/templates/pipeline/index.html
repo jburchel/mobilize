@@ -172,13 +172,17 @@
                                             <a href="{{ url_for('pipeline.view', pipeline_id=pipeline.id) }}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="View Pipeline">
                                                 <i class="bi bi-eye me-1"></i>
                                             </a>
-                                            <button class="btn btn-sm btn-info edit-btn" data-id="{{ pipeline.id }}" data-name="{{ pipeline.name }}" data-description="{{ pipeline.description }}" data-bs-toggle="tooltip" title="Edit Pipeline">
+                                            <button type="button" class="btn btn-sm btn-info" 
+                                                onclick="editPipeline('{{ pipeline.id }}', '{{ pipeline.name }}', '{{ pipeline.description }}', '{{ pipeline.pipeline_type }}')" 
+                                                data-bs-toggle="tooltip" title="Edit Pipeline">
                                                 <i class="bi bi-pencil me-1"></i>
                                             </button>
                                             <a href="{{ url_for('pipeline.manage_stages', pipeline_id=pipeline.id) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Manage Stages">
                                                 <i class="bi bi-list-check me-1"></i>
                                             </a>
-                                            <button class="btn btn-sm btn-danger delete-btn" data-id="{{ pipeline.id }}" data-name="{{ pipeline.name }}" data-bs-toggle="tooltip" title="Delete Pipeline">
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="deletePipeline('{{ pipeline.id }}', '{{ pipeline.name }}')"
+                                                data-bs-toggle="tooltip" title="Delete Pipeline">
                                                 <i class="bi bi-trash me-1"></i>
                                             </button>
                                         </td>
@@ -223,6 +227,14 @@
                         <label for="editPipelineDescription" class="form-label">Description (Optional)</label>
                         <textarea class="form-control" id="editPipelineDescription" name="description" rows="3"></textarea>
                     </div>
+                    
+                    <div class="mb-3">
+                        <label for="editPipelineType" class="form-label">Pipeline Type *</label>
+                        <select class="form-select" id="editPipelineType" name="pipeline_type" required>
+                            <option value="people">People Pipeline</option>
+                            <option value="church">Church Pipeline</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -256,13 +268,61 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<!-- Make sure jQuery is loaded first -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // Function to handle editing a pipeline
+    function editPipeline(pipelineId, pipelineName, pipelineDescription, pipelineType) {
+        console.log("Edit pipeline called", pipelineId);
+        
+        // Populate the form fields
+        document.getElementById('editPipelineId').value = pipelineId;
+        document.getElementById('editPipelineName').value = pipelineName;
+        document.getElementById('editPipelineDescription').value = pipelineDescription;
+        
+        // Set pipeline type if available
+        if (pipelineType) {
+            document.getElementById('editPipelineType').value = pipelineType;
+        }
+        
+        // Show the modal
+        var editModal = new bootstrap.Modal(document.getElementById('editPipelineModal'));
+        editModal.show();
+    }
+    
+    // Function to handle deleting a pipeline
+    function deletePipeline(pipelineId, pipelineName) {
+        console.log("Delete pipeline called", pipelineId);
+        
+        // Update the modal content
+        document.getElementById('deletePipelineName').textContent = pipelineName;
+        
+        // Set the form action URL
+        var deleteUrl = "{{ url_for('pipeline.delete', pipeline_id=0) }}".replace('0', pipelineId);
+        document.getElementById('deletePipelineForm').action = deleteUrl;
+        console.log("Setting delete form action to:", deleteUrl);
+        
+        // Show the modal
+        var deleteModal = new bootstrap.Modal(document.getElementById('deletePipelineModal'));
+        deleteModal.show();
+    }
+
     $(document).ready(function() {
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
         });
+
+        // Ensure Bootstrap is available
+        console.log("Bootstrap version:", typeof bootstrap !== 'undefined' ? "Available" : "Not available");
+        
+        // Debug: Check if modals exist
+        console.log("Edit modal exists:", $('#editPipelineModal').length > 0);
+        console.log("Delete modal exists:", $('#deletePipelineModal').length > 0);
 
         // Initialize DataTable
         $('#pipelinesTable').DataTable({
@@ -275,35 +335,6 @@
                 { "width": "15%", "targets": 3 }, // Actions column
             ]
         });
-        
-        // Setup edit button handlers
-        $('.edit-btn').click(function() {
-            var pipelineId = $(this).data('id');
-            var pipelineName = $(this).data('name');
-            var pipelineDescription = $(this).data('description');
-            
-            // Populate the edit modal
-            $('#editPipelineId').val(pipelineId);
-            $('#editPipelineName').val(pipelineName);
-            $('#editPipelineDescription').val(pipelineDescription);
-            
-            // Show the modal
-            $('#editPipelineModal').modal('show');
-        });
-        
-        // Setup delete pipeline button handlers
-        $('.delete-btn').click(function() {
-            var pipelineId = $(this).data('id');
-            var pipelineName = $(this).data('name');
-            
-            // Update the modal
-            $('#deletePipelineName').text(pipelineName);
-            $('#deletePipelineForm').attr('action', `/pipeline/${pipelineId}/delete`);
-            
-            // Show the modal
-            $('#deletePipelineModal').modal('show');
-        });
     });
 </script>
-
 {% endblock %} 

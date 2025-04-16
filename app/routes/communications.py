@@ -3,12 +3,27 @@ from flask_login import login_required, current_user
 from app.models.communication import Communication
 from app.models.person import Person
 from app.models.church import Church
+from app.models.email_template import EmailTemplate
+from app.models.email_signature import EmailSignature
 from app.extensions import db
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import text
 import json
+from app.utils.decorators import office_required
+from app.utils.upload import save_uploaded_file
+from app.utils.time import format_date
 
 communications_bp = Blueprint('communications', __name__, template_folder='../templates/communications')
+
+# Helper function to get default signature
+def get_default_signature(user_id):
+    """Get the default signature for a user"""
+    signature = EmailSignature.query.filter_by(
+        user_id=user_id,
+        is_default=True
+    ).first()
+    
+    return signature
 
 @communications_bp.route('/')
 @communications_bp.route('/index')
@@ -158,21 +173,167 @@ def compose():
                         church = Church.query.get(church_id)
                         meeting_title += f" with {church.name}"
                     
-                    # Create a calendar event with Google Meet
+                    # Get meeting date, time and timezone from form
+                    meeting_date = request.form.get('meeting_date')
+                    meeting_time = request.form.get('meeting_time')
+                    meeting_timezone = request.form.get('meeting_timezone', 'America/New_York')
+                    meeting_duration = int(request.form.get('meeting_duration', '60'))
+                    
+                    # Get recipient email for calendar invitation
+                    recipient_email = None
+                    recipient_name = None
+                    if person_id:
+                        person = Person.query.get(person_id)
+                        recipient_email = person.email
+                        recipient_name = f"{person.first_name} {person.last_name}"
+                    elif church_id:
+                        church = Church.query.get(church_id)
+                        # Find the primary contact's email or use the first contact found
+                        if church.primary_contact:
+                            recipient_email = church.primary_contact.email
+                            recipient_name = church.name
+                    
+                    # Construct datetime from date and time inputs
+                    if meeting_date and meeting_time:
+                        # Parse meeting datetime
+                        try:
+                            meeting_datetime_str = f"{meeting_date} {meeting_time}"
+                            meeting_datetime = datetime.strptime(meeting_datetime_str, "%Y-%m-%d %H:%M")
+                            
+                            # Set the timezone
+                            import pytz
+                            tz = pytz.timezone(meeting_timezone)
+                            meeting_datetime = tz.localize(meeting_datetime)
+                            
+                            current_app.logger.info(f"Scheduling meeting at {meeting_datetime} for {meeting_duration} minutes")
+                        except ValueError as e:
+                            current_app.logger.error(f"Error parsing meeting datetime: {str(e)}")
+                            meeting_datetime = datetime.now(timezone.utc) + timedelta(hours=1)
+                            meeting_duration = 60
+                    else:
+                        # Default to 1 hour from now
+                        meeting_datetime = datetime.now(timezone.utc) + timedelta(hours=1)
+                    
+                    # Create a calendar event with Google Meet using the specified time
+                    # Add recipient as an attendee if email is available
+                    attendees = []
+                    if recipient_email:
+                        attendees.append(recipient_email)
+                    
                     event = calendar_service.create_meeting(
                         summary=meeting_title,
                         description=message,
-                        start_time=datetime.now(timezone.utc) + timedelta(hours=1),  # Default to 1 hour from now
-                        duration_minutes=60  # Default 1 hour meeting
+                        start_time=meeting_datetime,
+                        duration_minutes=meeting_duration,
+                        attendees=attendees if attendees else None
                     )
                     
                     # Store the Google Meet link and event ID
                     if event and 'hangoutLink' in event:
                         communication.google_meet_link = event['hangoutLink']
                         communication.google_calendar_event_id = event['id']
-                        communication.message += f"\n\nGoogle Meet Link: {event['hangoutLink']}"
                         
-                        # Add the conferencing link to the message
+                        # Format the meeting time for the message
+                        formatted_time = meeting_datetime.strftime("%A, %B %d, %Y at %I:%M %p %Z")
+                        
+                        # Add meeting details to the message
+                        message_with_details = message  # Start with the original message
+                        
+                        # Create nicely formatted meeting details
+                        meeting_details = f"""
+                        <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                            <h3 style="color: #0d6efd; margin-top: 0;">Video Conference Details</h3>
+                            <p><strong>Date:</strong> {formatted_time}</p>
+                            <p><strong>Duration:</strong> {meeting_duration} minutes</p>
+                            <p><strong>Join with:</strong> <a href="{event['hangoutLink']}" style="color: #0d6efd;">{event['hangoutLink']}</a></p>
+                            
+                            <div style="margin-top: 20px;">
+                                <a href="{event['hangoutLink']}" style="background-color: #0d6efd; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                                    Join Meeting
+                                </a>
+                            </div>
+                        </div>
+                        """
+                        
+                        # Check if there's a signature in the message
+                        if '<div class="email-signature">' in message:
+                            # Insert meeting details before the signature
+                            message_with_details = message.replace(
+                                '<div class="email-signature">',
+                                f'{meeting_details}<div class="email-signature">'
+                            )
+                        else:
+                            # Otherwise append to the end
+                            message_with_details = message + meeting_details
+                        
+                        # Update the message with the meeting details
+                        communication.message = message_with_details
+                        
+                        # Send an email invitation to the recipient
+                        if recipient_email:
+                            try:
+                                # Create the email invitation
+                                from app.services.gmail_service import GmailService
+                                gmail_service = GmailService(current_user.id)
+                                
+                                # Create a complete HTML message for the email
+                                html_message = f"""
+                                <html>
+                                <body>
+                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                        <h2 style="color: #3b71ca;">{subject}</h2>
+                                        <div style="margin-bottom: 20px;">
+                                            {message}
+                                        </div>
+                                        
+                                        {meeting_details}
+                                        
+                                        <p style="color: #6c757d; font-size: 0.9em;">
+                                            This invitation was sent via Mobilize CRM. No downloads required to join the meeting.<br>
+                                            You should also receive a Google Calendar invitation which will appear in your calendar.
+                                        </p>
+                                    </div>
+                                </body>
+                                </html>
+                                """
+                                
+                                # Log that we're attempting to send an email invitation
+                                current_app.logger.info(f"Sending meeting invitation to {recipient_email}")
+                                
+                                # Actually send the email
+                                sent_message = gmail_service.send_email(
+                                    to=recipient_email,
+                                    subject=f"Video Meeting Invitation: {subject}",
+                                    body=f"You've been invited to a video meeting: {subject}\n\nDate: {formatted_time}\nDuration: {meeting_duration} minutes\nJoin with: {event['hangoutLink']}",
+                                    html=html_message
+                                )
+                                
+                                # Create a separate communication record for the email
+                                email_communication = Communication(
+                                    type='email',
+                                    message=html_message,
+                                    subject=f"Video Meeting Invitation: {subject}",
+                                    person_id=person_id,
+                                    church_id=church_id,
+                                    user_id=current_user.id,
+                                    owner_id=current_user.id,
+                                    office_id=current_user.office_id,
+                                    direction='outbound',
+                                    date_sent=datetime.now(timezone.utc),
+                                    email_status='sent',
+                                    gmail_message_id=sent_message.get('id'),
+                                    gmail_thread_id=sent_message.get('threadId')
+                                )
+                                db.session.add(email_communication)
+                                
+                                flash('Video conference created and invitation email sent!', 'success')
+                            except Exception as e:
+                                current_app.logger.error(f"Error sending meeting invitation email: {str(e)}")
+                                flash(f'Video conference created, but could not send email invitation: {str(e)}', 'warning')
+                        else:
+                            current_app.logger.warning("Unable to send meeting invitation: Recipient email address not found")
+                            flash('Video conference created, but could not send email invitation (no email found).', 'warning')
+                        
                         flash('Google Meet link created successfully!', 'success')
                     else:
                         flash('Failed to create Google Meet link', 'warning')
@@ -201,10 +362,19 @@ def compose():
     people = Person.query.all()
     churches = Church.query.all()
     
+    # Get user's default signature
+    default_signature = get_default_signature(current_user.id)
+    
+    # Pass current datetime for the meeting scheduler
+    now = datetime.now()
+    
     return render_template('communications/compose.html', 
                           people=people,
                           churches=churches,
                           reply_to=reply_to,
+                          default_signature=default_signature,
+                          now=now,
+                          timedelta=timedelta,
                           page_title="Compose Message")
 
 @communications_bp.route('/view/<int:id>')
@@ -526,3 +696,126 @@ def get_template(id):
     except Exception as e:
         current_app.logger.error(f"Error fetching template: {str(e)}")
         return jsonify({'success': False, 'message': f'Error fetching template: {str(e)}'}), 500 
+
+@communications_bp.route('/signatures', methods=['GET', 'POST'])
+@login_required
+@office_required
+def signatures():
+    """Manage email signatures."""
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'create' or action == 'update':
+            signature_id = request.form.get('signature_id')
+            name = request.form.get('name')
+            content = request.form.get('content')
+            is_default = True if request.form.get('is_default') else False
+            
+            if not name or not content:
+                flash('Name and content are required', 'error')
+                return redirect(url_for('communications.signatures'))
+            
+            # Handle logo upload if present
+            logo_url = None
+            if 'logo' in request.files and request.files['logo'].filename:
+                try:
+                    logo_url = save_uploaded_file(
+                        request.files['logo'], 
+                        folder='signatures', 
+                        allowed_extensions=['jpg', 'jpeg', 'png', 'gif'],
+                        max_size=2 * 1024 * 1024  # 2MB
+                    )
+                except ValueError as e:
+                    flash(str(e), 'error')
+                    return redirect(url_for('communications.signatures'))
+            
+            if action == 'create':
+                # Create new signature
+                signature = EmailSignature(
+                    user_id=current_user.id,
+                    name=name,
+                    content=content.replace('\n', '<br>') if content else '',  # Ensure line breaks are preserved as HTML
+                    logo_url=logo_url,
+                    is_default=is_default
+                )
+                db.session.add(signature)
+                
+                # If this is set as default, unset others
+                if is_default:
+                    EmailSignature.query.filter(
+                        EmailSignature.user_id == current_user.id,
+                        EmailSignature.id != signature.id
+                    ).update({'is_default': False})
+                
+                db.session.commit()
+                flash('Signature created successfully', 'success')
+            
+            elif action == 'update':
+                # Update existing signature
+                signature = EmailSignature.query.filter_by(
+                    id=signature_id, 
+                    user_id=current_user.id
+                ).first()
+                
+                if not signature:
+                    flash('Signature not found', 'error')
+                    return redirect(url_for('communications.signatures'))
+                
+                signature.name = name
+                signature.content = content.replace('\n', '<br>') if content else ''  # Ensure line breaks are preserved as HTML
+                if logo_url:
+                    signature.logo_url = logo_url
+                signature.is_default = is_default
+                
+                # If this is set as default, unset others
+                if is_default:
+                    EmailSignature.query.filter(
+                        EmailSignature.user_id == current_user.id,
+                        EmailSignature.id != signature.id
+                    ).update({'is_default': False})
+                
+                db.session.commit()
+                flash('Signature updated successfully', 'success')
+        
+        elif action == 'delete':
+            signature_id = request.form.get('signature_id')
+            signature = EmailSignature.query.filter_by(
+                id=signature_id, 
+                user_id=current_user.id
+            ).first()
+            
+            if signature:
+                db.session.delete(signature)
+                db.session.commit()
+                flash('Signature deleted successfully', 'success')
+            else:
+                flash('Signature not found', 'error')
+        
+        elif action == 'set_default':
+            signature_id = request.form.get('signature_id')
+            
+            # Remove default from all signatures for this user
+            EmailSignature.query.filter_by(user_id=current_user.id).update({'is_default': False})
+            
+            # Set the selected one as default
+            signature = EmailSignature.query.filter_by(
+                id=signature_id, 
+                user_id=current_user.id
+            ).first()
+            
+            if signature:
+                signature.is_default = True
+                db.session.commit()
+                flash('Default signature updated', 'success')
+            else:
+                flash('Signature not found', 'error')
+        
+        return redirect(url_for('communications.signatures'))
+    
+    # GET request - show the signatures page
+    signatures = EmailSignature.query.filter_by(user_id=current_user.id).order_by(
+        EmailSignature.is_default.desc(),
+        EmailSignature.name
+    ).all()
+    
+    return render_template('communications/signatures.html', signatures=signatures) 

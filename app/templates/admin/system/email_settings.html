@@ -1,0 +1,336 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Email Settings{% endblock %}
+
+{% block page_title %}Email Settings{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Admin</a></li>
+  <li class="breadcrumb-item"><a href="#">System</a></li>
+  <li class="breadcrumb-item active">Email Settings</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title">SMTP Configuration</h5>
+        </div>
+        <div class="card-body">
+          <form id="smtp-settings-form" action="{{ url_for('admin.update_email_settings') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Google Workspace Integration:</strong> Since all users in this organization use Google Workspace Gmail accounts, 
+              email is sent through the Gmail API using the users' authenticated credentials. SMTP configuration is not needed.
+            </div>
+            
+            <div class="mb-3">
+              <label for="mail_default_sender" class="form-label">Default Organization Email</label>
+              <input type="email" class="form-control" id="mail_default_sender" name="mail_default_sender" 
+                     value="{{ settings.mail_default_sender }}" required>
+              <small class="text-muted">Default "From" address for organization-wide emails</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="email_signature" class="form-label">Default Signature</label>
+              <textarea class="form-control" id="email_signature" name="email_signature" rows="3">{{ settings.email_signature }}</textarea>
+              <small class="text-muted">Default signature for emails (can be overridden by user signatures)</small>
+            </div>
+            
+            <button type="button" class="btn btn-success me-2" onclick="testEmailConnection()">
+              <i class="fas fa-vial"></i> Test Gmail Connection
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Settings
+            </button>
+          </form>
+        </div>
+      </div>
+      
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="card-title">Email Templates</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Template Name</th>
+                  <th>Description</th>
+                  <th>Last Modified</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for template in email_templates %}
+                <tr>
+                  <td>{{ template.name }}</td>
+                  <td>{{ template.description }}</td>
+                  <td>{{ template.modified_at }}</td>
+                  <td>
+                    <a href="{{ url_for('admin.edit_email_template', template_id=template.id) }}" class="btn btn-sm btn-outline-primary">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="previewTemplate('{{ template.id }}')">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title">Email Stats</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="border rounded p-3 text-center">
+                <h3 class="text-primary">{{ stats.sent_today }}</h3>
+                <p class="mb-0 text-muted">Sent Today</p>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-3 text-center">
+                <h3 class="text-success">{{ stats.sent_week }}</h3>
+                <p class="mb-0 text-muted">Sent This Week</p>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-3 text-center">
+                <h3 class="text-warning">{{ stats.bounced }}</h3>
+                <p class="mb-0 text-muted">Bounced</p>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-3 text-center">
+                <h3 class="text-danger">{{ stats.failed }}</h3>
+                <p class="mb-0 text-muted">Failed</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4">
+            <h6>Delivery Rate</h6>
+            <div class="progress" style="height: 24px;">
+              <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.delivery_rate }}%;" 
+                   aria-valuenow="{{ stats.delivery_rate }}" aria-valuemin="0" aria-valuemax="100">
+                {{ stats.delivery_rate }}%
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4">
+            <h6>Recent Activity</h6>
+            <div class="list-group mt-2">
+              {% for activity in recent_activities %}
+              <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1">{{ activity.subject }}</h6>
+                  <small>{{ activity.time_ago }}</small>
+                </div>
+                <p class="mb-1">To: {{ activity.recipient }}</p>
+                <small class="text-{{ activity.status_color }}">{{ activity.status }}</small>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          
+          <div class="mt-3">
+            <a href="{{ url_for('admin.email_logs') }}" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-list"></i> View Activity Logs
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card mt-3">
+        <div class="card-header">
+          <h5 class="card-title">Send Test Email</h5>
+        </div>
+        <div class="card-body">
+          <form id="test-email-form">
+            <div class="mb-3">
+              <label for="test_recipient" class="form-label">Recipient Email</label>
+              <input type="email" class="form-control" id="test_recipient" required>
+            </div>
+            <div class="mb-3">
+              <label for="test_subject" class="form-label">Subject</label>
+              <input type="text" class="form-control" id="test_subject" value="Test Email from Mobilize App">
+            </div>
+            <div class="mb-3">
+              <label for="test_message" class="form-label">Message</label>
+              <textarea class="form-control" id="test_message" rows="3">This is a test email from the Mobilize App to verify email settings are working correctly.</textarea>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="sendTestEmail()">
+              <i class="fas fa-paper-plane"></i> Send Test Email
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Template Preview Modal -->
+<div class="modal fade" id="templatePreviewModal" tabindex="-1" aria-labelledby="templatePreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="templatePreviewModalLabel">Email Template Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <iframe id="template-preview-frame" style="width: 100%; height: 500px; border: 1px solid #dee2e6;"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Connection Test Result Modal -->
+<div class="modal fade" id="connectionTestModal" tabindex="-1" aria-labelledby="connectionTestModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="connectionTestModalLabel">Gmail Connection Test</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="connection-test-result">
+        Testing connection...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function togglePasswordVisibility(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field.type === "password") {
+      field.type = "text";
+    } else {
+      field.type = "password";
+    }
+  }
+  
+  function testEmailConnection() {
+    // Get form data
+    const formData = new FormData(document.getElementById('smtp-settings-form'));
+    formData.append('recipient', "{{ current_user.email }}");
+    formData.append('subject', "Gmail API Test from Mobilize App");
+    formData.append('message', "This is a test email sent via the Gmail API. If you received this email, your Gmail integration is working correctly.");
+    
+    const connectionModal = new bootstrap.Modal(document.getElementById('connectionTestModal'));
+    connectionModal.show();
+    
+    document.getElementById('connection-test-result').innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Testing connection to Gmail API...</p></div>';
+    
+    // Send AJAX request to test connection
+    fetch('{{ url_for("admin.test_email_connection") }}', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('connection-test-result').innerHTML = 
+          '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i> Connection successful! Test email has been sent to {{ current_user.email }}.</div>' +
+          '<div class="mt-3"><strong>Please check your inbox to verify delivery.</strong></div>';
+      } else {
+        document.getElementById('connection-test-result').innerHTML = 
+          '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i> Connection failed!</div>' +
+          '<div class="mt-3"><strong>Error:</strong> ' + data.error + '</div>' +
+          '<div class="mt-2">Please check your Google authentication and try again.</div>';
+      }
+    })
+    .catch(error => {
+      document.getElementById('connection-test-result').innerHTML = 
+        '<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i> Request failed</div>' +
+        '<div class="mt-3">An error occurred while testing the Gmail connection. Please try again.</div>';
+    });
+  }
+  
+  function sendTestEmail() {
+    const recipient = document.getElementById('test_recipient').value;
+    const subject = document.getElementById('test_subject').value;
+    const message = document.getElementById('test_message').value;
+    
+    if (!recipient) {
+      alert("Please enter a recipient email address");
+      return;
+    }
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('recipient', recipient);
+    formData.append('subject', subject);
+    formData.append('message', message);
+    formData.append('csrf_token', "{{ csrf_token }}");
+    
+    // Show loading state
+    const sendBtn = document.querySelector('#test-email-form button');
+    const originalBtnText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+    sendBtn.disabled = true;
+    
+    // Send AJAX request
+    fetch('{{ url_for("admin.test_email_connection") }}', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert("Test email sent successfully to " + recipient);
+      } else {
+        alert("Failed to send test email: " + data.error);
+      }
+    })
+    .catch(error => {
+      alert("An error occurred while sending the test email. Please try again.");
+    })
+    .finally(() => {
+      // Restore button state
+      sendBtn.innerHTML = originalBtnText;
+      sendBtn.disabled = false;
+    });
+  }
+  
+  function previewTemplate(templateId) {
+    const previewModal = new bootstrap.Modal(document.getElementById('templatePreviewModal'));
+    const previewFrame = document.getElementById('template-preview-frame');
+    
+    // Set iframe source to the template preview endpoint
+    previewFrame.src = "{{ url_for('admin.preview_email_template', template_id=0) }}".replace('0', templateId);
+    
+    previewModal.show();
+  }
+</script>
+{% endblock %} 

@@ -2,6 +2,19 @@
 
 {% block title %}Import Google Contacts{% endblock %}
 
+{% block head %}
+{{ super() }}
+<style>
+    .badge-sm {
+        font-size: 0.7em;
+        padding: 0.2em 0.5em;
+    }
+    .font-weight-medium {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row mb-4">
@@ -20,12 +33,21 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Step 1: Select Contacts</h6>
+                    <div>
+                        <span class="badge badge-info">Page {{ current_page }}</span>
+                        {% if total_count > 0 %}
+                        <span class="badge badge-secondary">{{ google_contacts|length }} of approximately {{ total_count }} contacts</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body">
-                    <form action="{{ url_for('google_sync.map_contacts') }}" method="post">
+                    <form action="{{ url_for('google_sync.map_contacts') }}" method="post" id="contactsForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <!-- Store the currently selected contacts across pages -->
+                        <div id="selected-contacts-container"></div>
+                        
                         <div class="table-responsive">
                             <table class="table" id="contactsTable" width="100%" cellspacing="0">
                                 <thead>
@@ -52,11 +74,26 @@
                                                         id="contact-{{ contact.id }}" 
                                                         name="selected_contacts" 
                                                         value="{{ contact.id }}"
+                                                        data-contact-id="{{ contact.id }}"
                                                         {% if contact.already_imported %}disabled{% endif %}>
                                                     <label class="custom-control-label" for="contact-{{ contact.id }}"></label>
                                                 </div>
                                             </td>
-                                            <td>{{ contact.name }}</td>
+                                            <td>
+                                                {% if contact.display_name and contact.display_name != (contact.first_name + ' ' + contact.last_name).strip() %}
+                                                <div class="mb-1">
+                                                    <strong>{{ contact.display_name }}</strong> 
+                                                    <span class="badge badge-info badge-sm">Original</span>
+                                                </div>
+                                                <div class="text-muted small">
+                                                    Parsed as: 
+                                                    <span class="font-weight-medium">{{ contact.first_name }}</span> 
+                                                    <span class="font-weight-medium">{{ contact.last_name }}</span>
+                                                </div>
+                                                {% else %}
+                                                {{ contact.name }}
+                                                {% endif %}
+                                            </td>
                                             <td>
                                                 {% if contact.emails %}
                                                     {% for email in contact.emails %}
@@ -93,6 +130,55 @@
                             </table>
                         </div>
 
+                        <!-- Pagination -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="pagination-info">
+                                    Showing {{ google_contacts|length }} contacts
+                                    {% if per_page %}
+                                    <span class="text-muted">({{ per_page }} per page)</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <nav aria-label="Google contacts pagination">
+                                    <ul class="pagination justify-content-end">
+                                        {% if has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('google_sync.import_contacts', page=prev_page, per_page=per_page, total_count=total_count) }}" aria-label="Previous">
+                                                <span aria-hidden="true">&laquo;</span>
+                                            </a>
+                                        </li>
+                                        {% else %}
+                                        <li class="page-item disabled">
+                                            <a class="page-link" href="#" aria-label="Previous">
+                                                <span aria-hidden="true">&laquo;</span>
+                                            </a>
+                                        </li>
+                                        {% endif %}
+                                        
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ current_page }}</span>
+                                        </li>
+                                        
+                                        {% if has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('google_sync.import_contacts', page=next_page, page_token=next_page_token, per_page=per_page, total_count=total_count) }}" aria-label="Next">
+                                                <span aria-hidden="true">&raquo;</span>
+                                            </a>
+                                        </li>
+                                        {% else %}
+                                        <li class="page-item disabled">
+                                            <a class="page-link" href="#" aria-label="Next">
+                                                <span aria-hidden="true">&raquo;</span>
+                                            </a>
+                                        </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+
                         <div class="row mt-4">
                             <div class="col-12 text-right">
                                 <a href="{{ url_for('google_sync.index') }}" class="btn btn-secondary">Cancel</a>
@@ -113,12 +199,99 @@
         const selectAllCheckbox = document.getElementById('select-all');
         const contactCheckboxes = document.querySelectorAll('.contact-checkbox:not([disabled])');
         const continueBtn = document.getElementById('continue-btn');
-
+        const selectedContactsContainer = document.getElementById('selected-contacts-container');
+        
+        // Load previously selected contacts from localStorage
+        const loadSelectedContacts = () => {
+            try {
+                const savedContacts = JSON.parse(localStorage.getItem('selectedGoogleContacts') || '[]');
+                
+                // Check boxes for previously selected contacts that are on this page
+                contactCheckboxes.forEach(checkbox => {
+                    const contactId = checkbox.getAttribute('data-contact-id');
+                    if (savedContacts.includes(contactId)) {
+                        checkbox.checked = true;
+                    }
+                });
+                
+                // Update UI based on selections
+                updateContinueButton();
+                updateSelectAllState();
+                
+                return savedContacts;
+            } catch (e) {
+                console.error('Error loading selected contacts:', e);
+                return [];
+            }
+        };
+        
+        // Save selected contacts to localStorage
+        const saveSelectedContacts = () => {
+            const currentlySelected = [];
+            
+            // Get all currently checked contacts on this page
+            document.querySelectorAll('.contact-checkbox:checked').forEach(checkbox => {
+                currentlySelected.push(checkbox.getAttribute('data-contact-id'));
+            });
+            
+            // Merge with previously saved contacts that aren't on this page
+            const currentPageContactIds = Array.from(contactCheckboxes).map(cb => 
+                cb.getAttribute('data-contact-id')
+            );
+            
+            const previouslySelected = JSON.parse(localStorage.getItem('selectedGoogleContacts') || '[]');
+            const filteredPrevious = previouslySelected.filter(id => !currentPageContactIds.includes(id));
+            
+            // Combine and save
+            const allSelected = [...filteredPrevious, ...currentlySelected];
+            localStorage.setItem('selectedGoogleContacts', JSON.stringify(allSelected));
+            
+            return allSelected;
+        };
+        
         // Function to update the continue button state
         function updateContinueButton() {
-            const checkedCount = document.querySelectorAll('.contact-checkbox:checked').length;
-            continueBtn.disabled = checkedCount === 0;
+            const totalSelected = document.querySelectorAll('.contact-checkbox:checked').length + 
+                                 (JSON.parse(localStorage.getItem('selectedGoogleContacts') || '[]').length - 
+                                  document.querySelectorAll('.contact-checkbox:checked[data-contact-id]').length);
+            
+            continueBtn.disabled = totalSelected === 0;
+            
+            // Update the button text to show selection count
+            if (totalSelected > 0) {
+                continueBtn.textContent = `Continue with ${totalSelected} Contact${totalSelected !== 1 ? 's' : ''}`;
+            } else {
+                continueBtn.textContent = 'Continue to Mapping';
+            }
         }
+        
+        // Function to update the "Select All" checkbox state
+        function updateSelectAllState() {
+            const allChecked = document.querySelectorAll('.contact-checkbox:not([disabled])').length === 
+                              document.querySelectorAll('.contact-checkbox:not([disabled]):checked').length;
+            selectAllCheckbox.checked = allChecked;
+        }
+
+        // Handle form submission to include all selected contacts
+        document.getElementById('contactsForm').addEventListener('submit', function(e) {
+            // Get all selected contacts
+            const allSelected = saveSelectedContacts();
+            
+            // Clear the container
+            selectedContactsContainer.innerHTML = '';
+            
+            // Add hidden inputs for all selected contacts
+            allSelected.forEach(contactId => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selected_contacts';
+                input.value = contactId;
+                selectedContactsContainer.appendChild(input);
+            });
+            
+            // Clear localStorage after form submission
+            localStorage.removeItem('selectedGoogleContacts');
+        });
 
         // Handle "Select All" checkbox
         if (selectAllCheckbox) {
@@ -126,6 +299,7 @@
                 contactCheckboxes.forEach(checkbox => {
                     checkbox.checked = selectAllCheckbox.checked;
                 });
+                saveSelectedContacts();
                 updateContinueButton();
             });
         }
@@ -133,18 +307,19 @@
         // Handle individual contact checkboxes
         contactCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
+                saveSelectedContacts();
                 updateContinueButton();
-                
-                // Update "Select All" checkbox
-                const allChecked = document.querySelectorAll('.contact-checkbox:not([disabled])').length === 
-                                  document.querySelectorAll('.contact-checkbox:not([disabled]):checked').length;
-                selectAllCheckbox.checked = allChecked;
+                updateSelectAllState();
             });
         });
 
-        // Initialize DataTable
+        // Load saved selections on page load
+        loadSelectedContacts();
+        updateContinueButton();
+
+        // Initialize DataTable without its pagination (we use our own)
         $('#contactsTable').DataTable({
-            "pageLength": 25,
+            "paging": false,
             "order": [[1, 'asc']], // Sort by name column
             "columnDefs": [
                 { "orderable": false, "targets": 0 } // Disable sorting on checkbox column

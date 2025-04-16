@@ -317,8 +317,16 @@ class CalendarService:
             current_app.logger.error(f"Failed to delete Google Calendar event: {str(e)}")
             raise Exception(f"Failed to delete Google Calendar event: {str(e)}")
 
-    def create_meeting(self, summary, description, start_time, duration_minutes=60):
-        """Create a Google Calendar event with Google Meet conferencing."""
+    def create_meeting(self, summary, description, start_time, duration_minutes=60, attendees=None):
+        """Create a Google Calendar event with Google Meet conferencing.
+        
+        Args:
+            summary: Title of the meeting
+            description: Description of the meeting
+            start_time: Datetime object for the start time
+            duration_minutes: Duration of the meeting in minutes
+            attendees: List of email addresses to invite to the meeting
+        """
         from flask import current_app
         
         try:
@@ -363,6 +371,15 @@ class CalendarService:
                     'useDefault': True
                 }
             }
+            
+            # Add attendees if provided
+            if attendees:
+                if isinstance(attendees, str):
+                    # If a single email is provided as a string, convert to list
+                    attendees = [attendees]
+                
+                event['attendees'] = [{'email': email} for email in attendees if email]
+                current_app.logger.debug(f"Adding {len(event['attendees'])} attendees to meeting")
 
             current_app.logger.debug(f"Creating event with data: {event}")
             
@@ -370,7 +387,8 @@ class CalendarService:
             event_result = self.service.events().insert(
                 calendarId='primary',
                 body=event,
-                conferenceDataVersion=1
+                conferenceDataVersion=1,
+                sendUpdates='all'  # Send email notifications to attendees
             ).execute()
             
             current_app.logger.info(f"Successfully created Google Meet event with ID: {event_result['id']}")
@@ -398,32 +416,68 @@ class CalendarService:
             ).execute()
             
             events = events_result.get('items', [])
+            event_count = 0
 
-            for event in events:
-                # Check if event is already linked to a task
-                task = Task.query.filter_by(
-                    google_calendar_event_id=event['id']
-                ).first()
+            # Get user record for office_id
+            from app.models.user import User
+            user = User.query.get(self.user_id)
+            if not user:
+                raise Exception(f"User with ID {self.user_id} not found")
 
-                if not task and 'summary' in event:
-                    # Create new task from event
-                    start = event['start'].get('dateTime', event['start'].get('date'))
-                    task = Task(
-                        title=event['summary'],
-                        description=event.get('description', ''),
-                        due_date=datetime.fromisoformat(start.replace('Z', '+00:00')),
-                        status='pending',
-                        google_calendar_event_id=event['id'],
-                        created_by=self.user_id
-                    )
-                    db.session.add(task)
+            with db.session.no_autoflush:
+                for event in events:
+                    # Skip events without a summary
+                    if 'summary' not in event:
+                        continue
+
+                    # Check if event is already linked to a task
+                    task = Task.query.filter_by(
+                        google_calendar_event_id=event['id']
+                    ).first()
+
+                    if not task:
+                        # Parse event start time
+                        start = event['start'].get('dateTime', event['start'].get('date'))
+                        
+                        # Convert to datetime object based on format
+                        if 'T' in start:
+                            # This is a datetime format
+                            start_dt = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                            due_date = start_dt.date()
+                            due_time = start_dt.strftime('%H:%M')
+                        else:
+                            # This is a date-only format
+                            due_date = datetime.fromisoformat(start).date()
+                            due_time = None
+
+                        # Create new task from event
+                        task = Task(
+                            title=event['summary'],
+                            description=event.get('description', ''),
+                            due_date=due_date,
+                            due_time=due_time,
+                            status='pending',
+                            priority='medium',
+                            reminder_option='none',
+                            google_calendar_event_id=event['id'],
+                            google_calendar_sync_enabled=True,
+                            created_by=self.user_id,
+                            owner_id=self.user_id,  # Set owner_id to the user who is syncing
+                            office_id=user.office_id,  # Set office_id if available
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow()
+                        )
+                        db.session.add(task)
+                        event_count += 1
 
             db.session.commit()
-            return len(events)
+            return event_count
 
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
             db.session.rollback()
-            raise Exception(f"Failed to sync calendar events: {str(e)}")
+            raise Exception(f"Failed to sync calendar events: {str(e)}\n{error_details}")
 
     def get_upcoming_events(self, days=7):
         """Get upcoming calendar events."""

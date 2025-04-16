@@ -4,10 +4,9 @@
 
 {% block page_title %}Compose New Message{% endblock %}
 
-{% block styles %}
-{{ super() }}
+{% block extra_css %}
 <!-- Include Summernote CSS -->
-<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css" rel="stylesheet">
 <style>
     .note-editor {
         margin-bottom: 20px;
@@ -95,6 +94,52 @@
                         <div class="mb-3">
                             <label for="message-content" class="form-label">Message Content</label>
                             <textarea class="form-control" id="message-content" name="message" rows="10" required></textarea>
+                        </div>
+                        
+                        <div class="video-conference-fields" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle-fill me-2"></i>Schedule a Google Meet video conference
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="meeting-date" class="form-label">Meeting Date</label>
+                                        <input type="date" class="form-control" id="meeting-date" name="meeting_date" 
+                                            value="{{ (now + timedelta(days=1)).strftime('%Y-%m-%d') }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="meeting-time" class="form-label">Meeting Time</label>
+                                        <input type="time" class="form-control" id="meeting-time" name="meeting_time" 
+                                            value="{{ (now + timedelta(hours=1)).strftime('%H:%M') }}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="meeting-duration" class="form-label">Duration</label>
+                                        <select class="form-select" id="meeting-duration" name="meeting_duration">
+                                            <option value="30">30 minutes</option>
+                                            <option value="60" selected>1 hour</option>
+                                            <option value="90">1.5 hours</option>
+                                            <option value="120">2 hours</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="meeting-timezone" class="form-label">Time Zone</label>
+                                        <select class="form-select" id="meeting-timezone" name="meeting_timezone">
+                                            <option value="America/New_York" selected>Eastern Time (ET)</option>
+                                            <option value="America/Chicago">Central Time (CT)</option>
+                                            <option value="America/Denver">Mountain Time (MT)</option>
+                                            <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="email-specific-fields">
@@ -193,10 +238,12 @@
 
 {% block scripts %}
 {{ super() }}
+<!-- jQuery is required for Summernote -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- Include Summernote JS -->
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    $(document).ready(function() {
         // Initialize rich text editor
         $('#message-content').summernote({
             placeholder: 'Compose your message here...',
@@ -210,7 +257,26 @@
                 ['table', ['table']],
                 ['insert', ['link', 'picture']],
                 ['view', ['fullscreen', 'codeview', 'help']]
-            ]
+            ],
+            callbacks: {
+                onInit: function() {
+                    {% if default_signature %}
+                    // Add a line break and the signature to the editor when it initializes
+                    const signatureHtml = `
+                        <br><br>
+                        <div class="email-signature">
+                            {{ default_signature.content|safe }}
+                            {% if default_signature.logo_url %}
+                            <div class="signature-logo">
+                                <img src="{{ default_signature.logo_url }}" alt="Signature logo" style="max-height: 100px;">
+                            </div>
+                            {% endif %}
+                        </div>
+                    `;
+                    $('#message-content').summernote('code', signatureHtml);
+                    {% endif %}
+                }
+            }
         });
 
         // Toggle recipient type
@@ -223,6 +289,11 @@
                 $('#person-recipient-group').hide();
                 $('#church-recipient-group').show();
             }
+            
+            // Update video conference subject if that's the current type
+            if ($('#message-type').val() === 'video_conference') {
+                updateVideoConferenceSubject();
+            }
         });
 
         // Toggle message type specific fields
@@ -230,8 +301,53 @@
             const messageType = $(this).val();
             if (messageType === 'email') {
                 $('.email-specific-fields').show();
+                $('.video-conference-fields').hide();
+            } else if (messageType === 'video_conference') {
+                $('.email-specific-fields').hide();
+                $('.video-conference-fields').show();
+                
+                // Set default values - current date/time + 1 day at same time
+                const now = new Date();
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                // Format date for the input
+                const dateStr = tomorrow.toISOString().split('T')[0];
+                $('#meeting-date').val(dateStr);
+                
+                // Format time for the input (rounded to nearest half hour)
+                const hours = now.getHours();
+                const minutes = now.getMinutes() >= 30 ? '30' : '00';
+                const timeStr = `${hours.toString().padStart(2, '0')}:${minutes}`;
+                $('#meeting-time').val(timeStr);
+                
+                // Add default subject if empty
+                if (!$('#email-subject').val()) {
+                    // Get recipient info for subject if available
+                    let recipientName = '';
+                    if ($('#recipient-type').val() === 'person') {
+                        const personSelect = document.getElementById('person-recipient');
+                        if (personSelect.selectedIndex > 0) {
+                            recipientName = personSelect.options[personSelect.selectedIndex].text;
+                        }
+                    } else {
+                        const churchSelect = document.getElementById('church-recipient');
+                        if (churchSelect.selectedIndex > 0) {
+                            recipientName = churchSelect.options[churchSelect.selectedIndex].text;
+                        }
+                    }
+                    
+                    const defaultSubject = recipientName 
+                        ? `Video Meeting with ${recipientName}` 
+                        : 'Video Conference Meeting';
+                    $('#email-subject').val(defaultSubject);
+                }
+                
+                // Call updatePreview to show the meeting details
+                updatePreview();
             } else {
                 $('.email-specific-fields').hide();
+                $('.video-conference-fields').hide();
             }
         });
 
@@ -240,6 +356,7 @@
             const subject = $('#email-subject').val() || '(No Subject)';
             const content = $('#message-content').summernote('code');
             const recipientType = $('#recipient-type').val();
+            const messageType = $('#message-type').val();
             
             let recipientName = 'No recipient selected';
             if (recipientType === 'person') {
@@ -254,12 +371,42 @@
                 }
             }
             
+            // We'll use the message as is without adding a preview
+            // of the meeting details for video conferences
+            let previewContent = content;
+            
             // Update preview modal
             $('#preview-subject').text(subject);
             $('#preview-recipient').text(recipientName);
-            $('#preview-content').html(content);
+            $('#preview-content').html(previewContent);
             
-            // Show the modal
+            if (messageType === 'video_conference') {
+                $('#preview-content').append(`
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Video conference details will be added automatically after submission.
+                    </div>
+                `);
+            }
+            
+            // Also update the side preview
+            $('#email-preview').html(`
+                <div class="p-3">
+                    <strong>Subject:</strong> ${subject}<br>
+                    <strong>To:</strong> ${recipientName}<br>
+                    <hr>
+                    <div class="mt-3">
+                        ${previewContent}
+                    </div>
+                    ${messageType === 'video_conference' ? 
+                    `<div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Video conference details will be added automatically after submission.
+                    </div>` : ''}
+                </div>
+            `);
+            
+            // Show the modal using Bootstrap 5 syntax
             var previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
             previewModal.show();
         });
@@ -295,8 +442,97 @@
             
             // Fill in the form
             $('#email-subject').val(templateSubject);
+            
+            {% if default_signature %}
+            // Add the signature to the template content
+            const signatureHtml = `
+                <br><br>
+                <div class="email-signature">
+                    {{ default_signature.content|safe }}
+                    {% if default_signature.logo_url %}
+                    <div class="signature-logo">
+                        <img src="{{ default_signature.logo_url }}" alt="Signature logo" style="max-height: 100px;">
+                    </div>
+                    {% endif %}
+                </div>
+            `;
+            templateContent += signatureHtml;
+            {% endif %}
+            
             $('#message-content').summernote('code', templateContent);
+            
+            // Update the preview as well
+            updatePreview();
         });
+
+        // Function to update the preview pane
+        function updatePreview() {
+            const subject = $('#email-subject').val() || '(No Subject)';
+            const content = $('#message-content').summernote('code');
+            const recipientType = $('#recipient-type').val();
+            const messageType = $('#message-type').val();
+            
+            let recipientName = 'No recipient selected';
+            if (recipientType === 'person') {
+                const personSelect = document.getElementById('person-recipient');
+                if (personSelect.selectedIndex > 0) {
+                    recipientName = personSelect.options[personSelect.selectedIndex].text;
+                }
+            } else {
+                const churchSelect = document.getElementById('church-recipient');
+                if (churchSelect.selectedIndex > 0) {
+                    recipientName = churchSelect.options[churchSelect.selectedIndex].text;
+                }
+            }
+            
+            // For video conference, we'll use the message as is without adding
+            // a preview of the meeting details, since these will be added by 
+            // the backend after submission
+            let previewContent = content;
+            
+            // Update the side preview
+            $('#email-preview').html(`
+                <div class="p-3">
+                    <strong>Subject:</strong> ${subject}<br>
+                    <strong>To:</strong> ${recipientName}<br>
+                    <hr>
+                    <div class="mt-3">
+                        ${previewContent}
+                    </div>
+                    ${messageType === 'video_conference' ? 
+                    `<div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Video conference details will be added automatically after submission.
+                    </div>` : ''}
+                </div>
+            `);
+        }
+        
+        // Attach update preview to editor changes
+        $('#message-content').on('summernote.change', function() {
+            updatePreview();
+        });
+        
+        // Update preview when subject changes
+        $('#email-subject').on('input', function() {
+            updatePreview();
+        });
+        
+        // Update preview when recipient changes
+        $('#person-recipient, #church-recipient').on('change', function() {
+            updatePreview();
+            if ($('#message-type').val() === 'video_conference') {
+                updateVideoConferenceSubject();
+            }
+        });
+        
+        // Update preview when meeting details change
+        $('#meeting-date, #meeting-time, #meeting-duration, #meeting-timezone').on('change', function() {
+            updatePreview();
+        });
+        
+        // Initial preview update
+        updatePreview();
 
         // Handle recipient selection to show recent communications
         $('#person-recipient, #church-recipient').on('change', function() {
@@ -334,6 +570,56 @@
             // In a real app, this would actually save to the server
             alert('Draft saved successfully!');
         });
+        
+        // Handle form submission for video conference type
+        $('#compose-form').on('submit', function(e) {
+            const messageType = $('#message-type').val();
+            
+            // Only process if it's a video conference
+            if (messageType === 'video_conference') {
+                // Get meeting details
+                const meetingDate = $('#meeting-date').val();
+                const meetingTime = $('#meeting-time').val();
+                const meetingDuration = $('#meeting-duration option:selected').text();
+                const meetingTimezone = $('#meeting-timezone option:selected').text();
+                
+                // Don't insert placeholders if the meeting details aren't filled out
+                if (!meetingDate || !meetingTime) {
+                    return true;
+                }
+                
+                // Since the backend will add the Video Conference Details section,
+                // we don't need to add a placeholder meeting info section here.
+                // The original code that added a meeting details section has been removed
+                // to avoid duplication in the final message.
+            }
+            
+            // Continue with form submission
+            return true;
+        });
+
+        // Update subject when recipient changes for video conference
+        function updateVideoConferenceSubject() {
+            // Get recipient info for subject
+            let recipientName = '';
+            if ($('#recipient-type').val() === 'person') {
+                const personSelect = document.getElementById('person-recipient');
+                if (personSelect.selectedIndex > 0) {
+                    recipientName = personSelect.options[personSelect.selectedIndex].text;
+                }
+            } else {
+                const churchSelect = document.getElementById('church-recipient');
+                if (churchSelect.selectedIndex > 0) {
+                    recipientName = churchSelect.options[churchSelect.selectedIndex].text;
+                }
+            }
+            
+            if (recipientName) {
+                const defaultSubject = `Video Meeting with ${recipientName}`;
+                $('#email-subject').val(defaultSubject);
+                updatePreview();
+            }
+        }
     });
 </script>
 {% endblock %} 

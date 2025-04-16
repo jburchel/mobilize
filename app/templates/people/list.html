@@ -7,6 +7,16 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css">
+<style>
+/* Make search bar wider */
+.search-container {
+    width: 350px !important;
+}
+.input-group.search-input {
+    width: 350px !important;
+    max-width: 350px !important;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -15,8 +25,8 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div class="d-flex gap-2">
+                <div class="card-body d-flex align-items-center">
+                    <div class="d-flex gap-2 me-auto">
                         <a href="{{ url_for('people.create') }}" class="btn btn-primary">
                             <i class="bi bi-plus-lg"></i> Add Person
                         </a>
@@ -28,18 +38,18 @@
                         </button>
                     </div>
                     <div class="d-flex gap-2">
-                        <div class="input-group">
+                        <div class="input-group search-input">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" id="searchInput" placeholder="Search people...">
+                            <input type="text" class="form-control" id="peopleSearch" placeholder="Search people...">
                         </div>
-                        <select class="form-select" id="pipelineFilter">
+                        <select class="form-select" id="pipelineFilter" style="width: auto;">
                             <option value="">All Pipelines</option>
                             <option value="lead">Lead</option>
                             <option value="prospect">Prospect</option>
                             <option value="qualified">Qualified</option>
                             <option value="committed">Committed</option>
                         </select>
-                        <select class="form-select" id="priorityFilter">
+                        <select class="form-select" id="priorityFilter" style="width: auto;">
                             <option value="">All Priorities</option>
                             <option value="high">High</option>
                             <option value="medium">Medium</option>
@@ -63,7 +73,7 @@
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <table class="table">
+                        <table class="table" id="peopleTable">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -213,122 +223,95 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap5.min.js"></script> -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('People list page loaded');
-    
-    // Simple direct search implementation
-    const searchInput = document.getElementById('searchInput');
-    const clearSearch = document.getElementById('clearSearch');
+    // Get DOM elements
+    const peopleSearch = document.getElementById('peopleSearch');
+    const pipelineFilter = document.getElementById('pipelineFilter');
+    const priorityFilter = document.getElementById('priorityFilter');
+    const table = document.getElementById('peopleTable');
     const searchFeedback = document.getElementById('searchFeedback');
-    const searchTerm = document.getElementById('searchTerm');
     const filteredCount = document.getElementById('filteredCount');
-    const tableRows = document.querySelectorAll('.datatable tbody tr');
-    
-    // Add standard styling to the table
-    document.querySelectorAll('.datatable').forEach(table => {
-        table.classList.add('table-striped', 'table-hover');
-    });
+    const searchTerm = document.getElementById('searchTerm');
+    const clearSearch = document.getElementById('clearSearch');
     
     // Function to filter table rows
-    function filterTable(query) {
-        if (!searchInput || !searchTerm || !filteredCount || !searchFeedback) {
-            console.error('One or more required elements not found');
-            return;
-        }
+    function filterTable() {
+        const searchValue = peopleSearch.value.toLowerCase().trim();
+        const pipeline = pipelineFilter.value.toLowerCase();
+        const priority = priorityFilter.value.toLowerCase();
         
-        query = query.toLowerCase();
-        let matchCount = 0;
+        let visibleCount = 0;
+        const rows = table.querySelectorAll('tbody tr');
         
-        tableRows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            const isMatch = text.includes(query);
+        rows.forEach(function(row) {
+            // Get all text content from the row
+            const nameCell = row.querySelector('td:nth-child(1)').textContent.toLowerCase();
+            const emailCell = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const phoneCell = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+            const rowPipeline = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+            const rowPriority = row.querySelector('td:nth-child(5)').textContent.toLowerCase();
             
-            row.style.display = isMatch ? '' : 'none';
-            if (isMatch) matchCount++;
+            // Check if row matches the search query (across name, email, phone)
+            const matchesSearch = !searchValue || 
+                                 nameCell.includes(searchValue) || 
+                                 emailCell.includes(searchValue) || 
+                                 phoneCell.includes(searchValue);
+            
+            // Check if row matches the pipeline and priority filters
+            const matchesPipeline = !pipeline || rowPipeline.includes(pipeline);
+            const matchesPriority = !priority || rowPriority.includes(priority);
+            
+            // Show/hide row based on all filter matches
+            const visible = matchesSearch && matchesPipeline && matchesPriority;
+            row.style.display = visible ? '' : 'none';
+            
+            if (visible) visibleCount++;
         });
         
-        // Update feedback
-        if (query) {
-            searchTerm.textContent = query;
-            filteredCount.textContent = matchCount;
+        // Update search feedback display
+        if (searchValue || pipeline || priority) {
             searchFeedback.classList.remove('d-none');
+            filteredCount.textContent = visibleCount;
+            
+            if (searchValue) {
+                searchTerm.textContent = searchValue;
+            } else if (pipeline && priority) {
+                searchTerm.textContent = `${pipeline} pipeline and ${priority} priority`;
+            } else if (pipeline) {
+                searchTerm.textContent = `${pipeline} pipeline`;
+            } else if (priority) {
+                searchTerm.textContent = `${priority} priority`;
+            } else {
+                searchTerm.textContent = 'active filters';
+            }
         } else {
             searchFeedback.classList.add('d-none');
         }
-        
-        return matchCount;
     }
     
-    // Search on keyup
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function() {
-            filterTable(this.value);
-        });
+    // Add event listeners for search and filters
+    if (peopleSearch) {
+        peopleSearch.addEventListener('input', filterTable);
     }
     
-    // Clear search
+    if (pipelineFilter) {
+        pipelineFilter.addEventListener('change', filterTable);
+    }
+    
+    if (priorityFilter) {
+        priorityFilter.addEventListener('change', filterTable);
+    }
+    
+    // Clear search button
     if (clearSearch) {
         clearSearch.addEventListener('click', function() {
-            if (searchInput) {
-                searchInput.value = '';
-                filterTable('');
-            }
+            peopleSearch.value = '';
+            pipelineFilter.value = '';
+            priorityFilter.value = '';
+            filterTable();
         });
     }
-    
-    // Pipeline filter
-    const pipelineFilter = document.getElementById('pipelineFilter');
-    if (pipelineFilter) {
-        pipelineFilter.addEventListener('change', function() {
-            const value = this.value.toLowerCase();
-            
-            tableRows.forEach(row => {
-                const pipelineCell = row.querySelector('td:nth-child(4)');
-                if (!value || (pipelineCell && pipelineCell.textContent.toLowerCase().includes(value))) {
-                    row.classList.remove('filtered-out');
-                } else {
-                    row.classList.add('filtered-out');
-                }
-            });
-            
-            // Re-apply search filter
-            if (searchInput) {
-                filterTable(searchInput.value);
-            }
-        });
-    }
-    
-    // Priority filter
-    const priorityFilter = document.getElementById('priorityFilter');
-    if (priorityFilter) {
-        priorityFilter.addEventListener('change', function() {
-            const value = this.value.toLowerCase();
-            
-            tableRows.forEach(row => {
-                const priorityCell = row.querySelector('td:nth-child(5)');
-                if (!value || (priorityCell && priorityCell.textContent.toLowerCase().includes(value))) {
-                    row.classList.remove('filtered-out');
-                } else {
-                    row.classList.add('filtered-out');
-                }
-            });
-            
-            // Re-apply search filter
-            if (searchInput) {
-                filterTable(searchInput.value);
-            }
-        });
-    }
-    
-    // Add CSS for filtered-out rows
-    const style = document.createElement('style');
-    style.textContent = '.filtered-out { display: none !important; }';
-    document.head.appendChild(style);
 });
 </script>
 {% endblock %} 

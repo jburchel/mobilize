@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from firebase_admin import auth
 from app.models.user import User
 from app.extensions import db
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, timezone, timedelta
 from app.auth.firebase import verify_firebase_token
 from app.auth.google_oauth import get_google_auth_url, handle_oauth2_callback, create_oauth_flow, store_credentials
 from google.oauth2.credentials import Credentials
@@ -11,6 +11,7 @@ from google_auth_oauthlib.flow import Flow
 from app.models.google_token import GoogleToken
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from app.utils.user_utils import create_person_for_user
 import uuid
 import os
 from urllib.parse import urlencode
@@ -72,16 +73,24 @@ def verify_token():
                 firebase_uid=decoded_token['uid'],
                 first_name=decoded_token.get('name', '').split()[0] if decoded_token.get('name') else None,
                 last_name=' '.join(decoded_token.get('name', '').split()[1:]) if decoded_token.get('name') else None,
-                last_login=datetime.now(UTC),
+                last_login=datetime.now(timezone.utc),
                 is_active=True,
                 role='standard_user',
+                first_login=True,  # Mark as first login
                 office_id=1  # Default office ID
             )
             db.session.add(user)
             db.session.commit()
+            
+            # Create a Person record for the new user
+            try:
+                create_person_for_user(user)
+                current_app.logger.info(f"Created person record for new user {user.email}")
+            except Exception as e:
+                current_app.logger.error(f"Error creating person for user: {str(e)}")
         else:
             # Update last login
-            user.last_login = datetime.now(UTC)
+            user.last_login = datetime.now(timezone.utc)
             db.session.commit()
 
         return jsonify({
@@ -121,7 +130,7 @@ def login():
         return jsonify({'error': 'Invalid credentials'}), 401
         
     # Update last login time
-    user.last_login = datetime.now(UTC)
+    user.last_login = datetime.now(timezone.utc)
     db.session.commit()
     
     # Log the user in
@@ -240,6 +249,7 @@ def oauth2callback():
                 last_name=user_info.get('family_name', ''),
                 profile_image=user_info.get('picture', ''),
                 role='standard_user',
+                first_login=True,  # Mark as first login
                 office_id=1  # Default office ID
             )
             db.session.add(user)
@@ -258,7 +268,7 @@ def oauth2callback():
         login_user(user)
         
         # Record successful login
-        user.last_login = datetime.now(UTC)
+        user.last_login = datetime.now(timezone.utc)
         db.session.commit()
         
         # Redirect to dashboard (which is at the root URL)
@@ -295,10 +305,14 @@ def dev_login():
             last_name='User',
             role='super_admin',  # Make the test user a super admin for full access
             office_id=1,  # Default office ID
-            is_active=True
+            is_active=True,
+            first_login=True  # New users should go through onboarding
         )
         db.session.add(test_user)
         db.session.commit()
+    else:
+        # For existing test user, keep their current first_login status
+        pass
     
     # Log in the test user
     login_user(test_user)
@@ -325,12 +339,16 @@ def dev_login_standard():
             last_name='Smith',
             role='standard_user',  # Standard user for testing non-admin features
             office_id=1,  # Default office ID
-            is_active=True
+            is_active=True,
+            first_login=True  # New users should go through onboarding
         )
         # Set a password for form-based login
         standard_user.set_password('password123')
         db.session.add(standard_user)
         db.session.commit()
+    else:
+        # For existing user, keep their current first_login status
+        pass
     
     # Log in as the standard user
     login_user(standard_user)
@@ -357,12 +375,16 @@ def dev_login_office_admin():
             last_name='Admin',
             role='office_admin',  # Office admin for testing admin features
             office_id=1,  # Default office ID
-            is_active=True
+            is_active=True,
+            first_login=True  # New users should go through onboarding
         )
         # Set a password for form-based login
         admin_user.set_password('password123')
         db.session.add(admin_user)
         db.session.commit()
+    else:
+        # For existing user, keep their current first_login status
+        pass
     
     # Log in as the office admin user
     login_user(admin_user)

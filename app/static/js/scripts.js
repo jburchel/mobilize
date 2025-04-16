@@ -16,38 +16,92 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Initialize all tooltips
+    // Activate Bootstrap tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-
-    // Initialize all popovers
-    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    popoverTriggerList.map(function (popoverTriggerEl) {
-        return new bootstrap.Popover(popoverTriggerEl);
-    });
-
-    // Auto-hide alerts after 5 seconds
-    setTimeout(function() {
-        var alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            var bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+    
+    // Activate DataTables if available
+    if (typeof $.fn.DataTable !== 'undefined') {
+        $('.datatable').DataTable({
+            responsive: true,
+            pageLength: 15,
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search records...",
+                paginate: {
+                    previous: "<i class='bi bi-chevron-left'></i>",
+                    next: "<i class='bi bi-chevron-right'></i>"
+                }
+            }
         });
-    }, 5000);
-
+    }
+    
+    // Add active class to current links
+    const currentLocation = window.location.pathname;
+    const menuItems = document.querySelectorAll('.nav-link');
+    
+    menuItems.forEach(item => {
+        const href = item.getAttribute('href');
+        if (href && currentLocation.includes(href) && href !== '/') {
+            item.classList.add('active');
+            
+            // If in a dropdown, open the dropdown
+            const dropdown = item.closest('.dropdown-menu');
+            if (dropdown) {
+                const toggle = dropdown.previousElementSibling;
+                if (toggle && toggle.classList.contains('dropdown-toggle')) {
+                    toggle.classList.add('active');
+                }
+            }
+        }
+    });
+    
     // Sidebar toggle
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-    const sidebarWrapper = document.querySelector('.sidebar-wrapper');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('main-content');
+    const sidebarWrapper = document.getElementById('sidebar-wrapper');
     
-    if (sidebarToggleBtn) {
+    if (sidebarToggleBtn && sidebar && mainContent && sidebarWrapper) {
         sidebarToggleBtn.addEventListener('click', function() {
+            // Toggle collapsed state
             sidebar.classList.toggle('collapsed');
             mainContent.classList.toggle('sidebar-collapsed');
             sidebarWrapper.classList.toggle('collapsed');
+            
+            // Directly handle badge visibility
+            const sidebarBadges = document.querySelectorAll('.sidebar-badge');
+            if (sidebar.classList.contains('collapsed')) {
+                sidebarBadges.forEach(badge => {
+                    badge.style.cssText = 'display: none !important; visibility: hidden !important;';
+                });
+            } else {
+                sidebarBadges.forEach(badge => {
+                    badge.style.cssText = 'display: inline-flex !important; visibility: visible !important;';
+                });
+            }
+            
+            // Debug logs
+            console.log('Sidebar collapsed state:', sidebar.classList.contains('collapsed'));
+            console.log('Badges display:', getComputedStyle(document.querySelector('.nav-badge')).display);
+            
+            // Change icon direction
+            const icon = sidebarToggleBtn.querySelector('i');
+            if (sidebar.classList.contains('collapsed')) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-angle-right');
+                
+                // Debug: Check if badges are hidden
+                const badges = document.querySelectorAll('.nav-badge');
+                badges.forEach(badge => {
+                    console.log('Badge computed style:', getComputedStyle(badge).display);
+                });
+            } else {
+                icon.classList.remove('fa-angle-right');
+                icon.classList.add('fa-bars');
+            }
             
             // Save state to localStorage
             const isCollapsed = sidebar.classList.contains('collapsed');
@@ -60,6 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.add('collapsed');
             mainContent.classList.add('sidebar-collapsed');
             sidebarWrapper.classList.add('collapsed');
+            
+            // Set correct icon for collapsed state
+            const icon = sidebarToggleBtn.querySelector('i');
+            if (icon) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-angle-right');
+            }
         }
     }
     
@@ -100,6 +161,14 @@ document.addEventListener('DOMContentLoaded', function() {
             this.setAttribute('aria-expanded', 
                 sidebar.classList.contains('show'));
         });
+    }
+
+    // Run initially
+    ensureBadgesHidden();
+    
+    // Run when sidebar toggle is clicked
+    if (sidebarToggleBtn) {
+        sidebarToggleBtn.addEventListener('click', ensureBadgesHidden);
     }
 });
 
@@ -159,4 +228,24 @@ if (window.location.pathname.includes('/dashboard')) {
     
     // Set interval for refresh
     setInterval(refreshDashboardStats, 60000); // every minute
+}
+
+// Fix for badge visibility in collapsed state
+function ensureBadgesHidden() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    
+    const badges = document.querySelectorAll('.nav-badge');
+    
+    if (sidebar.classList.contains('collapsed')) {
+        // Hide badges when collapsed
+        badges.forEach(badge => {
+            badge.style.cssText = 'display: none !important';
+        });
+    } else {
+        // Show badges when expanded
+        badges.forEach(badge => {
+            badge.style.cssText = 'display: inline-flex !important';
+        });
+    }
 } 

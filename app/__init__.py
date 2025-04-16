@@ -212,6 +212,7 @@ def create_app(test_config=None):
         'pipeline': '/pipeline',
         'reports': '/reports',
         'emails': '/emails',
+        'onboarding': '/onboarding',
     }
     
     # Register all blueprints from routes/__init__.py

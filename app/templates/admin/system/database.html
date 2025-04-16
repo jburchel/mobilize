@@ -1,0 +1,722 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Database Management{% endblock %}
+
+{% block page_title %}Database Management{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.system_dashboard') }}">System</a></li>
+<li class="breadcrumb-item active">Database Management</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Database Stats Card -->
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Database Overview</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-3">
+          <div>Database Size:</div>
+          <div class="font-weight-bold">{{ db_stats.size }}</div>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <div>Total Tables:</div>
+          <div class="font-weight-bold">{{ db_stats.tables }}</div>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <div>Total Records:</div>
+          <div class="font-weight-bold">{{ db_stats.records }}</div>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <div>Average Query Time:</div>
+          <div class="font-weight-bold">{{ db_stats.avg_query_time }}ms</div>
+        </div>
+        <div class="d-flex justify-content-between">
+          <div>Last Optimization:</div>
+          <div class="font-weight-bold">{{ db_stats.last_optimization }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DB Health Card -->
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Database Health</h5>
+      </div>
+      <div class="card-body">
+        <div class="text-center mb-4">
+          <div class="position-relative d-inline-block">
+            <canvas id="dbHealthChart" width="180" height="180"></canvas>
+            <div class="position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
+              <h2 class="mb-0">{{ db_stats.health_score }}%</h2>
+              <p class="mb-0 text-muted">Health Score</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="progress mb-3" style="height: 5px;">
+          <div class="progress-bar {{ 'bg-success' if db_stats.fragmentation < 30 else ('bg-warning' if db_stats.fragmentation < 70 else 'bg-danger') }}" 
+               role="progressbar" style="width: {{ db_stats.fragmentation }}%"></div>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+          <div>Fragmentation:</div>
+          <div class="font-weight-bold">{{ db_stats.fragmentation }}%</div>
+        </div>
+        
+        <div class="progress mb-3" style="height: 5px;">
+          <div class="progress-bar {{ 'bg-success' if db_stats.slow_queries < 10 else ('bg-warning' if db_stats.slow_queries < 30 else 'bg-danger') }}" 
+               role="progressbar" style="width: {{ db_stats.slow_queries }}%"></div>
+        </div>
+        <div class="d-flex justify-content-between">
+          <div>Slow Queries:</div>
+          <div class="font-weight-bold">{{ db_stats.slow_queries }}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions Card -->
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Database Actions</h5>
+      </div>
+      <div class="card-body">
+        <form action="{{ url_for('admin.create_database_backup') }}" method="post" class="mb-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-primary btn-lg w-100">
+            <i class="fas fa-save me-2"></i> Create Backup
+          </button>
+        </form>
+        
+        <form action="{{ url_for('admin.optimize_database') }}" method="post" class="mb-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn btn-warning btn-lg w-100">
+            <i class="fas fa-bolt me-2"></i> Optimize Database
+          </button>
+        </form>
+        
+        <button type="button" class="btn btn-info btn-lg w-100 mb-3" data-bs-toggle="modal" data-bs-target="#exportModal">
+          <i class="fas fa-file-export me-2"></i> Export Data
+        </button>
+        
+        <button type="button" class="btn btn-success btn-lg w-100 mb-3" data-bs-toggle="modal" data-bs-target="#importModal">
+          <i class="fas fa-file-import me-2"></i> Import Data
+        </button>
+        
+        <button type="button" class="btn btn-danger btn-lg w-100" data-bs-toggle="modal" data-bs-target="#restoreModal">
+          <i class="fas fa-undo me-2"></i> Restore Backup
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tables Overview -->
+<div class="row">
+  <div class="col-12">
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Database Tables</h5>
+        <div>
+          <input type="text" id="tableSearch" class="form-control" placeholder="Search tables...">
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover" id="databaseTablesTable">
+            <thead>
+              <tr>
+                <th>Table Name</th>
+                <th>Records</th>
+                <th>Size</th>
+                <th>Last Updated</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for table in table_stats %}
+              <tr>
+                <td>{{ table.name }}</td>
+                <td>{{ table.records }}</td>
+                <td>{{ table.size }}</td>
+                <td>{{ table.last_updated }}</td>
+                <td>
+                  <span class="badge {{ 'bg-success' if table.status == 'Healthy' else ('bg-warning' if table.status == 'Needs Optimization' else 'bg-danger') }}">
+                    {{ table.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                            onclick="viewTableDetails('{{ table.name }}')">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning"
+                            onclick="optimizeTable('{{ table.name }}')">
+                      <i class="fas fa-bolt"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-info"
+                            onclick="exportTable('{{ table.name }}')">
+                      <i class="fas fa-download"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Backups -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Recent Backups</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover" id="backupsTable">
+            <thead>
+              <tr>
+                <th>Backup ID</th>
+                <th>Created</th>
+                <th>Size</th>
+                <th>Created By</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for backup in backups %}
+              <tr>
+                <td>{{ backup.id }}</td>
+                <td>{{ backup.created_at }}</td>
+                <td>{{ backup.size }}</td>
+                <td>{{ backup.created_by }}</td>
+                <td>{{ backup.type }}</td>
+                <td>
+                  <span class="badge {{ 'bg-success' if backup.status == 'Complete' else 'bg-warning' }}">
+                    {{ backup.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="btn-group">
+                    <form action="{{ url_for('admin.restore_database', backup_id=backup.id) }}" method="post">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <button type="submit" class="btn btn-sm btn-danger" 
+                              onclick="return confirm('Are you sure you want to restore this backup? This will replace the current database.')">
+                        <i class="fas fa-undo-alt"></i> Restore
+                      </button>
+                    </form>
+                    <button type="button" class="btn btn-sm btn-info" onclick="downloadBackup({{ backup.id }})">
+                      <i class="fas fa-download"></i> Download
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exportModalLabel">Export Database Data</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="exportForm">
+          <div class="mb-3">
+            <label for="exportFormat" class="form-label">Export Format</label>
+            <select class="form-select" id="exportFormat">
+              <option value="sql">SQL</option>
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Export Scope</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="exportScope" value="all" id="exportScopeAll" checked>
+              <label class="form-check-label" for="exportScopeAll">
+                All Tables
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="exportScope" value="selected" id="exportScopeSelected">
+              <label class="form-check-label" for="exportScopeSelected">
+                Selected Tables
+              </label>
+            </div>
+          </div>
+          <div class="mb-3" id="tableSelectContainer" style="display: none;">
+            <label class="form-label">Select Tables</label>
+            <div class="table-select-area" style="max-height: 200px; overflow-y: auto;">
+              {% for table in table_stats %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="selectedTables" value="{{ table.name }}" id="table{{ loop.index }}">
+                <label class="form-check-label" for="table{{ loop.index }}">
+                  {{ table.name }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Options</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="includeSchema" checked>
+              <label class="form-check-label" for="includeSchema">
+                Include Schema
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="" id="includeData" checked>
+              <label class="form-check-label" for="includeData">
+                Include Data
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="startExport">Export</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importModalLabel">Import Database Data</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="importForm" enctype="multipart/form-data" method="post" action="{{ url_for('admin.import_database_data') }}" onsubmit="return confirmImport()">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="mb-3">
+            <label for="importFile" class="form-label">Select File to Import</label>
+            <input class="form-control" type="file" id="importFile" name="importFile" required>
+            <div class="form-text">Supported formats: SQL, CSV, JSON, Excel</div>
+          </div>
+          <div class="mb-3">
+            <label for="importFormat" class="form-label">File Format</label>
+            <select class="form-select" id="importFormat" name="importFormat">
+              <option value="auto">Auto-detect</option>
+              <option value="sql">SQL</option>
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+              <option value="excel">Excel</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="targetTable" class="form-label">Target Table</label>
+            <select class="form-select" id="targetTable" name="targetTable">
+              <option value="">Create New Table</option>
+              {% for table in table_stats %}
+              <option value="{{ table.name }}">{{ table.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Import Options</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="1" id="truncateBeforeImport" name="truncateBeforeImport">
+              <label class="form-check-label" for="truncateBeforeImport">
+                Truncate table before import
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="1" id="ignoreErrors" name="ignoreErrors">
+              <label class="form-check-label" for="ignoreErrors">
+                Continue on error
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="1" id="headerRow" name="headerRow" checked>
+              <label class="form-check-label" for="headerRow">
+                First row contains headers (CSV/Excel)
+              </label>
+            </div>
+          </div>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Import Limitations:</strong> Maximum file size is 10MB. For larger imports, please use command-line tools.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-success">Import</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Restore Modal -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-labelledby="restoreModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="restoreModalLabel">Restore Database</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Warning:</strong> Restoring a backup will replace your current database. This action cannot be undone.
+        </div>
+        
+        <form id="restoreForm">
+          <div class="mb-3">
+            <label for="restoreBackupSelect" class="form-label">Select Backup</label>
+            <select class="form-select" id="restoreBackupSelect">
+              {% for backup in backups %}
+              <option value="{{ backup.id }}">{{ backup.created_at }} - {{ backup.size }} ({{ backup.type }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="uploadBackup" class="form-label">Or Upload Backup File</label>
+            <input class="form-control" type="file" id="uploadBackup">
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" value="" id="confirmRestore" required>
+            <label class="form-check-label" for="confirmRestore">
+              I understand this will replace the current database
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="performRestore" disabled>Restore</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table Details Modal -->
+<div class="modal fade" id="tableDetailsModal" tabindex="-1" aria-labelledby="tableDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tableDetailsModalLabel">Table Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="tableDetailsContent">
+          <!-- Content will be loaded dynamically -->
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize database tables DataTable
+    const databaseTablesTable = new DataTable('#databaseTablesTable', {
+      order: [[0, 'asc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: 'Bfrtip',
+      buttons: [
+        'copy', 'csv', 'excel', 'pdf', 'print'
+      ]
+    });
+    
+    // Initialize backups DataTable
+    const backupsTable = new DataTable('#backupsTable', {
+      order: [[1, 'desc']],
+      pageLength: 5,
+      lengthMenu: [5, 10, 25, 50],
+      dom: 'Bfrtip',
+      buttons: [
+        'copy', 'csv', 'excel', 'pdf', 'print'
+      ]
+    });
+    
+    // Table search functionality
+    document.getElementById('tableSearch').addEventListener('keyup', function() {
+      databaseTablesTable.search(this.value).draw();
+    });
+    
+    // Draw database health chart
+    const dbHealthCtx = document.getElementById('dbHealthChart').getContext('2d');
+    const dbHealthChart = new Chart(dbHealthCtx, {
+      type: 'doughnut',
+      data: {
+        datasets: [{
+          data: [{{ db_stats.health_score }}, 100 - {{ db_stats.health_score }}],
+          backgroundColor: [
+            getHealthColor({{ db_stats.health_score }}),
+            '#eaeaea'
+          ],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        cutout: '75%',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            enabled: false
+          }
+        }
+      }
+    });
+    
+    // Export modal logic
+    document.querySelectorAll('input[name="exportScope"]').forEach(input => {
+      input.addEventListener('change', function() {
+        if (this.value === 'selected') {
+          document.getElementById('tableSelectContainer').style.display = 'block';
+        } else {
+          document.getElementById('tableSelectContainer').style.display = 'none';
+        }
+      });
+    });
+    
+    // Restore confirmation logic
+    document.getElementById('confirmRestore').addEventListener('change', function() {
+      document.getElementById('performRestore').disabled = !this.checked;
+    });
+    
+    // Start export action
+    document.getElementById('startExport').addEventListener('click', function() {
+      // Implementation would depend on backend API
+      const format = document.getElementById('exportFormat').value;
+      const scope = document.querySelector('input[name="exportScope"]:checked').value;
+      const includeSchema = document.getElementById('includeSchema').checked;
+      const includeData = document.getElementById('includeData').checked;
+      
+      let selectedTables = [];
+      if (scope === 'selected') {
+        document.querySelectorAll('input[name="selectedTables"]:checked').forEach(checkbox => {
+          selectedTables.push(checkbox.value);
+        });
+      }
+      
+      // Show loading or initiate download
+      alert(`Export initiated with format: ${format}, scope: ${scope}, tables: ${selectedTables.join(', ')}`);
+      
+      // This would be an AJAX call to the backend
+      $('#exportModal').modal('hide');
+    });
+    
+    // Perform restore action
+    document.getElementById('performRestore').addEventListener('click', function() {
+      const backupId = document.getElementById('restoreBackupSelect').value;
+      const uploadFile = document.getElementById('uploadBackup').files[0];
+      
+      if (uploadFile) {
+        // Handle file upload restore
+        alert(`Restore from uploaded file initiated`);
+      } else {
+        // Handle selected backup restore
+        window.location.href = `{{ url_for('admin.restore_database', backup_id=0) }}`.replace('0', backupId);
+      }
+      
+      $('#restoreModal').modal('hide');
+    });
+  });
+  
+  // Helper function to get color based on health score
+  function getHealthColor(score) {
+    if (score >= 80) return '#28a745';  // Green
+    if (score >= 60) return '#ffc107';  // Yellow
+    return '#dc3545';  // Red
+  }
+  
+  // View table details
+  function viewTableDetails(tableName) {
+    const modal = new bootstrap.Modal(document.getElementById('tableDetailsModal'));
+    modal.show();
+    
+    // This would be an AJAX call to fetch table details
+    document.getElementById('tableDetailsModalLabel').textContent = `Table Details: ${tableName}`;
+    
+    // Simulate loading data
+    setTimeout(() => {
+      document.getElementById('tableDetailsContent').innerHTML = `
+        <div class="mb-4">
+          <h6>Table Structure</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>Type</th>
+                  <th>Nullable</th>
+                  <th>Default</th>
+                  <th>Key</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>id</td>
+                  <td>INTEGER</td>
+                  <td>NO</td>
+                  <td>NULL</td>
+                  <td>PK</td>
+                </tr>
+                <tr>
+                  <td>name</td>
+                  <td>VARCHAR(255)</td>
+                  <td>NO</td>
+                  <td>NULL</td>
+                  <td></td>
+                </tr>
+                <!-- More columns would be loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <h6>Indexes</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>Index Name</th>
+                  <th>Columns</th>
+                  <th>Type</th>
+                  <th>Size</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>PRIMARY</td>
+                  <td>id</td>
+                  <td>BTREE</td>
+                  <td>1.2 MB</td>
+                </tr>
+                <!-- More indexes would be loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div>
+          <h6>Sample Data</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>id</th>
+                  <th>name</th>
+                  <!-- More columns would be loaded dynamically -->
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Example Data</td>
+                </tr>
+                <!-- More data would be loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }, 500);
+  }
+  
+  // Optimize table
+  function optimizeTable(tableName) {
+    if (confirm(`Are you sure you want to optimize the table "${tableName}"?`)) {
+      // This would be an AJAX call to optimize the table
+      alert(`Optimizing table: ${tableName}`);
+    }
+  }
+  
+  // Export table
+  function exportTable(tableName) {
+    // Open the export modal and pre-select this table
+    document.getElementById('exportScopeSelected').checked = true;
+    document.getElementById('tableSelectContainer').style.display = 'block';
+    
+    // Clear all checkboxes
+    document.querySelectorAll('input[name="selectedTables"]').forEach(checkbox => {
+      checkbox.checked = false;
+    });
+    
+    // Find and check the specific table
+    document.querySelectorAll('input[name="selectedTables"]').forEach(checkbox => {
+      if (checkbox.value === tableName) {
+        checkbox.checked = true;
+      }
+    });
+    
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+  }
+  
+  // Download backup
+  function downloadBackup(backupId) {
+    // This is now a direct download link to our implemented route
+    window.location.href = `{{ url_for('admin.download_database_backup', backup_id=0) }}`.replace('0', backupId);
+  }
+  
+  // Confirm import
+  function confirmImport() {
+    const file = document.getElementById('importFile').files[0];
+    if (!file) {
+      alert('Please select a file to import');
+      return false;
+    }
+    
+    const format = document.getElementById('importFormat').value;
+    const targetTable = document.getElementById('targetTable').value;
+    
+    return confirm(`Are you sure you want to import this file?
+File: ${file.name}
+Size: ${(file.size / 1024).toFixed(2)} KB
+Format: ${format}
+Target: ${targetTable || 'New table'}
+
+This action may modify your database data.`);
+  }
+</script>
+{% endblock %} 

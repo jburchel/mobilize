@@ -53,12 +53,10 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Layout */
 .sidebar-wrapper {
-    height: 100vh;
-    position: sticky;
-    top: 0;
-    z-index: var(--z-index-fixed, 1000);
     width: var(--sidebar-width);
     transition: width 0.3s ease;
+    position: relative;
+    z-index: 1030;
 }
 
 .sidebar-wrapper.collapsed {
@@ -77,6 +75,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    z-index: 5 !important;
 }
 
 .sidebar.collapsed {
@@ -215,6 +214,7 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 0.25rem;
     width: 100%;
     text-align: center;
+    cursor: pointer;
 }
 
 .sidebar-toggle:hover {
@@ -224,6 +224,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar.collapsed .sidebar-toggle {
     justify-content: center;
+    padding: 0.25rem;
 }
 
 .sidebar .nav-link {
@@ -324,7 +325,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Hide the badge when collapsed */
 .sidebar.collapsed .nav-badge {
-    display: none;
+    display: none !important;
 }
 
 /* Profile */
@@ -629,22 +630,28 @@ h1, h2, h3, h4, h5, h6 {
         position: fixed;
         top: 0;
         left: -100%;
+        width: var(--sidebar-width);
         height: 100vh;
-        z-index: 999;
-        transition: all 0.3s;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 1040;
+        transition: left 0.3s ease;
+        box-shadow: none;
     }
     
     .sidebar.show {
         left: 0;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.1);
     }
     
     .main-content {
-        margin-left: 0;
-        width: 100%;
+        margin-left: 0 !important;
+        width: 100% !important;
     }
     
     .sidebar-wrapper {
+        width: 0;
+    }
+    
+    .sidebar-wrapper.collapsed {
         width: 0;
     }
     
@@ -653,8 +660,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .header-container {
-        box-shadow: var(--shadow-sm);
-        z-index: 1;
+        padding-left: 1rem !important;
     }
 }
 
@@ -1016,4 +1022,133 @@ html, body {
     width: 100%;
     overflow-x: hidden;
     margin-bottom: 10px;
+}
+
+/* Pipeline Stage Color Indicators */
+tr[data-stage-id], div[data-stage-id], [id^="stage-"] {
+    border-left: 6px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.pipeline-stage-color-indicator {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid rgba(0,0,0,0.2);
+    vertical-align: middle;
+}
+
+/* Ensure stage color is visible in all UI variants */
+[data-color] {
+    position: relative;
+}
+
+/* Admin content layout fixes */
+.admin-content-wrapper {
+    padding: 20px 0;
+    margin-top: 0;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+.admin-breadcrumb {
+    margin-bottom: 1.5rem;
+    margin-bottom: 1.5rem !important;
+    margin-top: 0 !important;
+}
+
+.content-wrapper {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-top: 0;
+    z-index: 10 !important;
+    position: relative !important;
+    min-height: 100vh !important;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* Ensure roles & permissions content displays correctly */
+.roles-permissions-container {
+    padding-top: 0;
+    padding-top: 0 !important;
+}
+
+/* Fix for sidebar overlapping content on mobile */
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        z-index: 1030;
+        left: -250px;
+        transition: left 0.3s ease;
+    }
+    
+    .sidebar.show {
+        left: 0;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+
+/* Fix DataTables responsiveness */
+.dataTables_wrapper {
+    width: 100%;
+    overflow-x: auto;
+    width: 100% !important;
+    overflow-x: auto !important;
+}
+
+table.dataTable {
+    width: 100% !important;
+}
+
+/* Space above page headers */
+.d-sm-flex.align-items-center.justify-content-between.mb-4 {
+    margin-top: 0 !important;
+    padding-top: 1rem !important;
+}
+
+/* Fix content layout in admin section */
+.col-lg-10.col-md-9.col-sm-12.content-wrapper {
+    max-width: calc(100% - var(--sidebar-width));
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+@media (max-width: 991.98px) {
+    .col-lg-10.col-md-9.col-sm-12.content-wrapper {
+        max-width: 100%;
+    }
+}
+
+/* Fix button visibility in tables */
+.edit-permissions-btn,
+.btn-sm,
+.btn-outline-primary {
+    z-index: 100 !important;
+    position: relative !important;
+}
+
+/* Hide text and badges in collapsed state */
+.sidebar.collapsed .nav-text {
+    display: none;
+}
+
+.sidebar.collapsed .nav-badge {
+    display: none !important;
+}
+
+/* Center the icons in collapsed state */
+.sidebar.collapsed .nav-link i,
+.sidebar.collapsed .nav-link svg {
+    margin-right: 0;
+    text-align: center;
+    width: 100%;
 } 

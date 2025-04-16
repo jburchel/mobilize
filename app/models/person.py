@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from app.extensions import db
 from app.models.base import Contact
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -35,7 +35,7 @@ class Person(Contact):
     desired_service = db.Column(db.Text)
     
     # Tracking fields from new model
-    last_contact = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    last_contact = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     next_contact = db.Column(db.DateTime)
     status = db.Column(db.String(50), default='active')  # active, inactive, archived
     google_contact_id = db.Column(db.String, nullable=True)

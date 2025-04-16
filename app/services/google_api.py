@@ -12,6 +12,7 @@ from flask import current_app, url_for, session
 from typing import Dict, Any, Optional
 from app.auth.google_oauth import get_google_credentials
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -372,6 +373,53 @@ class GoogleAPIService:
         names = google_contact.get('names', [])
         first_name = names[0].get('givenName', '') if names else ''
         last_name = names[0].get('familyName', '') if names else ''
+        display_name = names[0].get('displayName', '') if names else ''
+        
+        # Enhanced name parsing
+        if (not first_name or not last_name) and display_name:
+            # If only display name is available, try to extract first and last names
+            
+            # Special case: Handle names like "Last, First"
+            comma_pattern = r'^([^,]+),\s+(.+)$'
+            comma_match = re.search(comma_pattern, display_name)
+            if comma_match:
+                last_name = comma_match.group(1).strip()
+                first_name = comma_match.group(2).strip()
+            else:
+                # Check for common spousal patterns like "John & Jane Doe" or "John and Jane Smith"
+                spousal_pattern = r'^(.*?)\s+(?:&|and)\s+(.*?)\s+(\S+)$'
+                match = re.search(spousal_pattern, display_name, re.IGNORECASE)
+                
+                if match:
+                    # This is likely a couple
+                    first_spouse = match.group(1).strip()
+                    second_spouse = match.group(2).strip()
+                    shared_last = match.group(3).strip()
+                    
+                    # Use the first person's name (we can only have one person per contact)
+                    first_name = first_spouse
+                    last_name = shared_last
+                else:
+                    # Try additional name patterns
+                    
+                    # Pattern for names with titles: "Dr. John Smith" or "Mr. John Smith"
+                    title_pattern = r'^(?:Dr\.|Mr\.|Mrs\.|Ms\.|Prof\.|Rev\.)\s+(.+?)(?:\s+(\S+))?$'
+                    title_match = re.search(title_pattern, display_name)
+                    
+                    if title_match and title_match.group(2):
+                        # We have a title followed by a name with possible last name
+                        first_name = title_match.group(1).strip()
+                        last_name = title_match.group(2).strip()
+                    else:
+                        # Standard approach: Try to split by the last space (common Western name pattern)
+                        parts = display_name.strip().split()
+                        if len(parts) >= 2:
+                            first_name = ' '.join(parts[:-1])
+                            last_name = parts[-1]
+                        else:
+                            # Single word name
+                            first_name = display_name
+                            last_name = ''
         
         # Get email addresses
         email_addresses = google_contact.get('emailAddresses', [])
@@ -412,6 +460,7 @@ class GoogleAPIService:
             'google_id': google_id,
             'first_name': first_name,
             'last_name': last_name,
+            'display_name': display_name,  # Include original display name
             'email': primary_email,
             'phone': primary_phone,
             'street': street,
@@ -419,8 +468,6 @@ class GoogleAPIService:
             'state': state,
             'zip_code': zip_code,
             'country': country,
-            'title': title,
-            'company': company,
             'last_updated': updated
         }
         

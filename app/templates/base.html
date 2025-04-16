@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <!-- Application CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Badge fix CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -43,7 +45,7 @@
                                     <li class="nav-item">
                                         <a href="{{ url_for('people.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('people') %}active{% endif %}">
                                             <i class="fas fa-users me-2"></i><span class="nav-text">People</span>
-                                            <span class="badge rounded-pill bg-primary float-end">{{ g.stats.people_count if g.stats and g.stats.people_count else '' }}</span>
+                                            <span class="badge nav-badge sidebar-badge rounded-pill bg-primary float-end">{{ g.stats.people_count if g.stats and g.stats.people_count else '' }}</span>
                                         </a>
                                     </li>
                                     
@@ -51,7 +53,7 @@
                                     <li class="nav-item">
                                         <a href="{{ url_for('churches.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('churches') %}active{% endif %}">
                                             <i class="fas fa-church me-2"></i><span class="nav-text">Churches</span>
-                                            <span class="badge rounded-pill bg-success float-end">{{ g.stats.church_count if g.stats and g.stats.church_count else '' }}</span>
+                                            <span class="badge nav-badge sidebar-badge rounded-pill bg-success float-end">{{ g.stats.church_count if g.stats and g.stats.church_count else '' }}</span>
                                         </a>
                                     </li>
                                     
@@ -59,7 +61,7 @@
                                     <li class="nav-item">
                                         <a href="{{ url_for('tasks.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('tasks') %}active{% endif %}">
                                             <i class="fas fa-tasks me-2"></i><span class="nav-text">Tasks</span>
-                                            <span class="badge rounded-pill bg-warning float-end">{{ g.stats.pending_tasks if g.stats and g.stats.pending_tasks else '' }}</span>
+                                            <span class="badge nav-badge sidebar-badge rounded-pill bg-warning float-end">{{ g.stats.pending_tasks if g.stats and g.stats.pending_tasks else '' }}</span>
                                         </a>
                                     </li>
                                     
@@ -110,7 +112,7 @@
                                     <li class="nav-item">
                                         <a href="{{ url_for('emails.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('emails') %}active{% endif %}">
                                             <i class="fas fa-envelope me-2"></i><span class="nav-text">Email Management</span>
-                                            <span class="badge rounded-pill bg-info float-end">{{ g.stats.recent_communications if g.stats and g.stats.recent_communications else '' }}</span>
+                                            <span class="badge nav-badge sidebar-badge rounded-pill bg-info float-end">{{ g.stats.recent_communications if g.stats and g.stats.recent_communications else '' }}</span>
                                         </a>
                                     </li>
 
@@ -200,48 +202,10 @@
         </div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- JavaScript Dependencies -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
-    
-    <script>
-        // Sidebar toggle functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-            const sidebar = document.getElementById('sidebar');
-            const sidebarWrapper = document.getElementById('sidebar-wrapper');
-            const mainContent = document.getElementById('main-content');
-            
-            // Check for saved state on page load
-            const sidebarState = localStorage.getItem('sidebarCollapsed');
-            if (sidebarState === 'true') {
-                sidebar.classList.add('collapsed');
-                sidebarWrapper.classList.add('collapsed');
-                mainContent.classList.add('sidebar-collapsed');
-                sidebarToggleBtn.querySelector('i').classList.remove('fa-bars');
-                sidebarToggleBtn.querySelector('i').classList.add('fa-angle-right');
-            }
-            
-            sidebarToggleBtn.addEventListener('click', function() {
-                // Toggle collapsed state
-                sidebar.classList.toggle('collapsed');
-                sidebarWrapper.classList.toggle('collapsed');
-                mainContent.classList.toggle('sidebar-collapsed');
-                
-                // Change icon direction
-                const icon = sidebarToggleBtn.querySelector('i');
-                if (sidebar.classList.contains('collapsed')) {
-                    icon.classList.remove('fa-bars');
-                    icon.classList.add('fa-angle-right');
-                    localStorage.setItem('sidebarCollapsed', 'true');
-                } else {
-                    icon.classList.remove('fa-angle-right');
-                    icon.classList.add('fa-bars');
-                    localStorage.setItem('sidebarCollapsed', 'false');
-                }
-            });
-        });
-    </script>
     
     {% block scripts %}{% endblock %}
 </body>

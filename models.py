@@ -520,6 +520,7 @@ class User(Base):
     notify_contacts = Column(Boolean, default=True)
     notify_system = Column(Boolean, default=True)
     notification_frequency = Column(String(20), default='daily')
+    first_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     
@@ -541,6 +542,7 @@ class UserSchema(Schema):
     notify_contacts = fields.Boolean()
     notify_system = fields.Boolean()
     notification_frequency = fields.String()
+    first_login = fields.DateTime(allow_none=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 

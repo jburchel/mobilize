@@ -24,18 +24,22 @@ class User(UserMixin, Base):
     job_title = db.Column(db.String(100))
     department = db.Column(db.String(100))
     is_active = db.Column(db.Boolean, default=True)
+    first_login = db.Column(db.Boolean, default=True)
     role = db.Column(db.String(20), nullable=False, default='standard_user')
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=True)
     last_login = db.Column(db.DateTime)
     preferences = db.Column(db.JSON)
     notification_settings = db.Column(db.JSON)
     google_refresh_token = db.Column(db.String(255))
     google_calendar_sync = db.Column(db.Boolean, default=True)
     google_meet_enabled = db.Column(db.Boolean, default=True)
+    email_sync_contacts_only = db.Column(db.Boolean, default=False)
     office_id = db.Column(db.Integer, db.ForeignKey('offices.id'), nullable=True)
     person_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=True)
 
     # Relationships
     office = db.relationship('Office', back_populates='users')
+    role_obj = db.relationship('Role', foreign_keys=[role_id])
     person = db.relationship('Person', backref=db.backref('associated_user', uselist=False), foreign_keys=[person_id])
     tasks = db.relationship('Task', overlaps="assigned_user,tasks", primaryjoin="User.id == foreign(Task.assigned_to)")
     owned_tasks = db.relationship('Task', back_populates='owner', foreign_keys='Task.owner_id')
@@ -96,11 +100,15 @@ class User(UserMixin, Base):
             'job_title': self.job_title,
             'department': self.department,
             'is_active': self.is_active,
+            'first_login': self.first_login,
             'role': self.role,
             'office_id': self.office_id,
             'last_login': self.last_login.isoformat() if self.last_login else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'google_calendar_sync': self.google_calendar_sync,
+            'google_meet_enabled': self.google_meet_enabled,
+            'email_sync_contacts_only': self.email_sync_contacts_only
         }
 
     @property

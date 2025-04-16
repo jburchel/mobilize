@@ -17,6 +17,7 @@ from app.routes.settings import settings_bp
 from app.routes.pipeline import pipeline_bp
 from app.routes.reports import reports_bp
 from app.routes.emails import emails_bp
+from app.onboarding.routes import onboarding_bp
 
 test_bp = Blueprint('test', __name__)
 
@@ -45,7 +46,8 @@ blueprints = [
     settings_bp,
     pipeline_bp,
     reports_bp,
-    emails_bp
+    emails_bp,
+    onboarding_bp
 ]
 
 # This function is no longer used since blueprints are registered directly in app/__init__.py

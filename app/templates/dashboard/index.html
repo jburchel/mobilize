@@ -304,6 +304,10 @@
 </div>
 {% endblock %}
 
+{% if current_user.first_login %}
+    {% include 'onboarding/welcome_modal.html' %}
+{% endif %}
+
 {% block scripts %}
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

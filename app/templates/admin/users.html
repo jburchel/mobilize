@@ -245,4 +245,48 @@
         }
     });
 </script>
+
+<!-- Reassignment Modal -->
+{% if show_reassign and user_to_delete %}
+<div class="modal fade" id="reassignModal" tabindex="-1" aria-labelledby="reassignModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reassignModalLabel">Reassign Content Before Deleting</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('admin.delete_user', user_id=user_to_delete.id) }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    
+                    <p>The user <strong>{{ user_to_delete.email }}</strong> owns churches and/or contacts that need to be reassigned before deletion.</p>
+                    
+                    <div class="mb-3">
+                        <label for="reassign_to_id" class="form-label">Reassign to User:</label>
+                        <select class="form-select" id="reassign_to_id" name="reassign_to_id" required>
+                            <option value="">-- Select User --</option>
+                            {% for option in reassign_options %}
+                            <option value="{{ option.id }}">{{ option.first_name }} {{ option.last_name }} ({{ option.email }}){% if option.role == 'office_admin' %} - Office Admin{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text text-info">All churches and contacts owned by {{ user_to_delete.first_name }} {{ user_to_delete.last_name }} will be transferred to this user.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Reassign and Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-show the reassignment modal when needed
+    document.addEventListener('DOMContentLoaded', function() {
+        var reassignModal = new bootstrap.Modal(document.getElementById('reassignModal'));
+        reassignModal.show();
+    });
+</script>
+{% endif %}
 {% endblock %} 

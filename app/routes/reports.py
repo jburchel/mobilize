@@ -29,6 +29,17 @@ def reports_dashboard():
     return render_template('reports/dashboard.html')
 
 
+@reports_bp.route('/widget-test', methods=['GET'])
+@login_required
+@office_member_required
+def widget_test():
+    """
+    Test page for widgets
+    """
+    current_app.logger.info(f"Widget test page accessed by user {current_user.id}")
+    return render_template('reports/widget_test.html')
+
+
 @reports_bp.route('/widgets/contacts', methods=['GET'])
 @login_required
 @office_member_required
@@ -36,16 +47,64 @@ def contacts_widget():
     """
     Widget showing contact statistics
     """
-    office_id = current_user.office_id
-    total_contacts = Person.query.filter_by(office_id=office_id).count()
-    new_contacts_30d = Person.query.filter_by(office_id=office_id).filter(
-        Person.created_at >= datetime.datetime.now() - datetime.timedelta(days=30)
-    ).count()
-    
-    return jsonify({
-        'total_contacts': total_contacts,
-        'new_contacts_30d': new_contacts_30d
-    })
+    try:
+        # Add debug logging
+        current_app.logger.info(f"Contacts widget accessed by user {current_user.id}, office_id={current_user.office_id}")
+        
+        office_id = current_user.office_id
+        if not office_id:
+            current_app.logger.warning(f"User {current_user.id} has no office_id")
+            return jsonify({
+                'total_contacts': 0,
+                'new_contacts_30d': 0
+            })
+        
+        # Use explicit session query with error handling
+        try:
+            # Total contacts - use scalar() with fallback
+            total_contacts_query = db.session.query(db.func.count(Person.id)).filter(
+                Person.office_id == office_id
+            )
+            current_app.logger.debug(f"Total contacts query: {str(total_contacts_query)}")
+            total_contacts = total_contacts_query.scalar() or 0
+            
+            # New contacts within last 30 days
+            thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+            new_contacts_query = db.session.query(db.func.count(Person.id)).filter(
+                Person.office_id == office_id,
+                Person.created_at >= thirty_days_ago
+            )
+            current_app.logger.debug(f"New contacts query: {str(new_contacts_query)}")
+            new_contacts_30d = new_contacts_query.scalar() or 0
+            
+        except Exception as db_error:
+            current_app.logger.error(f"Database error in contacts_widget: {str(db_error)}")
+            import traceback
+            current_app.logger.error(f"DB Error details: {traceback.format_exc()}")
+            return jsonify({
+                'error': f"Database error: {str(db_error)}",
+                'total_contacts': 0,
+                'new_contacts_30d': 0
+            }), 200
+        
+        # Successfully retrieved data
+        response_data = {
+            'total_contacts': total_contacts,
+            'new_contacts_30d': new_contacts_30d
+        }
+        current_app.logger.info(f"Contacts widget data: {response_data}")
+        return jsonify(response_data)
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Error in contacts_widget: {str(e)}")
+        current_app.logger.error(f"Error details: {error_details}")
+        return jsonify({
+            'error': str(e),
+            'total_contacts': 0,
+            'new_contacts_30d': 0
+        }), 200  # Return 200 instead of 500 to allow client to handle the data
 
 
 @reports_bp.route('/widgets/churches', methods=['GET'])
@@ -55,16 +114,39 @@ def churches_widget():
     """
     Widget showing church statistics
     """
-    office_id = current_user.office_id
-    total_churches = Church.query.filter_by(office_id=office_id).count()
-    new_churches_30d = Church.query.filter_by(office_id=office_id).filter(
-        Church.created_at >= datetime.datetime.now() - datetime.timedelta(days=30)
-    ).count()
-    
-    return jsonify({
-        'total_churches': total_churches,
-        'new_churches_30d': new_churches_30d
-    })
+    try:
+        # Add debug logging
+        current_app.logger.debug(f"Churches widget accessed by user {current_user.id}, office_id={current_user.office_id}")
+        
+        office_id = current_user.office_id
+        if not office_id:
+            current_app.logger.warning(f"User {current_user.id} has no office_id")
+            return jsonify({
+                'total_churches': 0,
+                'new_churches_30d': 0
+            })
+        
+        total_churches = Church.query.filter_by(office_id=office_id).count()
+        new_churches_30d = Church.query.filter_by(office_id=office_id).filter(
+            Church.created_at >= datetime.datetime.now() - datetime.timedelta(days=30)
+        ).count()
+        
+        response_data = {
+            'total_churches': total_churches,
+            'new_churches_30d': new_churches_30d
+        }
+        current_app.logger.debug(f"Churches widget data: {response_data}")
+        return jsonify(response_data)
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Error in churches_widget: {str(e)}")
+        current_app.logger.error(f"Error details: {error_details}")
+        return jsonify({
+            'error': str(e),
+            'total_churches': 0,
+            'new_churches_30d': 0
+        }), 200  # Return 200 instead of 500 to allow client to handle the data
 
 
 @reports_bp.route('/widgets/tasks', methods=['GET'])
@@ -74,19 +156,61 @@ def tasks_widget():
     """
     Widget showing task statistics
     """
-    office_id = current_user.office_id
-    total_tasks = Task.query.filter_by(office_id=office_id).count()
-    completed_tasks = Task.query.filter_by(office_id=office_id, status='completed').count()
-    overdue_tasks = Task.query.filter_by(office_id=office_id, status='open').filter(
-        Task.due_date < datetime.datetime.now().date()
-    ).count()
-    
-    return jsonify({
-        'total_tasks': total_tasks,
-        'completed_tasks': completed_tasks,
-        'overdue_tasks': overdue_tasks,
-        'completion_rate': round((completed_tasks / total_tasks * 100) if total_tasks > 0 else 0, 2)
-    })
+    try:
+        # Add debug logging
+        current_app.logger.debug(f"Tasks widget accessed by user {current_user.id}, office_id={current_user.office_id}")
+        
+        office_id = current_user.office_id
+        if not office_id:
+            current_app.logger.warning(f"User {current_user.id} has no office_id")
+            return jsonify({
+                'total_tasks': 0,
+                'completed_tasks': 0,
+                'overdue_tasks': 0,
+                'completion_rate': 0
+            })
+        
+        # Get total tasks count
+        total_tasks = db.session.query(db.func.count(Task.id)).filter(Task.office_id == office_id).scalar() or 0
+        
+        # Fix: use 'completed' status instead of 'open'
+        completed_tasks = db.session.query(db.func.count(Task.id)).filter(
+            Task.office_id == office_id, 
+            Task.status == 'completed'
+        ).scalar() or 0
+        
+        # Fix: use 'pending' or other statuses for overdue tasks, not 'open'
+        overdue_tasks = db.session.query(db.func.count(Task.id)).filter(
+            Task.office_id == office_id,
+            Task.status.in_(['pending', 'in_progress', 'on_hold']),
+            Task.due_date < datetime.datetime.now().date()
+        ).scalar() or 0
+        
+        # Fix: avoid division by zero
+        completion_rate = 0
+        if total_tasks > 0:
+            completion_rate = round((completed_tasks / total_tasks * 100), 2)
+        
+        response_data = {
+            'total_tasks': total_tasks,
+            'completed_tasks': completed_tasks,
+            'overdue_tasks': overdue_tasks,
+            'completion_rate': completion_rate
+        }
+        current_app.logger.debug(f"Tasks widget data: {response_data}")
+        return jsonify(response_data)
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Error in tasks_widget: {str(e)}")
+        current_app.logger.error(f"Error details: {error_details}")
+        return jsonify({
+            'error': str(e),
+            'total_tasks': 0,
+            'completed_tasks': 0,
+            'overdue_tasks': 0,
+            'completion_rate': 0
+        }), 200  # Return 200 instead of 500 to allow client to handle the data
 
 
 @reports_bp.route('/widgets/communications', methods=['GET'])
@@ -96,18 +220,61 @@ def communications_widget():
     """
     Widget showing communication statistics
     """
-    office_id = current_user.office_id
-    total_comms = Communication.query.filter_by(office_id=office_id).count()
-    emails = Communication.query.filter_by(office_id=office_id, type='email').count()
-    calls = Communication.query.filter_by(office_id=office_id, type='call').count()
-    meetings = Communication.query.filter_by(office_id=office_id, type='meeting').count()
-    
-    return jsonify({
-        'total_communications': total_comms,
-        'emails': emails,
-        'calls': calls,
-        'meetings': meetings
-    })
+    try:
+        # Add debug logging
+        current_app.logger.debug(f"Communications widget accessed by user {current_user.id}, office_id={current_user.office_id}")
+        
+        office_id = current_user.office_id
+        if not office_id:
+            current_app.logger.warning(f"User {current_user.id} has no office_id")
+            return jsonify({
+                'total_communications': 0,
+                'emails': 0,
+                'calls': 0,
+                'meetings': 0
+            })
+        
+        # Use scalar() with fallback to 0 to handle None values
+        total_comms = db.session.query(db.func.count(Communication.id)).filter(
+            Communication.office_id == office_id
+        ).scalar() or 0
+        
+        # Fix: use the correct field names for the communication types
+        emails = db.session.query(db.func.count(Communication.id)).filter(
+            Communication.office_id == office_id, 
+            Communication.type == 'email'
+        ).scalar() or 0
+        
+        calls = db.session.query(db.func.count(Communication.id)).filter(
+            Communication.office_id == office_id, 
+            Communication.type == 'phone'
+        ).scalar() or 0
+        
+        meetings = db.session.query(db.func.count(Communication.id)).filter(
+            Communication.office_id == office_id, 
+            Communication.type == 'meeting'
+        ).scalar() or 0
+        
+        response_data = {
+            'total_communications': total_comms,
+            'emails': emails,
+            'calls': calls,
+            'meetings': meetings
+        }
+        current_app.logger.debug(f"Communications widget data: {response_data}")
+        return jsonify(response_data)
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Error in communications_widget: {str(e)}")
+        current_app.logger.error(f"Error details: {error_details}")
+        return jsonify({
+            'error': str(e),
+            'total_communications': 0,
+            'emails': 0,
+            'calls': 0,
+            'meetings': 0
+        }), 200  # Return 200 instead of 500 to allow client to handle the data
 
 
 @reports_bp.route('/export/<entity_type>', methods=['POST'])
@@ -117,48 +284,99 @@ def export_data(entity_type):
     """
     Export data in CSV or Excel format
     """
-    format_type = request.form.get('format', 'csv')
-    
-    # Use office_id directly 
-    office_id = current_user.office_id
-    
-    if entity_type == 'contacts':
-        data = Person.query.filter_by(office_id=office_id).all()
-        columns = ['id', 'first_name', 'last_name', 'email', 'phone', 'address', 'status', 'created_at']
-        filename = f"contacts_export_{datetime.datetime.now().strftime('%Y%m%d')}"
-    
-    elif entity_type == 'churches':
-        data = Church.query.filter_by(office_id=office_id).all()
-        columns = ['id', 'name', 'pastor_name', 'email', 'phone', 'address', 'created_at']
-        filename = f"churches_export_{datetime.datetime.now().strftime('%Y%m%d')}"
-    
-    elif entity_type == 'tasks':
-        data = Task.query.filter_by(office_id=office_id).all()
-        columns = ['id', 'title', 'description', 'status', 'priority', 'due_date', 'assigned_to_id', 'created_at']
-        filename = f"tasks_export_{datetime.datetime.now().strftime('%Y%m%d')}"
-    
-    elif entity_type == 'communications':
-        data = Communication.query.filter_by(office_id=office_id).all()
-        columns = ['id', 'person_id', 'type', 'subject', 'content', 'created_at']
-        filename = f"communications_export_{datetime.datetime.now().strftime('%Y%m%d')}"
-    
-    else:
-        return jsonify({'error': 'Invalid entity type'}), 400
-    
-    # Convert data to list of dicts
-    data_list = []
-    for item in data:
-        item_dict = {}
-        for col in columns:
-            item_dict[col] = getattr(item, col)
-        data_list.append(item_dict)
-    
-    if format_type == 'csv':
-        return generate_csv(data_list, columns, filename)
-    elif format_type == 'excel':
-        return generate_excel(data_list, columns, filename)
-    else:
-        return jsonify({'error': 'Invalid format type'}), 400
+    try:
+        current_app.logger.info(f"Export requested for {entity_type} by user {current_user.id}")
+        format_type = request.form.get('format', 'csv')
+        current_app.logger.debug(f"Export format: {format_type}")
+        
+        # Check if entity type is valid
+        valid_types = ['contacts', 'churches', 'tasks', 'communications']
+        if entity_type not in valid_types:
+            current_app.logger.warning(f"Invalid entity type for export: {entity_type}")
+            flash('Invalid entity type', 'error')
+            return redirect(url_for('reports.reports_dashboard'))
+            
+        # Use office_id directly 
+        office_id = current_user.office_id
+        if not office_id:
+            current_app.logger.warning(f"User {current_user.id} has no office_id for export")
+            flash('You must be associated with an office to export data', 'error')
+            return redirect(url_for('reports.reports_dashboard'))
+        
+        # Configure export based on entity type
+        if entity_type == 'contacts':
+            query = db.session.query(Person).filter(Person.office_id == office_id)
+            columns = ['id', 'first_name', 'last_name', 'email', 'phone', 'address', 'status', 'created_at']
+            filename = f"contacts_export_{datetime.datetime.now().strftime('%Y%m%d')}"
+        
+        elif entity_type == 'churches':
+            query = db.session.query(Church).filter(Church.office_id == office_id)
+            columns = ['id', 'name', 'pastor_name', 'email', 'phone', 'address', 'created_at']
+            filename = f"churches_export_{datetime.datetime.now().strftime('%Y%m%d')}"
+        
+        elif entity_type == 'tasks':
+            query = db.session.query(Task).filter(Task.office_id == office_id)
+            columns = ['id', 'title', 'description', 'status', 'priority', 'due_date', 'assigned_to_id', 'created_at']
+            filename = f"tasks_export_{datetime.datetime.now().strftime('%Y%m%d')}"
+        
+        elif entity_type == 'communications':
+            query = db.session.query(Communication).filter(Communication.office_id == office_id)
+            columns = ['id', 'person_id', 'type', 'subject', 'content', 'created_at']
+            filename = f"communications_export_{datetime.datetime.now().strftime('%Y%m%d')}"
+            
+        # Execute query with exception handling
+        try:
+            data = query.all()
+            current_app.logger.info(f"Found {len(data)} records for {entity_type} export")
+        except Exception as db_error:
+            current_app.logger.error(f"Database error during export: {str(db_error)}")
+            import traceback
+            current_app.logger.error(f"DB Error details: {traceback.format_exc()}")
+            flash(f'Database error while fetching data: {str(db_error)}', 'error')
+            return redirect(url_for('reports.reports_dashboard'))
+        
+        # Convert data to list of dicts
+        data_list = []
+        for item in data:
+            item_dict = {}
+            for col in columns:
+                # Handle AttributeError for any missing attributes
+                try:
+                    value = getattr(item, col)
+                    # Handle datetime objects
+                    if isinstance(value, (datetime.date, datetime.datetime)):
+                        value = value.isoformat()
+                    item_dict[col] = value
+                except AttributeError:
+                    item_dict[col] = None
+            data_list.append(item_dict)
+        
+        current_app.logger.debug(f"Generating {format_type} export with {len(data_list)} rows")
+        
+        # Generate and return the export file
+        try:
+            if format_type == 'csv':
+                return generate_csv(data_list, columns, filename)
+            elif format_type == 'excel':
+                return generate_excel(data_list, columns, filename)
+            else:
+                current_app.logger.warning(f"Invalid format type for export: {format_type}")
+                flash('Invalid format type', 'error')
+                return redirect(url_for('reports.reports_dashboard'))
+        except Exception as export_error:
+            current_app.logger.error(f"Error generating export file: {str(export_error)}")
+            import traceback
+            current_app.logger.error(f"Export error details: {traceback.format_exc()}")
+            flash(f'Error generating export file: {str(export_error)}', 'error')
+            return redirect(url_for('reports.reports_dashboard'))
+            
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Error exporting {entity_type}: {str(e)}")
+        current_app.logger.error(f"Error details: {error_details}")
+        flash(f'An error occurred while exporting data: {str(e)}', 'error')
+        return redirect(url_for('reports.reports_dashboard'))
 
 
 @reports_bp.route('/export/pipeline/<int:pipeline_id>', methods=['POST'])

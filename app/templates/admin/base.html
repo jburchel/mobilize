@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Admin | Mobilize CRM{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- Admin-specific CSS and JS libraries -->
+<link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-2 col-md-3 col-sm-12 p-0 sidebar" style="z-index: 5; position: relative;">
+            <div class="list-group sidebar-nav shadow-sm">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                </a>
+                <div class="sidebar-heading px-3 py-2 text-muted">
+                    <small>USER MANAGEMENT</small>
+                </div>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.users' %}active{% endif %}">
+                    <i class="bi bi-people me-2"></i> Users
+                </a>
+                <a href="{{ url_for('admin.offices') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.offices' %}active{% endif %}">
+                    <i class="bi bi-building me-2"></i> Offices
+                </a>
+                
+                <div class="sidebar-heading px-3 py-2 text-muted">
+                    <small>SYSTEM</small>
+                </div>
+                <a href="{{ url_for('admin.system_dashboard') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.system_dashboard' %}active{% endif %}">
+                    <i class="bi bi-gear me-2"></i> System Dashboard
+                </a>
+                <a href="{{ url_for('admin.roles_permissions') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.roles_permissions' %}active{% endif %}">
+                    <i class="bi bi-shield me-2"></i> Roles & Permissions
+                </a>
+                
+                <div class="sidebar-heading px-3 py-2 text-muted">
+                    <small>MONITORING</small>
+                </div>
+                <a href="{{ url_for('admin.system_logs') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.system_logs' %}active{% endif %}">
+                    <i class="bi bi-file-text me-2"></i> System Logs
+                </a>
+                <a href="{{ url_for('admin.activity_logs') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.activity_logs' %}active{% endif %}">
+                    <i class="bi bi-activity me-2"></i> Activity Logs
+                </a>
+                <a href="{{ url_for('admin.email_logs') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.email_logs' %}active{% endif %}">
+                    <i class="bi bi-envelope me-2"></i> Email Logs
+                </a>
+                <a href="{{ url_for('admin.database_logs') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.database_logs' %}active{% endif %}">
+                    <i class="bi bi-database me-2"></i> Database Logs
+                </a>
+                <a href="{{ url_for('admin.security_logs') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.security_logs' %}active{% endif %}">
+                    <i class="bi bi-shield-lock me-2"></i> Security Logs
+                </a>
+                <a href="{{ url_for('admin.system_performance') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.system_performance' %}active{% endif %}">
+                    <i class="bi bi-graph-up me-2"></i> System Performance
+                </a>
+                <a href="{{ url_for('admin.user_activity') }}" class="list-group-item list-group-item-action {% if request.endpoint == 'admin.user_activity' %}active{% endif %}">
+                    <i class="bi bi-person-check me-2"></i> User Activity
+                </a>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-10 col-md-9 col-sm-12 content-wrapper" style="position: relative; z-index: 10;">
+            {% block page_header %}
+            <div class="d-sm-flex align-items-center justify-content-between mb-4 mt-3" style="margin-top: 0 !important; padding-top: 1rem;">
+                <h1 class="h3 mb-0 text-gray-800">{% block page_title %}Admin{% endblock %}</h1>
+                <div>
+                    {% block page_actions %}{% endblock %}
+                </div>
+            </div>
+            {% endblock %}
+            
+            <!-- Breadcrumb -->
+            <div class="admin-breadcrumb" style="margin-bottom: 1.5rem; margin-top: 0;">
+                {% block breadcrumb %}{% endblock %}
+            </div>
+            
+            <!-- Content -->
+            <div class="admin-content-wrapper" style="margin-top: 0; padding-top: 0;">
+                {% block admin_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Additional admin-specific scripts -->
+{% block extra_js %}{% endblock %}
+{% endblock %} 

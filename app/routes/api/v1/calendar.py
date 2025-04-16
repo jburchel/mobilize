@@ -120,7 +120,8 @@ def sync_reminder_settings():
         return jsonify({"error": "Google Calendar credentials not found"}), 401
 
     try:
-        calendar_service = CalendarService(credentials)
+        # Initialize CalendarService with user_id instead of credentials
+        calendar_service = CalendarService(user.id)
         results = {}
         
         for task_id in task_ids:
@@ -133,8 +134,8 @@ def sync_reminder_settings():
                 }
                 continue
                 
-            # Check task ownership/permissions
-            if task.user_id != user.id:
+            # Check task ownership/permissions using owner_id instead of user_id
+            if task.owner_id != user.id:
                 results[task_id] = {
                     "success": False,
                     "message": "Unauthorized access to task"

@@ -120,6 +120,50 @@
                         </div>
                     </div>
                     
+                    {% if communication.type == 'video_conference' and communication.google_meet_link %}
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2 mb-3">Video Conference Details</h6>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="text-center mb-3">
+                                    <i class="bi bi-camera-video-fill text-primary fs-1"></i>
+                                    <h5 class="mt-2">Google Meet Conference</h5>
+                                </div>
+                                
+                                <div class="d-grid gap-2 mb-3">
+                                    <a href="{{ communication.google_meet_link }}" target="_blank" 
+                                       class="btn btn-primary btn-lg">
+                                        <i class="bi bi-camera-video me-2"></i>Join Meeting
+                                    </a>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <p class="mb-1"><strong>Meeting Link:</strong> 
+                                        <a href="{{ communication.google_meet_link }}" target="_blank" class="text-break">
+                                            {{ communication.google_meet_link }}
+                                        </a>
+                                    </p>
+                                    {% if communication.google_calendar_event_id %}
+                                    <p class="mb-0"><strong>Calendar Event:</strong> 
+                                        <a href="https://calendar.google.com/calendar/event?eid={{ communication.google_calendar_event_id }}" 
+                                           target="_blank">
+                                            <i class="bi bi-calendar2-event me-1"></i>View in Google Calendar
+                                        </a>
+                                    </p>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="text-center mt-3">
+                                    <small class="text-muted">
+                                        Share this link with others to invite them to the meeting.
+                                        No downloads or software installation required.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     {% if communication.attachments %}
                     <div class="mb-4">
                         <h6 class="border-bottom pb-2 mb-3">Attachments</h6>

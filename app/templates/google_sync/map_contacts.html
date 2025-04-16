@@ -2,6 +2,38 @@
 
 {% block title %}Map Google Contacts{% endblock %}
 
+{% block head %}
+{{ super() }}
+<style>
+    .contact-preview-item {
+        margin-bottom: 0 !important;
+    }
+    .contact-preview-header {
+        display: flex;
+        align-items: center;
+    }
+    .contact-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #4e73df;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+        font-weight: bold;
+    }
+    .badge-sm {
+        font-size: 0.7em;
+        padding: 0.2em 0.5em;
+    }
+    .font-weight-medium {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row mb-4">
@@ -21,151 +53,165 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Step 2: Map Fields</h6>
+                    <span class="badge badge-info">{{ contact_details|length }} contacts selected</span>
                 </div>
                 <div class="card-body">
+                    <!-- Field Mapping Section -->
                     <form action="{{ url_for('google_sync.execute_import') }}" method="post">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <!-- Add hidden inputs for all selected contact IDs -->
                         {% for contact in contact_details %}
-                        <div class="card mb-4">
-                            <div class="card-header bg-light">
-                                <strong>{{ contact.name }}</strong>
-                                <input type="hidden" name="contact_ids" value="{{ contact.id }}">
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6 class="font-weight-bold">Basic Information</h6>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">First Name</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="first_name[{{ contact.id }}]" 
-                                                    value="{{ contact.first_name }}" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Last Name</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="last_name[{{ contact.id }}]" 
-                                                    value="{{ contact.last_name }}" required>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Title</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="title[{{ contact.id }}]" 
-                                                    value="{{ contact.title }}">
-                                            </div>
-                                        </div>
+                            <input type="hidden" name="contact_ids" value="{{ contact.google_id }}">
+                        {% endfor %}
+                        
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">Field Mapping</h6>
+                                        <small class="text-muted">Specify which Google fields map to which CRM fields</small>
                                     </div>
-                                    <div class="col-md-6">
-                                        <h6 class="font-weight-bold">Contact Information</h6>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Email</label>
-                                            <div class="col-sm-8">
-                                                <select class="form-control" name="email[{{ contact.id }}]">
-                                                    <option value="">-- No Email --</option>
-                                                    {% if contact.emails %}
-                                                        {% for email in contact.emails %}
-                                                            <option value="{{ email }}" {{ 'selected' if loop.first }}>{{ email }}</option>
-                                                        {% endfor %}
-                                                    {% endif %}
-                                                </select>
-                                            </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Google Field</th>
+                                                        <th>Map To CRM Field</th>
+                                                        <th width="100">Include</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for mapping in field_mappings %}
+                                                    <tr>
+                                                        <td>
+                                                            <strong>{{ mapping.label }}</strong>
+                                                            <small class="text-muted d-block">
+                                                                {% if mapping.required %}
+                                                                    Required
+                                                                {% else %}
+                                                                    Optional
+                                                                {% endif %}
+                                                            </small>
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-control" name="map_{{ mapping.google_field }}" {{ 'required' if mapping.required else '' }}>
+                                                                <option value=""></option>
+                                                                <option value="first_name" {{ 'selected' if mapping.google_field == 'first_name' else '' }}>First Name</option>
+                                                                <option value="last_name" {{ 'selected' if mapping.google_field == 'last_name' else '' }}>Last Name</option>
+                                                                <option value="email" {{ 'selected' if mapping.google_field == 'email' else '' }}>Email</option>
+                                                                <option value="phone" {{ 'selected' if mapping.google_field == 'phone' else '' }}>Phone</option>
+                                                                <option value="street" {{ 'selected' if mapping.google_field == 'street' else '' }}>Street</option>
+                                                                <option value="city" {{ 'selected' if mapping.google_field == 'city' else '' }}>City</option>
+                                                                <option value="state" {{ 'selected' if mapping.google_field == 'state' else '' }}>State</option>
+                                                                <option value="zip" {{ 'selected' if mapping.google_field == 'zip_code' else '' }}>Zip Code</option>
+                                                                <option value="country" {{ 'selected' if mapping.google_field == 'country' else '' }}>Country</option>
+                                                                <option value="title" {{ 'selected' if mapping.google_field == 'title' else '' }}>Title</option>
+                                                                <option value="company" {{ 'selected' if mapping.google_field == 'company' else '' }}>Company/Organization</option>
+                                                                <option value="notes" {{ 'selected' if mapping.google_field == 'notes' else '' }}>Notes</option>
+                                                            </select>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="custom-control custom-switch">
+                                                                <input type="checkbox" class="custom-control-input" 
+                                                                    id="include_{{ mapping.google_field }}" 
+                                                                    name="map_{{ mapping.google_field }}_enabled" 
+                                                                    {{ 'checked' if not mapping.required else 'checked disabled' }}>
+                                                                <label class="custom-control-label" for="include_{{ mapping.google_field }}"></label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
                                         </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Phone</label>
-                                            <div class="col-sm-8">
-                                                <select class="form-control" name="phone[{{ contact.id }}]">
-                                                    <option value="">-- No Phone --</option>
-                                                    {% if contact.phones %}
-                                                        {% for phone in contact.phones %}
-                                                            <option value="{{ phone }}" {{ 'selected' if loop.first }}>{{ phone }}</option>
-                                                        {% endfor %}
-                                                    {% endif %}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mt-3">
-                                    <div class="col-md-6">
-                                        <h6 class="font-weight-bold">Address</h6>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Street</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="address[{{ contact.id }}]" 
-                                                    value="{{ contact.address.street if contact.address and contact.address.street }}">
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">City</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="city[{{ contact.id }}]" 
-                                                    value="{{ contact.address.city if contact.address and contact.address.city }}">
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">State</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="state[{{ contact.id }}]" 
-                                                    value="{{ contact.address.state if contact.address and contact.address.state }}">
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Zip Code</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="zip_code[{{ contact.id }}]" 
-                                                    value="{{ contact.address.zip if contact.address and contact.address.zip }}">
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Country</label>
-                                            <div class="col-sm-8">
-                                                <input type="text" class="form-control" name="country[{{ contact.id }}]" 
-                                                    value="{{ contact.address.country if contact.address and contact.address.country }}">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6 class="font-weight-bold">Additional Information</h6>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Pipeline Stage</label>
-                                            <div class="col-sm-8">
-                                                <select class="form-control" name="pipeline_stage[{{ contact.id }}]">
-                                                    <option value="INFORMATION">Information</option>
-                                                    <option value="PROMOTION">Promotion</option>
-                                                    <option value="INVITATION">Invitation</option>
-                                                    <option value="CONFIRMATION">Confirmation</option>
-                                                    <option value="AUTOMATION">Automation</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Priority</label>
-                                            <div class="col-sm-8">
-                                                <select class="form-control" name="priority[{{ contact.id }}]">
-                                                    <option value="MEDIUM">Medium</option>
-                                                    <option value="HIGH">High</option>
-                                                    <option value="LOW">Low</option>
-                                                    <option value="URGENT">Urgent</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label class="col-sm-4 col-form-label">Notes</label>
-                                            <div class="col-sm-8">
-                                                <textarea class="form-control" name="notes[{{ contact.id }}]" rows="3">{{ contact.notes }}</textarea>
-                                            </div>
-                                        </div>
-                                        <input type="hidden" name="google_contact_id[{{ contact.id }}]" value="{{ contact.id }}">
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        {% endfor %}
+                        
+                        <!-- Contact Preview Section -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">Contact Preview</h6>
+                                        <small class="text-muted">First 5 contacts shown</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Email</th>
+                                                        <th>Phone</th>
+                                                        <th>Address</th>
+                                                        <th>Company</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for contact in contact_details[:5] %}
+                                                    <tr>
+                                                        <td>
+                                                            <div class="contact-preview-item mb-4">
+                                                                <div class="contact-preview-header">
+                                                                    <div class="contact-avatar">
+                                                                        <span>{{ contact.first_name|default('?')|first }}{{ contact.last_name|default('')|first }}</span>
+                                                                    </div>
+                                                                    <div class="contact-name">
+                                                                        {% if contact.display_name and contact.display_name != (contact.first_name + ' ' + contact.last_name).strip() %}
+                                                                        <div class="mb-1">
+                                                                            <strong>{{ contact.display_name }}</strong> 
+                                                                            <span class="badge badge-info badge-sm">Original</span>
+                                                                        </div>
+                                                                        <div class="text-muted small">
+                                                                            Parsed as: <span class="font-weight-medium">{{ contact.first_name }}</span> 
+                                                                            <span class="font-weight-medium">{{ contact.last_name }}</span>
+                                                                        </div>
+                                                                        {% else %}
+                                                                        <strong>{{ contact.first_name }} {{ contact.last_name }}</strong>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>{{ contact.email }}</td>
+                                                        <td>{{ contact.phone }}</td>
+                                                        <td>
+                                                            {% if contact.street %}
+                                                            {{ contact.street }}<br>
+                                                            {% if contact.city or contact.state %}
+                                                            {{ contact.city }}{% if contact.city and contact.state %}, {% endif %}{{ contact.state }} {{ contact.zip_code }}
+                                                            {% endif %}
+                                                            {% if contact.country %}
+                                                            <br>{{ contact.country }}
+                                                            {% endif %}
+                                                            {% else %}
+                                                            <span class="text-muted">No address</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ contact.company }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                    
+                                                    {% if contact_details|length > 5 %}
+                                                    <tr>
+                                                        <td colspan="5" class="text-center text-muted">
+                                                            ... and {{ contact_details|length - 5 }} more contacts
+                                                        </td>
+                                                    </tr>
+                                                    {% endif %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="row mt-4">
                             <div class="col-12 text-right">
@@ -179,4 +225,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle field mapping toggle switches
+        const fieldSwitches = document.querySelectorAll('input[name$="_enabled"]');
+        
+        fieldSwitches.forEach(switchElem => {
+            const fieldName = switchElem.id.replace('include_', '');
+            const selectElem = document.querySelector(`select[name="map_${fieldName}"]`);
+            
+            // Initialize state
+            selectElem.disabled = !switchElem.checked;
+            
+            // Add change handler
+            switchElem.addEventListener('change', function() {
+                selectElem.disabled = !this.checked;
+                if (!this.checked) {
+                    selectElem.value = '';
+                }
+            });
+        });
+    });
+</script>
 {% endblock %} 

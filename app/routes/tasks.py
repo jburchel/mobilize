@@ -20,12 +20,26 @@ tasks_bp = Blueprint('tasks', __name__, template_folder='../templates/tasks')
 @login_required
 def index():
     """Display list of tasks."""
-    # Fetch tasks assigned to the current user
-    tasks = Task.query.filter(
+    # Get status filter from query params
+    status_filter = request.args.get('status')
+    
+    # Query to fetch tasks assigned to the current user
+    query = Task.query.filter(
         (Task.assigned_to == str(current_user.id)) | 
         (Task.created_by == current_user.id) |
         (Task.owner_id == current_user.id)
-    ).order_by(Task.due_date.asc()).all()
+    )
+    
+    # By default, don't show completed tasks unless explicitly requested
+    if status_filter:
+        if status_filter != 'all':
+            query = query.filter(Task.status == status_filter)
+    else:
+        # Default behavior: exclude completed tasks
+        query = query.filter(Task.status != 'completed')
+    
+    # Execute query with ordering
+    tasks = query.order_by(Task.due_date.asc()).all()
     
     # Calculate overdue tasks
     overdue_count = 0
@@ -38,6 +52,7 @@ def index():
                           tasks=tasks, 
                           overdue_count=overdue_count,
                           current_date=current_date,
+                          show_completed=(status_filter == 'completed'),
                           page_title="My Tasks")
 
 @tasks_bp.route('/add', methods=['GET', 'POST'])

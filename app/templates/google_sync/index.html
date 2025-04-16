@@ -110,13 +110,9 @@
                                 <div class="card-body text-center">
                                     <i class="fas fa-address-book fa-3x mb-3 text-primary"></i>
                                     <h5 class="card-title">Contacts</h5>
-                                    <p class="card-text">Import and sync your Google contacts.</p>
-                                    <div class="btn-group" role="group">
+                                    <p class="card-text">Import your Google contacts selectively.</p>
+                                    <div>
                                         <a href="{{ url_for('google_sync.import_contacts') }}" class="btn btn-sm btn-primary">Import Contacts</a>
-                                        <form action="{{ url_for('google_sync.manual_sync') }}" method="post" class="d-inline">
-                                            <input type="hidden" name="sync_type" value="contacts">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary">Sync Now</button>
-                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -128,6 +124,7 @@
                                     <h5 class="card-title">Calendar</h5>
                                     <p class="card-text">Sync your Google Calendar events.</p>
                                     <form action="{{ url_for('google_sync.manual_sync') }}" method="post">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <input type="hidden" name="sync_type" value="calendar">
                                         <button type="submit" class="btn btn-sm btn-outline-success">Sync Calendar</button>
                                     </form>
@@ -141,6 +138,7 @@
                                     <h5 class="card-title">Emails</h5>
                                     <p class="card-text">Sync your Gmail messages with contacts.</p>
                                     <form action="{{ url_for('google_sync.manual_sync') }}" method="post">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <input type="hidden" name="sync_type" value="emails">
                                         <button type="submit" class="btn btn-sm btn-outline-info">Sync Emails</button>
                                     </form>

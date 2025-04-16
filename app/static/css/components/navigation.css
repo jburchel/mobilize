@@ -185,7 +185,7 @@
 .sidebar.collapsed .nav-section-title,
 .sidebar.collapsed .nav-badge,
 .sidebar.collapsed .submenu-toggle {
-  display: none;
+  display: none !important;
 }
 
 .sidebar.collapsed .nav-icon {

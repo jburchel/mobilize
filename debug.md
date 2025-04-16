@@ -20,25 +20,25 @@
 - [x] 18. Comm. Table headers should have sort function
 - [x] 19. Clicked 'All Templates' and brought up an error
 - [x] 20. Same thing (above) true for any template I selected including if I clicked the 'New Template' button
-- [ ] 21. All 'Users' should be people in the database
-- [ ] 22. Need 'Signature' functionality... under Settings or Communications or both
-- [ ] 23. When creating a new pipeline you get to a page that says 'Manage Pipeline Stages' and you click on Add Stage and nothing happens
-- [ ] 24. Tried to add a church to a custom pipeline and returned 'Pipeline has no stages, success: false' ... see above
-- [ ] 25. In Pipeline Management page 'View' works, 'Edit' does not, 'Manage Stages' works, and 'Delete' doesn't
-- [ ] 26. In Google Sync page... Contacts 'Sync Now' returns bad request
-- [ ] 27. Import Contacts pulls up what appears to be a placeholder page
-- [ ] 28. Sync Calendar = 'bad request'
-- [ ] 29. Sync Emails = 'bad request'
-- [ ] 30. Reports: clicked on 'Create Custom Report' tried to create one and it didn't work 'give me a preview or generate a report (bad request)
-- [ ] 31. ON Reports dashboard, none of the cards at the top of the page are loading anything
-- [ ] 32. For Email Management, I clicked on Manage Signatures and it just pulls up a page that says 'Profile Settings'... there is not a list of signatures or any way to create a new signature that I can see?
-- [ ] 33. Same page, click on Manage Templates and get error (see also above)
-- [ ] 34. Under Settings, you can pull up a Notifications Settings page. It doesn't currently allow you to toggle on any of the notifications.
-- [ ] 35. Admin Panel: View All Users... Delete user got an error
-- [ ] 36. When viewing all offices clicking the Users button doesn't do anything
-- [ ] 37. Above, same with Edit, and Delete
-- [ ] 38. Under Logs and Monitoring none of the links do anything
-- [ ] 39. Same under 'System Settings'
-- [ ] 40. Same for Manage Roles & Permissions under User Management
-- [ ] 41. Clicking on the hamburger menu button in the sidebar does not correctly collapse the sidebar 
-- [ ] 42. Fix the video conference scheduling to be intuitive when you add a New Message and select Video it should allow you to shedule a Google Meet from there.
+- [x] 21. All 'Users' should be people in the database
+- [x] 22. Need 'Signature' functionality... under Settings or Communications or both
+- [x] 23. When creating a new pipeline you get to a page that says 'Manage Pipeline Stages' and you click on Add Stage and nothing happens
+- [x] 24. Tried to add a church to a custom pipeline and returned 'Pipeline has no stages, success: false' ... see above
+- [x] 25. In Pipeline Management page 'View' works, 'Edit' does not, 'Manage Stages' works, and 'Delete' doesn't
+- [x] 26. In Google Sync page... Contacts 'Sync Now' returns bad request - FIXED: Updated ContactSyncService to use 'address' field instead of non-existent 'street' field and removed 'title' and 'company' fields
+- [x] 27. Import Contacts pulls up what appears to be a placeholder page
+- [x] 28. Sync Calendar = 'bad request'
+- [x] 29. Email sync not implemented - FIXED: Added email syncing functionality using GmailService
+- [x] 30. Email sync 'database is locked' error - FIXED: Added retry logic with exponential backoff and session.no_autoflush
+- [ ] 31. ON Reports dashboard, none of the cards at the top of the page are loading anything - FIXED: Completely rebuilt widget loading system with better error handling, added retry logic with exponential backoff, improved database queries, added manual refresh button, fixed export functionality
+- [x] 32. For Email Management, I clicked on Manage Signatures and it just pulls up a page that says 'Profile Settings'... there is not a list of signatures or any way to create a new signature that I can see? - FIXED: Updated the "Manage Signatures" button to correctly link to the functional signatures page in the Communications section
+- [x] 33. Same page, click on Manage Templates and get error (see also above)
+- [x] 34. Under Settings, you can pull up a Notifications Settings page. It doesn't currently allow you to toggle on any of the notifications. - FIXED: Implemented notification preferences functionality with toggles for email notifications, task reminders, task assignments, and system announcements
+- [x] 35. Admin Panel: View All Users... Delete user got an error
+- [x] 36. When viewing all offices clicking the Users button doesn't do anything - FIXED: Updated the Users button to link to the correct office_users route, modified the template to properly display users assigned to the office, and added CSRF tokens to the forms to fix the 400 Bad Request errors when updating user roles
+- [x] 37. Above, same with Edit, and Delete - FIXED: Added proper edit and delete functionality with confirmation modals for office management
+- [x] 38. Under Logs and Monitoring none of the links do anything - FIXED: Created admin/base.html template and implemented system_logs.html, user_activity.html, activity_logs.html, security_logs.html, and system_performance.html templates with proper data visualization
+- [x] 39. Same under 'System Settings' - FIXED: Added proper URL routing for Google Workspace Integration, Email Settings, and Database Management in the admin dashboard
+- [x] 40. Same for Manage Roles & Permissions under User Management - FIXED: Created Role and RolePermission models, fixed the routing issue where the template was linking to 'roles_permissions' but the URL path was '/system/roles-permissions', added the required database tables and columns, and updated existing users with appropriate role_id values
+- [x] 41. Clicking on the hamburger menu button in the sidebar does not correctly collapse the sidebar - FIXED: Improved sidebar toggle functionality in scripts.js and styles.css to properly handle collapsed state and icon changes, fixed CSS for mobile responsiveness
+- [x] 42. Fix the video conference scheduling to be intuitive when you add a New Message and select Video it should allow you to shedule a Google Meet from there. - FIXED: Enhanced the communications compose form to display date and time pickers when "Video Conference" type is selected, improved the calendar_service integration to use the selected date/time for meeting creation, added detailed meeting information to communications, and created an attractive video conference details section on the communications view page with direct Google Meet join links

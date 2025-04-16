@@ -15,6 +15,8 @@ from .task import Task
 from .communication import Communication
 from .office import Office
 from .permission import Permission
+from .role import Role
+from .role_permission import RolePermission
 from .google_token import GoogleToken
 from .email_signature import EmailSignature
 from .sync_history import SyncHistory
@@ -35,6 +37,8 @@ __all__ = [
     'Communication',
     'Office',
     'Permission',
+    'Role',
+    'RolePermission',
     'GoogleToken',
     'EmailSignature',
     'SyncHistory',

@@ -37,6 +37,15 @@
                         </div>
                         
                         <div class="mb-3">
+                            <label for="pipeline_type" class="form-label">Pipeline Type *</label>
+                            <select class="form-select" id="pipeline_type" name="pipeline_type" required>
+                                <option value="people" {% if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'people' %}selected{% endif %}>People Pipeline</option>
+                                <option value="church" {% if pipeline.pipeline_type == 'church' %}selected{% endif %}>Church Pipeline</option>
+                            </select>
+                            <div class="form-text">This determines which type of contacts can be added to this pipeline.</div>
+                        </div>
+                        
+                        <div class="mb-3">
                             <label for="parent_pipeline_stage" class="form-label">Main Pipeline Stage *</label>
                             <select class="form-select" id="parent_pipeline_stage" name="parent_pipeline_stage" required>
                                 <option value="">Select a stage...</option>
@@ -75,4 +84,13 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('pipeline_type').addEventListener('change', function() {
+        // Redirect with the new pipeline type to refresh parent stage options
+        window.location.href = "{{ url_for('pipeline.edit', pipeline_id=pipeline.id) }}?type=" + this.value;
+    });
+</script>
 {% endblock %} 

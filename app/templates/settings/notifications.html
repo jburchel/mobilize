@@ -16,60 +16,69 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        Notification settings will be available in a future update.
-                    </div>
-                    
-                    <div class="list-group mb-4">
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Email Notifications</h6>
-                                    <p class="mb-0 text-muted small">Receive notifications via email</p>
+                    <form action="{{ url_for('settings.notifications') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="list-group mb-4">
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">Email Notifications</h6>
+                                        <p class="mb-0 text-muted small">Receive notifications via email</p>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="email_notifications" id="emailNotifications"
+                                            {% if user.notification_settings and user.notification_settings.email_notifications %}checked{% endif %}>
+                                    </div>
                                 </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="emailNotifications" disabled>
+                            </div>
+                            
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">Task Reminders</h6>
+                                        <p class="mb-0 text-muted small">Receive reminders for upcoming tasks</p>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="task_reminders" id="taskReminders"
+                                            {% if user.notification_settings and user.notification_settings.task_reminders %}checked{% endif %}>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">Task Assignments</h6>
+                                        <p class="mb-0 text-muted small">Get notified when you're assigned a task</p>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="task_assignments" id="taskAssignments"
+                                            {% if user.notification_settings and user.notification_settings.task_assignments %}checked{% endif %}>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">System Announcements</h6>
+                                        <p class="mb-0 text-muted small">Receive system-wide announcements</p>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="system_announcements" id="systemAnnouncements"
+                                            {% if user.notification_settings and user.notification_settings.system_announcements %}checked{% endif %}>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Task Reminders</h6>
-                                    <p class="mb-0 text-muted small">Receive reminders for upcoming tasks</p>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="taskReminders" disabled>
-                                </div>
-                            </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i> Save Settings
+                            </button>
                         </div>
-                        
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Task Assignments</h6>
-                                    <p class="mb-0 text-muted small">Get notified when you're assigned a task</p>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="taskAssignments" disabled>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">System Announcements</h6>
-                                    <p class="mb-0 text-muted small">Receive system-wide announcements</p>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="systemAnnouncements" disabled>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>

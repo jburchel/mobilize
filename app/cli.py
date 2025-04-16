@@ -6,6 +6,7 @@ from app.models import User, Contact
 import json
 import os
 from datetime import datetime
+from sqlalchemy import text
 
 @click.command("setup-db")
 @with_appcontext
@@ -30,11 +31,27 @@ def migrate_contacts_command():
     migrate_contacts_to_main_pipelines()
     click.echo("Contact migration to main pipelines complete.")
 
+@click.command('add-email-sync-column')
+@with_appcontext
+def add_email_sync_column():
+    """Add email_sync_contacts_only column to users table."""
+    try:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN email_sync_contacts_only BOOLEAN DEFAULT 0"))
+        db.session.commit()
+        click.echo("Added email_sync_contacts_only column to users table.")
+    except Exception as e:
+        db.session.rollback()
+        click.echo(f"Error adding column: {str(e)}")
+        # If the error is about column already existing, consider it a success
+        if "duplicate column name" in str(e):
+            click.echo("Column already exists - this is fine.")
+
 def register_commands(app):
     """Register custom Flask CLI commands."""
     app.cli.add_command(reset_db_command)
     app.cli.add_command(seed_db_command)
     app.cli.add_command(run_automations_command)
+    app.cli.add_command(add_email_sync_column)
 
 @click.command("reset-db")
 @with_appcontext

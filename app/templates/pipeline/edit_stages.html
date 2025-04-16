@@ -30,10 +30,40 @@
     }
     
     .stage-color-preview {
-        width: 1rem;
-        height: 1rem;
+        width: 1.5rem;
+        height: 1.5rem;
         border-radius: 50%;
         margin-right: 0.75rem;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        display: inline-block;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Additional style for the simplified list view */
+    .pipeline-stage-color {
+        display: inline-block;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        margin-right: 1rem;
+        border: 2px solid rgba(0, 0, 0, 0.2);
+        vertical-align: middle;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Ensure all stage color indicators are visible */
+    [data-color] {
+        position: relative;
+    }
+    
+    [data-color]::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 8px;
+        height: 100%;
+        background-color: attr(data-color);
     }
     
     .stage-content {
@@ -101,52 +131,100 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Pipeline Stages</h5>
-                    <button type="button" class="btn btn-sm btn-primary" id="addStageBtn">
+                    <button type="button" class="btn btn-primary" id="addStageBtn">
                         <i class="bi bi-plus-circle me-1"></i> Add Stage
                     </button>
                 </div>
                 <div class="card-body">
                     <div id="addStageFormContainer" class="add-stage-form mb-4" style="display: none;">
                         <h6 class="mb-3">Add New Stage</h6>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="newStageName" class="form-label">Stage Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="newStageName" placeholder="e.g., Initial Contact">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="newStageColor" class="form-label">Color</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">
-                                        <span id="newColorPreview" class="stage-color-preview" style="background-color: #3498db;"></span>
-                                    </span>
-                                    <input type="color" class="form-control form-control-color" id="newStageColor" value="#3498db">
+                        <form method="POST" action="{{ url_for('pipeline.manage_stages', pipeline_id=pipeline.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="action" value="add_stage">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="stageName" class="form-label">Stage Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="stageName" name="stage_name" placeholder="e.g., Initial Contact" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="stageColor" class="form-label">Color</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <span id="colorPreview" class="stage-color-preview" style="background-color: #3498db;"></span>
+                                        </span>
+                                        <input type="color" class="form-control form-control-color" id="stageColor" name="stage_color" value="#3498db">
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label for="stageDescription" class="form-label">Description</label>
+                                    <textarea class="form-control" id="stageDescription" name="stage_description" rows="2" placeholder="Describe what happens in this stage"></textarea>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="accordion" id="addStageAccordion">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#addAutomationSettings" aria-expanded="false" aria-controls="addAutomationSettings">
+                                                    Automation Settings
+                                                </button>
+                                            </h2>
+                                            <div id="addAutomationSettings" class="accordion-collapse collapse" data-bs-parent="#addStageAccordion">
+                                                <div class="accordion-body">
+                                                    <div class="mb-3">
+                                                        <label for="addAutoMoveDays" class="form-label">Auto-move after days</label>
+                                                        <input type="number" class="form-control" id="addAutoMoveDays" name="auto_move_days" min="0">
+                                                        <div class="form-text">Automatically move contacts to the next stage after this many days. Leave empty to disable.</div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3 form-check">
+                                                        <input type="checkbox" class="form-check-input" id="addAutoReminder" name="auto_reminder">
+                                                        <label class="form-check-label" for="addAutoReminder">Send reminders for contacts in this stage</label>
+                                                        <div class="form-text">Sends daily reminders when contacts have been in this stage for too long.</div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="addAutoTaskTitle" class="form-label">Auto-create task template</label>
+                                                        <div class="input-group mb-2">
+                                                            <input type="text" class="form-control" id="addAutoTaskTitle" name="auto_task_title" placeholder="Task title">
+                                                        </div>
+                                                        <textarea class="form-control mb-2" id="addAutoTaskDescription" name="auto_task_description" placeholder="Task description" rows="2"></textarea>
+                                                        <div class="row">
+                                                            <div class="col-md-6 mb-2">
+                                                                <label for="addAutoTaskDays" class="form-label">Days to complete</label>
+                                                                <input type="number" class="form-control" id="addAutoTaskDays" name="auto_task_days" min="1" placeholder="3">
+                                                            </div>
+                                                            <div class="col-md-6 mb-2">
+                                                                <label for="addAutoTaskPriority" class="form-label">Priority</label>
+                                                                <select class="form-select" id="addAutoTaskPriority" name="auto_task_priority">
+                                                                    <option value="LOW">Low</option>
+                                                                    <option value="MEDIUM" selected>Medium</option>
+                                                                    <option value="HIGH">High</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-text">Automatically creates tasks when contacts enter this stage.</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-12 d-flex justify-content-end">
+                                    <button type="button" class="btn btn-outline-secondary me-2" id="cancelAddStageBtn">Cancel</button>
+                                    <button type="submit" class="btn btn-primary" id="saveNewStageBtn">Add Stage</button>
                                 </div>
                             </div>
-                            <div class="col-12">
-                                <label for="newStageDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="newStageDescription" rows="2" placeholder="Describe what happens in this stage"></textarea>
-                            </div>
-                            <div class="col-12 d-flex justify-content-end">
-                                <button type="button" class="btn btn-outline-secondary me-2" id="cancelAddStageBtn">Cancel</button>
-                                <button type="button" class="btn btn-primary" id="saveNewStageBtn">Add Stage</button>
-                            </div>
-                        </div>
+                        </form>
                     </div>
 
-                    <div class="d-flex justify-content-between mb-3">
-                        <h6 class="m-0 text-primary fw-bold">Pipeline Stages</h6>
-                        <button type="button" id="addStageButton" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-plus-circle"></i> Add Stage
-                        </button>
-                    </div>
-
-                    <div class="stage-list" id="stageList">
+                    <div id="stageList" class="stage-list">
                         {% for stage in stages %}
-                        <div class="stage-item" data-stage-id="{{ stage.id }}" data-order="{{ stage.order }}" data-color="{{ stage.color }}" data-description="{{ stage.description or '' }}">
+                        <div class="stage-item" data-stage-id="{{ stage.id }}" data-order="{{ stage.order }}" data-color="{{ stage.color }}" data-description="{{ stage.description or '' }}" data-auto-move-days="{{ stage.auto_move_days or '' }}" data-auto-reminder="{{ 'true' if stage.auto_reminder else 'false' }}" data-auto-task-template="{{ stage.auto_task_template or '' }}">
                             <div class="stage-handle">
                                 <i class="bi bi-grip-vertical"></i>
                             </div>
-                            <div class="stage-color-preview" style="background-color: {{ stage.color }};"></div>
+                            <div class="stage-color-preview" style="background-color: {{ stage.color }} !important;"></div>
                             <div class="stage-content">
                                 <div class="stage-order">{{ stage.order }}</div>
                                 <div class="stage-name">{{ stage.name }}</div>
@@ -392,88 +470,227 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="{{ url_for('static', filename='js/pipeline-colors.js') }}"></script>
 <script>
-    $(document).ready(function() {
-        // Make stages sortable
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded and ready');
+        
+        // Debug function to ensure all color previews are working
+        function checkAndFixStageColors() {
+            console.log('Checking stage colors...');
+            document.querySelectorAll('.stage-item').forEach(function(stageItem) {
+                const stageId = stageItem.getAttribute('data-stage-id');
+                const stageColor = stageItem.getAttribute('data-color');
+                const colorPreview = stageItem.querySelector('.stage-color-preview');
+                
+                if (stageColor) {
+                    console.log(`Stage ${stageId} - Color should be: ${stageColor}`);
+                    // Force apply the color with !important
+                    if (colorPreview) {
+                        colorPreview.style.cssText = `background-color: ${stageColor} !important`;
+                        console.log(`Applied color ${stageColor} to stage ${stageId} preview`);
+                    }
+                    
+                    // Also add a left border with the stage color
+                    stageItem.style.borderLeft = `6px solid ${stageColor}`;
+                    console.log(`Added colored border to stage ${stageId}`);
+                }
+            });
+            
+            // Also look for any elements with class .pipeline-stage-row and add color
+            document.querySelectorAll('.pipeline-stage-row').forEach(function(row) {
+                const stageColor = row.getAttribute('data-color');
+                if (stageColor) {
+                    // Add a color dot
+                    const orderCol = row.querySelector('.stage-order-col');
+                    if (orderCol) {
+                        let colorDot = document.createElement('span');
+                        colorDot.className = 'pipeline-stage-color me-2';
+                        colorDot.style.backgroundColor = stageColor;
+                        orderCol.appendChild(colorDot);
+                        console.log(`Added color dot to row with color ${stageColor}`);
+                    }
+                    
+                    // Add left border
+                    row.style.borderLeft = `6px solid ${stageColor}`;
+                }
+            });
+        }
+        
+        // Run color check immediately
+        checkAndFixStageColors();
+        
+        // Run again after a short delay (in case of async loading)
+        setTimeout(checkAndFixStageColors, 500);
+        
+        // Make stages sortable using Sortable.js
         new Sortable(document.getElementById('stageList'), {
             handle: '.stage-handle',
             animation: 150,
             onEnd: function() {
                 updateStageOrder();
+                
+                // Show a saved indicator when order is changed
+                const savedIndicator = document.getElementById('savedIndicator');
+                savedIndicator.style.display = 'block';
+                setTimeout(function() {
+                    savedIndicator.style.display = 'none';
+                }, 1500);
             }
         });
         
+        // Create a MutationObserver to detect when new stages are added to the DOM
+        const stageListObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1 && node.classList.contains('stage-item')) {
+                            const stageId = node.getAttribute('data-stage-id');
+                            const stageColor = node.getAttribute('data-color');
+                            const colorPreview = node.querySelector('.stage-color-preview');
+                            
+                            console.log(`New stage detected ${stageId} - Color: ${stageColor}`);
+                            
+                            if (stageColor && colorPreview) {
+                                colorPreview.style.backgroundColor = stageColor;
+                                console.log(`Applied color ${stageColor} to new stage ${stageId}`);
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing the stage list for added nodes
+        const stageList = document.getElementById('stageList');
+        stageListObserver.observe(stageList, { childList: true });
+        
         // Function to update stage order
         function updateStageOrder() {
-            $('.stage-item').each(function(index) {
-                $(this).attr('data-order', index + 1);
-                $(this).find('.stage-order').text(index + 1);
+            const stageItems = document.querySelectorAll('.stage-item');
+            stageItems.forEach(function(item, index) {
+                item.setAttribute('data-order', index + 1);
+                item.querySelector('.stage-order').textContent = index + 1;
             });
+            
+            // Show/hide the no stages message
+            const noStagesMessage = document.getElementById('noStagesMessage');
+            if (noStagesMessage) {
+                noStagesMessage.style.display = 
+                    document.querySelectorAll('.stage-item').length === 0 ? 'block' : 'none';
+            }
         }
         
         // Bind event handlers for edit and delete buttons
         rebindStageEventHandlers();
         
-        // Save changes from the edit modal
-        $('#saveStageChangesBtn').on('click', function() {
-            var stageId = $('#editStageId').val();
-            var stageName = $('#editStageName').val();
-            var stageColor = $('#editStageColor').val();
-            var stageDescription = $('#editStageDescription').val();
-            var stageActive = $('#editStageActive').prop('checked');
+        // Add Stage button handler - using direct DOM manipulation
+        document.getElementById('addStageBtn').addEventListener('click', function() {
+            console.log('Add Stage button clicked');
+            document.getElementById('addStageFormContainer').style.display = 'block';
+            
+            // Reset form fields
+            document.getElementById('stageName').value = '';
+            document.getElementById('stageDescription').value = '';
+            document.getElementById('stageColor').value = '#3498db';
+            document.getElementById('colorPreview').style.backgroundColor = '#3498db';
+            
+            // Reset automation fields
+            if(document.getElementById('addAutoMoveDays')) {
+                document.getElementById('addAutoMoveDays').value = '';
+                document.getElementById('addAutoReminder').checked = false;
+                document.getElementById('addAutoTaskTitle').value = '';
+                document.getElementById('addAutoTaskDescription').value = '';
+                document.getElementById('addAutoTaskDays').value = '3';
+                document.getElementById('addAutoTaskPriority').value = 'MEDIUM';
+            }
+        });
+        
+        // Cancel add button handler
+        document.getElementById('cancelAddStageBtn').addEventListener('click', function() {
+            // Clear form fields and hide the form
+            document.getElementById('stageName').value = '';
+            document.getElementById('stageDescription').value = '';
+            document.getElementById('stageColor').value = '#3498db';
+            document.getElementById('colorPreview').style.backgroundColor = '#3498db';
+            document.getElementById('addStageFormContainer').style.display = 'none';
+        });
+        
+        // Update new color preview when color changes
+        document.getElementById('stageColor').addEventListener('input', function() {
+            document.getElementById('colorPreview').style.backgroundColor = this.value;
+        });
+        
+        // Update edit color preview when color changes
+        document.getElementById('editStageColor').addEventListener('input', function() {
+            document.getElementById('editColorPreview').style.backgroundColor = this.value;
+        });
+        
+        // Save stage changes button
+        document.getElementById('saveStageChangesBtn').addEventListener('click', function() {
+            const stageId = document.getElementById('editStageId').value;
+            const stageName = document.getElementById('editStageName').value;
+            const stageColor = document.getElementById('editStageColor').value;
+            const stageDescription = document.getElementById('editStageDescription').value;
+            const stageActive = document.getElementById('editStageActive').checked;
             
             // Get automation settings
-            var autoMoveDays = $('#editAutoMoveDays').val();
-            var autoReminder = $('#editAutoReminder').prop('checked');
+            const autoMoveDays = document.getElementById('editAutoMoveDays').value;
+            const autoReminder = document.getElementById('editAutoReminder').checked;
             
             // Build auto task template JSON
-            var autoTaskTemplate = null;
-            if ($('#editAutoTaskTitle').val()) {
+            let autoTaskTemplate = null;
+            if (document.getElementById('editAutoTaskTitle').value) {
                 autoTaskTemplate = JSON.stringify({
-                    title: $('#editAutoTaskTitle').val(),
-                    description: $('#editAutoTaskDescription').val(),
-                    days_to_complete: parseInt($('#editAutoTaskDays').val()) || 1,
-                    priority: $('#editAutoTaskPriority').val() || 'MEDIUM'
+                    title: document.getElementById('editAutoTaskTitle').value,
+                    description: document.getElementById('editAutoTaskDescription').value,
+                    days_to_complete: parseInt(document.getElementById('editAutoTaskDays').value) || 1,
+                    priority: document.getElementById('editAutoTaskPriority').value || 'MEDIUM'
                 });
             }
             
             // Find the stage item and update its data
-            var stageItem = $('.stage-item[data-stage-id="' + stageId + '"]');
-            stageItem.find('.stage-name').text(stageName);
-            stageItem.find('.stage-color-preview').css('background-color', stageColor);
-            stageItem.attr('data-color', stageColor);
-            stageItem.attr('data-description', stageDescription || '');
-            stageItem.attr('data-auto-move-days', autoMoveDays || '');
-            stageItem.attr('data-auto-reminder', autoReminder ? 'true' : 'false');
-            stageItem.attr('data-auto-task-template', autoTaskTemplate || '');
+            const stageItem = document.querySelector(`.stage-item[data-stage-id="${stageId}"]`);
+            stageItem.querySelector('.stage-name').textContent = stageName;
+            stageItem.querySelector('.stage-color-preview').style.backgroundColor = stageColor;
+            stageItem.setAttribute('data-color', stageColor);
+            stageItem.setAttribute('data-description', stageDescription || '');
+            stageItem.setAttribute('data-auto-move-days', autoMoveDays || '');
+            stageItem.setAttribute('data-auto-reminder', autoReminder ? 'true' : 'false');
+            stageItem.setAttribute('data-auto-task-template', autoTaskTemplate || '');
             
             // Close the modal
-            $('#editStageModal').modal('hide');
+            const editModal = bootstrap.Modal.getInstance(document.getElementById('editStageModal'));
+            editModal.hide();
             
             // Show a saved indicator
-            $('#savedIndicator').fadeIn().delay(1500).fadeOut();
+            const savedIndicator = document.getElementById('savedIndicator');
+            savedIndicator.style.display = 'block';
+            setTimeout(function() {
+                savedIndicator.style.display = 'none';
+            }, 1500);
             
             // For debugging
             console.log('Updated stage:', stageId, stageName, stageColor, stageDescription);
         });
         
-        // Submit form
-        $('#stagesForm').submit(function(e) {
-            var stagesData = [];
+        // Form submission handler
+        document.getElementById('stagesForm').addEventListener('submit', function(e) {
+            console.log('Submitting form...');
+            const stagesData = [];
             
             // Collect data from each stage item
-            $('.stage-item').each(function(index) {
-                var stageItem = $(this);
-                var stageId = stageItem.attr('data-stage-id');
-                var stageName = stageItem.find('.stage-name').text().trim();
-                var stageColor = stageItem.attr('data-color') || '#3498db';
-                var stageOrder = index + 1;
-                var stageDescription = stageItem.attr('data-description') || '';
-                var autoMoveDays = stageItem.attr('data-auto-move-days') || '';
-                var autoReminder = stageItem.attr('data-auto-reminder') === 'true';
-                var autoTaskTemplate = stageItem.attr('data-auto-task-template') || '';
+            document.querySelectorAll('.stage-item').forEach(function(stageItem, index) {
+                const stageId = stageItem.getAttribute('data-stage-id');
+                const stageName = stageItem.querySelector('.stage-name').textContent.trim();
+                const stageColor = stageItem.getAttribute('data-color') || '#3498db';
+                const stageOrder = index + 1;
+                const stageDescription = stageItem.getAttribute('data-description') || '';
+                const autoMoveDays = stageItem.getAttribute('data-auto-move-days') || '';
+                const autoReminder = stageItem.getAttribute('data-auto-reminder') === 'true';
+                const autoTaskTemplate = stageItem.getAttribute('data-auto-task-template') || '';
                 
-                var stageData = {
+                const stageData = {
                     id: stageId,
                     name: stageName,
                     color: stageColor,
@@ -485,133 +702,245 @@
                 };
                 
                 stagesData.push(stageData);
+                console.log(`Added stage to submission: ${stageId} - ${stageName} (order: ${stageOrder})`);
             });
             
+            if (stagesData.length === 0) {
+                console.log('No stages to submit. Confirming with user...');
+                // If there are no stages, prompt the user
+                if (!confirm('You are about to save a pipeline with no stages. Do you want to continue?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
             // Set form data
-            $('#stagesData').val(JSON.stringify(stagesData));
+            const jsonData = JSON.stringify(stagesData);
+            document.getElementById('stagesData').value = jsonData;
             
             // For debugging
-            console.log('Submitting stages data:', JSON.stringify(stagesData));
+            console.log('Submitting stages data:', jsonData);
             
             // Continue with form submission
             return true;
         });
         
-        // Initialize both "Add Stage" buttons to use the same function
-        $('#addStageBtn, #addStageButton').click(function() {
-            console.log('Add Stage button clicked');
-            
-            // Create a new stage with default values
-            var newStageId = 'new_' + Date.now(); // Temporary ID
-            var newStageName = 'New Stage';
-            var newStageColor = '#3498db';
-            var newStageOrder = $('.stage-item').length + 1;
-            
-            var newStageHtml = `
-                <div class="stage-item" data-stage-id="${newStageId}" data-order="${newStageOrder}" data-color="${newStageColor}">
-                    <div class="stage-handle">
-                        <i class="bi bi-grip-vertical"></i>
-                    </div>
-                    <div class="stage-color-preview" style="background-color: ${newStageColor};"></div>
-                    <div class="stage-content">
-                        <div class="stage-order">${newStageOrder}</div>
-                        <div class="stage-name">${newStageName}</div>
-                    </div>
-                    <div class="stage-actions">
-                        <button type="button" class="btn btn-sm btn-outline-primary edit-stage" data-stage-id="${newStageId}">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger delete-stage" data-stage-id="${newStageId}">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            // Add the new stage to the list
-            $('#stageList').append(newStageHtml);
-            
-            // Hide "no stages" message if it was showing
-            $('#noStagesMessage').hide();
-            
-            // Rebind event handlers to the new buttons
-            rebindStageEventHandlers();
-            
-            // Update stage order
-            updateStageOrder();
-        });
-        
-        // Function to rebind event handlers to all stage controls
+        // Function to rebind event handlers
         function rebindStageEventHandlers() {
-            // Unbind existing handlers to prevent duplicates
-            $('.edit-stage').off('click');
-            $('.delete-stage').off('click');
-            
-            // Rebind edit handlers
-            $('.edit-stage').on('click', function() {
-                var stageId = $(this).data('stage-id');
-                $('#editStageId').val(stageId);
-                var stageItem = $('.stage-item[data-stage-id="' + stageId + '"]');
-                var stageName = stageItem.find('.stage-name').text().trim();
-                var stageColor = stageItem.attr('data-color') || '#3498db';
-                var stageDescription = stageItem.attr('data-description') || '';
-                var autoMoveDays = stageItem.attr('data-auto-move-days') || '';
-                var autoReminder = stageItem.attr('data-auto-reminder') === 'true';
-                var autoTaskTemplate = stageItem.attr('data-auto-task-template') || '';
-                
-                // Populate edit modal with stage data
-                $('#editStageName').val(stageName);
-                $('#editStageColor').val(stageColor);
-                $('#editColorPreview').css('background-color', stageColor);
-                $('#editStageDescription').val(stageDescription);
-                
-                // Populate automation settings
-                $('#editAutoMoveDays').val(autoMoveDays);
-                $('#editAutoReminder').prop('checked', autoReminder);
-                
-                // Parse and populate task template if it exists
-                if (autoTaskTemplate) {
-                    try {
-                        var taskTemplate = JSON.parse(autoTaskTemplate);
-                        $('#editAutoTaskTitle').val(taskTemplate.title || '');
-                        $('#editAutoTaskDescription').val(taskTemplate.description || '');
-                        $('#editAutoTaskDays').val(taskTemplate.days_to_complete || '1');
-                        $('#editAutoTaskPriority').val(taskTemplate.priority || 'MEDIUM');
-                    } catch (e) {
-                        console.error('Failed to parse task template:', e);
-                        $('#editAutoTaskTitle').val('');
-                        $('#editAutoTaskDescription').val('');
-                        $('#editAutoTaskDays').val('1');
-                        $('#editAutoTaskPriority').val('MEDIUM');
-                    }
-                } else {
-                    $('#editAutoTaskTitle').val('');
-                    $('#editAutoTaskDescription').val('');
-                    $('#editAutoTaskDays').val('1');
-                    $('#editAutoTaskPriority').val('MEDIUM');
-                }
-                
-                // Show the modal
-                $('#editStageModal').modal('show');
+            // Remove existing listeners (not strictly necessary in this implementation,
+            // but helpful to prevent memory leaks if called multiple times)
+            document.querySelectorAll('.edit-stage').forEach(function(button) {
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
             });
             
-            // Rebind delete handlers
-            $('.delete-stage').on('click', function() {
-                if (confirm('Are you sure you want to delete this stage? This cannot be undone.')) {
-                    var stageId = $(this).data('stage-id');
-                    $('.stage-item[data-stage-id="' + stageId + '"]').remove();
-                    if ($('.stage-item').length === 0) {
-                        $('#noStagesMessage').show();
+            document.querySelectorAll('.delete-stage').forEach(function(button) {
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
+            });
+            
+            // Add edit handlers
+            document.querySelectorAll('.edit-stage').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const stageId = this.getAttribute('data-stage-id');
+                    document.getElementById('editStageId').value = stageId;
+                    
+                    const stageItem = document.querySelector(`.stage-item[data-stage-id="${stageId}"]`);
+                    const stageName = stageItem.querySelector('.stage-name').textContent.trim();
+                    const stageColor = stageItem.getAttribute('data-color') || '#3498db';
+                    const stageDescription = stageItem.getAttribute('data-description') || '';
+                    const autoMoveDays = stageItem.getAttribute('data-auto-move-days') || '';
+                    const autoReminder = stageItem.getAttribute('data-auto-reminder') === 'true';
+                    const autoTaskTemplate = stageItem.getAttribute('data-auto-task-template') || '';
+                    
+                    // Populate edit modal with stage data
+                    document.getElementById('editStageName').value = stageName;
+                    document.getElementById('editStageColor').value = stageColor;
+                    document.getElementById('editColorPreview').style.backgroundColor = stageColor;
+                    document.getElementById('editStageDescription').value = stageDescription;
+                    
+                    // Populate automation settings
+                    document.getElementById('editAutoMoveDays').value = autoMoveDays;
+                    document.getElementById('editAutoReminder').checked = autoReminder;
+                    
+                    // Parse and populate task template if it exists
+                    if (autoTaskTemplate) {
+                        try {
+                            const taskTemplate = JSON.parse(autoTaskTemplate);
+                            document.getElementById('editAutoTaskTitle').value = taskTemplate.title || '';
+                            document.getElementById('editAutoTaskDescription').value = taskTemplate.description || '';
+                            document.getElementById('editAutoTaskDays').value = taskTemplate.days_to_complete || '1';
+                            document.getElementById('editAutoTaskPriority').value = taskTemplate.priority || 'MEDIUM';
+                        } catch (e) {
+                            console.error('Failed to parse task template:', e);
+                            document.getElementById('editAutoTaskTitle').value = '';
+                            document.getElementById('editAutoTaskDescription').value = '';
+                            document.getElementById('editAutoTaskDays').value = '1';
+                            document.getElementById('editAutoTaskPriority').value = 'MEDIUM';
+                        }
+                    } else {
+                        document.getElementById('editAutoTaskTitle').value = '';
+                        document.getElementById('editAutoTaskDescription').value = '';
+                        document.getElementById('editAutoTaskDays').value = '1';
+                        document.getElementById('editAutoTaskPriority').value = 'MEDIUM';
                     }
-                    updateStageOrder();
+                    
+                    // Show the modal
+                    const editModal = new bootstrap.Modal(document.getElementById('editStageModal'));
+                    editModal.show();
+                });
+            });
+            
+            // Add delete handlers
+            document.querySelectorAll('.delete-stage').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to delete this stage? This cannot be undone.')) {
+                        const stageId = this.getAttribute('data-stage-id');
+                        const stageItem = document.querySelector(`.stage-item[data-stage-id="${stageId}"]`);
+                        if (stageItem) {
+                            stageItem.remove();
+                        }
+                        
+                        if (document.querySelectorAll('.stage-item').length === 0) {
+                            const noStagesMessage = document.getElementById('noStagesMessage');
+                            if (noStagesMessage) {
+                                noStagesMessage.style.display = 'block';
+                            }
+                        }
+                        
+                        updateStageOrder();
+                    }
+                });
+            });
+        }
+
+        // Delete stage event handler
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-stage-btn')) {
+                const stageId = e.target.getAttribute('data-stage-id');
+                const stageName = e.target.getAttribute('data-stage-name');
+                
+                if (confirm(`Are you sure you want to delete the stage "${stageName}"?`)) {
+                    // Send AJAX request to delete the stage
+                    fetch(`/pipeline/delete-stage/${stageId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove the stage from the DOM
+                            const stageItem = document.querySelector(`.stage-item[data-stage-id="${stageId}"]`);
+                            if (stageItem) {
+                                stageItem.remove();
+                                updateStageOrder();
+                            }
+                        } else {
+                            alert('Failed to delete stage: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting stage:', error);
+                        alert('An error occurred while deleting the stage.');
+                    });
+                }
+            }
+        });
+    });
+
+    // Additional script for color indicators in alternative UIs
+    document.addEventListener('DOMContentLoaded', function() {
+        // This script ensures colors are shown in the simplified pipeline view
+        console.log('Adding color indicators to pipeline stages');
+        
+        // Target the elements in the screenshot UI that need color indicators
+        function addColorIndicators() {
+            // Look for all elements with stage related classes
+            const stageRows = document.querySelectorAll('tr, div[data-stage-id], .stage-item, [id^="stage-"]');
+            
+            stageRows.forEach(function(row) {
+                // Try to find a color attribute or data-color
+                let stageColor = row.getAttribute('data-color');
+                
+                // If no color found but has an ID, try to extract stage ID and find matching stage
+                if (!stageColor && row.id && row.id.includes('stage-')) {
+                    const stageId = row.id.split('stage-')[1];
+                    // Look for a matching stage item with data-stage-id
+                    const matchingStage = document.querySelector(`[data-stage-id="${stageId}"]`);
+                    if (matchingStage) {
+                        stageColor = matchingStage.getAttribute('data-color');
+                    }
+                }
+                
+                if (stageColor) {
+                    console.log(`Found row with color ${stageColor}`, row);
+                    
+                    // Add left border
+                    row.style.borderLeft = `6px solid ${stageColor}`;
+                    
+                    // If this is a table row, add a color dot in the first cell
+                    if (row.tagName === 'TR') {
+                        const firstCell = row.querySelector('td:first-child, th:first-child');
+                        if (firstCell) {
+                            // Create color dot
+                            let colorDot = document.createElement('span');
+                            colorDot.style.display = 'inline-block';
+                            colorDot.style.width = '16px';
+                            colorDot.style.height = '16px';
+                            colorDot.style.borderRadius = '50%';
+                            colorDot.style.backgroundColor = stageColor;
+                            colorDot.style.marginRight = '8px';
+                            colorDot.style.border = '1px solid rgba(0,0,0,0.2)';
+                            
+                            // Insert at beginning of cell
+                            if (firstCell.firstChild) {
+                                firstCell.insertBefore(colorDot, firstCell.firstChild);
+                            } else {
+                                firstCell.appendChild(colorDot);
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Also target any elements with data-pipeline-stage-id or similar attributes
+            document.querySelectorAll('[data-pipeline-stage-id], [data-stage]').forEach(function(element) {
+                const stageId = element.getAttribute('data-pipeline-stage-id') || element.getAttribute('data-stage');
+                if (stageId) {
+                    // Find matching stage to get color
+                    const matchingStage = document.querySelector(`[data-stage-id="${stageId}"]`);
+                    if (matchingStage) {
+                        const stageColor = matchingStage.getAttribute('data-color');
+                        if (stageColor) {
+                            // Add color indicator
+                            console.log(`Adding color ${stageColor} to element with stage ID ${stageId}`);
+                            element.style.borderLeft = `6px solid ${stageColor}`;
+                            
+                            // Add color dot
+                            let colorDot = document.createElement('span');
+                            colorDot.style.display = 'inline-block';
+                            colorDot.style.width = '16px';
+                            colorDot.style.height = '16px';
+                            colorDot.style.borderRadius = '50%';
+                            colorDot.style.backgroundColor = stageColor;
+                            colorDot.style.marginRight = '8px';
+                            colorDot.style.border = '1px solid rgba(0,0,0,0.2)';
+                            
+                            element.insertBefore(colorDot, element.firstChild);
+                        }
+                    }
                 }
             });
         }
         
-        // Update color preview in the edit modal when color changes
-        $('#editStageColor').on('input', function() {
-            $('#editColorPreview').css('background-color', $(this).val());
-        });
+        // Run immediately
+        addColorIndicators();
+        
+        // Run after a delay to ensure all elements are loaded
+        setTimeout(addColorIndicators, 500);
     });
 </script>
-{% endblock %} 
+{% endblock %}

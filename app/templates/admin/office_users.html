@@ -36,13 +36,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user_office in office.user_offices %}
-                        {% set user = user_office.user %}
+                        {% for user in office_users %}
                         <tr>
                             <td>{{ user.first_name }} {{ user.last_name }}</td>
                             <td>{{ user.email }}</td>
                             <td>
-                                <span class="badge role-badge {{ user_office.role }}">{{ user_office.role }}</span>
+                                <span class="badge bg-{{ 'primary' if user.role == 'super_admin' else 'success' if user.role == 'office_admin' else 'secondary' }}">
+                                    {{ user.role }}
+                                </span>
                             </td>
                             <td>
                                 <div class="btn-group">
@@ -64,13 +65,14 @@
                                             </div>
                                             <form action="{{ url_for('admin.update_office_user', office_id=office.id, user_id=user.id) }}" method="POST">
                                                 <div class="modal-body">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                                     <div class="mb-3">
                                                         <label for="role{{ user.id }}" class="form-label">Role for {{ user.email }}</label>
                                                         <select class="form-select" id="role{{ user.id }}" name="role">
-                                                            <option value="super_admin" {% if user_office.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
-                                                            <option value="office_admin" {% if user_office.role == 'office_admin' %}selected{% endif %}>Office Admin</option>
-                                                            <option value="standard_user" {% if user_office.role == 'standard_user' %}selected{% endif %}>Standard User</option>
-                                                            <option value="limited_user" {% if user_office.role == 'limited_user' %}selected{% endif %}>Limited User</option>
+                                                            <option value="super_admin" {% if user.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
+                                                            <option value="office_admin" {% if user.role == 'office_admin' %}selected{% endif %}>Office Admin</option>
+                                                            <option value="standard_user" {% if user.role == 'standard_user' %}selected{% endif %}>Standard User</option>
+                                                            <option value="limited_user" {% if user.role == 'limited_user' %}selected{% endif %}>Limited User</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -98,6 +100,7 @@
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                                 <form action="{{ url_for('admin.remove_office_user', office_id=office.id, user_id=user.id) }}" method="POST">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                                     <button type="submit" class="btn btn-danger">Remove User</button>
                                                 </form>
                                             </div>
@@ -163,6 +166,7 @@
                     </div>
                     <div class="tab-pane fade" id="new" role="tabpanel" aria-labelledby="new-tab">
                         <form id="newUserForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <div class="mb-3">
                                 <label for="firstName" class="form-label">First Name</label>
                                 <input type="text" class="form-control" id="firstName" name="firstName" required>
@@ -182,6 +186,7 @@
                 
                 <div id="roleSelection" class="mt-3 d-none">
                     <form action="{{ url_for('admin.update_office_user', office_id=office.id, user_id=0) }}" method="POST" id="addUserForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="user_id" id="selectedUserId">
                         <div class="mb-3">
                             <label for="role" class="form-label">Role for <span id="selectedUserEmail"></span></label>

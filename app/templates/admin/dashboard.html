@@ -42,7 +42,7 @@
                             <span class="badge bg-primary-blue rounded-pill">{{ user_count }}</span>
                         </a>
                         {% if current_user.role == 'super_admin' %}
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('admin.roles_permissions') }}" class="list-group-item list-group-item-action" onclick="window.location.href='{{ url_for('admin.roles_permissions') }}'">
                             <i class="bi bi-shield-lock me-2 text-primary-blue"></i> Manage Roles & Permissions
                         </a>
                         {% endif %}
@@ -69,9 +69,9 @@
                                 <i class="bi bi-building me-2 text-primary-green"></i> View All Offices
                             </div>
                             <span class="badge bg-primary-green rounded-pill">{{ office_count }}</span>
-                        </a>
+                        </a>                        
                         {% if current_user.office %}
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('admin.office_settings', office_id=current_user.office.id) }}" class="list-group-item list-group-item-action">
                             <i class="bi bi-gear me-2 text-primary-green"></i> Manage {{ current_user.office.name }}
                         </a>
                         {% endif %}
@@ -91,13 +91,13 @@
                 <div class="card-body">
                     <p>Configure system-wide settings and integrations</p>
                     <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('admin.google_workspace_settings') }}" class="list-group-item list-group-item-action">
                             <i class="bi bi-google me-2 text-primary-blue"></i> Google Workspace Integration
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('admin.email_settings') }}" class="list-group-item list-group-item-action">
                             <i class="bi bi-envelope me-2 text-primary-blue"></i> Email Settings
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('admin.database_management') }}" class="list-group-item list-group-item-action">
                             <i class="bi bi-database me-2 text-primary-blue"></i> Database Management
                         </a>
                     </div>
@@ -116,14 +116,26 @@
                 <div class="card-body">
                     <p>Review system logs and monitor system performance</p>
                     <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('admin.system_logs') }}" class="list-group-item list-group-item-action">
                             <i class="bi bi-file-text me-2 text-primary-green"></i> System Logs
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <i class="bi bi-activity me-2 text-primary-green"></i> User Activity
+                        <a href="{{ url_for('admin.activity_logs') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-activity me-2 text-primary-green"></i> Activity Logs
                         </a>
-                        <a href="#" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('admin.security_logs') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-shield-lock me-2 text-primary-green"></i> Security Logs
+                        </a>
+                        <a href="{{ url_for('admin.email_logs') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-envelope me-2 text-primary-green"></i> Email Logs
+                        </a>
+                        <a href="{{ url_for('admin.database_logs') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-database me-2 text-primary-green"></i> Database Logs
+                        </a>
+                        <a href="{{ url_for('admin.system_performance') }}" class="list-group-item list-group-item-action">
                             <i class="bi bi-graph-up me-2 text-primary-green"></i> System Performance
+                        </a>
+                        <a href="{{ url_for('admin.user_activity') }}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-person-check me-2 text-primary-green"></i> User Activity
                         </a>
                     </div>
                 </div>

@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+
+{% block title %}Widget Test{% endblock %}
+
+{% block page_title %}Widget Test{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>Widget Test</h2>
+            <p>Testing individual widget components</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Contacts Widget -->
+        <div class="col-xl-6 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-header">
+                    <h5>Contacts Widget</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Contacts</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-contacts">Loading...</div>
+                            <div class="text-xs text-muted mt-2">New (30d): <span id="new-contacts">-</span></div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-address-book fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div id="contacts-errors" class="text-danger"></div>
+                    <button id="load-contacts" class="btn btn-primary">Load Contacts</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Info -->
+        <div class="col-xl-6 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header">
+                    <h5>Debug Info</h5>
+                </div>
+                <div class="card-body">
+                    <pre id="debug-output" style="height: 300px; overflow: auto;">Debug information will appear here</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Debug logger function
+        function log(message, data) {
+            const timestamp = new Date().toISOString().split('T')[1].split('Z')[0];
+            let logMessage = `[${timestamp}] ${message}`;
+            
+            if (data) {
+                if (typeof data === 'object') {
+                    logMessage += `\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    logMessage += `\n${data}`;
+                }
+            }
+            
+            const debugOutput = $('#debug-output');
+            debugOutput.append(logMessage + '\n\n');
+            debugOutput.scrollTop(debugOutput[0].scrollHeight);
+            
+            // Also log to console
+            console.log(message, data);
+        }
+        
+        log('Test page loaded');
+        
+        // Load Contacts button handler
+        $('#load-contacts').click(function() {
+            loadContactsWidget();
+        });
+        
+        function loadContactsWidget() {
+            // Reset UI
+            $('#total-contacts').text('Loading...');
+            $('#new-contacts').text('-');
+            $('#contacts-errors').empty();
+            
+            log('Loading contacts widget data...');
+            
+            $.ajax({
+                url: '/reports/widgets/contacts',
+                method: 'GET',
+                cache: false,
+                timeout: 10000,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Cache-Control': 'no-cache'
+                },
+                beforeSend: function(xhr) {
+                    log('Sending request with headers:', xhr.getAllResponseHeaders());
+                },
+                success: function(data) {
+                    log('SUCCESS: Contacts widget data received:', data);
+                    
+                    if (data.error) {
+                        $('#contacts-errors').text('API Error: ' + data.error);
+                        $('#total-contacts').text(data.total_contacts || '0');
+                        $('#new-contacts').text(data.new_contacts_30d || '0');
+                    } else {
+                        $('#total-contacts').text(data.total_contacts);
+                        $('#new-contacts').text(data.new_contacts_30d);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    log('ERROR: Failed to load contacts widget:');
+                    log('Status:', status);
+                    log('Error:', error);
+                    log('Response:', xhr.responseText);
+                    log('Status code:', xhr.status);
+                    
+                    $('#contacts-errors').text(`Error (${xhr.status}): ${error}`);
+                    $('#total-contacts').text('Error');
+                    $('#new-contacts').text('-');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

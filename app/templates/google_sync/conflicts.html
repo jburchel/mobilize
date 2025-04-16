@@ -27,7 +27,7 @@
                 </div>
                 <div class="card-body">
                     {% if conflicted_contacts %}
-                    <form action="{{ url_for('google_sync.resolve_conflicts') }}" method="post">
+                    <form id="conflict-resolution-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         {% for contact in conflicted_contacts %}
                         <div class="card mb-4">
@@ -249,12 +249,10 @@
                             </div>
                         </div>
                         {% endfor %}
-
-                        <div class="row mt-4">
-                            <div class="col-12 text-right">
-                                <a href="{{ url_for('google_sync.index') }}" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-success">Resolve Conflicts</button>
-                            </div>
+                        <div class="text-center my-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check mr-1"></i> Apply Resolutions
+                            </button>
                         </div>
                     </form>
                     {% else %}
@@ -274,21 +272,71 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        {% for contact in conflicted_contacts %}
-        const radioButtons{{ contact.id }} = document.querySelectorAll('input[name="resolution[{{ contact.id }}]"]');
-        const mergeOptions{{ contact.id }} = document.querySelector('.merge-options-{{ contact.id }}');
-        
-        radioButtons{{ contact.id }}.forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (this.value === 'merge') {
-                    mergeOptions{{ contact.id }}.style.display = 'block';
-                } else {
-                    mergeOptions{{ contact.id }}.style.display = 'none';
+    $(document).ready(function() {
+        // Show/hide merge options based on radio selection
+        $('input[name^="resolution"]').change(function() {
+            var contactId = $(this).attr('name').match(/\d+/)[0];
+            if ($(this).val() === 'merge') {
+                $('.merge-options-' + contactId).slideDown();
+            } else {
+                $('.merge-options-' + contactId).slideUp();
+            }
+        });
+
+        // Handle form submission via AJAX
+        $('#conflict-resolution-form').submit(function(e) {
+            e.preventDefault();
+            
+            // Build resolution data object
+            var resolutionData = {};
+            
+            // Process each contact's resolution
+            $('input[name^="resolution"]:checked').each(function() {
+                var contactId = $(this).attr('name').match(/\d+/)[0];
+                var resolution = $(this).val();
+                
+                resolutionData[contactId] = {
+                    action: resolution
+                };
+                
+                // If merge is selected, add field selections
+                if (resolution === 'merge') {
+                    resolutionData[contactId].fields = {
+                        first_name: $('input[name="merge_first_name[' + contactId + ']"]:checked').val(),
+                        last_name: $('input[name="merge_last_name[' + contactId + ']"]:checked').val(),
+                        email: $('input[name="merge_email[' + contactId + ']"]:checked').val(),
+                        phone: $('input[name="merge_phone[' + contactId + ']"]:checked').val(),
+                        address: $('input[name="merge_address[' + contactId + ']"]:checked').val()
+                    };
+                }
+            });
+            
+            // Send AJAX request
+            $.ajax({
+                url: '{{ url_for("google_sync_bp.resolve_conflicts") }}',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(resolutionData),
+                headers: {
+                    'X-CSRFToken': $('input[name="csrf_token"]').val()
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        // Show success message and redirect
+                        window.location.href = '{{ url_for("google_sync_bp.conflicts") }}';
+                    } else {
+                        alert('An error occurred: ' + response.message);
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'An error occurred while processing your request.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    alert(errorMsg);
                 }
             });
         });
-        {% endfor %}
     });
 </script>
 {% endblock %} 

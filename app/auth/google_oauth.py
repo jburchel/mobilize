@@ -5,7 +5,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 import os
 import json
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, timezone, timedelta
 
 # OAuth 2.0 scopes for various Google services we'll use
 SCOPES = [
@@ -103,7 +103,7 @@ def store_credentials(credentials, user_id=None):
     token = getattr(credentials, 'token', None)
     refresh_token = getattr(credentials, 'refresh_token', None)
     token_type = getattr(credentials, 'token_type', 'Bearer')  # Default to Bearer
-    expiry = getattr(credentials, 'expiry', datetime.now(UTC) + timedelta(hours=1))
+    expiry = getattr(credentials, 'expiry', datetime.now(timezone.utc) + timedelta(hours=1))
     
     # Convert scopes list to JSON string for storage
     scopes = getattr(credentials, 'scopes', SCOPES)

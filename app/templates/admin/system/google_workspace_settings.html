@@ -1,0 +1,189 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Google Workspace Integration{% endblock %}
+
+{% block page_title %}Google Workspace Integration{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Admin</a></li>
+  <li class="breadcrumb-item"><a href="#">System</a></li>
+  <li class="breadcrumb-item active">Google Workspace Integration</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title">Google Workspace Settings</h5>
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('admin.update_google_workspace_settings') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            
+            <div class="mb-3">
+              <label for="client_id" class="form-label">Client ID</label>
+              <input type="text" class="form-control" id="client_id" name="client_id" value="{{ settings.client_id }}" required>
+              <small class="text-muted">From Google Cloud Console</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="client_secret" class="form-label">Client Secret</label>
+              <div class="input-group">
+                <input type="password" class="form-control" id="client_secret" name="client_secret" value="{{ settings.client_secret }}" required>
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('client_secret')">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+              <small class="text-muted">From Google Cloud Console</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="domain" class="form-label">Workspace Domain</label>
+              <input type="text" class="form-control" id="domain" name="domain" value="{{ settings.domain }}" required>
+              <small class="text-muted">e.g., yourchurch.org</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="redirect_uri" class="form-label">Authorized Redirect URI</label>
+              <input type="text" class="form-control" id="redirect_uri" name="redirect_uri" value="{{ settings.redirect_uri }}" required>
+              <small class="text-muted">Must match redirect URI in Google Cloud Console</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="admin_email" class="form-label">Admin Email</label>
+              <input type="email" class="form-control" id="admin_email" name="admin_email" value="{{ settings.admin_email }}" required>
+              <small class="text-muted">Google Workspace admin account email</small>
+            </div>
+            
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="enabled" name="enabled" {% if settings.enabled %}checked{% endif %}>
+              <label class="form-check-label" for="enabled">Enable Google Workspace Integration</label>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Scopes</label>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="scope_calendar" name="scopes" value="calendar" {% if 'calendar' in settings.scopes %}checked{% endif %}>
+                <label class="form-check-label" for="scope_calendar">Calendar</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="scope_drive" name="scopes" value="drive" {% if 'drive' in settings.scopes %}checked{% endif %}>
+                <label class="form-check-label" for="scope_drive">Drive</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="scope_directory" name="scopes" value="directory" {% if 'directory' in settings.scopes %}checked{% endif %}>
+                <label class="form-check-label" for="scope_directory">Directory</label>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title">Integration Status</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="me-3">
+              <span class="badge bg-{{ 'success' if status.connected else 'danger' }} p-2">
+                <i class="fas fa-{{ 'check' if status.connected else 'times' }}"></i>
+              </span>
+            </div>
+            <div>
+              <h6 class="mb-0">Connection Status</h6>
+              <span class="text-muted">{{ 'Connected' if status.connected else 'Disconnected' }}</span>
+            </div>
+          </div>
+          
+          <div class="d-flex align-items-center mb-3">
+            <div class="me-3">
+              <span class="badge bg-{{ 'success' if status.token_valid else 'warning' }} p-2">
+                <i class="fas fa-{{ 'check' if status.token_valid else 'exclamation' }}"></i>
+              </span>
+            </div>
+            <div>
+              <h6 class="mb-0">Token Status</h6>
+              <span class="text-muted">{{ 'Valid' if status.token_valid else 'Invalid or Expired' }}</span>
+            </div>
+          </div>
+          
+          <div class="d-flex align-items-center mb-3">
+            <div class="me-3">
+              <span class="badge bg-info p-2">
+                <i class="fas fa-calendar"></i>
+              </span>
+            </div>
+            <div>
+              <h6 class="mb-0">Last Sync</h6>
+              <span class="text-muted">{{ status.last_sync }}</span>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <h6>Synced Resources</h6>
+            <ul class="list-group">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Users
+                <span class="badge bg-primary rounded-pill">{{ status.synced_resources.users }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Groups
+                <span class="badge bg-primary rounded-pill">{{ status.synced_resources.groups }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Calendar Events
+                <span class="badge bg-primary rounded-pill">{{ status.synced_resources.events }}</span>
+              </li>
+            </ul>
+          </div>
+          
+          <button type="button" class="btn btn-info btn-sm me-2">
+            <i class="fas fa-sync"></i> Sync Now
+          </button>
+          <button type="button" class="btn btn-warning btn-sm">
+            <i class="fas fa-key"></i> Renew Token
+          </button>
+        </div>
+      </div>
+      
+      <div class="card mt-3">
+        <div class="card-header">
+          <h5 class="card-title">Setup Guide</h5>
+        </div>
+        <div class="card-body">
+          <ol class="ps-3">
+            <li class="mb-2">Create a project in <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+            <li class="mb-2">Enable Google Workspace APIs for your project</li>
+            <li class="mb-2">Create OAuth credentials and configure redirect URIs</li>
+            <li class="mb-2">Enter credentials in the form on this page</li>
+            <li class="mb-2">Enable integration and select desired scopes</li>
+          </ol>
+          <a href="#" class="btn btn-sm btn-outline-primary mt-2">View Detailed Documentation</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function togglePasswordVisibility(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field.type === "password") {
+      field.type = "text";
+    } else {
+      field.type = "password";
+    }
+  }
+</script>
+{% endblock %} 

@@ -85,11 +85,11 @@
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-primary active" data-status="all">All Tasks</button>
-                                <button type="button" class="btn btn-outline-primary" data-status="pending">Pending</button>
-                                <button type="button" class="btn btn-outline-primary" data-status="in_progress">In Progress</button>
-                                <button type="button" class="btn btn-outline-primary" data-status="completed">Completed</button>
-                                <button type="button" class="btn btn-outline-primary" data-status="overdue">Overdue</button>
+                                <button type="button" class="btn btn-outline-primary {% if not request.args.get('status') or request.args.get('status') == 'all' %}active{% endif %}" data-status="all">All Tasks</button>
+                                <button type="button" class="btn btn-outline-primary {% if request.args.get('status') == 'pending' %}active{% endif %}" data-status="pending">Pending</button>
+                                <button type="button" class="btn btn-outline-primary {% if request.args.get('status') == 'in_progress' %}active{% endif %}" data-status="in_progress">In Progress</button>
+                                <button type="button" class="btn btn-outline-primary {% if request.args.get('status') == 'completed' %}active{% endif %}" data-status="completed">Completed</button>
+                                <button type="button" class="btn btn-outline-primary {% if request.args.get('status') == 'overdue' %}active{% endif %}" data-status="overdue">Overdue</button>
                             </div>
                             <div class="float-end">
                                 <div class="btn-group" role="group">
@@ -447,103 +447,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Set up task status filter buttons
+    // Get filter buttons
     const statusFilters = document.querySelectorAll('[data-status]');
     const priorityFilters = document.querySelectorAll('[data-priority]');
+    const searchInput = document.getElementById('search-tasks');
     
-    // Setup sorting
-    const sortableHeaders = document.querySelectorAll('.sortable');
-    let currentSort = {
-        column: null,
-        direction: 'asc'
-    };
-    
-    sortableHeaders.forEach(header => {
-        header.style.cursor = 'pointer';
-        header.addEventListener('click', function() {
-            const column = this.getAttribute('data-sort');
-            
-            // Toggle sort direction if clicking on the same column
-            if (currentSort.column === column) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort.column = column;
-                currentSort.direction = 'asc';
-            }
-            
-            // Update headers to show current sort
-            sortableHeaders.forEach(h => {
-                const icon = h.querySelector('i');
-                icon.className = 'bi bi-arrow-down-up';
-            });
-            
-            // Update this header's icon
-            const icon = this.querySelector('i');
-            icon.className = currentSort.direction === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
-            
-            // Sort the table
-            sortTable(column, currentSort.direction);
-        });
-    });
-    
-    function sortTable(column, direction) {
-        const table = document.getElementById('tasks-table');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        
-        // Skip if no rows
-        if (rows.length <= 1) return;
-        
-        const sortedRows = rows.sort((a, b) => {
-            let aVal, bVal;
-            
-            switch(column) {
-                case 'title':
-                    aVal = a.querySelector('td:nth-child(1) a').textContent.trim().toLowerCase();
-                    bVal = b.querySelector('td:nth-child(1) a').textContent.trim().toLowerCase();
-                    break;
-                case 'related':
-                    aVal = a.querySelector('td:nth-child(2)').textContent.trim().toLowerCase();
-                    bVal = b.querySelector('td:nth-child(2)').textContent.trim().toLowerCase();
-                    break;
-                case 'due-date':
-                    // Get date strings or use a far future date for 'No due date'
-                    let aText = a.querySelector('td:nth-child(3)').textContent.trim();
-                    let bText = b.querySelector('td:nth-child(3)').textContent.trim();
-                    aVal = aText === 'No due date' ? '9999-12-31' : aText;
-                    bVal = bText === 'No due date' ? '9999-12-31' : bText;
-                    break;
-                case 'status':
-                    aVal = a.querySelector('td:nth-child(4) span').textContent.trim().toLowerCase();
-                    bVal = b.querySelector('td:nth-child(4) span').textContent.trim().toLowerCase();
-                    break;
-                case 'priority':
-                    // Map priorities to numeric values for sorting
-                    const priorityMap = {'high': 3, 'medium': 2, 'low': 1};
-                    let aPriority = a.querySelector('td:nth-child(5) span').textContent.trim().toLowerCase();
-                    let bPriority = b.querySelector('td:nth-child(5) span').textContent.trim().toLowerCase();
-                    aVal = priorityMap[aPriority] || 0;
-                    bVal = priorityMap[bPriority] || 0;
-                    break;
-                default:
-                    return 0;
-            }
-            
-            // Compare based on direction
-            if (aVal < bVal) {
-                return direction === 'asc' ? -1 : 1;
-            }
-            if (aVal > bVal) {
-                return direction === 'asc' ? 1 : -1;
-            }
-            return 0;
-        });
-        
-        // Remove existing rows and append in new order
-        rows.forEach(row => row.remove());
-        sortedRows.forEach(row => tbody.appendChild(row));
-    }
-    
+    // Initially apply filters based on default state
+    // The server will have filtered out completed tasks by default
+
+    // Setup filter button event handlers
     statusFilters.forEach(button => {
         button.addEventListener('click', function() {
             // Update active state
@@ -720,42 +632,58 @@ $(document).ready(function() {
             url: '/api/v1/calendar/sync-reminder-settings',
             method: 'POST',
             contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': "{{ csrf_token }}"
+            },
             data: JSON.stringify({
                 task_ids: taskIds,
-                reminder_option: reminderOption,
-                csrf_token: $('input[name="csrf_token"]').val()
+                reminder_option: reminderOption
             }),
             success: function(response) {
                 // Show results
                 let successCount = 0;
                 let errorCount = 0;
                 
-                for (const taskId in response.results) {
-                    if (response.results[taskId].success) {
-                        successCount++;
-                    } else {
-                        errorCount++;
+                if (response.success && response.results) {
+                    for (const taskId in response.results) {
+                        if (response.results[taskId].success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
                     }
+                    
+                    let message = `Updated ${successCount} task reminder settings successfully.`;
+                    if (errorCount > 0) {
+                        message += ` Failed to update ${errorCount} tasks.`;
+                    }
+                    
+                    alert(message);
+                    
+                    // Reset form and close modal
+                    $('#batchReminderModal').modal('hide');
+                    $('.task-checkbox').prop('checked', false);
+                    $('#selectAll').prop('checked', false);
+                    $('#reminderOption').val('');
+                    
+                    // Reload page to reflect changes
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (response.error || 'Unknown error occurred'));
                 }
-                
-                let message = `Updated ${successCount} task reminder settings successfully.`;
-                if (errorCount > 0) {
-                    message += ` Failed to update ${errorCount} tasks.`;
-                }
-                
-                alert(message);
-                
-                // Reset form and close modal
-                $('#batchReminderModal').modal('hide');
-                $('.task-checkbox').prop('checked', false);
-                $('#selectAll').prop('checked', false);
-                $('#reminderOption').val('');
-                
-                // Reload page to reflect changes
-                window.location.reload();
             },
             error: function(xhr, status, error) {
-                alert('Error updating reminder settings. Please try again.');
+                let errorMessage = 'Error updating reminder settings.';
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    if (errorResponse.error) {
+                        errorMessage += ' ' + errorResponse.error;
+                    }
+                } catch (e) {
+                    // If parsing fails, use generic message
+                    errorMessage += ' Please try again.';
+                }
+                alert(errorMessage);
                 console.error(xhr.responseText);
             },
             complete: function() {

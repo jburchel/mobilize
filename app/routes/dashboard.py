@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for
 from flask_login import login_required, current_user
 from app.models import Person, Church, Task, Communication, Pipeline, PipelineStage, PipelineContact
 from app.utils.decorators import office_required
@@ -14,6 +14,10 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @office_required
 def index():
     """Render the dashboard view with relevant statistics."""
+    # Check if this is the user's first login
+    if current_user.first_login:
+        return redirect(url_for('onboarding.welcome'))
+    
     office_id = current_user.office_id
     
     # Get dashboard statistics
