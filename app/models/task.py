@@ -1,62 +1,105 @@
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from sqlalchemy import String, Boolean, JSON, ForeignKey, Date, Text, Integer, DateTime
+from sqlalchemy import String, Boolean, JSON, ForeignKey, Date, Text, Integer, DateTime, Column, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions import db
 from app.models.base import Base
-from app.models.constants import TASK_STATUS_CHOICES, TASK_PRIORITY_CHOICES, REMINDER_CHOICES
+import enum
+
+class TaskStatus(enum.Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+class TaskPriority(enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+class TaskType(enum.Enum):
+    GENERAL = "general"
+    FOLLOW_UP = "follow_up"
+    MEETING = "meeting"
+    CALL = "call"
+    EMAIL = "email"
 
 class Task(Base):
-    """Task model for tracking tasks related to people and churches."""
+    """Task model."""
     __tablename__ = 'tasks'
 
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(String)
-    due_date: Mapped[Optional[datetime]] = mapped_column(Date)
-    due_time: Mapped[Optional[str]] = mapped_column(String)  # Store time as HH:MM format
-    
-    # Changed from reminder_time to be more specific about what this stores
-    due_time_details: Mapped[Optional[str]] = mapped_column(String)  # Store additional time details if needed
-    
-    # New field for reminder options using the constants
-    reminder_option: Mapped[Optional[str]] = mapped_column(String, nullable=True, default='none')  # Uses REMINDER_CHOICES
-    
-    priority: Mapped[str] = mapped_column(String, default='medium')  # Uses TASK_PRIORITY_CHOICES
-    status: Mapped[str] = mapped_column(String, nullable=False, default='pending')  # Uses TASK_STATUS_CHOICES
-    category: Mapped[Optional[str]] = mapped_column(String)
-    assigned_to: Mapped[Optional[str]] = mapped_column(String)  # Store user ID or email
-    contact_id: Mapped[Optional[int]] = mapped_column(ForeignKey('contacts.id'))
-    person_id: Mapped[Optional[int]] = mapped_column(ForeignKey('people.id'))
-    church_id: Mapped[Optional[int]] = mapped_column(ForeignKey('churches.id'))
-    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'), nullable=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
-    office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'), nullable=True)
-    
-    # Completion tracking
-    completed_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completion_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.PENDING)
+    priority: Mapped[TaskPriority] = mapped_column(Enum(TaskPriority), default=TaskPriority.MEDIUM)
+    type: Mapped[TaskType] = mapped_column(Enum(TaskType), default=TaskType.GENERAL)
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    due_time: Mapped[Optional[str]] = mapped_column(String(10))  # Store time as HH:MM format
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Google Calendar integration fields
-    google_calendar_event_id: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
-    google_calendar_sync_enabled: Mapped[Optional[bool]] = mapped_column(Boolean, default=False, nullable=True)
-    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    google_calendar_event_id: Mapped[Optional[str]] = mapped_column(String, unique=True)
+    google_calendar_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    
+    # Reminder fields
+    reminder_option: Mapped[Optional[str]] = mapped_column(String(50))
+    reminder_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Foreign keys
+    person_id: Mapped[Optional[int]] = mapped_column(ForeignKey('people.id'))
+    church_id: Mapped[Optional[int]] = mapped_column(ForeignKey('churches.id'))
+    assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
+    
+    # Note: All relationships are defined in relationships.py
+    
+    def __init__(self, **kwargs):
+        """Initialize a new Task."""
+        super(Task, self).__init__(**kwargs)
+        if not self.created_at:
+            self.created_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
 
-    # Relationships
-    person = relationship("Person", foreign_keys=[person_id], back_populates="tasks")
-    church = relationship("Church", foreign_keys=[church_id], back_populates="tasks")
-    assigned_user = relationship('User', 
-                               primaryjoin="foreign(Task.assigned_to) == User.id",
-                               backref='assigned_tasks',
-                               overlaps="tasks",
-                               viewonly=True)
-    owner = relationship('User', foreign_keys=[owner_id],
-                        back_populates='owned_tasks')
-    created_by_user = relationship('User', foreign_keys=[created_by],
-                                 back_populates='created_tasks',
-                                 viewonly=True)
+    def __repr__(self):
+        """Return string representation."""
+        return f'<Task {self.id}: {self.title}>'
 
-    def __repr__(self) -> str:
-        return f"<Task(title='{self.title}', due_date='{self.due_date}')>"
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert task to dictionary."""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'status': self.status.value if self.status else None,
+            'priority': self.priority.value if self.priority else None,
+            'type': self.type.value if self.type else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'due_time': self.due_time,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'person_id': self.person_id,
+            'church_id': self.church_id,
+            'assigned_to': self.assigned_to,
+            'owner_id': self.owner_id,
+            'created_by': self.created_by,
+            'google_calendar_event_id': self.google_calendar_event_id,
+            'google_calendar_sync_enabled': self.google_calendar_sync_enabled,
+            'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None,
+            'reminder_option': self.reminder_option,
+            'reminder_sent': self.reminder_sent,
+            # Include related objects if they're loaded
+            'person': self.person.to_dict() if hasattr(self, 'person') and self.person else None,
+            'church': self.church.to_dict() if hasattr(self, 'church') and self.church else None,
+            'assigned_user': self.assigned_user.to_dict() if hasattr(self, 'assigned_user') and self.assigned_user else None,
+            'owner': self.owner.to_dict() if hasattr(self, 'owner') and self.owner else None,
+            'created_by_user': self.created_by_user.to_dict() if hasattr(self, 'created_by_user') and self.created_by_user else None
+        }
 
     def get_reminder_display(self) -> str:
         """Return a human-readable representation of the reminder option."""
@@ -71,31 +114,3 @@ class Task(Base):
             'none': 'No reminder'
         }
         return reminder_map.get(self.reminder_option, 'No reminder')
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert task to dictionary."""
-        return {
-            'id': self.id,
-            'title': self.title,
-            'description': self.description,
-            'due_date': self.due_date.isoformat() if self.due_date else None,
-            'due_time': self.due_time,
-            'due_time_details': self.due_time_details,
-            'reminder_option': self.reminder_option,
-            'priority': self.priority,
-            'status': self.status,
-            'category': self.category,
-            'assigned_to': self.assigned_to,
-            'contact_id': self.contact_id,
-            'person_id': self.person_id,
-            'church_id': self.church_id,
-            'created_by': self.created_by,
-            'completed_date': self.completed_date.isoformat() if self.completed_date else None,
-            'completion_notes': self.completion_notes,
-            'owner_id': self.owner_id,
-            'google_calendar_event_id': self.google_calendar_event_id,
-            'google_calendar_sync_enabled': self.google_calendar_sync_enabled,
-            'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        } 

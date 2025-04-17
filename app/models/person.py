@@ -18,8 +18,8 @@ class Person(Contact):
     }
 
     id: Mapped[int] = mapped_column(ForeignKey('contacts.id'), primary_key=True)
-    first_name: Mapped[Optional[str]] = mapped_column(String(100))
-    last_name: Mapped[Optional[str]] = mapped_column(String(100))
+    first_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=False)
     
     # Fields from old model
     spouse_first_name: Mapped[Optional[str]] = mapped_column(String(100))
@@ -30,7 +30,7 @@ class Person(Contact):
     
     # Additional fields from old model
     virtuous: Mapped[bool] = mapped_column(Boolean, default=False)
-    title: Mapped[Optional[str]] = mapped_column(String(100))
+    title: Mapped[Optional[str]] = mapped_column(String(50))
     marital_status: Mapped[Optional[str]] = mapped_column(String(50))
     birthday: Mapped[Optional[datetime]] = mapped_column(Date)
     anniversary: Mapped[Optional[datetime]] = mapped_column(Date)
@@ -54,7 +54,7 @@ class Person(Contact):
     )
     next_contact: Mapped[Optional[datetime]] = mapped_column(DateTime)
     status: Mapped[str] = mapped_column(String(50), default='active')
-    google_contact_id: Mapped[Optional[str]] = mapped_column(String)
+    google_contact_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True)
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     
     # Pipeline fields - combining old and new approaches
@@ -64,8 +64,8 @@ class Person(Contact):
     priority: Mapped[str] = mapped_column(String(50), default='MEDIUM')
     assigned_to: Mapped[str] = mapped_column(String(50), default='UNASSIGNED')
     source: Mapped[str] = mapped_column(String(50), default='UNKNOWN')
-    reason_closed: Mapped[Optional[str]] = mapped_column(Text)
-    date_closed: Mapped[Optional[datetime]] = mapped_column(Date)
+    reason_closed: Mapped[Optional[str]] = mapped_column(String(255))
+    date_closed: Mapped[Optional[datetime]] = mapped_column(DateTime)
     tags: Mapped[Optional[str]] = mapped_column(Text)
 
     # Relationships with type hints
@@ -73,11 +73,6 @@ class Person(Contact):
         "Church",
         foreign_keys=[church_id],
         back_populates="church_members"
-    )
-    tasks = relationship(
-        "Task",
-        back_populates="person",
-        primaryjoin="Task.person_id==Person.id"
     )
     communications = relationship(
         "Communication",

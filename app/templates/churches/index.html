@@ -130,21 +130,21 @@
                                         <span class="badge badge-secondary">{{ church.denomination or "Not Set" }}</span>
                                     </td>
                                     <td>
-                                        {% if church.church_pipeline %}
-                                            {% if church.church_pipeline == 'INFORMATION' %}
+                                        {% if church.pipeline_stage %}
+                                            {% if church.pipeline_stage == 'INFORMATION' %}
                                                 <span class="badge bg-info">Information</span>
-                                            {% elif church.church_pipeline == 'FIRST_CONTACT' %}
-                                                <span class="badge bg-primary">First Contact</span>
-                                            {% elif church.church_pipeline == 'SCHEDULED' %}
-                                                <span class="badge bg-warning">Scheduled</span>
-                                            {% elif church.church_pipeline == 'VISITED' %}
-                                                <span class="badge bg-success">Visited</span>
-                                            {% elif church.church_pipeline == 'FOLLOW_UP' %}
-                                                <span class="badge bg-secondary">Follow Up</span>
-                                            {% elif church.church_pipeline == 'COMMITTED' %}
-                                                <span class="badge bg-dark">Committed</span>
+                                            {% elif church.pipeline_stage == 'PROMOTION' %}
+                                                <span class="badge bg-primary">Promotion</span>
+                                            {% elif church.pipeline_stage == 'INVITATION' %}
+                                                <span class="badge bg-warning">Invitation</span>
+                                            {% elif church.pipeline_stage == 'CONFIRMATION' %}
+                                                <span class="badge bg-success">Confirmation</span>
+                                            {% elif church.pipeline_stage == 'EN42' %}
+                                                <span class="badge bg-secondary">EN42</span>
+                                            {% elif church.pipeline_stage == 'AUTOMATION' %}
+                                                <span class="badge bg-dark">Automation</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ church.church_pipeline|replace("_", " ")|title }}</span>
+                                                <span class="badge bg-secondary">{{ church.pipeline_stage|replace("_", " ")|title }}</span>
                                             {% endif %}
                                         {% else %}
                                             <span class="badge bg-light text-dark">Not Set</span>
@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge badge-secondary">${church.denomination || "Not Set"}</span>
                     </td>
                     <td>
-                        ${formatPipelineBadge(church.church_pipeline)}
+                        ${formatPipelineBadge(church.pipeline_stage)}
                     </td>
                     <td>
                         ${church.email ? `<a href="mailto:${church.email}" class="me-2" title="Email"><i class="bi bi-envelope"></i></a>` : ''}

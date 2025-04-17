@@ -12,22 +12,23 @@ def setup_relationships():
     relationships = [
         # Person relationships
         (Person, "church", db.relationship("Church", back_populates="people", foreign_keys="Person.church_id", overlaps="people")),
-        (Person, "tasks", db.relationship("Task", back_populates="person", overlaps="person,tasks", foreign_keys="Task.person_id")),
+        (Person, "tasks", db.relationship("Task", back_populates="person", foreign_keys="Task.person_id")),
         (Person, "communications", db.relationship("Communication", back_populates="person", overlaps="person,communications")),
         (Person, "churches_main_contact", db.relationship("Church", back_populates="main_contact", foreign_keys="Church.main_contact_id", overlaps="main_contact")),
         
         # Church relationships
         (Church, "main_contact", db.relationship("Person", back_populates="churches_main_contact", foreign_keys="Church.main_contact_id", overlaps="churches_main_contact")),
         (Church, "people", db.relationship("Person", back_populates="church", foreign_keys="Person.church_id", overlaps="church")),
-        (Church, "tasks", db.relationship("Task", back_populates="church", overlaps="church,tasks", foreign_keys="Task.church_id")),
+        (Church, "tasks", db.relationship("Task", back_populates="church", foreign_keys="Task.church_id")),
         (Church, "communications", db.relationship("Communication", back_populates="church", overlaps="church,communications")),
         (Church, "owner", db.relationship("User", back_populates="owned_churches", foreign_keys="[Church.owner_id]", overlaps="owned_churches")),
         
         # Task relationships
-        (Task, "person", db.relationship("Person", back_populates="tasks", overlaps="tasks,person", foreign_keys="Task.person_id")),
-        (Task, "church", db.relationship("Church", back_populates="tasks", overlaps="tasks,church", foreign_keys="Task.church_id")),
-        (Task, "assigned_user", db.relationship("User", overlaps="tasks", primaryjoin="foreign(Task.assigned_to) == User.id")),
-        (Task, "owner", db.relationship("User", back_populates="owned_tasks", overlaps="owned_tasks,owner", foreign_keys="Task.owner_id")),
+        (Task, "person", db.relationship("Person", back_populates="tasks", foreign_keys="Task.person_id")),
+        (Task, "church", db.relationship("Church", back_populates="tasks", foreign_keys="Task.church_id")),
+        (Task, "assigned_user", db.relationship("User", primaryjoin="foreign(Task.assigned_to) == User.id", back_populates="tasks")),
+        (Task, "owner", db.relationship("User", back_populates="owned_tasks", foreign_keys="Task.owner_id")),
+        (Task, "created_by_user", db.relationship("User", back_populates="created_tasks", foreign_keys="Task.created_by")),
         
         # Communication relationships
         (Communication, "person", db.relationship("Person", back_populates="communications", overlaps="communications,person")),
@@ -37,8 +38,9 @@ def setup_relationships():
         (Communication, "office", db.relationship("Office", back_populates="communications", overlaps="communications,office", foreign_keys="Communication.office_id")),
         
         # User relationships
-        (User, "tasks", db.relationship("Task", overlaps="assigned_user", primaryjoin="User.id == foreign(Task.assigned_to)")),
-        (User, "owned_tasks", db.relationship("Task", back_populates="owner", overlaps="owner,owned_tasks", foreign_keys="Task.owner_id")),
+        (User, "tasks", db.relationship("Task", back_populates="assigned_user", primaryjoin="User.id == foreign(Task.assigned_to)")),
+        (User, "owned_tasks", db.relationship("Task", back_populates="owner", foreign_keys="Task.owner_id")),
+        (User, "created_tasks", db.relationship("Task", back_populates="created_by_user", foreign_keys="Task.created_by")),
         (User, "communications", db.relationship("Communication", back_populates="sender", overlaps="sender,communications", foreign_keys="Communication.user_id")),
         (User, "owned_communications", db.relationship("Communication", back_populates="owner", overlaps="owner,owned_communications", foreign_keys="Communication.owner_id")),
         (User, "email_signatures", db.relationship("EmailSignature", back_populates="user", overlaps="user")),

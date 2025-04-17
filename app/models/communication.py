@@ -30,7 +30,9 @@ class Communication(Base):
     google_calendar_event_id = db.Column(db.String, nullable=True)  # Reference to calendar event
 
     # Relationships
-    person = db.relationship("Person", foreign_keys=[person_id], viewonly=True)
+    person = db.relationship("Person", foreign_keys=[person_id], back_populates="communications")
+    user = db.relationship('User', foreign_keys=[user_id], backref='received_communications')
+    owner = db.relationship('User', foreign_keys=[owner_id], backref='created_communications')
 
     def __repr__(self):
         return f"<Communication(type='{self.type}', date_sent='{self.date_sent}')>"

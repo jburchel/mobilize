@@ -48,9 +48,8 @@ class User(UserMixin, Base):
         foreign_keys=[person_id],
         single_parent=True
     )
-    tasks = relationship(
+    assigned_tasks = relationship(
         'Task',
-        overlaps="assigned_user,tasks",
         primaryjoin="User.id == foreign(Task.assigned_to)",
         back_populates='assigned_user'
     )

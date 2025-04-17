@@ -203,18 +203,18 @@ function initializeChurchesSearch() {
                             <div class="table-user-info">
                                 <a href="/churches/${church.id}" class="text-decoration-none">
                                     <div class="table-user-name">${church.name}</div>
-                                    <div class="table-user-title">${church.type || "Church"}</div>
+                                    <div class="table-user-title">${church.type || 'Church'}</div>
                                 </a>
                             </div>
                         </div>
                     </td>
                     <td>${formatLocation(church)}</td>
-                    <td>${church.main_contact ? church.main_contact.full_name : "Not Set"}</td>
+                    <td>${church.main_contact ? church.main_contact.full_name : 'Not Set'}</td>
                     <td>
-                        <span class="badge badge-secondary">${church.denomination || "Not Set"}</span>
+                        <span class="badge badge-secondary">${church.denomination || 'Not Set'}</span>
                     </td>
                     <td>
-                        ${formatPipelineBadge(church.church_pipeline)}
+                        ${formatPipelineBadge(church.pipeline_stage)}
                     </td>
                     <td>
                         ${church.email ? `<a href="mailto:${church.email}" class="me-2" title="Email"><i class="bi bi-envelope"></i></a>` : ''}
@@ -289,24 +289,22 @@ function formatLocation(church) {
 }
 
 function formatPipelineBadge(pipeline) {
-    if (!pipeline) {
-        return '<span class="badge bg-light text-dark">Not Set</span>';
-    }
+    if (!pipeline) return '<span class="badge bg-light text-dark">Not Set</span>';
+
+    const badgeColors = {
+        'INFORMATION': 'bg-info',
+        'PROMOTION': 'bg-primary',
+        'INVITATION': 'bg-warning',
+        'CONFIRMATION': 'bg-success',
+        'EN42': 'bg-secondary',
+        'AUTOMATION': 'bg-dark'
+    };
+
+    const color = badgeColors[pipeline] || 'bg-secondary';
+    const label = pipeline.replace(/_/g, ' ').toLowerCase()
+        .replace(/\b\w/g, l => l.toUpperCase());
     
-    let bgClass = 'bg-secondary';
-    let displayText = pipeline.replace('_', ' ').toLowerCase();
-    displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
-    
-    switch(pipeline) {
-        case 'INFORMATION': bgClass = 'bg-info'; break;
-        case 'PROMOTION': bgClass = 'bg-primary'; break;
-        case 'INVITATION': bgClass = 'bg-warning'; break;
-        case 'CONFIRMATION': bgClass = 'bg-success'; break;
-        case 'AUTOMATION': bgClass = 'bg-dark'; break;
-        case 'EN42': bgClass = 'bg-danger'; break;
-    }
-    
-    return `<span class="badge ${bgClass}">${displayText}</span>`;
+    return `<span class="badge ${color}">${label}</span>`;
 }
 
 // Initialize search on page load
