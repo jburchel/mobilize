@@ -7,6 +7,55 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css">
+<style>
+/* Search and filter styles */
+.input-group {
+    width: 300px;
+}
+
+.form-select {
+    min-width: 160px;
+}
+
+#clearSearch {
+    cursor: pointer;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Table styles */
+.table-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.table-user {
+    display: flex;
+    align-items: center;
+}
+
+.table-user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.table-user-name {
+    font-weight: 600;
+}
+
+.table-user-title {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -27,20 +76,14 @@
                             <i class="bi bi-download"></i> Export
                         </button>
                     </div>
-                    <div class="d-flex gap-2">
+                    <!-- Search Bar -->
+                    <div>
                         <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" id="searchInput" placeholder="Search churches...">
+                            <input type="text" id="tableSearch" class="form-control" placeholder="Search by name, location, denomination, or pipeline stage..." aria-label="Search">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" style="display: none;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
                         </div>
-                        <select class="form-select" id="denominationFilter">
-                            <option value="">All Denominations</option>
-                            <option value="Baptist">Baptist</option>
-                            <option value="Catholic">Catholic</option>
-                            <option value="Lutheran">Lutheran</option>
-                            <option value="Methodist">Methodist</option>
-                            <option value="Non-Denominational">Non-Denominational</option>
-                            <option value="Presbyterian">Presbyterian</option>
-                        </select>
                     </div>
                 </div>
             </div>
@@ -52,12 +95,6 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
-                    <div id="searchFeedback" class="mb-3 d-none">
-                        <div class="alert alert-info">
-                            Showing <span id="filteredCount"></span> results for "<span id="searchTerm"></span>"
-                            <button type="button" class="btn-close float-end" id="clearSearch" aria-label="Clear search"></button>
-                        </div>
-                    </div>
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
@@ -202,10 +239,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap5.min.js"></script> -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Churches list page loaded');
@@ -215,92 +248,173 @@ document.addEventListener('DOMContentLoaded', function() {
         table.classList.add('table-striped', 'table-hover');
     });
     
-    // Simple search implementation
-    const searchInput = document.getElementById('searchInput');
-    const clearSearch = document.getElementById('clearSearch');
-    const searchFeedback = document.getElementById('searchFeedback');
-    const searchTerm = document.getElementById('searchTerm');
-    const filteredCount = document.getElementById('filteredCount');
-    const tableRows = document.querySelectorAll('.datatable tbody tr');
+    // Get DOM elements
+    const searchInput = document.getElementById('tableSearch');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const table = document.querySelector('table');
+    const tableBody = table.querySelector('tbody');
     
-    // Function to filter table rows
-    function filterTable(query) {
-        if (!searchInput || !tableRows || tableRows.length === 0) {
-            console.error('Search elements not found');
-            return 0;
-        }
+    // Debounce function to limit execution rate
+    function debounce(func, wait) {
+        let timeout;
+        return function() {
+            const context = this;
+            const args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                func.apply(context, args);
+            }, wait);
+        };
+    }
+    
+    // Search function using API
+    async function searchChurches() {
+        const searchTerm = searchInput.value.trim();
         
-        query = query.toLowerCase();
-        let matchCount = 0;
-        
-        tableRows.forEach(row => {
-            // Skip already filtered rows (by denomination)
-            if (row.classList.contains('filtered-out')) return;
+        try {
+            // Build query parameters
+            const params = new URLSearchParams();
+            if (searchTerm) params.append('q', searchTerm);
+            params.append('type', 'church');
             
-            const text = row.textContent.toLowerCase();
-            const isMatch = text.includes(query);
+            // Call API
+            console.log('Calling API with params:', params.toString());
+            const response = await fetch(`/churches/search?${params.toString()}`);
             
-            row.style.display = isMatch ? '' : 'none';
-            if (isMatch) matchCount++;
-        });
-        
-        // Update feedback if we have the elements
-        if (searchFeedback && searchTerm && filteredCount) {
-            if (query) {
-                searchTerm.textContent = query;
-                filteredCount.textContent = matchCount;
-                searchFeedback.classList.remove('d-none');
-            } else {
-                searchFeedback.classList.add('d-none');
+            if (!response.ok) {
+                console.error('API error:', response.status, await response.text());
+                throw new Error(`Search request failed with status ${response.status}`);
             }
-        }
-        
-        return matchCount;
-    }
-    
-    // Search on keyup
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function() {
-            filterTable(this.value);
-        });
-    }
-    
-    // Clear search
-    if (clearSearch) {
-        clearSearch.addEventListener('click', function() {
-            if (searchInput) {
-                searchInput.value = '';
-                filterTable('');
-            }
-        });
-    }
-    
-    // Denomination filter
-    const denominationFilter = document.getElementById('denominationFilter');
-    if (denominationFilter) {
-        denominationFilter.addEventListener('change', function() {
-            const value = this.value.toLowerCase();
             
-            tableRows.forEach(row => {
-                const denominationCell = row.querySelector('td:nth-child(4)');
-                if (!value || (denominationCell && denominationCell.textContent.toLowerCase().includes(value))) {
-                    row.classList.remove('filtered-out');
-                } else {
-                    row.classList.add('filtered-out');
-                }
+            let churches = await response.json();
+            console.log('API response:', churches);
+            
+            // Clear table
+            tableBody.innerHTML = '';
+            
+            if (churches.length === 0) {
+                // Show no results message
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.className = 'no-results';
+                noResultsRow.innerHTML = '<td colspan="7" class="text-center">No churches match your search criteria.</td>';
+                tableBody.appendChild(noResultsRow);
+                return;
+            }
+            
+            // Populate table with results
+            churches.forEach(church => {
+                const row = document.createElement('tr');
+                
+                // Create church initial
+                const initials = church.name ? church.name.substring(0, 2) : '';
+                
+                // Create HTML structure
+                row.innerHTML = `
+                    <td>
+                        <div class="table-user">
+                            <div class="table-user-avatar" style="background-color: var(--color-primary-blue);">
+                                ${initials}
+                            </div>
+                            <div class="table-user-info">
+                                <a href="/churches/${church.id}" class="text-decoration-none">
+                                    <div class="table-user-name">${church.name}</div>
+                                    <div class="table-user-title">${church.type || "Church"}</div>
+                                </a>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${formatLocation(church)}</td>
+                    <td>${church.main_contact ? church.main_contact.full_name : "Not Set"}</td>
+                    <td>
+                        <span class="badge badge-secondary">${church.denomination || "Not Set"}</span>
+                    </td>
+                    <td>
+                        ${formatPipelineBadge(church.church_pipeline)}
+                    </td>
+                    <td>
+                        ${church.email ? `<a href="mailto:${church.email}" class="me-2" title="Email"><i class="bi bi-envelope"></i></a>` : ''}
+                        ${church.phone ? `<a href="tel:${church.phone}" class="me-2" title="Call"><i class="bi bi-telephone"></i></a>` : ''}
+                        ${church.website ? `<a href="${church.website}" target="_blank" title="Website"><i class="bi bi-globe"></i></a>` : ''}
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="/churches/${church.id}/edit" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                            <form action="/churches/${church.id}/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this church? This action cannot be undone.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn-icon btn-sm" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
             });
             
-            // Re-apply search filter
-            if (searchInput) {
-                filterTable(searchInput.value);
-            }
-        });
+        } catch (error) {
+            console.error('Search error:', error);
+            // Show error message
+            tableBody.innerHTML = '';
+            const errorRow = document.createElement('tr');
+            errorRow.innerHTML = '<td colspan="7" class="text-center text-danger">Error loading search results. Please try again.</td>';
+            tableBody.appendChild(errorRow);
+        }
     }
     
-    // Add CSS for filtered-out rows
-    const style = document.createElement('style');
-    style.textContent = '.filtered-out { display: none !important; }';
-    document.head.appendChild(style);
+    // Helper function to format location
+    function formatLocation(church) {
+        const parts = [];
+        if (church.city) parts.push(church.city);
+        if (church.state) parts.push(church.state);
+        if (parts.length === 0 && church.location) return church.location;
+        return parts.join(', ');
+    }
+    
+    // Helper function to format pipeline badge
+    function formatPipelineBadge(pipeline) {
+        if (!pipeline) {
+            return '<span class="badge bg-light text-dark">Not Set</span>';
+        }
+        
+        let bgClass = 'bg-secondary';
+        let displayText = pipeline.replace('_', ' ').toLowerCase();
+        displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
+        
+        switch(pipeline) {
+            case 'INFORMATION':
+                bgClass = 'bg-info';
+                break;
+            case 'PROMOTION':
+                bgClass = 'bg-primary';
+                break;
+            case 'INVITATION':
+                bgClass = 'bg-warning';
+                break;
+            case 'CONFIRMATION':
+                bgClass = 'bg-success';
+                break;
+            case 'AUTOMATION':
+                bgClass = 'bg-dark';
+                break;
+            case 'EN42':
+                bgClass = 'bg-danger';
+                break;
+        }
+        
+        return `<span class="badge ${bgClass}">${displayText}</span>`;
+    }
+    
+    // Add event listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(searchChurches, 300));
+    }
+    
+    // Clear search button
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchChurches();
+        });
+    }
     
     // Delete confirmation
     const deleteButtons = document.querySelectorAll('.delete-church');

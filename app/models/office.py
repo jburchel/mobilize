@@ -1,13 +1,18 @@
 from datetime import datetime
+from typing import Optional, Dict, Any, List
+from sqlalchemy import String, Boolean, JSON, ForeignKey, Table, Column, Integer, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions import db
 from app.models.base import Base
 
 # Association table for User-Office many-to-many relationship
-user_offices = db.Table('user_offices',
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
-    db.Column('office_id', db.Integer, db.ForeignKey('offices.id'), primary_key=True),
-    db.Column('role', db.String(20), nullable=False),
-    db.Column('assigned_at', db.DateTime, nullable=False, default=db.func.current_timestamp())
+user_offices = Table(
+    'user_offices',
+    Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('office_id', Integer, ForeignKey('offices.id'), primary_key=True),
+    Column('role', String(20), nullable=False),
+    Column('assigned_at', DateTime, nullable=False, server_default='CURRENT_TIMESTAMP')
 )
 
 class Office(Base):
@@ -15,38 +20,38 @@ class Office(Base):
     __tablename__ = 'offices'
     
     # Basic Information
-    name = db.Column(db.String(200), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=True)
-    phone = db.Column(db.String(20), nullable=True)
-    address = db.Column(db.String(200), nullable=True)
-    city = db.Column(db.String(100), nullable=True)
-    state = db.Column(db.String(50), nullable=True)
-    zip_code = db.Column(db.String(20), nullable=True)
-    country = db.Column(db.String(100), nullable=True)
-    office_hours = db.Column(db.String(200), nullable=True)
-    timezone = db.Column(db.String(50), default='America/New_York')
-    is_active = db.Column(db.Boolean, default=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(120), unique=True, nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    state: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    zip_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    office_hours: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    timezone: Mapped[str] = mapped_column(String(50), default='America/New_York')
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
     # Office Settings and Preferences
-    settings = db.Column(db.JSON)  # General office settings
-    notification_settings = db.Column(db.JSON)  # Office-wide notification preferences
+    settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # General office settings
+    notification_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # Office-wide notification preferences
     
     # Google Workspace Integration
-    workspace_domain = db.Column(db.String(255))  # e.g., "yourorg.com"
-    calendar_sync_enabled = db.Column(db.Boolean, default=True)
-    meet_integration_enabled = db.Column(db.Boolean, default=True)
-    drive_integration_enabled = db.Column(db.Boolean, default=True)
-    oauth_settings = db.Column(db.JSON)  # Workspace-level OAuth configuration
+    workspace_domain: Mapped[Optional[str]] = mapped_column(String(255))  # e.g., "yourorg.com"
+    calendar_sync_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    meet_integration_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    drive_integration_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    oauth_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # Workspace-level OAuth configuration
     
     # Relationships
-    users = db.relationship('User', back_populates='office', lazy='dynamic')
-    churches = db.relationship('Church', back_populates='office', lazy='dynamic', overlaps="contacts")
-    communications = db.relationship('Communication', back_populates='office', lazy='dynamic')
+    users: Mapped[List["User"]] = relationship('User', back_populates='office', lazy='dynamic')
+    churches: Mapped[List["Church"]] = relationship('Church', back_populates='office', lazy='dynamic', overlaps="contacts")
+    communications: Mapped[List["Communication"]] = relationship('Communication', back_populates='office', lazy='dynamic')
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Office {self.name}>'
     
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert office to dictionary."""
         return {
             'id': self.id,
@@ -70,19 +75,19 @@ class Office(Base):
         }
     
     @property
-    def user_count(self):
+    def user_count(self) -> int:
         """Get the number of active users in this office."""
         return self.users.filter_by(is_active=True).count()
     
     @property
-    def church_count(self):
+    def church_count(self) -> int:
         """Get the number of churches in this office."""
         return self.churches.count()
     
-    def get_admin_users(self):
+    def get_admin_users(self) -> List["User"]:
         """Get all admin users for this office."""
         return self.users.filter_by(role='office_admin', is_active=True).all()
     
-    def has_google_workspace_integration(self):
+    def has_google_workspace_integration(self) -> bool:
         """Check if office has Google Workspace integration configured."""
         return bool(self.workspace_domain and self.oauth_settings) 

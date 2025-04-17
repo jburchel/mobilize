@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
+from typing import Optional, List, Dict, Any
+from sqlalchemy import String, Integer, Boolean, Date, Text, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 from app.extensions import db
 from app.models.base import Contact
-from sqlalchemy.ext.hybrid import hybrid_property
 from app.models.constants import (
     MARITAL_STATUS_CHOICES, PEOPLE_PIPELINE_CHOICES, PRIORITY_CHOICES, 
     ASSIGNED_TO_CHOICES, SOURCE_CHOICES
@@ -14,77 +17,113 @@ class Person(Contact):
         'polymorphic_identity': 'person'
     }
 
-    id = db.Column(db.Integer, db.ForeignKey('contacts.id'), primary_key=True)
-    first_name = db.Column(db.String(100), name='first_name')
-    last_name = db.Column(db.String(100), name='last_name')
+    id: Mapped[int] = mapped_column(ForeignKey('contacts.id'), primary_key=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(100))
+    last_name: Mapped[Optional[str]] = mapped_column(String(100))
     
     # Fields from old model
-    spouse_first_name = db.Column(db.String(100))
-    spouse_last_name = db.Column(db.String(100))
-    church_id = db.Column(db.Integer, db.ForeignKey('churches.id'), nullable=True)
-    church_role = db.Column(db.String(100))
-    is_primary_contact = db.Column(db.Boolean, default=False)
+    spouse_first_name: Mapped[Optional[str]] = mapped_column(String(100))
+    spouse_last_name: Mapped[Optional[str]] = mapped_column(String(100))
+    church_id: Mapped[Optional[int]] = mapped_column(ForeignKey('churches.id'))
+    church_role: Mapped[Optional[str]] = mapped_column(String(100))
+    is_primary_contact: Mapped[bool] = mapped_column(Boolean, default=False)
     
     # Additional fields from old model
-    virtuous = db.Column(db.Boolean, default=False)
-    title = db.Column(db.String(100))
-    marital_status = db.Column(db.String(100))  # Uses MARITAL_STATUS_CHOICES
-    date_of_birth = db.Column(db.Date, nullable=True)
-    referred_by = db.Column(db.String(100))
-    info_given = db.Column(db.Text)
-    desired_service = db.Column(db.Text)
+    virtuous: Mapped[bool] = mapped_column(Boolean, default=False)
+    title: Mapped[Optional[str]] = mapped_column(String(100))
+    marital_status: Mapped[Optional[str]] = mapped_column(String(50))
+    birthday: Mapped[Optional[datetime]] = mapped_column(Date)
+    anniversary: Mapped[Optional[datetime]] = mapped_column(Date)
+    occupation: Mapped[Optional[str]] = mapped_column(String(100))
+    employer: Mapped[Optional[str]] = mapped_column(String(100))
+    interests: Mapped[Optional[str]] = mapped_column(Text)
+    skills: Mapped[Optional[str]] = mapped_column(Text)
+    languages: Mapped[Optional[str]] = mapped_column(Text)
+    facebook: Mapped[Optional[str]] = mapped_column(String(100))
+    twitter: Mapped[Optional[str]] = mapped_column(String(100))
+    linkedin: Mapped[Optional[str]] = mapped_column(String(100))
+    instagram: Mapped[Optional[str]] = mapped_column(String(100))
+    website: Mapped[Optional[str]] = mapped_column(String(200))
+    referred_by: Mapped[Optional[str]] = mapped_column(String(100))
+    info_given: Mapped[Optional[str]] = mapped_column(Text)
+    desired_service: Mapped[Optional[str]] = mapped_column(Text)
     
     # Tracking fields from new model
-    last_contact = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    next_contact = db.Column(db.DateTime)
-    status = db.Column(db.String(50), default='active')  # active, inactive, archived
-    google_contact_id = db.Column(db.String, nullable=True)
-    last_synced_at = db.Column(db.DateTime, nullable=True)
+    last_contact: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    next_contact: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    status: Mapped[str] = mapped_column(String(50), default='active')
+    google_contact_id: Mapped[Optional[str]] = mapped_column(String)
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     
     # Pipeline fields - combining old and new approaches
-    people_pipeline = db.Column(db.String(100), default='INFORMATION')  # Uses PEOPLE_PIPELINE_CHOICES
-    pipeline_status = db.Column(db.String(50), nullable=True)  # From new model
-    pipeline_stage = db.Column(db.String(50), nullable=True)  # From new model
-    priority = db.Column(db.String(50), default='MEDIUM')  # Uses PRIORITY_CHOICES
-    assigned_to = db.Column(db.String(50), default='UNASSIGNED')  # Uses ASSIGNED_TO_CHOICES
-    source = db.Column(db.String(50), default='UNKNOWN')  # Uses SOURCE_CHOICES
-    reason_closed = db.Column(db.Text)
-    date_closed = db.Column(db.Date)
-    tags = db.Column(db.Text, nullable=True)
+    people_pipeline: Mapped[str] = mapped_column(String(100), default='INFORMATION')
+    pipeline_status: Mapped[Optional[str]] = mapped_column(String(50))
+    pipeline_stage: Mapped[Optional[str]] = mapped_column(String(50))
+    priority: Mapped[str] = mapped_column(String(50), default='MEDIUM')
+    assigned_to: Mapped[str] = mapped_column(String(50), default='UNASSIGNED')
+    source: Mapped[str] = mapped_column(String(50), default='UNKNOWN')
+    reason_closed: Mapped[Optional[str]] = mapped_column(Text)
+    date_closed: Mapped[Optional[datetime]] = mapped_column(Date)
+    tags: Mapped[Optional[str]] = mapped_column(Text)
 
-    # Ensure explicit relationships
-    church = db.relationship("Church", foreign_keys=[church_id], backref="church_members")
-    tasks = db.relationship("Task", backref=db.backref("task_person", lazy="joined"), primaryjoin="Task.person_id==Person.id")
-    communications = db.relationship("Communication", backref=db.backref("comm_person", lazy="joined"), primaryjoin="Communication.person_id==Person.id")
+    # Relationships with type hints
+    church = relationship(
+        "Church",
+        foreign_keys=[church_id],
+        back_populates="church_members"
+    )
+    tasks = relationship(
+        "Task",
+        back_populates="person",
+        primaryjoin="Task.person_id==Person.id"
+    )
+    communications = relationship(
+        "Communication",
+        back_populates="person",
+        primaryjoin="Communication.person_id==Person.id"
+    )
+    associated_user = relationship(
+        "User",
+        back_populates="person",
+        uselist=False,
+        foreign_keys="User.person_id"
+    )
+    primary_for_churches = relationship(
+        "Church",
+        back_populates="main_contact",
+        foreign_keys="Church.main_contact_id"
+    )
 
     @hybrid_property
-    def person_first_name(self):
+    def person_first_name(self) -> Optional[str]:
         return self.first_name
         
     @person_first_name.setter
-    def person_first_name(self, value):
+    def person_first_name(self, value: Optional[str]) -> None:
         self.first_name = value
         
     @hybrid_property
-    def person_last_name(self):
+    def person_last_name(self) -> Optional[str]:
         return self.last_name
         
     @person_last_name.setter
-    def person_last_name(self, value):
+    def person_last_name(self, value: Optional[str]) -> None:
         self.last_name = value
         
     @hybrid_property
-    def name(self):
+    def name(self) -> str:
         """Combines first_name and last_name with a space in between."""
-        return f"{self.first_name} {self.last_name}".strip() or "Unnamed Person"
+        return f"{self.first_name or ''} {self.last_name or ''}".strip() or "Unnamed Person"
         
     @hybrid_property
-    def full_name(self):
+    def full_name(self) -> str:
         """Alias for name property"""
         return self.name
     
     @hybrid_property
-    def initials(self):
+    def initials(self) -> str:
         """Get the initials (first letter of first name and first letter of last name)"""
         initials = ""
         if self.first_name:
@@ -93,14 +132,14 @@ class Person(Contact):
             initials += self.last_name[0].upper()
         return initials if initials else "?"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Person(name='{self.first_name} {self.last_name}', email='{self.email}')>"
 
-    def get_name(self):
+    def get_name(self) -> str:
         """Get display name for the person."""
-        return f"{self.first_name} {self.last_name}".strip() or "Unnamed Person"
+        return f"{self.first_name or ''} {self.last_name or ''}".strip() or "Unnamed Person"
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert person to dictionary."""
         return {
             **super().to_dict(),
@@ -109,12 +148,23 @@ class Person(Contact):
             'spouse_first_name': self.spouse_first_name,
             'spouse_last_name': self.spouse_last_name,
             'church_id': self.church_id,
-            'church_role': self.church_role,  # Updated field name in dictionary
+            'church_role': self.church_role,
             'is_primary_contact': self.is_primary_contact,
             'virtuous': self.virtuous,
             'title': self.title,
             'marital_status': self.marital_status,
-            'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
+            'birthday': self.birthday.isoformat() if self.birthday else None,
+            'anniversary': self.anniversary.isoformat() if self.anniversary else None,
+            'occupation': self.occupation,
+            'employer': self.employer,
+            'interests': self.interests,
+            'skills': self.skills,
+            'languages': self.languages,
+            'facebook': self.facebook,
+            'twitter': self.twitter,
+            'linkedin': self.linkedin,
+            'instagram': self.instagram,
+            'website': self.website,
             'referred_by': self.referred_by,
             'info_given': self.info_given,
             'desired_service': self.desired_service,

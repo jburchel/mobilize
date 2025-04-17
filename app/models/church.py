@@ -1,8 +1,10 @@
+from datetime import date
+from typing import Optional, List, Dict, Any
+from sqlalchemy import String, Integer, Boolean, Date, Text, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 from app.extensions import db
 from app.models.base import Contact
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy import orm
-from datetime import date
 from app.models.constants import (
     CHURCH_PIPELINE_CHOICES, PRIORITY_CHOICES, ASSIGNED_TO_CHOICES, SOURCE_CHOICES
 )
@@ -11,78 +13,85 @@ class Church(Contact):
     """Model for representing a church in the system."""
     __tablename__ = 'churches'
     
-    id = db.Column(db.Integer, db.ForeignKey('contacts.id'), primary_key=True)
-    name = db.Column(db.String(200))
-    location = db.Column(db.String(200))
-    main_contact_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=True)
-    senior_pastor_name = db.Column(db.String(100))
-    denomination = db.Column(db.String(100))
-    weekly_attendance = db.Column(db.Integer)
-    website = db.Column(db.String(200))
-    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    id: Mapped[int] = mapped_column(ForeignKey('contacts.id'), primary_key=True)
+    name: Mapped[Optional[str]] = mapped_column(String(200))
+    location: Mapped[Optional[str]] = mapped_column(String(200))
+    main_contact_id: Mapped[Optional[int]] = mapped_column(ForeignKey('people.id'))
+    senior_pastor_name: Mapped[Optional[str]] = mapped_column(String(100))
+    denomination: Mapped[Optional[str]] = mapped_column(String(100))
+    weekly_attendance: Mapped[Optional[int]] = mapped_column(Integer)
+    website: Mapped[Optional[str]] = mapped_column(String(200))
+    owner_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
     
     # Fields migrated from old model
-    virtuous = db.Column(db.Boolean, default=False)
-    senior_pastor_phone = db.Column(db.String(50))
-    senior_pastor_email = db.Column(db.String())
-    missions_pastor_first_name = db.Column(db.String(100))
-    missions_pastor_last_name = db.Column(db.String(100))
-    mission_pastor_phone = db.Column(db.String(50))
-    mission_pastor_email = db.Column(db.String())
-    church_pipeline = db.Column(db.String(100), default='INFORMATION')  # Uses CHURCH_PIPELINE_CHOICES
-    priority = db.Column(db.String(100), default='MEDIUM')  # Uses PRIORITY_CHOICES
-    assigned_to = db.Column(db.String(100), default='UNASSIGNED')  # Uses ASSIGNED_TO_CHOICES
-    source = db.Column(db.String(100), default='UNKNOWN')  # Uses SOURCE_CHOICES
-    referred_by = db.Column(db.String(100))
-    info_given = db.Column(db.Text)
-    reason_closed = db.Column(db.Text)
-    year_founded = db.Column(db.Integer)
-    date_closed = db.Column(db.Date)
+    virtuous: Mapped[bool] = mapped_column(Boolean, default=False)
+    senior_pastor_phone: Mapped[Optional[str]] = mapped_column(String(50))
+    senior_pastor_email: Mapped[Optional[str]] = mapped_column(String)
+    missions_pastor_first_name: Mapped[Optional[str]] = mapped_column(String(100))
+    missions_pastor_last_name: Mapped[Optional[str]] = mapped_column(String(100))
+    mission_pastor_phone: Mapped[Optional[str]] = mapped_column(String(50))
+    mission_pastor_email: Mapped[Optional[str]] = mapped_column(String)
+    church_pipeline: Mapped[str] = mapped_column(String(100), default='INFORMATION')
+    priority: Mapped[str] = mapped_column(String(100), default='MEDIUM')
+    assigned_to: Mapped[str] = mapped_column(String(100), default='UNASSIGNED')
+    source: Mapped[str] = mapped_column(String(100), default='UNKNOWN')
+    referred_by: Mapped[Optional[str]] = mapped_column(String(100))
+    info_given: Mapped[Optional[str]] = mapped_column(Text)
+    reason_closed: Mapped[Optional[str]] = mapped_column(Text)
+    year_founded: Mapped[Optional[int]] = mapped_column(Integer)
+    date_closed: Mapped[Optional[date]] = mapped_column(Date)
     
     __mapper_args__ = {
         'polymorphic_identity': 'church',
         'inherit_condition': Contact.id == id
     }
     
-    # Relationships
-    owner = orm.relationship(
+    # Relationships with type hints
+    owner = relationship(
         'User',
         back_populates='owned_churches',
         foreign_keys=[owner_id],
         primaryjoin='User.id==Church.owner_id'
     )
     
-    main_contact = db.relationship(
+    main_contact = relationship(
         'Person',
         foreign_keys=[main_contact_id],
-        backref=db.backref('primary_for_churches', lazy='dynamic'),
+        back_populates='primary_for_churches',
         primaryjoin='Church.main_contact_id==Person.id'
+    )
+
+    church_members = relationship(
+        'Person',
+        back_populates='church',
+        foreign_keys='Person.church_id',
+        lazy='dynamic'
     )
     
     @hybrid_property
-    def church_first_name(self):
+    def church_first_name(self) -> Optional[str]:
         return self.name
         
     @church_first_name.setter
-    def church_first_name(self, value):
+    def church_first_name(self, value: Optional[str]) -> None:
         self.name = value
         
     @hybrid_property
-    def church_last_name(self):
+    def church_last_name(self) -> None:
         return None
         
     @church_last_name.setter
-    def church_last_name(self, value):
+    def church_last_name(self, value: Optional[str]) -> None:
         pass  # Churches don't use last_name
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Church {self.name}>"
 
-    def get_name(self):
+    def get_name(self) -> str:
         """Get display name for the church"""
         return self.name or "Unnamed Church"
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert the church to a dictionary."""
         return {
             'id': self.id,
@@ -121,7 +130,7 @@ class Church(Contact):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
         
-    def debug_members(self):
+    def debug_members(self) -> List['Person']:
         """Debug method to check church members"""
         from app.models.person import Person
         direct_query = Person.query.filter_by(church_id=self.id).all()
@@ -130,7 +139,7 @@ class Church(Contact):
         for p in direct_query:
             print(f"Debug - Member: {p.name}, Role: {p.church_role}, Email: {p.email}")
         
-        backref_query = self.church_members if hasattr(self, 'church_members') else []
+        backref_query = list(self.church_members)
         print(f"Debug - Backref query found {len(backref_query)} members")
         for p in backref_query:
             print(f"Debug - Backref Member: {p.name}, Role: {p.church_role}, Email: {p.email}")

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from app.models.person import Person
@@ -14,6 +14,7 @@ from datetime import datetime
 import os
 import pandas as pd
 import uuid
+from werkzeug.utils import secure_filename
 
 people_bp = Blueprint('people', __name__, template_folder='../templates/people')
 
@@ -27,7 +28,11 @@ def index():
         people = Person.query.all()
     else:
         people = Person.query.filter_by(office_id=current_user.office_id).all()
-    return render_template('people/list.html', people=people, page_title="People Management")
+    
+    # Pass data to template
+    return render_template('people/list.html', 
+                          people=people, 
+                          page_title="People Management")
 
 @people_bp.route('/new', methods=['GET', 'POST'])
 @login_required
@@ -335,46 +340,6 @@ def delete(id):
     flash('Person deleted successfully', 'success')
     return redirect(url_for('people.index'))
 
-@people_bp.route('/search')
-@login_required
-@office_required
-def search():
-    """Search for people by name or email."""
-    query = request.args.get('q', '')
-    
-    if not query:
-        return jsonify({'people': []})
-    
-    # For super admins, search across all offices
-    if current_user.is_super_admin():
-        people = Person.query.filter(
-            or_(
-                Person.first_name.ilike(f'%{query}%'),
-                Person.last_name.ilike(f'%{query}%'),
-                Person.email.ilike(f'%{query}%')
-            )
-        ).limit(10).all()
-    else:
-        # For regular users, filter by office_id
-        people = Person.query.filter(
-            Person.office_id == current_user.office_id,
-            or_(
-                Person.first_name.ilike(f'%{query}%'),
-                Person.last_name.ilike(f'%{query}%'),
-                Person.email.ilike(f'%{query}%')
-            )
-        ).limit(10).all()
-    
-    result = [
-        {
-            'id': p.id,
-            'name': f"{p.first_name} {p.last_name}",
-            'email': p.email or ''
-        } for p in people
-    ]
-    
-    return jsonify({'people': result})
-
 @people_bp.route('/add_note/<int:id>', methods=['POST'])
 @login_required
 @office_required
@@ -603,4 +568,89 @@ def import_people():
     
     return render_template('people/import.html', 
                           form=import_form,
-                          page_title="Import People") 
+                          page_title="Import People")
+
+@people_bp.route('/search', methods=['GET'])
+@login_required
+@office_required
+def search():
+    """Search people based on query parameters"""
+    search_term = request.args.get('q', '').strip().upper()
+    
+    # Start with a base query for Person
+    query = Person.query
+    
+    # Apply text search filter if provided
+    if search_term:
+        # First check if the search term matches any pipeline stage or priority
+        pipeline_match = False
+        priority_match = False
+        
+        # Check for pipeline stage match
+        pipeline_stages = ['PROMOTION', 'INFORMATION', 'INVITATION', 'CONFIRMATION', 'AUTOMATION']
+        for stage in pipeline_stages:
+            if stage in search_term:
+                query = query.outerjoin(PipelineContact, Person.id == PipelineContact.contact_id) \
+                           .outerjoin(PipelineStage, PipelineContact.current_stage_id == PipelineStage.id) \
+                           .filter(PipelineStage.name == stage)
+                pipeline_match = True
+                break
+        
+        # Check for priority match
+        priorities = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']
+        for priority in priorities:
+            if priority in search_term:
+                query = query.filter(Person.priority == priority)
+                priority_match = True
+                break
+        
+        # If no pipeline or priority match, search other fields
+        if not pipeline_match and not priority_match:
+            query = query.filter(
+                or_(
+                    Person.first_name.ilike(f'%{search_term}%'),
+                    Person.last_name.ilike(f'%{search_term}%'),
+                    Person.email.ilike(f'%{search_term}%'),
+                    Person.phone.ilike(f'%{search_term}%')
+                )
+            )
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        query = query.filter(Person.office_id == current_user.office_id)
+    
+    # Get results and ensure we limit the query
+    people = query.limit(50).all()
+    
+    # Debug output
+    print(f"Search query: {search_term}")
+    print(f"Found {len(people)} people matching criteria")
+    
+    # Convert people to dictionaries with all necessary fields for display
+    people_dicts = []
+    for person in people:
+        person_dict = person.to_dict()
+        
+        # Get the main pipeline stage for the person
+        main_pipeline = Pipeline.query.filter_by(
+            pipeline_type='person',
+            is_main_pipeline=True,
+            office_id=person.office_id
+        ).first()
+        
+        if main_pipeline:
+            pipeline_contact = PipelineContact.query.filter_by(
+                contact_id=person.id,
+                pipeline_id=main_pipeline.id
+            ).first()
+            
+            if pipeline_contact and pipeline_contact.current_stage:
+                person_dict['people_pipeline'] = pipeline_contact.current_stage.name
+        
+        # Make sure we have all fields that the UI template needs
+        person_dict['full_name'] = f"{person.first_name} {person.last_name}"
+        person_dict['role'] = getattr(person, 'church_role', 'Contact')
+        
+        people_dicts.append(person_dict)
+    
+    return jsonify(people_dicts) 

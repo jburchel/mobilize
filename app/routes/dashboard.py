@@ -4,8 +4,9 @@ from app.models import Person, Church, Task, Communication, Pipeline, PipelineSt
 from app.utils.decorators import office_required
 from datetime import datetime, timedelta
 from flask import current_app
-from sqlalchemy import or_, text
-from app.extensions import db
+from sqlalchemy import or_, text, func, and_
+from sqlalchemy.orm import joinedload
+from app.extensions import db, cache
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -23,79 +24,66 @@ def index():
     # Get dashboard statistics
     stats = get_dashboard_stats()
     
-    # Get the main pipelines for people and churches from user's office if not super admin
+    # Get the main pipelines using a single query with OR condition
     if current_user.is_super_admin():
         # Super admins see Main Office pipelines by default
-        # Try to find a person pipeline first
-        people_pipeline = Pipeline.query.filter_by(
-            is_main_pipeline=True, 
-            pipeline_type='person',
-            office_id=1  # Main Office
-        ).first()
-        
-        # If not found, try looking for a 'people' pipeline (legacy type)
-        if not people_pipeline:
-            people_pipeline = Pipeline.query.filter_by(
-                is_main_pipeline=True, 
-                pipeline_type='people',
-                office_id=1  # Main Office
-            ).first()
-        
-        church_pipeline = Pipeline.query.filter_by(
-            is_main_pipeline=True, 
-            pipeline_type='church',
-            office_id=1  # Main Office
-        ).first()
+        pipeline_query = Pipeline.query.filter(
+            Pipeline.is_main_pipeline == True,
+            Pipeline.office_id == 1,  # Main Office
+            or_(
+                Pipeline.pipeline_type == 'person',
+                Pipeline.pipeline_type == 'people',
+                Pipeline.pipeline_type == 'church'
+            )
+        ).all()
     else:
         # Regular users see their office's pipelines
-        # Try to find a person pipeline first
-        people_pipeline = Pipeline.query.filter_by(
-            is_main_pipeline=True, 
-            pipeline_type='person',
-            office_id=office_id
-        ).first()
-        
-        # If not found, try looking for a 'people' pipeline (legacy type)
-        if not people_pipeline:
-            people_pipeline = Pipeline.query.filter_by(
-                is_main_pipeline=True, 
-                pipeline_type='people',
-                office_id=office_id
-            ).first()
-        
-        church_pipeline = Pipeline.query.filter_by(
-            is_main_pipeline=True, 
-            pipeline_type='church',
-            office_id=office_id
-        ).first()
+        pipeline_query = Pipeline.query.filter(
+            Pipeline.is_main_pipeline == True,
+            Pipeline.office_id == office_id,
+            or_(
+                Pipeline.pipeline_type == 'person',
+                Pipeline.pipeline_type == 'people',
+                Pipeline.pipeline_type == 'church'
+            )
+        ).all()
+    
+    # Extract people and church pipelines from the results
+    people_pipeline = None
+    church_pipeline = None
+    for pipeline in pipeline_query:
+        if pipeline.pipeline_type in ('person', 'people'):
+            people_pipeline = pipeline
+        elif pipeline.pipeline_type == 'church':
+            church_pipeline = pipeline
     
     # Log pipeline information for debugging
     current_app.logger.info(f"Dashboard - User: {current_user.id}, Office: {office_id}")
     current_app.logger.info(f"People Pipeline: {people_pipeline.id if people_pipeline else 'None'}")
     current_app.logger.info(f"Church Pipeline: {church_pipeline.id if church_pipeline else 'None'}")
     
-    # Enhanced debugging for pipeline IDs
-    current_app.logger.info(f"[DASHBOARD DEBUG] Passing to template - People Pipeline ID: {people_pipeline.id if people_pipeline else 'None'}")
-    current_app.logger.info(f"[DASHBOARD DEBUG] Passing to template - Church Pipeline ID: {church_pipeline.id if church_pipeline else 'None'}")
-    if people_pipeline and church_pipeline:
-        current_app.logger.info(f"[DASHBOARD DEBUG] Pipelines are {'SAME' if people_pipeline.id == church_pipeline.id else 'DIFFERENT'}")
-        current_app.logger.info(f"[DASHBOARD DEBUG] People pipeline type: {people_pipeline.pipeline_type}")
-        current_app.logger.info(f"[DASHBOARD DEBUG] Church pipeline type: {church_pipeline.pipeline_type}")
-    
-    # Get pending tasks for the current user
-    pending_tasks = Task.query.filter_by(
+    # Get pending tasks for the current user with efficient loading
+    pending_tasks = Task.query.options(
+        joinedload(Task.person),
+        joinedload(Task.church)
+    ).filter_by(
         assigned_to=current_user.id, 
         status='pending'
     ).order_by(Task.due_date.asc()).limit(5).all()
     
-    # Get recent communications
+    # Get recent communications with efficient loading
+    comm_query = Communication.query.options(
+        joinedload(Communication.person),
+        joinedload(Communication.church)
+    )
+    
     # For super admins, show communications from all offices
     if current_user.is_super_admin():
-        recent_communications = Communication.query.order_by(
+        recent_communications = comm_query.order_by(
             Communication.created_at.desc()
         ).limit(5).all()
     else:
-        recent_communications = Communication.query.filter_by(
+        recent_communications = comm_query.filter_by(
             office_id=office_id
         ).order_by(
             Communication.created_at.desc()
@@ -104,21 +92,16 @@ def index():
     # Prepare recent activities list
     recent_activities = []
     
-    # Add communications to activities
+    # Add communications to activities - no need for additional queries now
     for comm in recent_communications:
         contact_name = "Unknown"
         
-        # Try to get the person's name
-        if comm.person_id:
-            person = Person.query.get(comm.person_id)
-            if person:
-                contact_name = f"{person.first_name} {person.last_name}"
-        
-        # Try to get the church's name
-        elif comm.church_id:
-            church = Church.query.get(comm.church_id)
-            if church:
-                contact_name = church.name
+        # Use already loaded person data
+        if comm.person:
+            contact_name = f"{comm.person.first_name or ''} {comm.person.last_name or ''}".strip()
+        # Use already loaded church data
+        elif comm.church:
+            contact_name = comm.church.name or "Unknown Church"
                 
         comm_type = comm.type.capitalize() if comm.type else "Communication"
         activity = {
@@ -129,19 +112,26 @@ def index():
         }
         recent_activities.append(activity)
     
-    # Add completed tasks to activities (optional)
+    # Add completed tasks to activities (optional) with efficient loading
+    completed_tasks_query = Task.query.options(
+        joinedload(Task.person),
+        joinedload(Task.church)
+    ).filter(
+        Task.status == 'completed',
+        Task.completed_date.isnot(None)
+    )
+    
     # For super admins, show tasks from all offices
     if current_user.is_super_admin():
-        recent_completed_tasks = Task.query.filter(
-            Task.status == 'completed',
-            Task.completed_date.isnot(None)
-        ).order_by(Task.completed_date.desc()).limit(5).all()
+        recent_completed_tasks = completed_tasks_query.order_by(
+            Task.completed_date.desc()
+        ).limit(5).all()
     else:
-        recent_completed_tasks = Task.query.filter(
-            Task.office_id == office_id,
-            Task.status == 'completed',
-            Task.completed_date.isnot(None)
-        ).order_by(Task.completed_date.desc()).limit(5).all()
+        recent_completed_tasks = completed_tasks_query.filter(
+            Task.office_id == office_id
+        ).order_by(
+            Task.completed_date.desc()
+        ).limit(5).all()
     
     for task in recent_completed_tasks:
         activity = {
@@ -174,7 +164,21 @@ def index():
 @office_required
 def dashboard_stats_api():
     """API endpoint to get updated dashboard statistics."""
+    # Generate a cache key based on user and office
+    cache_key = f"dashboard_stats_{current_user.id}_{current_user.office_id}"
+    
+    # Try to get stats from cache
+    cached_stats = cache.get(cache_key)
+    if cached_stats:
+        current_app.logger.debug(f"Using cached dashboard stats for user {current_user.id}")
+        return jsonify(cached_stats)
+    
+    # If not in cache, generate stats
     stats = get_dashboard_stats()
+    
+    # Cache the stats for 5 minutes (300 seconds)
+    cache.set(cache_key, stats, timeout=300)
+    
     return jsonify(stats)
 
 @dashboard_bp.route('/dashboard/pipeline-chart-data')
@@ -184,151 +188,130 @@ def pipeline_chart_data():
     """API endpoint to get pipeline stage data for charts."""
     pipeline_type = request.args.get('type', 'person')
     
+    # Generate a cache key based on user, office, and pipeline type
+    cache_key = f"pipeline_chart_{current_user.id}_{current_user.office_id}_{pipeline_type}"
+    
+    # Try to get data from cache
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        current_app.logger.debug(f"Using cached pipeline chart data for user {current_user.id} and type {pipeline_type}")
+        return jsonify(cached_data)
+    
     # Log the original request
     current_app.logger.info(f"Pipeline chart data requested for type: {pipeline_type}")
-    
-    # Determine the pipeline type values to search for
-    if pipeline_type == 'person':
-        # Search for both 'person' and 'people' pipeline types
-        db_pipeline_types = ['person', 'people']
-    else:
-        db_pipeline_types = [pipeline_type]
     
     office_id = current_user.office_id
     
     try:
-        # Build query to find pipeline of either type
-        pipeline_condition = " OR ".join([f"pipeline_type = '{pt}'" for pt in db_pipeline_types])
+        # Use a more efficient query with proper indexing and caching
+        # Convert pipeline type to a list for IN clause
+        pipeline_types = ['person', 'people'] if pipeline_type == 'person' else [pipeline_type]
         
-        # Direct SQL query to get main pipeline, its stages, and contact counts in one go
-        query = f"""
-        WITH pipeline AS (
-            SELECT id, name
-            FROM pipelines
-            WHERE ({pipeline_condition})
-            AND is_main_pipeline = 1
-            AND office_id = :office_id
-            LIMIT 1
-        ),
-        fallback_pipeline AS (
-            SELECT id, name
-            FROM pipelines
-            WHERE ({pipeline_condition})
-            AND is_main_pipeline = 1
-            LIMIT 1
-        ),
-        selected_pipeline AS (
-            SELECT * FROM pipeline
-            UNION ALL
-            SELECT * FROM fallback_pipeline
+        # Build an optimized query that gets all the data at once
+        query = """
+        WITH pipeline_data AS (
+            -- Select the appropriate pipeline
+            SELECT p.id, p.name
+            FROM pipelines p
+            WHERE p.pipeline_type IN :pipeline_types
+            AND p.is_main_pipeline = 1
+            AND (p.office_id = :office_id OR :is_super_admin = 1)
+            ORDER BY 
+                CASE WHEN p.office_id = :office_id THEN 0 ELSE 1 END,
+                p.id
             LIMIT 1
         )
+        -- Get the stage data with counts in a single query
         SELECT 
-            p.id as pipeline_id,
-            p.name as pipeline_name,
-            ps.id as stage_id,
-            ps.name as stage_name,
-            ps.color,
-            ps."order" as stage_order,
-            COUNT(pc.id) as contact_count
-        FROM selected_pipeline p
-        LEFT JOIN pipeline_stages ps ON p.id = ps.pipeline_id
-        LEFT JOIN pipeline_contacts pc ON ps.id = pc.current_stage_id
-        GROUP BY p.id, p.name, ps.id, ps.name, ps.color, ps."order"
-        ORDER BY ps."order"
+            pd.id AS pipeline_id,
+            pd.name AS pipeline_name,
+            ps.id AS stage_id,
+            ps.name AS stage_name,
+            ps.color AS stage_color,
+            ps."order" AS stage_order,
+            COALESCE(pc_count.contact_count, 0) AS contact_count
+        FROM 
+            pipeline_data pd
+        LEFT JOIN 
+            pipeline_stages ps ON pd.id = ps.pipeline_id
+        LEFT JOIN (
+            -- Pre-compute contact counts per stage
+            SELECT 
+                current_stage_id, 
+                COUNT(*) AS contact_count
+            FROM 
+                pipeline_contacts
+            GROUP BY 
+                current_stage_id
+        ) pc_count ON ps.id = pc_count.current_stage_id
+        ORDER BY 
+            ps."order"
         """
         
-        current_app.logger.info(f"Executing direct SQL query for pipeline types '{db_pipeline_types}' and office {office_id}")
-        results = db.session.execute(db.text(query), {
-            "office_id": office_id
+        # Execute the query with proper parameter binding
+        results = db.session.execute(text(query), {
+            "pipeline_types": tuple(pipeline_types),
+            "office_id": office_id,
+            "is_super_admin": 1 if current_user.is_super_admin() else 0
         }).fetchall()
         
         # If no results, return empty response
         if not results:
-            current_app.logger.error(f"No pipeline or stages found for types: {db_pipeline_types}")
-            return jsonify({
+            current_app.logger.error(f"No pipeline or stages found for types: {pipeline_types}")
+            empty_response = {
                 'pipeline_id': None,
-                'pipeline_name': f"No {pipeline_type} pipeline found",
-                'total_contacts': 0,
+                'pipeline_name': None,
                 'stages': []
-            })
+            }
+            return jsonify(empty_response)
         
-        # Get pipeline info from first result
+        # Extract pipeline info from first result
         pipeline_id = results[0].pipeline_id
         pipeline_name = results[0].pipeline_name
         
-        # Count total contacts
-        total_contacts = sum(r.contact_count for r in results)
-        
-        # Verify with a direct count
-        verify_query = "SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"
-        direct_count = db.session.execute(
-            db.text(verify_query), 
-            {"pipeline_id": pipeline_id}
-        ).scalar() or 0
-        
-        current_app.logger.info(f"Found pipeline: {pipeline_name} (ID: {pipeline_id}) with {direct_count} total contacts")
-        
         # Process stages
         stages = []
-        for r in results:
-            # Skip if stage_id is None (means we have pipeline but no stages)
-            if r.stage_id is None:
-                continue
-                
-            # Calculate percentage
-            percentage = 0
-            if total_contacts > 0:
-                percentage = round((r.contact_count / total_contacts) * 100, 1)
-                
-            # Use a default color if none is specified
-            color = r.color
-            if not color:
-                stage_name = r.stage_name.lower() if r.stage_name else ""
-                if "promotion" in stage_name:
-                    color = "#3498db"  # Blue
-                elif "information" in stage_name:
-                    color = "#2ecc71"  # Green
-                elif "invitation" in stage_name:
-                    color = "#f1c40f"  # Yellow
-                elif "confirmation" in stage_name:
-                    color = "#e67e22"  # Orange
-                elif "en42" in stage_name:
-                    color = "#9b59b6"  # Purple
-                elif "automation" in stage_name:
-                    color = "#1abc9c"  # Teal
-                else:
-                    color = "#95a5a6"  # Gray
-            
-            current_app.logger.debug(f"Stage: {r.stage_name}, Count: {r.contact_count}, Percentage: {percentage}%")
-            stages.append({
-                'id': r.stage_id,
-                'name': r.stage_name,
-                'count': r.contact_count,
-                'percentage': percentage,
-                'color': color
-            })
+        total_contacts = 0
         
+        for row in results:
+            if row.stage_id:  # Skip None values if any
+                contact_count = row.contact_count or 0
+                total_contacts += contact_count
+                
+                stages.append({
+                    'id': row.stage_id,
+                    'name': row.stage_name,
+                    'color': row.stage_color or get_default_color(row.stage_name),
+                    'order': row.stage_order,
+                    'contact_count': contact_count
+                })
+        
+        # Calculate percentages in a single pass
+        for stage in stages:
+            stage['percentage'] = round((stage['contact_count'] / total_contacts * 100) if total_contacts > 0 else 0, 1)
+        
+        # Prepare the response data
         response_data = {
             'pipeline_id': pipeline_id,
             'pipeline_name': pipeline_name,
-            'total_contacts': total_contacts,
-            'stages': stages
+            'stages': stages,
+            'total_contacts': total_contacts
         }
+        
+        # Cache the result for 5 minutes
+        cache.set(cache_key, response_data, timeout=300)
         
         return jsonify(response_data)
         
     except Exception as e:
-        import traceback
-        error_traceback = traceback.format_exc()
-        current_app.logger.error(f"Error fetching pipeline chart data: {str(e)}\n{error_traceback}")
-        return jsonify({
-            'error': f'Database error: {str(e)}',
+        current_app.logger.error(f"Error fetching pipeline chart data: {str(e)}")
+        error_response = {
+            'error': str(e),
             'pipeline_id': None,
-            'pipeline_name': 'Error',
-            'total_contacts': 0,
+            'pipeline_name': None,
             'stages': []
-        }), 500
+        }
+        return jsonify(error_response), 500
 
 @dashboard_bp.route('/dashboard/debug/pipeline-data')
 @login_required
@@ -611,65 +594,71 @@ def get_default_color(stage_name):
 def get_dashboard_stats():
     """Helper function to generate dashboard statistics."""
     office_id = current_user.office_id
+    stats = {}
     
-    # Count people and churches
     try:
-        # For super admins, count all people across all offices
-        if current_user.is_super_admin():
-            people_count = Person.query.count()
-        else:
-            people_count = Person.query.filter_by(office_id=office_id).count()
-    except Exception as e:
-        current_app.logger.error(f"Error counting people: {str(e)}")
-        people_count = 0
+        # Use SQLAlchemy Core for more optimized queries
+        from sqlalchemy import func, and_, text
         
-    try:
-        # For super admins, count all churches across all offices
+        # For super admins, count all people and churches across all offices
         if current_user.is_super_admin():
-            church_count = Church.query.count()
+            # Get counts in a single query using UNION
+            counts_query = """
+                SELECT 
+                    (SELECT COUNT(*) FROM people) AS people_count,
+                    (SELECT COUNT(*) FROM churches) AS church_count
+            """
+            result = db.session.execute(text(counts_query)).fetchone()
+            stats['people_count'] = result[0] if result else 0
+            stats['church_count'] = result[1] if result else 0
         else:
-            church_count = Church.query.filter_by(office_id=office_id).count()
-    except Exception as e:
-        current_app.logger.error(f"Error counting churches: {str(e)}")
-        church_count = 0
+            # Get counts for specific office in a single query using UNION
+            counts_query = """
+                SELECT 
+                    (SELECT COUNT(*) FROM people JOIN contacts ON people.id = contacts.id WHERE contacts.office_id = :office_id) AS people_count,
+                    (SELECT COUNT(*) FROM churches JOIN contacts ON churches.id = contacts.id WHERE contacts.office_id = :office_id) AS church_count
+            """
+            result = db.session.execute(text(counts_query), {"office_id": office_id}).fetchone()
+            stats['people_count'] = result[0] if result else 0
+            stats['church_count'] = result[1] if result else 0
+            
+        # Get task counts in a single query
+        tasks_query = """
+            SELECT 
+                (SELECT COUNT(*) FROM tasks WHERE assigned_to = :user_id AND status = 'pending') AS pending_tasks,
+                (SELECT COUNT(*) FROM tasks WHERE assigned_to = :user_id AND status = 'pending' AND due_date < :today) AS overdue_tasks
+        """
+        task_result = db.session.execute(text(tasks_query), {
+            "user_id": current_user.id,
+            "today": datetime.now().date()
+        }).fetchone()
         
-    # Count tasks
-    try:
-        pending_tasks = Task.query.filter_by(
-            assigned_to=current_user.id,
-            status='pending',
-        ).count()
-        overdue_tasks = Task.query.filter(
-            Task.assigned_to == current_user.id,
-            Task.status == 'pending',
-            Task.due_date < datetime.now().date(),
-        ).count()
-    except Exception as e:
-        current_app.logger.error(f"Error counting tasks: {str(e)}")
-        pending_tasks = 0
-        overdue_tasks = 0
+        stats['pending_tasks'] = task_result[0] if task_result else 0
+        stats['overdue_tasks'] = task_result[1] if task_result else 0
         
-    # Count communications
-    try:
-        # For super admins, count communications from all offices
+        # Count communications
+        thirty_days_ago = datetime.now() - timedelta(days=30)
         if current_user.is_super_admin():
-            recent_communications = Communication.query.filter(
-                Communication.created_at >= (datetime.now() - timedelta(days=30))
-            ).count()
+            communications_count = db.session.query(func.count(Communication.id)).filter(
+                Communication.created_at >= thirty_days_ago
+            ).scalar() or 0
         else:
-            recent_communications = Communication.query.filter_by(
-                office_id=office_id
-            ).filter(
-                Communication.created_at >= (datetime.now() - timedelta(days=30))
-            ).count()
+            communications_count = db.session.query(func.count(Communication.id)).filter(
+                Communication.office_id == office_id,
+                Communication.created_at >= thirty_days_ago
+            ).scalar() or 0
+            
+        stats['recent_communications'] = communications_count
+        
     except Exception as e:
-        current_app.logger.error(f"Error counting communications: {str(e)}")
-        recent_communications = 0
+        current_app.logger.error(f"Error fetching dashboard stats: {str(e)}")
+        # Provide default values if there's an error
+        stats = {
+            'people_count': 0,
+            'church_count': 0,
+            'pending_tasks': 0,
+            'overdue_tasks': 0,
+            'recent_communications': 0
+        }
     
-    return {
-        'people_count': people_count,
-        'church_count': church_count,
-        'pending_tasks': pending_tasks,
-        'overdue_tasks': overdue_tasks,
-        'recent_communications': recent_communications
-    } 
+    return stats 

@@ -451,73 +451,6 @@ def add_member(id):
     
     return redirect(url_for('churches.show', id=church.id))
 
-@churches_bp.route('/search')
-@login_required
-@office_required
-def search():
-    """Search for churches by name."""
-    query = request.args.get('q', '')
-    
-    if not query:
-        return jsonify({'churches': []})
-    
-    # For super admins, search across all offices
-    if current_user.is_super_admin():
-        churches = Church.query.filter(
-            or_(
-                Church.name.ilike(f'%{query}%'),
-                Church.denomination.ilike(f'%{query}%'),
-                Church.pastor_name.ilike(f'%{query}%')
-            )
-        ).limit(10).all()
-    else:
-        # For regular users, filter by office_id
-        churches = Church.query.filter(
-            Church.office_id == current_user.office_id,
-            or_(
-                Church.name.ilike(f'%{query}%'),
-                Church.denomination.ilike(f'%{query}%'),
-                Church.pastor_name.ilike(f'%{query}%')
-            )
-        ).limit(10).all()
-    
-    # Format the location based on city, state, and country
-    def format_location(church):
-        if church.location:
-            return church.location
-            
-        city = church.city or ''
-        state = church.state or ''
-        country = church.country or ''
-        
-        if not city:
-            return ""
-            
-        # For US addresses
-        if country in ('United States', 'USA', 'US') or not country:
-            if state:
-                return f"{city}, {state}"
-            return city
-            
-        # For Canadian addresses
-        if country in ('Canada', 'CA'):
-            if state:
-                return f"{city}, {state}"
-            return city
-            
-        # For all other countries
-        return f"{city}, {country}" if country else city
-    
-    result = [
-        {
-            'id': c.id,
-            'name': c.name,
-            'address': format_location(c)
-        } for c in churches
-    ]
-    
-    return jsonify({'churches': result})
-
 @churches_bp.route('/add_note/<int:id>', methods=['POST'])
 @login_required
 def add_note(id):
@@ -742,4 +675,94 @@ def process_church_import(df, import_data):
     except Exception as e:
         db.session.rollback()
         flash(f'Error during import: {str(e)}', 'danger')
-        return redirect(url_for('churches.import_churches')) 
+        return redirect(url_for('churches.import_churches'))
+
+@churches_bp.route('/search', methods=['GET'])
+@login_required
+@office_required
+def search():
+    """Search churches based on query parameters"""
+    search_term = request.args.get('q', '').strip().upper()
+    
+    # Start with a base query for Church
+    query = Church.query
+    
+    # Apply text search filter if provided
+    if search_term:
+        # First check if the search term matches any pipeline stage or denomination
+        pipeline_match = False
+        denomination_match = False
+        
+        # Check for pipeline stage match
+        pipeline_stages = ['PROMOTION', 'INFORMATION', 'INVITATION', 'CONFIRMATION', 'EN42', 'AUTOMATION']
+        for stage in pipeline_stages:
+            if stage in search_term:
+                query = query.outerjoin(PipelineContact, Church.id == PipelineContact.contact_id) \
+                           .outerjoin(PipelineStage, PipelineContact.current_stage_id == PipelineStage.id) \
+                           .filter(PipelineStage.name == stage)
+                pipeline_match = True
+                break
+        
+        # Check for denomination match
+        denominations = ['BAPTIST', 'CATHOLIC', 'LUTHERAN', 'METHODIST', 'NON-DENOMINATIONAL', 'PRESBYTERIAN']
+        for denomination in denominations:
+            if denomination in search_term:
+                query = query.filter(Church.denomination.ilike(f'%{denomination}%'))
+                denomination_match = True
+                break
+        
+        # If no pipeline or denomination match, search other fields
+        if not pipeline_match and not denomination_match:
+            query = query.filter(
+                or_(
+                    Church.name.ilike(f'%{search_term}%'),
+                    Church.email.ilike(f'%{search_term}%'),
+                    Church.phone.ilike(f'%{search_term}%'),
+                    Church.location.ilike(f'%{search_term}%')
+                )
+            )
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        query = query.filter(Church.office_id == current_user.office_id)
+    
+    # Get results with increased limit
+    churches = query.limit(50).all()
+    
+    # Debug output
+    print(f"Search query: {search_term}")
+    print(f"Found {len(churches)} churches matching criteria")
+    
+    # Convert churches to dictionaries with all necessary fields for display
+    church_dicts = []
+    for church in churches:
+        church_dict = church.to_dict()
+        
+        # Get the main pipeline stage for the church
+        main_pipeline = Pipeline.query.filter_by(
+            pipeline_type='church',
+            is_main_pipeline=True,
+            office_id=church.office_id
+        ).first()
+        
+        if main_pipeline:
+            pipeline_contact = PipelineContact.query.filter_by(
+                contact_id=church.id,
+                pipeline_id=main_pipeline.id
+            ).first()
+            
+            if pipeline_contact and pipeline_contact.current_stage:
+                church_dict['church_pipeline'] = pipeline_contact.current_stage.name
+        
+        # Ensure main contact information is included
+        if church.main_contact_id:
+            main_contact = Person.query.get(church.main_contact_id)
+            if main_contact:
+                church_dict['main_contact'] = {
+                    'id': main_contact.id,
+                    'full_name': f"{main_contact.first_name} {main_contact.last_name}"
+                }
+        
+        church_dicts.append(church_dict)
+    
+    return jsonify(church_dicts) 

@@ -10,6 +10,7 @@ from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
+from flask_caching import Cache
 import logging
 
 # Initialize extensions
@@ -24,11 +25,37 @@ scheduler = APScheduler()
 mail = Mail()  # Initialize Flask-Mail
 limiter = Limiter(key_func=get_remote_address)
 talisman = Talisman()
+cache = Cache()
 
 # Configure cache
 def configure_cache(app):
     """Configure cache based on app config."""
-    pass  # Implementation details will be added later
+    cache_config = {
+        'CACHE_TYPE': 'SimpleCache',  # Simple in-memory cache
+        'CACHE_DEFAULT_TIMEOUT': 300  # 5 minutes default timeout
+    }
+    
+    # In production, use Redis if available
+    if app.config.get('ENV') == 'production' and app.config.get('REDIS_URL'):
+        cache_config.update({
+            'CACHE_TYPE': 'RedisCache',
+            'CACHE_REDIS_URL': app.config.get('REDIS_URL'),
+            'CACHE_DEFAULT_TIMEOUT': 600  # 10 minutes in production
+        })
+    # For larger development datasets, use filesystem cache
+    elif app.config.get('CACHE_TYPE') == 'FileSystemCache':
+        import os
+        cache_dir = os.path.join(app.instance_path, 'cache')
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_config.update({
+            'CACHE_TYPE': 'FileSystemCache',
+            'CACHE_DIR': cache_dir,
+            'CACHE_THRESHOLD': 1000  # Maximum number of items the cache will store
+        })
+        
+    # Apply configuration
+    app.config.update(cache_config)
+    cache.init_app(app)
 
 # Create base model class
 Base = db.Model

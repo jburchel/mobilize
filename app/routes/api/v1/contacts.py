@@ -13,7 +13,7 @@ from flask_login import current_user, login_required
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask import current_app
 
-contacts_bp = Blueprint('contacts_api', __name__)
+contacts_bp = Blueprint('contacts_bp', __name__)
 
 @contacts_bp.route('/', methods=['GET'])
 @auth_required
@@ -191,24 +191,77 @@ def delete_contact(contact_id):
         return jsonify({'error': str(e)}), 400
 
 @contacts_bp.route('/search', methods=['GET'])
-@auth_required
+@login_required
 def search_contacts():
     """Search contacts based on query string."""
     try:
         query = request.args.get('q', '')
-        if not query:
-            return jsonify({'error': 'Search query is required'}), 400
-
-        contacts = ContactModel.query.filter(
-            or_(
-                ContactModel.first_name.ilike(f'%{query}%'),
-                ContactModel.last_name.ilike(f'%{query}%'),
-                ContactModel.email.ilike(f'%{query}%')
+        contact_type = request.args.get('type', '')  # 'person', 'church', or empty for both
+        pipeline = request.args.get('pipeline', '')
+        priority = request.args.get('priority', '')
+        
+        # Build filters
+        filters = []
+        
+        # Search query filter
+        if query:
+            filters.append(
+                or_(
+                    ContactModel.first_name.ilike(f'%{query}%'),
+                    ContactModel.last_name.ilike(f'%{query}%'),
+                    ContactModel.email.ilike(f'%{query}%'),
+                    ContactModel.phone.ilike(f'%{query}%')
+                )
             )
-        ).all()
+        
+        # Contact type filter
+        if contact_type == 'person':
+            filters.append(ContactModel.type == 'person')
+        elif contact_type == 'church':
+            filters.append(ContactModel.type == 'church')
+        
+        # Pipeline filter
+        if pipeline:
+            # Check if it's a person or church pipeline
+            if contact_type == 'person':
+                filters.append(Person.people_pipeline == pipeline)
+            elif contact_type == 'church':
+                filters.append(Church.church_pipeline == pipeline)
+            else:
+                # If no type specified, check both
+                filters.append(
+                    or_(
+                        Person.people_pipeline == pipeline,
+                        Church.church_pipeline == pipeline
+                    )
+                )
+        
+        # Priority filter
+        if priority:
+            filters.append(ContactModel.priority == priority)
+        
+        # Office filter - ensure users only see contacts from their office
+        if not current_user.is_super_admin():
+            filters.append(ContactModel.office_id == current_user.office_id)
+        
+        # Build query
+        query_obj = ContactModel.query
+        if filters:
+            for f in filters:
+                query_obj = query_obj.filter(f)
+                
+        # Execute query and limit results
+        contacts = query_obj.limit(20).all()
+        
+        # For debugging
+        print(f"Search with params: q={query}, type={contact_type}, pipeline={pipeline}, priority={priority}")
+        print(f"Found {len(contacts)} matching contacts")
 
         return jsonify([contact.to_dict() for contact in contacts]), 200
     except SQLAlchemyError as e:
+        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        print(f"Unexpected error in search_contacts: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @contacts_bp.route('/sync', methods=['POST'])

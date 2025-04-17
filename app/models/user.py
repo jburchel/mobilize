@@ -1,9 +1,11 @@
 from datetime import datetime
+from typing import Optional, List, Dict, Any
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import String, Integer, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions import db
 from app.models.base import Base
-from sqlalchemy import orm
 
 # User roles enum
 USER_ROLES = ['super_admin', 'office_admin', 'user']
@@ -12,51 +14,98 @@ class User(UserMixin, Base):
     """User model for authentication and authorization."""
     __tablename__ = 'users'
 
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
-    firebase_uid = db.Column(db.String(128), unique=True, nullable=True)
-    first_name = db.Column(db.String(64))
-    last_name = db.Column(db.String(64))
-    phone = db.Column(db.String(20))
-    profile_image = db.Column(db.String(255))
-    job_title = db.Column(db.String(100))
-    department = db.Column(db.String(100))
-    is_active = db.Column(db.Boolean, default=True)
-    first_login = db.Column(db.Boolean, default=True)
-    role = db.Column(db.String(20), nullable=False, default='standard_user')
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=True)
-    last_login = db.Column(db.DateTime)
-    preferences = db.Column(db.JSON)
-    notification_settings = db.Column(db.JSON)
-    google_refresh_token = db.Column(db.String(255))
-    google_calendar_sync = db.Column(db.Boolean, default=True)
-    google_meet_enabled = db.Column(db.Boolean, default=True)
-    email_sync_contacts_only = db.Column(db.Boolean, default=False)
-    office_id = db.Column(db.Integer, db.ForeignKey('offices.id'), nullable=True)
-    person_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(128))
+    firebase_uid: Mapped[Optional[str]] = mapped_column(String(128), unique=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(64))
+    last_name: Mapped[Optional[str]] = mapped_column(String(64))
+    phone: Mapped[Optional[str]] = mapped_column(String(20))
+    profile_image: Mapped[Optional[str]] = mapped_column(String(255))
+    job_title: Mapped[Optional[str]] = mapped_column(String(100))
+    department: Mapped[Optional[str]] = mapped_column(String(100))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    first_login: Mapped[bool] = mapped_column(Boolean, default=True)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default='standard_user')
+    role_id: Mapped[Optional[int]] = mapped_column(ForeignKey('roles.id'))
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    preferences: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    notification_settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)
+    google_refresh_token: Mapped[Optional[str]] = mapped_column(String(255))
+    google_calendar_sync: Mapped[bool] = mapped_column(Boolean, default=True)
+    google_meet_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    email_sync_contacts_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'))
+    person_id: Mapped[Optional[int]] = mapped_column(ForeignKey('people.id'))
 
-    # Relationships
-    office = db.relationship('Office', back_populates='users')
-    role_obj = db.relationship('Role', foreign_keys=[role_id])
-    person = db.relationship('Person', backref=db.backref('associated_user', uselist=False), foreign_keys=[person_id])
-    tasks = db.relationship('Task', overlaps="assigned_user,tasks", primaryjoin="User.id == foreign(Task.assigned_to)")
-    owned_tasks = db.relationship('Task', back_populates='owner', foreign_keys='Task.owner_id')
-    communications = db.relationship('Communication', back_populates='sender', foreign_keys='Communication.user_id')
-    owned_communications = db.relationship('Communication', back_populates='owner', foreign_keys='Communication.owner_id')
-    email_signatures = db.relationship('EmailSignature', back_populates='user')
-    google_tokens = db.relationship('GoogleToken', back_populates='user')
-    contacts = db.relationship('Contact', back_populates='user', foreign_keys='Contact.user_id')
-    owned_churches = orm.relationship(
+    # Relationships with type hints
+    office = relationship('Office', back_populates='users')
+    role_obj = relationship('Role', foreign_keys=[role_id])
+    person = relationship(
+        'Person',
+        back_populates='associated_user',
+        foreign_keys=[person_id],
+        single_parent=True
+    )
+    tasks = relationship(
+        'Task',
+        overlaps="assigned_user,tasks",
+        primaryjoin="User.id == foreign(Task.assigned_to)",
+        back_populates='assigned_user'
+    )
+    owned_tasks = relationship(
+        'Task',
+        back_populates='owner',
+        foreign_keys='Task.owner_id',
+        cascade='all, delete-orphan'
+    )
+    created_tasks = relationship(
+        'Task',
+        back_populates='created_by_user',
+        foreign_keys='Task.created_by',
+        lazy='dynamic'
+    )
+    communications = relationship(
+        'Communication',
+        back_populates='sender',
+        foreign_keys='Communication.user_id'
+    )
+    owned_communications = relationship(
+        'Communication',
+        back_populates='owner',
+        foreign_keys='Communication.owner_id',
+        cascade='all, delete-orphan'
+    )
+    email_signatures = relationship(
+        'EmailSignature',
+        back_populates='user',
+        cascade='all, delete-orphan'
+    )
+    google_tokens = relationship(
+        'GoogleToken',
+        back_populates='user',
+        cascade='all, delete-orphan'
+    )
+    contacts = relationship(
+        'Contact',
+        back_populates='user',
+        foreign_keys='Contact.user_id',
+        cascade='all, delete-orphan'
+    )
+    owned_churches = relationship(
         'Church',
         back_populates='owner',
-        foreign_keys='[Church.owner_id]',
-        primaryjoin='User.id==Church.owner_id'
+        foreign_keys='Church.owner_id',
+        primaryjoin='User.id==Church.owner_id',
+        cascade='all, delete-orphan'
     )
 
-    def __init__(self, username=None, email=None, role='standard_user', office_id=None, password=None,
-                 first_name=None, last_name=None, firebase_uid=None, id=None, **kwargs):
+    def __init__(self, username: Optional[str] = None, email: Optional[str] = None,
+                 role: str = 'standard_user', office_id: Optional[int] = None,
+                 password: Optional[str] = None, first_name: Optional[str] = None,
+                 last_name: Optional[str] = None, firebase_uid: Optional[str] = None,
+                 id: Optional[int] = None, **kwargs) -> None:
         """Initialize a new User instance."""
         super().__init__()
         if id is not None:
@@ -76,18 +125,18 @@ class User(UserMixin, Base):
             if hasattr(self, key):
                 setattr(self, key, value)
 
-    def set_password(self, password):
+    def set_password(self, password: str) -> None:
         """Set the user's password."""
         self.password_hash = generate_password_hash(password)
 
-    def check_password(self, password):
+    def check_password(self, password: str) -> bool:
         """Check if the provided password matches the user's password."""
         return check_password_hash(self.password_hash, password)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<User {self.username}>'
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert user object to dictionary."""
         return {
             'id': self.id,
@@ -112,26 +161,26 @@ class User(UserMixin, Base):
         }
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         """Get user's full name."""
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name or ''} {self.last_name or ''}".strip()
 
-    def is_admin(self):
+    def is_admin(self) -> bool:
         """Check if user is an admin (either super_admin or office_admin)."""
         return self.role in ['super_admin', 'office_admin']
 
-    def is_super_admin(self):
+    def is_super_admin(self) -> bool:
         """Check if user is a super admin."""
         return self.role == 'super_admin'
 
-    def can_manage_office(self, office_id):
+    def can_manage_office(self, office_id: int) -> bool:
         """Check if user can manage a specific office."""
         return self.is_super_admin() or (self.is_admin() and self.office_id == office_id)
 
-    def get_owned_records_count(self):
+    def get_owned_records_count(self) -> Dict[str, int]:
         """Get count of all records owned by this user."""
         return {
-            'churches': self.owned_churches.count(),
-            'communications': self.owned_communications.count(),
-            'tasks': self.owned_tasks.count()
+            'churches': len(self.owned_churches),
+            'communications': len(self.owned_communications),
+            'tasks': len(self.owned_tasks)
         } 
