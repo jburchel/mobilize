@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -14,23 +14,17 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install google-cloud-secret-manager==2.16.1
 
 # Copy application code
 COPY . .
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    FLASK_APP=app.py \
-    FLASK_ENV=production \
-    GUNICORN_WORKERS=4
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
 
-# Set up entrypoint
-COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Expose the port
+# Expose port for Cloud Run
 EXPOSE 8080
 
-# Run the application
-ENTRYPOINT ["/entrypoint.sh"] 
+# Run gunicorn
+CMD exec gunicorn --bind :8080 --workers 1 --threads 8 --timeout 0 app:app 

@@ -30,18 +30,53 @@ from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
 
+# Function to access secrets from Secret Manager in production
+def access_secrets():
+    """Access secrets from Google Cloud Secret Manager when in production"""
+    secrets = {}
+    
+    if os.environ.get('FLASK_ENV') == 'production':
+        try:
+            from google.cloud import secretmanager
+            
+            project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'mobilize-crm')
+            client = secretmanager.SecretManagerServiceClient()
+            
+            # Function to access a specific secret
+            def access_secret(secret_id):
+                name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+                response = client.access_secret_version(request={"name": name})
+                return response.payload.data.decode('UTF-8')
+            
+            # Access required secrets
+            secrets = {
+                'DATABASE_URL': access_secret('mobilize-db-url'),
+                'SECRET_KEY': access_secret('mobilize-flask-secret'),
+                'GOOGLE_CLIENT_ID': access_secret('mobilize-google-client-id'),
+                'GOOGLE_CLIENT_SECRET': access_secret('mobilize-google-client-secret')
+            }
+            logging.info("Successfully loaded secrets from Secret Manager")
+        except Exception as e:
+            logging.error(f"Error accessing secrets from Secret Manager: {e}")
+    
+    return secrets
+
 # Initialize extensions that aren't in extensions.py
 # (Remove this as we're using the ones from extensions.py)
 
 def create_app(test_config=None):
     """Create and configure the Flask application"""
     app = Flask(__name__, instance_relative_config=True)
+    
+    # Load secrets from Secret Manager in production
+    secrets = access_secrets()
+    
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
+        SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
         DEBUG=os.environ.get('FLASK_DEBUG', 'False') == 'True',
         # Database Configuration
-        SQLALCHEMY_DATABASE_URI=os.environ.get('SQLALCHEMY_DATABASE_URI', 
-                                              os.environ.get('DB_CONNECTION_STRING')),
+        SQLALCHEMY_DATABASE_URI=secrets.get('DATABASE_URL', os.environ.get('SQLALCHEMY_DATABASE_URI', 
+                                              os.environ.get('DB_CONNECTION_STRING'))),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         # Cache Configuration for session data
         SESSION_TYPE='sqlalchemy',
@@ -51,8 +86,8 @@ def create_app(test_config=None):
         USER_ENABLE_USERNAME=False,
         # OAuth Configuration
         BASE_URL=os.environ.get('BASE_URL', 'http://localhost:5000'),
-        GOOGLE_CLIENT_ID=os.environ.get('GOOGLE_CLIENT_ID'),
-        GOOGLE_CLIENT_SECRET=os.environ.get('GOOGLE_CLIENT_SECRET'),
+        GOOGLE_CLIENT_ID=secrets.get('GOOGLE_CLIENT_ID', os.environ.get('GOOGLE_CLIENT_ID')),
+        GOOGLE_CLIENT_SECRET=secrets.get('GOOGLE_CLIENT_SECRET', os.environ.get('GOOGLE_CLIENT_SECRET')),
         # Email Configuration
         MAIL_SERVER=os.environ.get('MAIL_SERVER', 'smtp.gmail.com'),
         MAIL_PORT=int(os.environ.get('MAIL_PORT', 587)),
