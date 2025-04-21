@@ -1,3 +1,9 @@
+"""
+DEPRECATED: This script has been superseded by pg_migration_test_final.py.
+Please use pg_migration_test_final.py instead as it provides a more direct
+and reliable approach for testing PostgreSQL migrations.
+"""
+
 from app import create_app
 from flask_migrate import Migrate
 from sqlalchemy import create_engine
@@ -44,14 +50,22 @@ try:
     print("Successfully imported migration module")
     
     # Create a connection to PostgreSQL (this will not actually connect yet)
-    # Using the production connection string
+    # Using the production connection string with Supavisor Connection Pooler
     db_url = "postgresql://postgres:Fruitin2025!@fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres"
     
     engine = create_engine(db_url, echo=True)
     
     # Setup mock context for operations
     def do_upgrade(rev, context):
-        return migration_module.upgrade(op)
+        # Check if upgrade accepts the op parameter
+        import inspect
+        sig = inspect.signature(migration_module.upgrade)
+        if len(sig.parameters) > 0:
+            return migration_module.upgrade(op)
+        else:
+            # Set global op variable that the migration can use
+            migration_module.__dict__['op'] = op
+            return migration_module.upgrade()
         
     # Create a connection and set up the context
     try:
