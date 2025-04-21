@@ -22,7 +22,9 @@ steps:
   - 'managed'
   - '--allow-unauthenticated'
   - '--set-secrets'
-  - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest,GOOGLE_CLIENT_ID=mobilize-google-client-id:latest,GOOGLE_CLIENT_SECRET=mobilize-google-client-secret:latest'
+  - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest'
+  - '--set-env-vars'
+  - 'FLASK_APP=app.py,FLASK_ENV=production,LOG_LEVEL=INFO,LOG_TO_STDOUT=True,PREFERRED_URL_SCHEME=https,BASE_URL=https://mobilize-crm.org,SKIP_DB_INIT=True'
 
 # Tag with latest for easy reference
 - name: 'gcr.io/cloud-builders/docker'
