@@ -321,18 +321,15 @@
 
 ### Phase 7: Steps and Testing
 
-- [x] 1. User Acceptance Testing
-  - [x] Gather user feedback
-  - [x] Address user-reported issues
-    - [x] Fix missing Flask-Limiter dependency
-    - [x] Update port from 8000 to 8080 for Cloud Run compatibility
-    - [x] Correct database connection string in migration scripts
-  - [x] Make necessary adjustments
+- [ ] 1. User Acceptance Testing
+  - [ ] Gather user feedback
+  - [ ] Address user-reported issues
+  - [ ] Make necessary adjustments
 
-- [x] 2. Performance Monitoring
-  - [x] Monitor application metrics
-  - [x] Track error rates
-  - [x] Measure user engagement
+- [ ] 2. Performance Monitoring
+  - [ ] Monitor application metrics
+  - [ ] Track error rates
+  - [ ] Measure user engagement
 
 - [ ] 3. Continuous Improvement
   - [ ] Implement user suggestions
