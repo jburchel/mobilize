@@ -294,6 +294,20 @@ When deploying to Google Cloud Run using Cloud Build, ensure that the Cloud Buil
 
 All these permissions are required for Cloud Build to successfully deploy to Cloud Run.
 
+### Cloud Build Trigger Configuration
+
+When creating a Cloud Build trigger, use the same service account that will be used for the Cloud Run deployment. This ensures consistent permissions between the build and deployment:
+
+1. In the Cloud Build trigger configuration, select the custom service account option.
+2. Choose the same service account specified in the `--service-account` parameter in the `cloudbuild.yaml` file.
+3. Ensure this service account has all the necessary permissions:
+   - `roles/cloudbuild.builds.builder`
+   - `roles/iam.serviceAccountUser`
+   - `roles/run.admin`
+   - `roles/run.serviceAgent`
+   - `roles/storage.admin`
+   - `roles/artifactregistry.writer`
+
 ### Database Connection Issues
 
 #### Supabase Connection Strings
