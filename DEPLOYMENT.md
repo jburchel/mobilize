@@ -259,10 +259,25 @@ In case of failed migration:
 
 ## Additional Resources
 
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Supabase Documentation](https://supabase.io/docs)
-- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/en/14/)
-- [Flask-Migrate Documentation](https://flask-migrate.readthedocs.io/en/latest/)
+- [Supabase PostgreSQL Documentation](https://supabase.com/docs/guides/database)
+- [Flask-Migrate Documentation](https://flask-migrate.readthedocs.io/)
+- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
+
+## Cloud Deployment Notes
+
+When deploying to Google Cloud Run, ensure that the Cloud Build service account has the appropriate IAM permissions:
+
+1. Grant the Cloud Build service account the `iam.serviceAccountUser` role for the compute service account:
+   ```
+   gcloud iam service-accounts add-iam-policy-binding YOUR_COMPUTE_SA --member=serviceAccount:YOUR_CLOUDBUILD_SA --role=roles/iam.serviceAccountUser
+   ```
+
+2. Grant the Cloud Build service account the `run.admin` role:
+   ```
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID --member=serviceAccount:YOUR_CLOUDBUILD_SA --role=roles/run.admin
+   ```
+
+These permissions are required for Cloud Build to successfully deploy to Cloud Run.
 
 ### Database Connection Issues
 
