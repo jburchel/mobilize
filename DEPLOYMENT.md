@@ -337,6 +337,19 @@ Supabase provides multiple connection formats:
 
 After extensive testing, we determined that the **Supavisor Connection Pooler** (option 4) provides the most reliable connection, especially when dealing with IPv4/IPv6 compatibility issues.
 
+#### IMPORTANT: Connection String Verification
+
+**We strongly recommend using the Supavisor Connection Pooler format for all production deployments.** During our testing, we found that:
+
+1. Direct connections to the Supabase database often time out, especially from certain network environments
+2. The Connection Pooler provides better scalability for production workloads
+3. The correct credentials format is slightly different for the pooler connection:
+   - Username: `postgres.fwnitauuyzxnsvgsbrzr` (includes the project reference)
+   - Password: `RV4QOygx0LpqOjzx` (specific to the pooler connection)
+   - Host: `aws-0-us-east-1.pooler.supabase.com`
+
+This connection format has been configured in the `.env.production` file and should be used for all PostgreSQL connection needs in the production environment.
+
 If you're experiencing connection issues:
 - Use the Supavisor Connection Pooler (option 4) as your primary connection method
 - Check if your IP is allowed in Supabase's database settings
