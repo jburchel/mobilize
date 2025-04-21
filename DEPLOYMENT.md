@@ -307,6 +307,7 @@ When creating a Cloud Build trigger, use the same service account that will be u
    - `roles/run.serviceAgent`
    - `roles/storage.admin`
    - `roles/artifactregistry.writer`
+   - `roles/secretmanager.secretAccessor` (required if using Secret Manager for environment variables)
 
 ### Database Connection Issues
 
