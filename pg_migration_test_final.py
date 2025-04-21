@@ -1,69 +1,198 @@
-from sqlalchemy import create_engine, text, inspect
-import sys
+"""
+PostgreSQL Migration Test - Final Version
+
+This script connects to a PostgreSQL database and generates the SQL that would be executed
+for the latest migration. This is useful for testing PostgreSQL compatibility before
+applying migrations to the production database.
+"""
+
 import os
+import sys
+import io
 import importlib.util
-from alembic.operations import ops, Operations
+from logging import getLogger
+from sqlalchemy import create_engine, text
+from alembic.operations import Operations
 from alembic.migration import MigrationContext
+from contextlib import contextmanager
 
-# Create a modified version of the migration function that only collects SQL
-def create_sql_only_migration():
-    # Create a list to collect SQL statements
-    sql_statements = []
-    
-    # Define a custom upgrade function that captures SQL
-    def collect_sql_upgrade():
-        # Add created_at column if it doesn't exist
-        sql_statements.append("ALTER TABLE pipeline_stage_history ADD COLUMN created_at TIMESTAMP WITHOUT TIME ZONE;")
-        
-        # Update created_at with moved_at values
-        sql_statements.append("UPDATE pipeline_stage_history SET created_at = moved_at WHERE moved_at IS NOT NULL;")
-        
-        # Set default for any NULL values in created_at
-        sql_statements.append("UPDATE pipeline_stage_history SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL;")
-        
-        # Add created_by_id column
-        sql_statements.append("ALTER TABLE pipeline_stage_history ADD COLUMN created_by_id INTEGER;")
-        
-        # Add foreign key
-        sql_statements.append("ALTER TABLE pipeline_stage_history ADD CONSTRAINT fk_pipeline_stage_history_created_by_id_users FOREIGN KEY (created_by_id) REFERENCES users (id);")
-        
-        # Copy data from moved_by_user_id to created_by_id
-        sql_statements.append("UPDATE pipeline_stage_history SET created_by_id = moved_by_user_id WHERE moved_by_user_id IS NOT NULL;")
-    
-    return collect_sql_upgrade, sql_statements
+# Setup logging
+logger = getLogger(__name__)
 
-try:
-    # Create a connection to PostgreSQL using the Supavisor Connection Pooler
+def find_latest_migration():
+    """Find the latest migration file in the migrations/versions directory."""
+    migrations_dir = os.path.join('migrations', 'versions')
+    try:
+        migration_files = [f for f in os.listdir(migrations_dir) if f.endswith('.py')]
+        if not migration_files:
+            print("No migration files found in migrations/versions directory.")
+            return None
+            
+        # Sort the files to get the latest one
+        latest_migration_file = sorted(migration_files)[-1]
+        print(f"Using latest migration file: {latest_migration_file}")
+        
+        return os.path.join(migrations_dir, latest_migration_file), latest_migration_file[:-3]
+    except Exception as e:
+        print(f"Error finding migration files: {e}")
+        return None
+
+def import_migration_module(file_path, module_name):
+    """Dynamically import the migration module."""
+    try:
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        migration_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration_module)
+        
+        print(f"Successfully imported migration module: {module_name}")
+        return migration_module
+    except Exception as e:
+        print(f"Error importing migration module: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+class MockSession:
+    """A mock SQLAlchemy session that records SQL commands."""
+    def __init__(self):
+        self.recorded_sql = []
+    
+    def execute(self, statement, *args, **kwargs):
+        """Record SQL statement instead of executing it."""
+        # For text objects, get the SQL text
+        if hasattr(statement, 'text'):
+            sql = statement.text
+        else:
+            sql = str(statement)
+        
+        # Add parameters if available
+        params = kwargs.get('params', {})
+        if params:
+            sql += f" (params: {params})"
+        
+        self.recorded_sql.append(sql)
+        print(f"SQL: {sql}")
+        
+        # Return a mock result that can be used in a with statement
+        class MockResult:
+            def __enter__(self):
+                return self
+            
+            def __exit__(self, *args):
+                pass
+            
+            def fetchall(self):
+                return []
+            
+            def fetchone(self):
+                return None
+        
+        return MockResult()
+    
+    def commit(self):
+        """Mock commit method."""
+        pass
+    
+    def close(self):
+        """Mock close method."""
+        pass
+    
+    def get_sql_commands(self):
+        """Return all recorded SQL commands."""
+        return self.recorded_sql
+
+@contextmanager
+def capture_output():
+    """Capture stdout to get the SQL commands."""
+    old_stdout = sys.stdout
+    buffer = io.StringIO()
+    sys.stdout = buffer
+    try:
+        yield buffer
+    finally:
+        sys.stdout = old_stdout
+
+def test_migration(db_url):
+    """Test the migration against PostgreSQL and return the SQL that would be executed."""
+    migration_info = find_latest_migration()
+    if not migration_info:
+        return "No migration files found."
+        
+    file_path, module_name = migration_info
+    migration_module = import_migration_module(file_path, module_name)
+    if not migration_module:
+        return "Failed to import migration module."
+    
+    with capture_output() as buffer:
+        try:
+            # Create engine
+            engine = create_engine(db_url, echo=True)
+            
+            # Test connection
+            with engine.connect() as conn:
+                print("Successfully connected to PostgreSQL database")
+                
+                # Create a context that will collect SQL instead of executing it
+                ctx = MigrationContext.configure(
+                    conn,
+                    opts={
+                        'as_sql': True,
+                        'target_metadata': None
+                    }
+                )
+                
+                # Create operation object
+                op = Operations(ctx)
+                
+                # Create a mock session
+                mock_session = MockSession()
+                
+                # Make the mock session available to the migration
+                original_session = None
+                if hasattr(migration_module, 'session'):
+                    original_session = migration_module.session
+                migration_module.session = mock_session
+                
+                # Run the upgrade function
+                print("\n--- SQL COMMANDS THAT WOULD BE EXECUTED ---\n")
+                
+                # Check if upgrade accepts the op parameter
+                import inspect
+                sig = inspect.signature(migration_module.upgrade)
+                if len(sig.parameters) > 0:
+                    migration_module.upgrade(op)
+                else:
+                    # Set global op variable that the migration can use
+                    migration_module.__dict__['op'] = op
+                    migration_module.upgrade()
+                
+                # Print SQL commands from operations
+                for sql in mock_session.get_sql_commands():
+                    print(f"Session SQL: {sql}")
+                
+                # Restore original session if needed
+                if original_session is not None:
+                    migration_module.session = original_session
+                
+        except Exception as e:
+            print(f"Error during migration test: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    return buffer.getvalue()
+
+if __name__ == "__main__":
+    # Default database URL for Supabase PostgreSQL using connection pooler
     db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:RV4QOygx0LpqOjzx@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
     
-    engine = create_engine(db_url, echo=True)
+    # Allow overriding the database URL via environment variable
+    if 'DATABASE_URL' in os.environ:
+        db_url = os.environ['DATABASE_URL']
+        print(f"Using database URL from environment: {db_url}")
     
-    # Test the connection
-    with engine.connect() as conn:
-        print("Successfully connected to PostgreSQL database")
-        
-        # Check if the pipeline_stage_history table exists
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        if 'pipeline_stage_history' in tables:
-            print(f"Table 'pipeline_stage_history' exists in the database")
-            
-            # Get columns to simulate the inspector in the migration
-            columns = [column['name'] for column in inspector.get_columns('pipeline_stage_history')]
-            print(f"Columns in pipeline_stage_history: {columns}")
-        else:
-            print(f"Table 'pipeline_stage_history' does not exist in the database")
-        
-        # Create the SQL-only migration and execute it
-        upgrade_fn, sql_statements = create_sql_only_migration()
-        upgrade_fn()
-        
-        # Print the SQL statements
-        print("\n--- SQL COMMANDS THAT WOULD BE EXECUTED ---\n")
-        for sql in sql_statements:
-            print(sql)
-        
-except Exception as e:
-    print(f"Error: {e}")
-    import traceback
-    traceback.print_exc() 
+    # Run the test
+    result = test_migration(db_url)
+    
+    # Print the result
+    print("\n=== MIGRATION TEST RESULTS ===\n")
+    print(result) 
