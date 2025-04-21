@@ -21,6 +21,8 @@ steps:
   - '--platform'
   - 'managed'
   - '--allow-unauthenticated'
+  - '--service-account'
+  - 'mobilize-crm-service-account@mobilize-crm.iam.gserviceaccount.com'
   - '--set-secrets'
   - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest'
   - '--set-env-vars'
