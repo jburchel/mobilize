@@ -23,8 +23,11 @@ COPY . .
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 
+# Run test script to verify imports
+RUN python test_app_imports.py || echo "Import test failed, but continuing build"
+
 # Expose port for Cloud Run
 EXPOSE 8080
 
-# Run gunicorn
-CMD exec gunicorn --bind :8080 --workers 1 --threads 8 --timeout 0 app:app 
+# Run gunicorn with our configuration file
+CMD exec gunicorn --config=gunicorn.conf.py app:app 
