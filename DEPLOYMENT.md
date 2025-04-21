@@ -265,19 +265,34 @@ In case of failed migration:
 
 ## Cloud Deployment Notes
 
-When deploying to Google Cloud Run, ensure that the Cloud Build service account has the appropriate IAM permissions:
+When deploying to Google Cloud Run using Cloud Build, ensure that the Cloud Build service account has the appropriate IAM permissions. Here are the complete steps needed:
 
-1. Grant the Cloud Build service account the `iam.serviceAccountUser` role for the compute service account:
-   ```
-   gcloud iam service-accounts add-iam-policy-binding YOUR_COMPUTE_SA --member=serviceAccount:YOUR_CLOUDBUILD_SA --role=roles/iam.serviceAccountUser
-   ```
-
-2. Grant the Cloud Build service account the `run.admin` role:
-   ```
-   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID --member=serviceAccount:YOUR_CLOUDBUILD_SA --role=roles/run.admin
+1. First, identify your Cloud Build service account (typically PROJECT_NUMBER@cloudbuild.gserviceaccount.com) and Compute service account (typically PROJECT_NUMBER-compute@developer.gserviceaccount.com):
+   ```bash
+   gcloud projects get-iam-policy YOUR_PROJECT_ID --format=json | grep serviceAccount
    ```
 
-These permissions are required for Cloud Build to successfully deploy to Cloud Run.
+2. Grant the Cloud Build service account the `iam.serviceAccountUser` role for the Compute service account:
+   ```bash
+   gcloud iam service-accounts add-iam-policy-binding PROJECT_NUMBER-compute@developer.gserviceaccount.com --member=serviceAccount:PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role=roles/iam.serviceAccountUser
+   ```
+
+3. Grant the Cloud Build service account the `iam.serviceAccountUser` role at the project level:
+   ```bash
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID --member=serviceAccount:PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role=roles/iam.serviceAccountUser
+   ```
+
+4. Grant the Cloud Build service account the `run.admin` role:
+   ```bash
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID --member=serviceAccount:PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role=roles/run.admin
+   ```
+
+5. Grant the Cloud Build service account the `run.serviceAgent` role:
+   ```bash
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID --member=serviceAccount:PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role=roles/run.serviceAgent
+   ```
+
+All these permissions are required for Cloud Build to successfully deploy to Cloud Run.
 
 ### Database Connection Issues
 
