@@ -5,8 +5,29 @@ This document outlines the steps required to deploy the Mobilize CRM application
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- PostgreSQL database (Supabase or other provider)
+### Required Software
+
+1. **Python 3.9+**
+2. **PostgreSQL 15+** (or access to a PostgreSQL database)
+3. **pip** for installing Python dependencies
+
+### Python Packages
+
+Install all required packages for migration tools with:
+
+```bash
+pip install -r migration_tools_requirements.txt
+```
+
+This will install:
+- `psycopg2-binary` for PostgreSQL connection
+- `python-dotenv` for environment management
+- `sqlalchemy` for database operations
+- `alembic` for migration support
+- Additional testing and analysis tools
+
+### Environment Setup
+
 - Access to both development (SQLite) and production environments
 - Required Python packages: `psycopg2-binary`, `python-dotenv`, `flask-migrate`
 
@@ -48,7 +69,48 @@ Choose the appropriate migration path based on your current database setup.
 
 2. Verify the generated migration file in the `migrations/versions/` directory.
 
-### Step 3: Database Migration
+### Step 3: Migration Testing
+
+Before running the actual migration, it's crucial to test that your PostgreSQL connection is working and that the migrations will run successfully. We've created several testing scripts to help with this process:
+
+1. **Database Connection Test**
+   
+   Use the `test_supabase_only.py` script to verify your connection to the Supabase PostgreSQL database:
+   
+   ```bash
+   python3 test_supabase_only.py
+   ```
+   
+   This script will:
+   - Test the connection to the database
+   - Display database version information
+   - Show the number of tables and some sample table names
+   
+   If this fails, check your connection string and credentials in the `.env.production` file.
+
+2. **Migration SQL Preview**
+   
+   Use the `pg_migration_test_final.py` script to preview the SQL that would be executed during migration:
+   
+   ```bash
+   python3 pg_migration_test_final.py
+   ```
+   
+   This script will:
+   - Connect to your PostgreSQL database
+   - Extract Alembic operations and raw SQL statements from the migration files
+   - Generate a SQL file with all the operations that would be executed
+   - Validate the table structure for tables referenced in the migration
+   
+   Review the generated SQL file (named `migration_sql_TIMESTAMP.sql`) to ensure the operations look correct before proceeding with the actual migration.
+
+> **IMPORTANT**: The connection string format proven to work reliably with Supabase is:
+> ```
+> postgresql://postgres.fwnitauuyzxnsvgsbrzr:RV4QOygx0LpqOjzx@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+> ```
+> Note the use of the Supavisor Connection Pooler service, which provides better compatibility with various deployment environments.
+
+### Step 4: Database Migration
 
 1. Run the data migration script to transfer data from SQLite to PostgreSQL:
    ```bash
@@ -62,7 +124,7 @@ Choose the appropriate migration path based on your current database setup.
    - Resets sequence values for auto-incrementing columns
    - Reports on the migration progress
 
-### Step 4: Data Validation
+### Step 5: Data Validation
 
 1. Run the post-migration validation script:
    ```bash
@@ -311,47 +373,67 @@ When creating a Cloud Build trigger, use the same service account that will be u
 
 ### Database Connection Issues
 
-#### Supabase Connection Strings
+If you encounter connection issues with the PostgreSQL database, try these solutions:
 
-Supabase provides multiple connection formats:
-
-1. **Direct Connection** (default): 
+1. **Verify Connection String Format**
+   
+   Make sure you're using the Supavisor Connection Pooler format in your environment files:
    ```
-   postgresql://postgres:[PASSWORD]@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres
+   postgresql://postgres.fwnitauuyzxnsvgsbrzr:RV4QOygx0LpqOjzx@aws-0-us-east-1.pooler.supabase.com:5432/postgres
    ```
-
-2. **Without `db.` prefix** (if DNS resolution fails):
+   
+   The older direct connection format may not work reliably:
    ```
-   postgresql://postgres:[PASSWORD]@fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres
-   ```
-
-3. **With SSL required**:
-   ```
-   postgresql://postgres:[PASSWORD]@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres?sslmode=require
+   postgresql://postgres:Fruitin2025!@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres
    ```
 
-4. **Supavisor Connection Pooler** (recommended for most use cases):
+2. **IP Restrictions**
+   
+   Ensure your IP address or the IP range of your deployment service is allowed in the Supabase dashboard:
+   - Go to Supabase Dashboard > Project Settings > Database > Network Restrictions
+   - Add appropriate IPs or CIDR ranges
+
+3. **SSL Connection**
+   
+   Some environments require SSL connections. If needed, add `?sslmode=require` to your connection string:
    ```
-   postgresql://postgres.fwnitauuyzxnsvgsbrzr:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+   postgresql://postgres.fwnitauuyzxnsvgsbrzr:RV4QOygx0LpqOjzx@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
    ```
 
-After extensive testing, we determined that the **Supavisor Connection Pooler** (option 4) provides the most reliable connection, especially when dealing with IPv4/IPv6 compatibility issues.
+4. **Firewall Issues**
+   
+   If running in a corporate environment or behind a firewall, ensure outbound connections to port 5432 are allowed.
 
-#### IMPORTANT: Connection String Verification
+5. **Test with Diagnostic Tools**
+   
+   Use the provided test scripts to diagnose connection issues:
+   ```bash
+   python3 test_supabase_only.py
+   ``` 
 
-**We strongly recommend using the Supavisor Connection Pooler format for all production deployments.** During our testing, we found that:
+### Cloud Run Database Connection Logs
 
-1. Direct connections to the Supabase database often time out, especially from certain network environments
-2. The Connection Pooler provides better scalability for production workloads
-3. The correct credentials format is slightly different for the pooler connection:
-   - Username: `postgres.fwnitauuyzxnsvgsbrzr` (includes the project reference)
-   - Password: `RV4QOygx0LpqOjzx` (specific to the pooler connection)
-   - Host: `aws-0-us-east-1.pooler.supabase.com`
+When deploying to Cloud Run, database connection issues can be difficult to diagnose. We've created a script to help analyze Cloud Run logs specifically for database connection problems:
 
-This connection format has been configured in the `.env.production` file and should be used for all PostgreSQL connection needs in the production environment.
+```bash
+python3 check_cloud_run_db_logs.py --service mobilize-crm --hours 2
+```
 
-If you're experiencing connection issues:
-- Use the Supavisor Connection Pooler (option 4) as your primary connection method
-- Check if your IP is allowed in Supabase's database settings
-- Verify that port 5432 is not blocked by your firewall
-- Consider using the Supabase JS client instead of direct PostgreSQL connections 
+This script will:
+- Query Cloud Run logs for the specified service
+- Extract database connection attempts, errors, and successes
+- Analyze connection patterns and provide recommendations
+- Show a summary of the database connection status
+
+You can install the required package with:
+```bash
+pip install google-cloud-logging
+```
+
+Make sure you're authenticated with the Google Cloud SDK before running this script:
+```bash
+gcloud auth login
+gcloud config set project mobilize-crm
+```
+
+> **TIP**: Running this script after deployment helps identify if the application is connecting to the database correctly and can save time debugging connection issues. 
