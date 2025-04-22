@@ -6,7 +6,7 @@ import re
 
 def update_db_config():
     # New database configuration
-    new_db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:Fruitin2025%21@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+    new_db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:RV4QOygx0LpqOjzx@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
     new_db_conn_string = new_db_url + "?sslmode=require"
     
     # Read existing .env.production file
