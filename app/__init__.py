@@ -68,6 +68,10 @@ def create_app(test_config=None):
     """Create and configure the Flask application"""
     app = Flask(__name__, instance_relative_config=True)
     
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        return jsonify({'status': 'ok'}), 200
+    
     # Load secrets from Secret Manager in production
     secrets = access_secrets()
     
