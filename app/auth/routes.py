@@ -19,7 +19,7 @@ from sqlalchemy import text
 
 auth_bp = Blueprint('auth', __name__)
 
-# Google OAuth2 scopes (updated 2024-05-07)
+# Google OAuth2 scopes (updated 2024-05-07 15:45)
 GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
