@@ -8,7 +8,7 @@ import urllib.parse
 def update_db_config():
     # Format the database URL with proper URL encoding
     username = "postgres.fwnitauuyzxnsvgsbrzr"
-    password = "IzWzdgCE78Sbf7Wg"  # This should be your current password
+    password = "cP2y8QWZV3XkOGXv"  # Replace with your actual password
     hostname = "aws-0-us-east-1.pooler.supabase.com"
     port = "5432"
     database = "postgres"
@@ -20,7 +20,7 @@ def update_db_config():
     new_db_url = f"postgresql://{username}:{encoded_password}@{hostname}:{port}/{database}"
     new_db_conn_string = f"{new_db_url}?sslmode=require"
     
-    print(f"New database URL: {new_db_url}")
+    print(f"New database URL (with password masked): postgresql://{username}:******@{hostname}:{port}/{database}")
     
     # Read existing .env.production file
     try:
