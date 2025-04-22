@@ -473,7 +473,7 @@ def reauth_google():
 
 @auth_bp.route('/health-check')
 def health_check():
-    """Simple endpoint to check application health without DB access."""
+    """Simple endpoint to check application health without DB access. Updated 2024-05-07."""
     try:
         return jsonify({
             'status': 'ok',
