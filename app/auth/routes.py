@@ -15,6 +15,7 @@ from app.utils.user_utils import create_person_for_user
 import uuid
 import os
 from urllib.parse import urlencode
+from sqlalchemy import text
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -294,8 +295,8 @@ def dev_login():
         # Log diagnostic information
         current_app.logger.info("Dev login attempt - checking database connection")
         
-        # Test database connection
-        db_test = db.session.execute("SELECT 1").fetchone()
+        # Test database connection - use text() for SQLAlchemy 2.0+
+        db_test = db.session.execute(text("SELECT 1")).fetchone()
         current_app.logger.info(f"Database connection test: {db_test}")
         
         # Always allow dev login for testing purposes
