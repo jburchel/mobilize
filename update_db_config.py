@@ -3,11 +3,24 @@ Script to update database connection strings in .env.production
 """
 import os
 import re
+import urllib.parse
 
 def update_db_config():
-    # New database configuration
-    new_db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:RV4QOygx0LpqOjzx@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
-    new_db_conn_string = new_db_url + "?sslmode=require"
+    # Format the database URL with proper URL encoding
+    username = "postgres.fwnitauuyzxnsvgsbrzr"
+    password = "IzWzdgCE78Sbf7Wg"  # This should be your current password
+    hostname = "aws-0-us-east-1.pooler.supabase.com"
+    port = "5432"
+    database = "postgres"
+    
+    # URL encode the password to handle special characters
+    encoded_password = urllib.parse.quote_plus(password)
+    
+    # Create properly formatted database URLs
+    new_db_url = f"postgresql://{username}:{encoded_password}@{hostname}:{port}/{database}"
+    new_db_conn_string = f"{new_db_url}?sslmode=require"
+    
+    print(f"New database URL: {new_db_url}")
     
     # Read existing .env.production file
     try:
