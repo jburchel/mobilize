@@ -85,6 +85,42 @@ def create_app(test_config=None):
             'message': 'Basic health check passed'
         }), 200
     
+    # Add an override endpoint to directly test database connection with hardcoded credentials
+    @app.route('/api/direct-db-test', methods=['GET'])
+    def direct_db_test():
+        from sqlalchemy import create_engine, text
+        
+        # Direct connection with explicitly defined parameters
+        username = "postgres.fwnitauuyzxnsvgsbrzr"
+        password = "cP2y8QWZV3XkOGXv"  # Your current password
+        host = "aws-0-us-east-1.pooler.supabase.com"
+        port = "5432"
+        dbname = "postgres"
+        
+        # Construct URL directly - no Secret Manager involved
+        test_db_url = f"postgresql://{username}:{password}@{host}:{port}/{dbname}?sslmode=require"
+        
+        # Try to connect with this URL
+        try:
+            engine = create_engine(test_db_url)
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                row = result.fetchone()
+                
+            return jsonify({
+                'status': 'success',
+                'message': f'Connected successfully with direct credentials, result: {row[0]}',
+                'username_used': username,
+                'host_used': host
+            })
+        except Exception as e:
+            return jsonify({
+                'status': 'error', 
+                'message': str(e),
+                'username_used': username,
+                'host_used': host
+            }), 500
+    
     # Add another health check that includes more details
     @app.route('/api/health-check', methods=['GET'])
     def api_health_check():
@@ -168,11 +204,14 @@ def create_app(test_config=None):
     else:
         app.logger.warning("No DATABASE_URL found in environment or Secret Manager!")
     
+    # Build a direct connection string as a fallback
+    direct_db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:cP2y8QWZV3XkOGXv@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+    
     app.config.from_mapping(
         SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
         DEBUG=os.environ.get('FLASK_DEBUG', 'False') == 'True',
-        # Database Configuration - REVERSED PRIORITY FOR DEBUGGING
-        SQLALCHEMY_DATABASE_URI=env_db_url or env_db_conn or secrets.get('DATABASE_URL', ''),
+        # Database Configuration - OVERRIDE with direct connection if Secret Manager fails
+        SQLALCHEMY_DATABASE_URI=direct_db_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         # Cache Configuration for session data
         SESSION_TYPE='sqlalchemy',
