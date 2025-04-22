@@ -5,6 +5,7 @@ from functools import wraps
 from flask import request, jsonify
 import os
 import logging
+import json
 
 def init_firebase(app):
     """Initialize Firebase Admin SDK."""
@@ -17,7 +18,22 @@ def init_firebase(app):
         firebase_admin.get_app()
         logger.info("Firebase already initialized")
     except ValueError:
-        # Check if required environment variables are set
+        # First check for a consolidated credentials JSON
+        firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS')
+        if firebase_creds_json:
+            try:
+                logger.info("Using consolidated FIREBASE_CREDENTIALS env var")
+                # Parse the JSON credentials
+                cred_dict = json.loads(firebase_creds_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                logger.info("Firebase initialized successfully from consolidated credentials")
+                return
+            except Exception as e:
+                logger.error(f"Error initializing Firebase from consolidated credentials: {str(e)}")
+                # Continue to try individual credentials
+        
+        # Check if required environment variables are set for individual creds
         required_vars = [
             'FIREBASE_PRIVATE_KEY_ID',
             'FIREBASE_PRIVATE_KEY',
@@ -62,7 +78,7 @@ def init_firebase(app):
                 "client_x509_cert_url": os.getenv('FIREBASE_CLIENT_CERT_URL')
             })
             firebase_admin.initialize_app(cred)
-            logger.info("Firebase initialized successfully")
+            logger.info("Firebase initialized successfully from individual credentials")
         except Exception as e:
             logger.error(f"Error initializing Firebase: {str(e)}")
             logger.warning("Firebase authentication will be disabled")

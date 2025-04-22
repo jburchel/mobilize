@@ -42,7 +42,7 @@ steps:
       - '--set-env-vars'
       - 'FLASK_APP=app.py,FLASK_ENV=production,LOG_LEVEL=INFO,LOG_TO_STDOUT=True,PREFERRED_URL_SCHEME=https,BASE_URL=https://mobilize-crm.org,SKIP_DB_INIT=True,FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}'
       - '--set-secrets'
-      - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest,FIREBASE_PRIVATE_KEY_ID=firebase-private-key-id:latest,FIREBASE_PRIVATE_KEY=firebase-private-key:latest,FIREBASE_CLIENT_EMAIL=firebase-client-email:latest,FIREBASE_CLIENT_ID=firebase-client-id:latest,FIREBASE_CLIENT_CERT_URL=firebase-client-cert-url:latest'
+      - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest,FIREBASE_CREDENTIALS=firebase-credentials:latest'
 
   # Tag with latest for easy reference
   - name: 'gcr.io/cloud-builders/docker'

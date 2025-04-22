@@ -35,6 +35,8 @@ ENV LOG_TO_STDOUT=True
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV GOOGLE_CLOUD_PROJECT=mobilize-crm
 ENV PREFERRED_URL_SCHEME=https
+# Set a placeholder for Firebase credentials that will be replaced by the secret in Cloud Run
+ENV FIREBASE_CREDENTIALS='{}'
 
 # Create a test script to verify environment during build
 RUN echo "#!/bin/bash\necho 'Firebase Project ID:' \$FIREBASE_PROJECT_ID\necho 'Flask App:' \$FLASK_APP\n" > /app/verify_env.sh \
