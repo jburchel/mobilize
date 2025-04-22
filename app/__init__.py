@@ -100,15 +100,48 @@ def create_app(test_config=None):
         
         return jsonify(status)
     
+    # Add an endpoint to debug the connection string
+    @app.route('/api/debug/db-config', methods=['GET'])
+    def debug_db_config():
+        # Return masked connection string info for debugging
+        db_url = os.environ.get('DATABASE_URL', 'not-set')
+        db_conn = os.environ.get('DB_CONNECTION_STRING', 'not-set')
+        
+        # Mask passwords in output
+        def mask_password(url):
+            if '@' in url and ':' in url.split('@')[0]:
+                parts = url.split('@')
+                user_parts = parts[0].split(':')
+                return f"{user_parts[0]}:******@{parts[1]}"
+            return url
+        
+        return jsonify({
+            'env': os.environ.get('FLASK_ENV', 'unknown'),
+            'database_url_masked': mask_password(db_url),
+            'db_conn_string_masked': mask_password(db_conn),
+            'using_secret_manager': os.environ.get('FLASK_ENV') == 'production'
+        })
+    
     # Load secrets from Secret Manager in production
     secrets = access_secrets()
+    
+    # DEBUGGING: Temporarily prioritize environment variables
+    env_db_url = os.environ.get('DATABASE_URL')
+    env_db_conn = os.environ.get('DB_CONNECTION_STRING')
+    
+    # Log which source is being used
+    if env_db_url:
+        app.logger.info("Using DATABASE_URL from environment variables")
+    elif secrets.get('DATABASE_URL'):
+        app.logger.info("Using DATABASE_URL from Secret Manager")
+    else:
+        app.logger.warning("No DATABASE_URL found in environment or Secret Manager!")
     
     app.config.from_mapping(
         SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
         DEBUG=os.environ.get('FLASK_DEBUG', 'False') == 'True',
-        # Database Configuration
-        SQLALCHEMY_DATABASE_URI=secrets.get('DATABASE_URL', os.environ.get('SQLALCHEMY_DATABASE_URI', 
-                                              os.environ.get('DB_CONNECTION_STRING'))),
+        # Database Configuration - REVERSED PRIORITY FOR DEBUGGING
+        SQLALCHEMY_DATABASE_URI=env_db_url or env_db_conn or secrets.get('DATABASE_URL', ''),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         # Cache Configuration for session data
         SESSION_TYPE='sqlalchemy',
