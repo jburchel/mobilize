@@ -138,6 +138,16 @@ def create_app(test_config=None):
     # Initialize cache - based on config settings
     configure_cache(app)
     
+    # Ensure Firebase configuration is properly set before initializing
+    firebase_config = {
+        'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
+        'apiKey': os.environ.get('FIREBASE_API_KEY'),
+        'authDomain': os.environ.get('FIREBASE_AUTH_DOMAIN'),
+        'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')
+    }
+    app.config['FIREBASE_CONFIG'] = firebase_config
+    app.logger.info(f"Setting up Firebase with project ID: {firebase_config['projectId']}")
+    
     # Configure secure headers with Talisman
     csp = {
         'default-src': [
