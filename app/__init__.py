@@ -92,7 +92,7 @@ def create_app(test_config=None):
         
         # Direct connection with explicitly defined parameters
         username = "postgres.fwnitauuyzxnsvgsbrzr"
-        password = "cP2y8QWZV3XkOGXv"  # Your current password
+        password = "Fruitin2025"  # Your new reset password
         host = "aws-0-us-east-1.pooler.supabase.com"
         port = "5432"
         dbname = "postgres"
@@ -205,7 +205,7 @@ def create_app(test_config=None):
         app.logger.warning("No DATABASE_URL found in environment or Secret Manager!")
     
     # Build a direct connection string as a fallback
-    direct_db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:cP2y8QWZV3XkOGXv@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+    direct_db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:Fruitin2025@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
     
     app.config.from_mapping(
         SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
