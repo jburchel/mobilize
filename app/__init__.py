@@ -49,8 +49,16 @@ def access_secrets():
                 return response.payload.data.decode('UTF-8')
             
             # Access required secrets
+            db_url = access_secret('mobilize-db-url')
+            
+            # Fix potential formatting issues with the database URL
+            if db_url and not db_url.startswith('postgresql://'):
+                if db_url.startswith('postgresql:'):
+                    # Add missing // and ensure username is included
+                    db_url = db_url.replace('postgresql:', 'postgresql://postgres.fwnitauuyzxnsvgsbrzr:')
+                    
             secrets = {
-                'DATABASE_URL': access_secret('mobilize-db-url'),
+                'DATABASE_URL': db_url,
                 'SECRET_KEY': access_secret('mobilize-flask-secret'),
                 'GOOGLE_CLIENT_ID': access_secret('mobilize-google-client-id'),
                 'GOOGLE_CLIENT_SECRET': access_secret('mobilize-google-client-secret')
@@ -109,16 +117,39 @@ def create_app(test_config=None):
         
         # Mask passwords in output
         def mask_password(url):
+            if not url or url == 'not-set':
+                return url
+                
             if '@' in url and ':' in url.split('@')[0]:
                 parts = url.split('@')
                 user_parts = parts[0].split(':')
                 return f"{user_parts[0]}:******@{parts[1]}"
             return url
         
+        # Check if the secret was loaded correctly
+        secret_db_url = 'not-loaded'
+        try:
+            if os.environ.get('FLASK_ENV') == 'production':
+                from google.cloud import secretmanager
+                project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'mobilize-crm')
+                client = secretmanager.SecretManagerServiceClient()
+                name = f"projects/{project_id}/secrets/mobilize-db-url/versions/latest"
+                response = client.access_secret_version(request={"name": name})
+                secret_db_url = response.payload.data.decode('UTF-8')
+                # Mask password for security
+                secret_db_url = mask_password(secret_db_url)
+        except Exception as e:
+            secret_db_url = f"Error: {str(e)}"
+        
+        # Get the actual connection string from app config
+        config_db_url = mask_password(app.config.get('SQLALCHEMY_DATABASE_URI', 'not-set-in-config'))
+        
         return jsonify({
             'env': os.environ.get('FLASK_ENV', 'unknown'),
             'database_url_masked': mask_password(db_url),
             'db_conn_string_masked': mask_password(db_conn),
+            'secret_manager_url_masked': secret_db_url,
+            'config_db_url_masked': config_db_url,
             'using_secret_manager': os.environ.get('FLASK_ENV') == 'production'
         })
     
