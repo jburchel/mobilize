@@ -18,7 +18,7 @@ from urllib.parse import urlencode
 
 auth_bp = Blueprint('auth', __name__)
 
-# Google OAuth2 scopes
+# Google OAuth2 scopes (updated 2024-05-07)
 GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
@@ -110,13 +110,10 @@ def verify_token():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Handle user login."""
-    # For GET requests, render the login template
+    """Handle user login via API."""
+    # For GET requests, return unauthorized JSON
     if request.method == 'GET':
-        # If user is already logged in, redirect to dashboard
-        if current_user.is_authenticated:
-            return redirect(url_for('dashboard.index'))
-        return render_template('auth/login.html')
+        return jsonify({'error': 'Unauthorized'}), 401
     
     # For POST requests, process login data (API)
     data = request.get_json()
