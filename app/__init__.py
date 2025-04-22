@@ -89,37 +89,60 @@ def create_app(test_config=None):
     @app.route('/api/direct-db-test', methods=['GET'])
     def direct_db_test():
         from sqlalchemy import create_engine, text
+        import urllib.parse
         
-        # Direct connection with explicitly defined parameters
-        username = "postgres.fwnitauuyzxnsvgsbrzr"
-        password = "Fruitin2025"  # Your new reset password
-        host = "aws-0-us-east-1.pooler.supabase.com"
-        port = "5432"
-        dbname = "postgres"
+        # Try multiple connection methods
+        results = []
         
-        # Construct URL directly - no Secret Manager involved
-        test_db_url = f"postgresql://{username}:{password}@{host}:{port}/{dbname}?sslmode=require"
-        
-        # Try to connect with this URL
+        # Method 1: Standard pooler with postgres.reference username
         try:
-            engine = create_engine(test_db_url)
-            with engine.connect() as conn:
+            username1 = "postgres.fwnitauuyzxnsvgsbrzr"
+            password1 = "Fruitin2025"
+            host1 = "aws-0-us-east-1.pooler.supabase.com"
+            url1 = f"postgresql://{username1}:{urllib.parse.quote_plus(password1)}@{host1}:5432/postgres?sslmode=require"
+            
+            engine1 = create_engine(url1)
+            with engine1.connect() as conn:
                 result = conn.execute(text("SELECT 1"))
                 row = result.fetchone()
-                
-            return jsonify({
-                'status': 'success',
-                'message': f'Connected successfully with direct credentials, result: {row[0]}',
-                'username_used': username,
-                'host_used': host
-            })
+                results.append({"method": "standard_pooler", "status": "success", "username": username1})
         except Exception as e:
-            return jsonify({
-                'status': 'error', 
-                'message': str(e),
-                'username_used': username,
-                'host_used': host
-            }), 500
+            results.append({"method": "standard_pooler", "status": "error", "username": username1, "error": str(e)})
+        
+        # Method 2: Try with just 'postgres' username
+        try:
+            username2 = "postgres"
+            password2 = "Fruitin2025"
+            host2 = "aws-0-us-east-1.pooler.supabase.com"
+            url2 = f"postgresql://{username2}:{urllib.parse.quote_plus(password2)}@{host2}:5432/postgres?sslmode=require"
+            
+            engine2 = create_engine(url2)
+            with engine2.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                row = result.fetchone()
+                results.append({"method": "postgres_user", "status": "success", "username": username2})
+        except Exception as e:
+            results.append({"method": "postgres_user", "status": "error", "username": username2, "error": str(e)})
+        
+        # Method 3: Try direct connection format
+        try:
+            username3 = "postgres"
+            password3 = "Fruitin2025"
+            host3 = "db.fwnitauuyzxnsvgsbrzr.supabase.co"
+            url3 = f"postgresql://{username3}:{urllib.parse.quote_plus(password3)}@{host3}:5432/postgres?sslmode=require"
+            
+            engine3 = create_engine(url3)
+            with engine3.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                row = result.fetchone()
+                results.append({"method": "direct_connection", "status": "success", "username": username3})
+        except Exception as e:
+            results.append({"method": "direct_connection", "status": "error", "username": username3, "error": str(e)})
+        
+        return jsonify({
+            "results": results,
+            "message": "Tried multiple connection methods"
+        })
     
     # Add another health check that includes more details
     @app.route('/api/health-check', methods=['GET'])
@@ -205,7 +228,7 @@ def create_app(test_config=None):
         app.logger.warning("No DATABASE_URL found in environment or Secret Manager!")
     
     # Build a direct connection string as a fallback
-    direct_db_url = "postgresql://postgres.fwnitauuyzxnsvgsbrzr:Fruitin2025@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+    direct_db_url = "postgresql://postgres:Fruitin2025@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres?sslmode=require"
     
     app.config.from_mapping(
         SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
