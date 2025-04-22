@@ -68,9 +68,37 @@ def create_app(test_config=None):
     """Create and configure the Flask application"""
     app = Flask(__name__, instance_relative_config=True)
     
+    # Add a simple health check endpoint that doesn't rely on database
     @app.route('/health', methods=['GET'])
     def health_check():
-        return jsonify({'status': 'ok'}), 200
+        return jsonify({
+            'status': 'ok',
+            'time': datetime.datetime.now().isoformat(),
+            'message': 'Basic health check passed'
+        }), 200
+    
+    # Add another health check that includes more details
+    @app.route('/api/health-check', methods=['GET'])
+    def api_health_check():
+        status = {
+            'status': 'ok',
+            'time': datetime.datetime.now().isoformat(),
+            'database': 'unknown',
+            'environment': os.environ.get('FLASK_ENV', 'unknown')
+        }
+        
+        # Try to check database connection but don't fail if it doesn't work
+        try:
+            with app.app_context():
+                from sqlalchemy import text
+                db_result = db.session.execute(text('SELECT 1')).fetchone()
+                status['database'] = 'connected' if db_result else 'error'
+        except Exception as e:
+            app.logger.error(f"Database health check failed: {str(e)}")
+            status['database'] = 'error'
+            status['database_error'] = str(e)
+        
+        return jsonify(status)
     
     # Load secrets from Secret Manager in production
     secrets = access_secrets()
@@ -109,272 +137,303 @@ def create_app(test_config=None):
     # Enable CORS for the application
     CORS(app, resources={r"/api/*": {"origins": "*"}})
     
-    # Initialize Flask extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    cors.init_app(app)
-    csrf.init_app(app)
-    limiter.init_app(app)
-    login_manager.init_app(app)
+    # Log the database connection string (with sensitive parts masked)
+    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_url:
+        # Mask the password in the connection string for logging
+        masked_url = db_url
+        if '@' in db_url and ':' in db_url.split('@')[0]:
+            prefix = db_url.split('@')[0]
+            user_part = prefix.split(':')[0]
+            masked_url = f"{user_part}:******@{db_url.split('@')[1]}"
+        app.logger.info(f"Database URL (masked): {masked_url}")
     
-    # Set login manager settings
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message_category = 'info'
-    
-    # Check if database tables should be created
-    skip_db_init = os.environ.get('SKIP_DB_INIT', 'True').lower() == 'true'
-    app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
-    
-    # Create all database tables (if they don't exist)
-    if not skip_db_init:
-        app.logger.info("Creating database tables...")
-        with app.app_context():
-            db.create_all()
-    else:
-        app.logger.info("Skipping database initialization...")
-    
-    # Register blueprints
-    # ... existing code ...
-    
-    # Configure URL handling
-    app.url_map.strict_slashes = False
-    
-    # Initialize cache - based on config settings
-    configure_cache(app)
-    
-    # Ensure Firebase configuration is properly set before initializing
-    firebase_config = {
-        'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
-        'apiKey': os.environ.get('FIREBASE_API_KEY'),
-        'authDomain': os.environ.get('FIREBASE_AUTH_DOMAIN'),
-        'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')
-    }
-    app.config['FIREBASE_CONFIG'] = firebase_config
-    app.logger.info(f"Setting up Firebase with project ID: {firebase_config['projectId']}")
-    
-    # Configure secure headers with Talisman
-    csp = {
-        'default-src': [
-            "'self'",
-            'https://cdn.jsdelivr.net',
-            'https://fonts.googleapis.com',
-            'https://fonts.gstatic.com',
-        ],
-        'script-src': [
-            "'self'",
-            "'unsafe-inline'",
-            'https://cdn.jsdelivr.net',
-            'https://www.google-analytics.com',
-        ],
-        'style-src': [
-            "'self'",
-            "'unsafe-inline'",
-            'https://cdn.jsdelivr.net',
-            'https://fonts.googleapis.com',
-        ],
-        'img-src': [
-            "'self'",
-            'data:',
-            'https://www.google-analytics.com',
-        ],
-        'font-src': [
-            "'self'",
-            'data:',
-            'https://cdn.jsdelivr.net',
-            'https://fonts.gstatic.com',
-        ]
-    }
-    
-    # Only enable Talisman in production
-    if app.config.get('ENV') == 'production':
-        talisman.init_app(
-            app,
-            force_https=True,
-            content_security_policy=csp,
-            content_security_policy_nonce_in=['script-src'],
-            feature_policy={
-                'geolocation': "'none'",
-                'microphone': "'none'",
-                'camera': "'none'"
-            },
-            session_cookie_secure=True,
-            session_cookie_http_only=True
-        )
-    else:
-        # In development, still use Talisman but with less strict settings
-        talisman.init_app(
-            app,
-            force_https=False,  # No HTTPS in dev
-            content_security_policy=None,  # Disable CSP in dev for easier debugging
-            feature_policy=None,
-            session_cookie_secure=False
-        )
-    
-    # Import models to ensure they are registered with SQLAlchemy
-    from app.models import (
-        User, Contact, Person, Church, Office,
-        Task, Communication, EmailSignature, GoogleToken
-    )
-    
-    # Setup model relationships
-    with app.app_context():
-        setup_relationships()
+    try:
+        # Initialize Flask extensions
+        db.init_app(app)
+        migrate.init_app(app, db)
+        cors.init_app(app)
+        csrf.init_app(app)
+        limiter.init_app(app)
+        login_manager.init_app(app)
+        
+        # Set login manager settings
+        login_manager.login_view = 'auth.login'
+        login_manager.login_message_category = 'info'
+        
+        # Check if database tables should be created
+        skip_db_init = os.environ.get('SKIP_DB_INIT', 'True').lower() == 'true'
+        app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
+        
+        # Create all database tables (if they don't exist)
         if not skip_db_init:
-            app.logger.info("Creating database tables again (within app context)...")
-            db.create_all()
+            app.logger.info("Creating database tables...")
+            with app.app_context():
+                try:
+                    db.create_all()
+                    app.logger.info("Database tables created successfully")
+                except Exception as e:
+                    app.logger.error(f"Error creating database tables: {str(e)}")
         else:
-            app.logger.info("Skipping database initialization within app context...")
+            app.logger.info("Skipping database initialization...")
+        
+        # Configure URL handling
+        app.url_map.strict_slashes = False
+        
+        # Initialize cache - based on config settings
+        configure_cache(app)
+        
+        # Ensure Firebase configuration is properly set before initializing
+        firebase_config = {
+            'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
+            'apiKey': os.environ.get('FIREBASE_API_KEY'),
+            'authDomain': os.environ.get('FIREBASE_AUTH_DOMAIN'),
+            'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')
+        }
+        app.config['FIREBASE_CONFIG'] = firebase_config
+        app.logger.info(f"Setting up Firebase with project ID: {firebase_config['projectId']}")
     
-    # Setup login manager
-    login_manager.session_protection = 'strong'
+    except Exception as e:
+        app.logger.error(f"Error during application initialization: {str(e)}")
+        # Continue even if there are errors, so at least the health endpoints work
     
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
-    
-    # Initialize JWT
-    jwt.init_app(app)
-    
-    # Initialize Firebase
-    init_firebase(app)
-    
-    # Initialize scheduler
-    init_scheduler(app)
-    
-    # Register API blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    
-    # Register API routes - Use the API blueprint directly to avoid double registration
-    from app.routes.api.v1 import api_bp
-    app.register_blueprint(api_bp, url_prefix='/api/v1')
-    
-    # Register route blueprints with their prefixes
-    url_prefixes = {
-        'dashboard': '/',  # Root URL for dashboard
-        'admin': '/admin',
-        'people': '/people',
-        'churches': '/churches',
-        'communications': '/communications',
-        'tasks': '/tasks',
-        'google_sync': '/google_sync',
-        'settings': '/settings',
-        'pipeline': '/pipeline',
-        'reports': '/reports',
-        'emails': '/emails',
-        'onboarding': '/onboarding',
-    }
-    
-    # Register all blueprints from routes/__init__.py
-    for bp in blueprints:
-        prefix = url_prefixes.get(bp.name, '/' + bp.name)
-        app.register_blueprint(bp, url_prefix=prefix)
-    
-    # Register template filters and functions
-    register_filters(app)
-    register_template_functions(app)
-    
-    # Context processors
-    @app.context_processor
-    def inject_now():
-        return {'now': datetime.datetime.now()}
-    
-    # Add the csrf_token to the template context
-    @app.context_processor
-    def inject_csrf_token():
-        return dict(csrf_token=generate_csrf())
-    
-    # Determine if we're in production
-    is_production = app.config.get('ENV') == 'production'
+    try:
+        # Register blueprints
+        # ... existing code ...
+        
+        # Configure URL handling
+        app.url_map.strict_slashes = False
+        
+        # Initialize cache - based on config settings
+        configure_cache(app)
+        
+        # Configure secure headers with Talisman
+        csp = {
+            'default-src': [
+                "'self'",
+                'https://cdn.jsdelivr.net',
+                'https://fonts.googleapis.com',
+                'https://fonts.gstatic.com',
+            ],
+            'script-src': [
+                "'self'",
+                "'unsafe-inline'",
+                'https://cdn.jsdelivr.net',
+                'https://www.google-analytics.com',
+            ],
+            'style-src': [
+                "'self'",
+                "'unsafe-inline'",
+                'https://cdn.jsdelivr.net',
+                'https://fonts.googleapis.com',
+            ],
+            'img-src': [
+                "'self'",
+                'data:',
+                'https://www.google-analytics.com',
+            ],
+            'font-src': [
+                "'self'",
+                'data:',
+                'https://cdn.jsdelivr.net',
+                'https://fonts.gstatic.com',
+            ]
+        }
+        
+        # Only enable Talisman in production
+        if app.config.get('ENV') == 'production':
+            talisman.init_app(
+                app,
+                force_https=True,
+                content_security_policy=csp,
+                content_security_policy_nonce_in=['script-src'],
+                feature_policy={
+                    'geolocation': "'none'",
+                    'microphone': "'none'",
+                    'camera': "'none'"
+                },
+                session_cookie_secure=True,
+                session_cookie_http_only=True
+            )
+        else:
+            # In development, still use Talisman but with less strict settings
+            talisman.init_app(
+                app,
+                force_https=False,  # No HTTPS in dev
+                content_security_policy=None,  # Disable CSP in dev for easier debugging
+                feature_policy=None,
+                session_cookie_secure=False
+            )
+        
+        # Import models to ensure they are registered with SQLAlchemy
+        from app.models import (
+            User, Contact, Person, Church, Office,
+            Task, Communication, EmailSignature, GoogleToken
+        )
+        
+        # Setup model relationships
+        with app.app_context():
+            setup_relationships()
+            if not skip_db_init:
+                app.logger.info("Creating database tables again (within app context)...")
+                db.create_all()
+            else:
+                app.logger.info("Skipping database initialization within app context...")
+        
+        # Setup login manager
+        login_manager.session_protection = 'strong'
+        
+        @login_manager.user_loader
+        def load_user(user_id):
+            return User.query.get(int(user_id))
+        
+        # Initialize JWT
+        jwt.init_app(app)
+        
+        # Initialize Firebase
+        init_firebase(app)
+        
+        # Initialize scheduler
+        init_scheduler(app)
+        
+        # Register API blueprints
+        app.register_blueprint(auth_bp, url_prefix='/api/auth')
+        
+        # Register API routes - Use the API blueprint directly to avoid double registration
+        from app.routes.api.v1 import api_bp
+        app.register_blueprint(api_bp, url_prefix='/api/v1')
+        
+        # Register route blueprints with their prefixes
+        url_prefixes = {
+            'dashboard': '/',  # Root URL for dashboard
+            'admin': '/admin',
+            'people': '/people',
+            'churches': '/churches',
+            'communications': '/communications',
+            'tasks': '/tasks',
+            'google_sync': '/google_sync',
+            'settings': '/settings',
+            'pipeline': '/pipeline',
+            'reports': '/reports',
+            'emails': '/emails',
+            'onboarding': '/onboarding',
+        }
+        
+        # Register all blueprints from routes/__init__.py
+        for bp in blueprints:
+            prefix = url_prefixes.get(bp.name, '/' + bp.name)
+            app.register_blueprint(bp, url_prefix=prefix)
+        
+        # Register template filters and functions
+        register_filters(app)
+        register_template_functions(app)
+        
+        # Context processors
+        @app.context_processor
+        def inject_now():
+            return {'now': datetime.datetime.now()}
+        
+        # Add the csrf_token to the template context
+        @app.context_processor
+        def inject_csrf_token():
+            return dict(csrf_token=generate_csrf())
+        
+        # Determine if we're in production
+        is_production = app.config.get('ENV') == 'production'
 
-    # Configure session for better cross-domain compatibility
-    # Use a longer session lifetime
-    app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=1)
-    
-    # Configure session cookie settings
-    # Set SameSite to None to allow cross-domain cookies, but only in production
-    if is_production:
-        app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-        # Session cookies must be secure when SameSite is None
-        app.config['SESSION_COOKIE_SECURE'] = True
-    else:
-        # For development
-        app.config['SESSION_COOKIE_SECURE'] = False
-        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    
-    # Handle request before processing to make session permanent
-    @app.before_request
-    def make_session_permanent():
-        session.permanent = True
-    
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found_error(error):
-        return jsonify({'error': 'Not found'}), 404
+        # Configure session for better cross-domain compatibility
+        # Use a longer session lifetime
+        app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=1)
+        
+        # Configure session cookie settings
+        # Set SameSite to None to allow cross-domain cookies, but only in production
+        if is_production:
+            app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+            # Session cookies must be secure when SameSite is None
+            app.config['SESSION_COOKIE_SECURE'] = True
+        else:
+            # For development
+            app.config['SESSION_COOKIE_SECURE'] = False
+            app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        
+        # Handle request before processing to make session permanent
+        @app.before_request
+        def make_session_permanent():
+            session.permanent = True
+        
+        # Error handlers
+        @app.errorhandler(404)
+        def not_found_error(error):
+            return jsonify({'error': 'Not found'}), 404
 
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-        return jsonify({'error': 'Internal server error'}), 500
+        @app.errorhandler(500)
+        def internal_error(error):
+            db.session.rollback()
+            return jsonify({'error': 'Internal server error'}), 500
 
-    @app.errorhandler(401)
-    def unauthorized_error(error):
-        return jsonify({'error': 'Unauthorized'}), 401
+        @app.errorhandler(401)
+        def unauthorized_error(error):
+            return jsonify({'error': 'Unauthorized'}), 401
 
-    @app.errorhandler(400)
-    def bad_request_error(error):
-        return jsonify({'error': 'Bad request'}), 400
+        @app.errorhandler(400)
+        def bad_request_error(error):
+            return jsonify({'error': 'Bad request'}), 400
 
-    # Setup Firebase (if configured)
-    firebase_setup(app)
-    
-    # Setup the main pipelines on startup and migrate contacts
-    with app.app_context():
-        try:
-            db.create_all()  # Create tables if they don't exist
-            setup_main_pipelines()
-            
-            # Only migrate contacts to main pipelines if not in development
-            if not app.debug:
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
-                    migrate_contacts_to_main_pipeline()
-                else:
-                    app.logger.warning("Skipping contact migration - required tables don't exist yet")
-                
-            # Ensure all churches are in the church pipeline
-            init_church_pipeline(app)
-            
-            app.logger.info("Pipeline initialization complete")
-        except Exception as e:
-            app.logger.error(f"Error initializing pipelines: {str(e)}")
-
-    # Register template utilities
-    register_template_utilities(app)
-    
-    # Register CLI commands
-    register_commands(app)
-
-    # Add stats to global context for sidebar badges
-    @app.before_request
-    def before_request():
-        """Add stats to global context for sidebar badges."""
-        if current_user.is_authenticated:
+        # Setup Firebase (if configured)
+        firebase_setup(app)
+        
+        # Setup the main pipelines on startup and migrate contacts
+        with app.app_context():
             try:
-                from app.routes.dashboard import get_dashboard_stats
-                g.stats = get_dashboard_stats()
+                db.create_all()  # Create tables if they don't exist
+                setup_main_pipelines()
+                
+                # Only migrate contacts to main pipelines if not in development
+                if not app.debug:
+                    from sqlalchemy import inspect
+                    inspector = inspect(db.engine)
+                    if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
+                        migrate_contacts_to_main_pipeline()
+                    else:
+                        app.logger.warning("Skipping contact migration - required tables don't exist yet")
+                
+                # Ensure all churches are in the church pipeline
+                init_church_pipeline(app)
+                
+                app.logger.info("Pipeline initialization complete")
             except Exception as e:
-                app.logger.error(f"Error getting dashboard stats: {str(e)}")
-                g.stats = {
-                    'people_count': 0,
-                    'church_count': 0,
-                    'pending_tasks': 0,
-                    'overdue_tasks': 0,
-                    'recent_communications': 0
-                }
-        else:
-            g.stats = None
+                app.logger.error(f"Error initializing pipelines: {str(e)}")
 
-    return app 
+        # Register template utilities
+        register_template_utilities(app)
+        
+        # Register CLI commands
+        register_commands(app)
+
+        # Add stats to global context for sidebar badges
+        @app.before_request
+        def before_request():
+            """Add stats to global context for sidebar badges."""
+            if current_user.is_authenticated:
+                try:
+                    from app.routes.dashboard import get_dashboard_stats
+                    g.stats = get_dashboard_stats()
+                except Exception as e:
+                    app.logger.error(f"Error getting dashboard stats: {str(e)}")
+                    g.stats = {
+                        'people_count': 0,
+                        'church_count': 0,
+                        'pending_tasks': 0,
+                        'overdue_tasks': 0,
+                        'recent_communications': 0
+                    }
+            else:
+                g.stats = None
+
+        return app 
+    except Exception as e:
+        app.logger.error(f"Error during application initialization: {str(e)}")
+        # Continue even if there are errors, so at least the health endpoints work
+        return app 
