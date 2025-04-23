@@ -118,7 +118,7 @@
                                 {% if tasks %}
                                     {% for task in tasks %}
                                     <tr data-status="{{ task.status }}" data-priority="{{ task.priority }}" 
-                                        {% if task.due_date and task.due_date < current_date and task.status != 'completed' %}data-is-overdue="true"{% endif %}>
+                                        {% if task.due_date and task.due_date.date() < current_date and task.status != 'completed' %}data-is-overdue="true"{% endif %}>
                                         <td>
                                             <a href="{{ url_for('tasks.edit', id=task.id) }}">
                                                 {{ task.title }}
@@ -141,7 +141,7 @@
                                         </td>
                                         <td>
                                             {% if task.due_date %}
-                                                {% if task.due_date < current_date and task.status != 'completed' %}
+                                                {% if task.due_date.date() < current_date and task.status != 'completed' %}
                                                     <span class="text-danger">{{ task.due_date.strftime('%Y-%m-%d') }}</span>
                                                 {% else %}
                                                     {{ task.due_date.strftime('%Y-%m-%d') }}
@@ -287,7 +287,7 @@
                             <div class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ task.title }}</h6>
-                                    <small class="{% if task.due_date < current_date %}text-danger{% endif %}">
+                                    <small class="{% if task.due_date.date() < current_date %}text-danger{% endif %}">
                                         {{ task.due_date.strftime('%Y-%m-%d') }}
                                     </small>
                                 </div>

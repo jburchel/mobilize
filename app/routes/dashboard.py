@@ -118,26 +118,26 @@ def index():
         joinedload(Task.church)
     ).filter(
         Task.status == 'completed',
-        Task.completed_date.isnot(None)
+        Task.completed_at.isnot(None)
     )
     
     # For super admins, show tasks from all offices
     if current_user.is_super_admin():
         recent_completed_tasks = completed_tasks_query.order_by(
-            Task.completed_date.desc()
+            Task.completed_at.desc()
         ).limit(5).all()
     else:
         recent_completed_tasks = completed_tasks_query.filter(
             Task.office_id == office_id
         ).order_by(
-            Task.completed_date.desc()
+            Task.completed_at.desc()
         ).limit(5).all()
     
     for task in recent_completed_tasks:
         activity = {
             'type': 'task',
             'description': f'Task completed: {task.title}',
-            'timestamp': task.completed_date,
+            'timestamp': task.completed_at,
             'id': task.id
         }
         recent_activities.append(activity)

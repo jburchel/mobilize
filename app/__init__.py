@@ -29,6 +29,11 @@ from app.utils.setup_main_pipelines import setup_main_pipelines
 from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
+from dotenv import load_dotenv
+
+# Load environment variables from .env and any specific env file before configuration
+load_dotenv('.env')
+load_dotenv(os.environ.get('ENV_FILE', '.env'), override=True)
 
 # Function to access secrets from Secret Manager in production
 def access_secrets():
@@ -74,9 +79,8 @@ def create_app(test_config=None):
     app.config.from_mapping(
         SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
         DEBUG=os.environ.get('FLASK_DEBUG', 'False') == 'True',
-        # Database Configuration
-        SQLALCHEMY_DATABASE_URI=secrets.get('DATABASE_URL', os.environ.get('SQLALCHEMY_DATABASE_URI', 
-                                              os.environ.get('DB_CONNECTION_STRING'))),
+        # Database Configuration: use secret in prod, else use DB_CONNECTION_STRING, else existing SQLALCHEMY_DATABASE_URI
+        SQLALCHEMY_DATABASE_URI=secrets.get('DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING') or os.environ.get('SQLALCHEMY_DATABASE_URI'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         # Cache Configuration for session data
         SESSION_TYPE='sqlalchemy',
@@ -117,8 +121,11 @@ def create_app(test_config=None):
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
     
-    # Check if database tables should be created
-    skip_db_init = os.environ.get('SKIP_DB_INIT', 'True').lower() == 'true'
+    # Determine if database tables should be created (override in debug mode)
+    if app.config.get('DEBUG'):
+        skip_db_init = False
+    else:
+        skip_db_init = os.environ.get('SKIP_DB_INIT', 'True').lower() == 'true'
     app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
     
     # Create all database tables (if they don't exist)

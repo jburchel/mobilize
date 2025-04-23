@@ -488,7 +488,7 @@
                                             <td>{{ task.title }}</td>
                                             <td>{{ task.due_date.strftime('%Y-%m-%d') }}</td>
                                             <td>
-                                                <span class="badge bg-{{ task.priority.lower() }}">
+                                                <span class="badge bg-{{ task.priority.value }}">
                                                     {{ task.priority }}
                                                 </span>
                                             </td>

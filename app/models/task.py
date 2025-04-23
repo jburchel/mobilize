@@ -16,6 +16,7 @@ class TaskPriority(enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+    URGENT = "urgent"
 
 class TaskType(enum.Enum):
     GENERAL = "general"
@@ -31,9 +32,36 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
-    status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.PENDING)
-    priority: Mapped[TaskPriority] = mapped_column(Enum(TaskPriority), default=TaskPriority.MEDIUM)
-    type: Mapped[TaskType] = mapped_column(Enum(TaskType), default=TaskType.GENERAL)
+    status: Mapped[TaskStatus] = mapped_column(
+        Enum(
+            TaskStatus,
+            native_enum=False,
+            create_constraint=False,
+            values_callable=lambda enums: [e.value for e in enums],
+            validate_strings=True
+        ),
+        default=TaskStatus.PENDING
+    )
+    priority: Mapped[TaskPriority] = mapped_column(
+        Enum(
+            TaskPriority,
+            native_enum=False,
+            create_constraint=False,
+            values_callable=lambda enums: [e.value for e in enums],
+            validate_strings=True
+        ),
+        default=TaskPriority.MEDIUM
+    )
+    type: Mapped[TaskType] = mapped_column(
+        Enum(
+            TaskType,
+            native_enum=False,
+            create_constraint=False,
+            values_callable=lambda enums: [e.value for e in enums],
+            validate_strings=True
+        ),
+        default=TaskType.GENERAL
+    )
     due_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
     due_time: Mapped[Optional[str]] = mapped_column(String(10))  # Store time as HH:MM format
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)

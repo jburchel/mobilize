@@ -45,8 +45,14 @@ def index():
     overdue_count = 0
     current_date = datetime.now().date()
     for task in tasks:
-        if task.status != 'completed' and task.due_date and task.due_date < current_date:
-            overdue_count += 1
+        if task.status != 'completed' and task.due_date:
+            # Compare dates to detect overdue tasks
+            if hasattr(task.due_date, 'date'):
+                due_date_val = task.due_date.date()
+            else:
+                due_date_val = task.due_date
+            if due_date_val < current_date:
+                overdue_count += 1
             
     return render_template('tasks/index.html', 
                           tasks=tasks, 
