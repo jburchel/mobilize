@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flask_login import LoginManager, current_user
 from flask_jwt_extended import JWTManager
 from flask_wtf.csrf import generate_csrf, CSRFProtect
-from app.config.config import Config, TestingConfig, ProductionConfig
+from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig
 from app.config.logging_config import setup_logging
 from app.auth.firebase import init_firebase
 from app.extensions import db, migrate, cors, login_manager, jwt, csrf, Base, limiter, talisman, configure_cache
@@ -73,38 +73,25 @@ def create_app(test_config=None):
     """Create and configure the Flask application"""
     app = Flask(__name__, instance_relative_config=True)
     
-    # Load secrets from Secret Manager in production
-    secrets = access_secrets()
-    
-    app.config.from_mapping(
-        SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
-        DEBUG=os.environ.get('FLASK_DEBUG', 'False') == 'True',
-        # Database Configuration: use secret in prod, else use DB_CONNECTION_STRING, else existing SQLALCHEMY_DATABASE_URI
-        SQLALCHEMY_DATABASE_URI=secrets.get('DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING') or os.environ.get('SQLALCHEMY_DATABASE_URI'),
-        SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        # Cache Configuration for session data
-        SESSION_TYPE='sqlalchemy',
-        # User Configuration
-        USER_APP_NAME="Mobilize CRM",
-        USER_ENABLE_EMAIL=True,
-        USER_ENABLE_USERNAME=False,
-        # OAuth Configuration
-        BASE_URL=os.environ.get('BASE_URL', 'http://localhost:5000'),
-        GOOGLE_CLIENT_ID=secrets.get('GOOGLE_CLIENT_ID', os.environ.get('GOOGLE_CLIENT_ID')),
-        GOOGLE_CLIENT_SECRET=secrets.get('GOOGLE_CLIENT_SECRET', os.environ.get('GOOGLE_CLIENT_SECRET')),
-        # Email Configuration
-        MAIL_SERVER=os.environ.get('MAIL_SERVER', 'smtp.gmail.com'),
-        MAIL_PORT=int(os.environ.get('MAIL_PORT', 587)),
-        MAIL_USE_TLS=os.environ.get('MAIL_USE_TLS', 'True') == 'True',
-        MAIL_USERNAME=os.environ.get('MAIL_USERNAME'),
-        MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD'),
-        MAIL_DEFAULT_SENDER=os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@mobilize-crm.org'),
-        # Rate Limiting Configuration
-        RATELIMIT_STRATEGY='fixed-window',
-        RATELIMIT_DEFAULT='200 per hour',
-        # Debugging options
-        DEBUG_OAUTH=os.environ.get('DEBUG_OAUTH', 'False').lower() == 'true'
-    )
+    # Load configuration
+    env = os.getenv('FLASK_ENV', 'development')
+    if test_config:
+        app.config.from_object(test_config)
+    elif env == 'production':
+        # Production config and secrets override
+        app.config.from_object(ProductionConfig)
+        secrets = access_secrets()
+        app.config.update(
+            SECRET_KEY=secrets.get('SECRET_KEY', app.config.get('SECRET_KEY')),
+            SQLALCHEMY_DATABASE_URI=secrets.get('DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING'),
+        )
+    elif env == 'testing':
+        app.config.from_object(TestingConfig)
+    else:
+        # Development or default
+        app.config.from_object(DevelopmentConfig)
+    # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
+    app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
     
     # Enable CORS for the application
     CORS(app, resources={r"/api/*": {"origins": "*"}})
