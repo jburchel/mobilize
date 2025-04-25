@@ -7,6 +7,7 @@ from flask_cors import CORS
 from flask_login import LoginManager, current_user
 from flask_jwt_extended import JWTManager
 from flask_wtf.csrf import generate_csrf, CSRFProtect
+from dotenv import load_dotenv, find_dotenv  # Import dotenv
 from app.config.config import Config, TestingConfig, ProductionConfig
 from app.config.logging_config import setup_logging
 from app.auth.firebase import init_firebase
@@ -29,6 +30,9 @@ from app.utils.setup_main_pipelines import setup_main_pipelines
 from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
+
+# Load environment variables from .env.development
+load_dotenv(find_dotenv(".env.development"))
 
 # Initialize extensions that aren't in extensions.py
 # (Remove this as we're using the ones from extensions.py)
