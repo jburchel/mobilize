@@ -7,6 +7,7 @@ from flask_cors import CORS
 from flask_login import LoginManager, current_user
 from flask_jwt_extended import JWTManager
 from flask_wtf.csrf import generate_csrf, CSRFProtect
+from dotenv import load_dotenv, find_dotenv  # Import dotenv
 from app.config.config import Config, TestingConfig, ProductionConfig
 from app.config.logging_config import setup_logging
 from app.auth.firebase import init_firebase
@@ -30,44 +31,8 @@ from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
 
-# Function to access secrets from Secret Manager in production
-def access_secrets():
-    """Access secrets from Google Cloud Secret Manager when in production"""
-    secrets = {}
-    
-    if os.environ.get('FLASK_ENV') == 'production':
-        try:
-            from google.cloud import secretmanager
-            
-            project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'mobilize-crm')
-            client = secretmanager.SecretManagerServiceClient()
-            
-            # Function to access a specific secret
-            def access_secret(secret_id):
-                name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-                response = client.access_secret_version(request={"name": name})
-                return response.payload.data.decode('UTF-8')
-            
-            # Access required secrets
-            db_url = access_secret('mobilize-db-url')
-            
-            # Fix potential formatting issues with the database URL
-            if db_url and not db_url.startswith('postgresql://'):
-                if db_url.startswith('postgresql:'):
-                    # Add missing // and ensure username is included
-                    db_url = db_url.replace('postgresql:', 'postgresql://postgres.fwnitauuyzxnsvgsbrzr:')
-                    
-            secrets = {
-                'DATABASE_URL': db_url,
-                'SECRET_KEY': access_secret('mobilize-flask-secret'),
-                'GOOGLE_CLIENT_ID': access_secret('mobilize-google-client-id'),
-                'GOOGLE_CLIENT_SECRET': access_secret('mobilize-google-client-secret')
-            }
-            logging.info("Successfully loaded secrets from Secret Manager")
-        except Exception as e:
-            logging.error(f"Error accessing secrets from Secret Manager: {e}")
-    
-    return secrets
+# Load environment variables from .env.development
+load_dotenv(find_dotenv(".env.development"))
 
 # Initialize extensions that aren't in extensions.py
 # (Remove this as we're using the ones from extensions.py)
