@@ -1,0 +1,30 @@
+/* Pipeline Badge Styles */
+
+/* Make pipeline count badges match button sizes */
+.card-body .badge.bg-info {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+    height: 31px; /* Match btn-sm height */
+    margin-right: 15px; /* Increase spacing between badge and button */
+}
+
+/* Fix spacing in the main pipeline cards */
+.card-body .mt-2 {
+    display: flex;
+    align-items: center;
+}
+
+/* Remove the top margin from the button to align with badge */
+.card-body .mt-2 .btn.mt-3 {
+    margin-top: 0 !important;
+}
+
+/* Make pipeline table badges more prominent */
+#pipelinesTable td .badge {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.875rem;
+} 

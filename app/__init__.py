@@ -195,6 +195,9 @@ def create_app(test_config=None):
     # Register API blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     
+    # IMPORTANT: Also register auth blueprint with traditional /auth prefix for OAuth callbacks
+    app.register_blueprint(auth_bp, url_prefix='/auth', name='auth_web')
+    
     # Register API routes - Use the API blueprint directly to avoid double registration
     from app.routes.api.v1 import api_bp
     app.register_blueprint(api_bp, url_prefix='/api/v1')

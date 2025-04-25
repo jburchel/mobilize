@@ -10,6 +10,7 @@ from app.models.constants import (
     ASSIGNED_TO_CHOICES, SOURCE_CHOICES
 )
 
+from app.models.pipeline import PipelineContact
 class Person(Contact):
     """Person model for tracking individual contacts."""
     __tablename__ = 'people'
@@ -131,6 +132,25 @@ class Person(Contact):
         if self.last_name:
             initials += self.last_name[0].upper()
         return initials if initials else "?"
+
+    
+    @property
+    def pipeline_id(self):
+        """Virtual property to handle queries that expect a pipeline_id column."""
+        # Get the pipeline entry for this contact
+        pipeline_contact = db.session.query(PipelineContact).filter_by(
+            contact_id=self.id
+        ).first()
+        return pipeline_contact.pipeline_id if pipeline_contact else None
+                
+    @property
+    def pipeline_stage_id(self):
+        """Virtual property to handle queries that expect a pipeline_stage_id column."""
+        # Get the pipeline entry for this contact
+        pipeline_contact = db.session.query(PipelineContact).filter_by(
+            contact_id=self.id
+        ).first()
+        return pipeline_contact.current_stage_id if pipeline_contact else None
 
     def __repr__(self) -> str:
         return f"<Person(name='{self.first_name} {self.last_name}', email='{self.email}')>"

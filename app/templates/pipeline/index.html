@@ -49,9 +49,9 @@
                                                         {% else %}
                                                             {{ people_main_pipeline.count_contacts() }}
                                                         {% endif %}
-                                                        Contacts
+                                                        People
                                                     </span>
-                                                    <a href="{{ url_for('pipeline.view', pipeline_id=people_main_pipeline.id) }}" class="btn btn-sm btn-outline-primary mt-3">
+                                                    <a href="{{ url_for('pipeline.view', pipeline_id=people_main_pipeline.id) }}" class="btn btn-sm btn-outline-primary">
                                                         <i class="bi bi-eye me-1"></i> View Pipeline
                                                     </a>
                                                 </div>
@@ -82,8 +82,8 @@
                                             </div>
                                             {% if church_main_pipeline %}
                                                 <div class="mt-2">
-                                                    <span class="badge bg-info">{{ church_main_pipeline.count_contacts() }} Contacts</span>
-                                                    <a href="{{ url_for('pipeline.view', pipeline_id=church_main_pipeline.id) }}" class="btn btn-sm btn-outline-success mt-3">
+                                                    <span class="badge bg-info">{{ church_main_pipeline.count_contacts() }} Churches</span>
+                                                    <a href="{{ url_for('pipeline.view', pipeline_id=church_main_pipeline.id) }}" class="btn btn-sm btn-outline-success">
                                                         <i class="bi bi-eye me-1"></i> View Pipeline
                                                     </a>
                                                 </div>
@@ -133,7 +133,7 @@
                                         <th>Name</th>
                                         <th>Type</th>
                                         <th>Main Pipeline Stage</th>
-                                        <th>Contacts</th>
+                                        <th>Count</th>
                                         <th>Status</th>
                                         <th data-bs-toggle="tooltip" title="View, Edit, or Manage Stages">Actions</th>
                                     </tr>
@@ -160,7 +160,13 @@
                                                 <span class="badge bg-warning">Not Set</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ pipeline.contact_count() }}</td>
+                                        <td>
+                                            {% if pipeline.pipeline_type == 'people' or pipeline.pipeline_type == 'person' %}
+                                                {{ pipeline.contact_count() }} People
+                                            {% else %}
+                                                {{ pipeline.contact_count() }} Churches
+                                            {% endif %}
+                                        </td>
                                         <td>
                                             {% if pipeline.is_active %}
                                                 <span class="badge bg-success">Active</span>

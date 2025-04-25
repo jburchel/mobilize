@@ -197,16 +197,22 @@ def oauth2callback():
         # Create OAuth flow
         flow = create_oauth_flow()
         
+        # Log details about the request for debugging
+        callback_url = request.url
+        host = request.headers.get('Host', '')
+        scheme = request.headers.get('X-Forwarded-Proto', 'https')
+        
+        current_app.logger.info(f"OAuth callback received from: {callback_url}")
+        current_app.logger.info(f"Host header: {host}")
+        current_app.logger.info(f"X-Forwarded-Proto: {scheme}")
+        current_app.logger.info(f"Flow redirect URI: {flow.redirect_uri}")
+        
         # Validate the state parameter
         state = session.get('state')
         if not state or request.args.get('state') != state:
             current_app.logger.error("State mismatch in OAuth callback")
             flash('Invalid authentication state. Please try again.', 'danger')
             return redirect(url_for('auth.login'))
-        
-        # Log the callback URL for debugging
-        callback_url = request.url
-        current_app.logger.info(f"OAuth callback URL: {callback_url}")
         
         # Process authorization response - add skip_scope_check=True to prevent scope errors
         flow.fetch_token(authorization_response=callback_url, include_granted_scopes=True, skip_scope_check=True)
