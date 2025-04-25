@@ -1,0 +1,45 @@
+Schema Comparison Report
+=======================
+
+Tables only in Render:
+  - auth_group
+  - auth_group_permissions
+  - auth_permission
+  - com_log_comlog
+  - contacts_church
+  - contacts_contact
+  - contacts_people
+  - django_admin_log
+  - django_content_type
+  - django_migrations
+  - django_session
+  - task_tracker_task
+  - userprofile_customuser
+  - userprofile_customuser_groups
+  - userprofile_customuser_user_permissions
+
+Tables only in Supabase:
+  - churches
+  - communications
+  - contacts
+  - email_campaigns
+  - email_signatures
+  - email_templates
+  - email_tracking
+  - google_tokens
+  - offices
+  - people
+  - permissions
+  - pipeline_contacts
+  - pipeline_stage_history
+  - pipeline_stages
+  - pipelines
+  - sync_history
+  - tasks
+  - user_offices
+  - user_tokens
+  - users
+
+Table Differences:
+=================
+

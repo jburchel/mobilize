@@ -8,6 +8,7 @@ from app.models.base import Contact
 from app.models.constants import (
     CHURCH_PIPELINE_CHOICES, PRIORITY_CHOICES, ASSIGNED_TO_CHOICES, SOURCE_CHOICES
 )
+from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
 
 from app.models.pipeline import PipelineContact
 class Church(Contact):
@@ -32,7 +33,6 @@ class Church(Contact):
     missions_pastor_last_name: Mapped[Optional[str]] = mapped_column(String(100))
     mission_pastor_phone: Mapped[Optional[str]] = mapped_column(String(50))
     mission_pastor_email: Mapped[Optional[str]] = mapped_column(String)
-    church_pipeline: Mapped[str] = mapped_column(String(100), default='INFORMATION')
     priority: Mapped[str] = mapped_column(String(100), default='MEDIUM')
     assigned_to: Mapped[str] = mapped_column(String(100), default='UNASSIGNED')
     source: Mapped[str] = mapped_column(String(100), default='UNKNOWN')
@@ -113,6 +113,22 @@ class Church(Contact):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the church to a dictionary."""
+        # Get the main pipeline stage
+        main_pipeline = Pipeline.query.filter_by(
+            pipeline_type='church',
+            is_main_pipeline=True,
+            office_id=self.office_id
+        ).first()
+        
+        pipeline_stage = None
+        if main_pipeline:
+            pipeline_contact = PipelineContact.query.filter_by(
+                contact_id=self.id,
+                pipeline_id=main_pipeline.id
+            ).first()
+            if pipeline_contact and pipeline_contact.current_stage:
+                pipeline_stage = pipeline_contact.current_stage.name
+        
         return {
             'id': self.id,
             'name': self.name,
@@ -137,7 +153,7 @@ class Church(Contact):
             'missions_pastor_last_name': self.missions_pastor_last_name,
             'mission_pastor_phone': self.mission_pastor_phone,
             'mission_pastor_email': self.mission_pastor_email,
-            'church_pipeline': self.church_pipeline,
+            'pipeline_stage': pipeline_stage,
             'priority': self.priority,
             'assigned_to': self.assigned_to,
             'source': self.source,

@@ -413,6 +413,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (countBadge) {
                 countBadge.textContent = contactCount;
             }
+            
+            // Check if stage is empty or not and update display accordingly
+            const noContactsMessage = stage.querySelector('.list-group-item.text-center.text-muted');
+            if (contactCount > 0 && noContactsMessage) {
+                // Stage has contacts but still shows the "No contacts" message - remove it
+                noContactsMessage.remove();
+            } else if (contactCount === 0 && !noContactsMessage) {
+                // Stage has no contacts but doesn't show the message - add it
+                const emptyMessage = document.createElement('li');
+                emptyMessage.className = 'list-group-item text-center text-muted py-4';
+                emptyMessage.innerHTML = '<em>No contacts in this stage</em>';
+                stage.appendChild(emptyMessage);
+            }
         });
     }
     

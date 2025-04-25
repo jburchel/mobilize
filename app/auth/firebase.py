@@ -5,23 +5,53 @@ from functools import wraps
 from flask import request, jsonify
 import os
 import logging
+import json
 
 def init_firebase(app):
     """Initialize Firebase Admin SDK."""
     logger = app.logger
     
+    logger.info("Starting Firebase initialization...")
+    
     try:
         # Check if Firebase is already initialized
         firebase_admin.get_app()
+        logger.info("Firebase already initialized")
     except ValueError:
-        # Check if required environment variables are set
+        # First check for a consolidated credentials JSON
+        firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS')
+        if firebase_creds_json:
+            try:
+                logger.info("Using consolidated FIREBASE_CREDENTIALS env var")
+                # Parse the JSON credentials
+                cred_dict = json.loads(firebase_creds_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                logger.info("Firebase initialized successfully from consolidated credentials")
+                return
+            except Exception as e:
+                logger.error(f"Error initializing Firebase from consolidated credentials: {str(e)}")
+                # Continue to try individual credentials
+        
+        # Check if required environment variables are set for individual creds
         required_vars = [
             'FIREBASE_PRIVATE_KEY_ID',
             'FIREBASE_PRIVATE_KEY',
             'FIREBASE_CLIENT_EMAIL',
             'FIREBASE_CLIENT_ID',
-            'FIREBASE_CLIENT_CERT_URL'
+            'FIREBASE_CLIENT_CERT_URL',
+            'FIREBASE_PROJECT_ID'
         ]
+        
+        # Log all environment variables for debugging
+        for var in required_vars:
+            if os.getenv(var):
+                if var != 'FIREBASE_PRIVATE_KEY':
+                    logger.info(f"Found {var}: {os.getenv(var)[:10]}...")
+                else:
+                    logger.info(f"Found {var}: [REDACTED]")
+            else:
+                logger.warning(f"Missing {var}")
         
         missing_vars = [var for var in required_vars if not os.getenv(var)]
         if missing_vars:
@@ -30,10 +60,14 @@ def init_firebase(app):
             return
         
         try:
+            # Get project_id from environment
+            project_id = os.getenv('FIREBASE_PROJECT_ID')
+            logger.info(f"Using Firebase project ID: {project_id}")
+            
             # Initialize Firebase with configuration from environment
             cred = credentials.Certificate({
                 "type": "service_account",
-                "project_id": app.config.get('FIREBASE_CONFIG', {}).get('projectId'),
+                "project_id": project_id,
                 "private_key_id": os.getenv('FIREBASE_PRIVATE_KEY_ID'),
                 "private_key": os.getenv('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n'),
                 "client_email": os.getenv('FIREBASE_CLIENT_EMAIL'),
@@ -44,7 +78,7 @@ def init_firebase(app):
                 "client_x509_cert_url": os.getenv('FIREBASE_CLIENT_CERT_URL')
             })
             firebase_admin.initialize_app(cred)
-            logger.info("Firebase initialized successfully")
+            logger.info("Firebase initialized successfully from individual credentials")
         except Exception as e:
             logger.error(f"Error initializing Firebase: {str(e)}")
             logger.warning("Firebase authentication will be disabled")

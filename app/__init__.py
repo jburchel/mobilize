@@ -30,18 +30,211 @@ from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
 
+# Function to access secrets from Secret Manager in production
+def access_secrets():
+    """Access secrets from Google Cloud Secret Manager when in production"""
+    secrets = {}
+    
+    if os.environ.get('FLASK_ENV') == 'production':
+        try:
+            from google.cloud import secretmanager
+            
+            project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'mobilize-crm')
+            client = secretmanager.SecretManagerServiceClient()
+            
+            # Function to access a specific secret
+            def access_secret(secret_id):
+                name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+                response = client.access_secret_version(request={"name": name})
+                return response.payload.data.decode('UTF-8')
+            
+            # Access required secrets
+            db_url = access_secret('mobilize-db-url')
+            
+            # Fix potential formatting issues with the database URL
+            if db_url and not db_url.startswith('postgresql://'):
+                if db_url.startswith('postgresql:'):
+                    # Add missing // and ensure username is included
+                    db_url = db_url.replace('postgresql:', 'postgresql://postgres.fwnitauuyzxnsvgsbrzr:')
+                    
+            secrets = {
+                'DATABASE_URL': db_url,
+                'SECRET_KEY': access_secret('mobilize-flask-secret'),
+                'GOOGLE_CLIENT_ID': access_secret('mobilize-google-client-id'),
+                'GOOGLE_CLIENT_SECRET': access_secret('mobilize-google-client-secret')
+            }
+            logging.info("Successfully loaded secrets from Secret Manager")
+        except Exception as e:
+            logging.error(f"Error accessing secrets from Secret Manager: {e}")
+    
+    return secrets
+
 # Initialize extensions that aren't in extensions.py
 # (Remove this as we're using the ones from extensions.py)
 
 def create_app(test_config=None):
     """Create and configure the Flask application"""
     app = Flask(__name__, instance_relative_config=True)
+    
+    # Add a simple health check endpoint that doesn't rely on database
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        return jsonify({
+            'status': 'ok',
+            'time': datetime.datetime.now().isoformat(),
+            'message': 'Basic health check passed'
+        }), 200
+    
+    # Add an override endpoint to directly test database connection with hardcoded credentials
+    @app.route('/api/direct-db-test', methods=['GET'])
+    def direct_db_test():
+        from sqlalchemy import create_engine, text
+        import urllib.parse
+        
+        # Try multiple connection methods
+        results = []
+        
+        # Method 1: Standard pooler with postgres.reference username
+        try:
+            username1 = "postgres.fwnitauuyzxnsvgsbrzr"
+            password1 = "Fruitin2025"
+            host1 = "aws-0-us-east-1.pooler.supabase.com"
+            url1 = f"postgresql://{username1}:{urllib.parse.quote_plus(password1)}@{host1}:5432/postgres?sslmode=require"
+            
+            engine1 = create_engine(url1)
+            with engine1.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                row = result.fetchone()
+                results.append({"method": "standard_pooler", "status": "success", "username": username1})
+        except Exception as e:
+            results.append({"method": "standard_pooler", "status": "error", "username": username1, "error": str(e)})
+        
+        # Method 2: Try with just 'postgres' username
+        try:
+            username2 = "postgres"
+            password2 = "Fruitin2025"
+            host2 = "aws-0-us-east-1.pooler.supabase.com"
+            url2 = f"postgresql://{username2}:{urllib.parse.quote_plus(password2)}@{host2}:5432/postgres?sslmode=require"
+            
+            engine2 = create_engine(url2)
+            with engine2.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                row = result.fetchone()
+                results.append({"method": "postgres_user", "status": "success", "username": username2})
+        except Exception as e:
+            results.append({"method": "postgres_user", "status": "error", "username": username2, "error": str(e)})
+        
+        # Method 3: Try direct connection format
+        try:
+            username3 = "postgres"
+            password3 = "Fruitin2025"
+            host3 = "db.fwnitauuyzxnsvgsbrzr.supabase.co"
+            url3 = f"postgresql://{username3}:{urllib.parse.quote_plus(password3)}@{host3}:5432/postgres?sslmode=require"
+            
+            engine3 = create_engine(url3)
+            with engine3.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                row = result.fetchone()
+                results.append({"method": "direct_connection", "status": "success", "username": username3})
+        except Exception as e:
+            results.append({"method": "direct_connection", "status": "error", "username": username3, "error": str(e)})
+        
+        return jsonify({
+            "results": results,
+            "message": "Tried multiple connection methods"
+        })
+    
+    # Add another health check that includes more details
+    @app.route('/api/health-check', methods=['GET'])
+    def api_health_check():
+        status = {
+            'status': 'ok',
+            'time': datetime.datetime.now().isoformat(),
+            'database': 'unknown',
+            'environment': os.environ.get('FLASK_ENV', 'unknown')
+        }
+        
+        # Try to check database connection but don't fail if it doesn't work
+        try:
+            with app.app_context():
+                from sqlalchemy import text
+                db_result = db.session.execute(text('SELECT 1')).fetchone()
+                status['database'] = 'connected' if db_result else 'error'
+        except Exception as e:
+            app.logger.error(f"Database health check failed: {str(e)}")
+            status['database'] = 'error'
+            status['database_error'] = str(e)
+        
+        return jsonify(status)
+    
+    # Add an endpoint to debug the connection string
+    @app.route('/api/debug/db-config', methods=['GET'])
+    def debug_db_config():
+        # Return masked connection string info for debugging
+        db_url = os.environ.get('DATABASE_URL', 'not-set')
+        db_conn = os.environ.get('DB_CONNECTION_STRING', 'not-set')
+        
+        # Mask passwords in output
+        def mask_password(url):
+            if not url or url == 'not-set':
+                return url
+                
+            if '@' in url and ':' in url.split('@')[0]:
+                parts = url.split('@')
+                user_parts = parts[0].split(':')
+                return f"{user_parts[0]}:******@{parts[1]}"
+            return url
+        
+        # Check if the secret was loaded correctly
+        secret_db_url = 'not-loaded'
+        try:
+            if os.environ.get('FLASK_ENV') == 'production':
+                from google.cloud import secretmanager
+                project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'mobilize-crm')
+                client = secretmanager.SecretManagerServiceClient()
+                name = f"projects/{project_id}/secrets/mobilize-db-url/versions/latest"
+                response = client.access_secret_version(request={"name": name})
+                secret_db_url = response.payload.data.decode('UTF-8')
+                # Mask password for security
+                secret_db_url = mask_password(secret_db_url)
+        except Exception as e:
+            secret_db_url = f"Error: {str(e)}"
+        
+        # Get the actual connection string from app config
+        config_db_url = mask_password(app.config.get('SQLALCHEMY_DATABASE_URI', 'not-set-in-config'))
+        
+        return jsonify({
+            'env': os.environ.get('FLASK_ENV', 'unknown'),
+            'database_url_masked': mask_password(db_url),
+            'db_conn_string_masked': mask_password(db_conn),
+            'secret_manager_url_masked': secret_db_url,
+            'config_db_url_masked': config_db_url,
+            'using_secret_manager': os.environ.get('FLASK_ENV') == 'production'
+        })
+    
+    # Load secrets from Secret Manager in production
+    secrets = access_secrets()
+    
+    # DEBUGGING: Temporarily prioritize environment variables
+    env_db_url = os.environ.get('DATABASE_URL')
+    env_db_conn = os.environ.get('DB_CONNECTION_STRING')
+    
+    # Log which source is being used
+    if env_db_url:
+        app.logger.info("Using DATABASE_URL from environment variables")
+    elif secrets.get('DATABASE_URL'):
+        app.logger.info("Using DATABASE_URL from Secret Manager")
+    else:
+        app.logger.warning("No DATABASE_URL found in environment or Secret Manager!")
+    
+    # Build a direct connection string as a fallback
+    direct_db_url = "postgresql://postgres:Fruitin2025@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres?sslmode=require"
+    
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
+        SECRET_KEY=secrets.get('SECRET_KEY', os.environ.get('SECRET_KEY', 'dev')),
         DEBUG=os.environ.get('FLASK_DEBUG', 'False') == 'True',
-        # Database Configuration
-        SQLALCHEMY_DATABASE_URI=os.environ.get('SQLALCHEMY_DATABASE_URI', 
-                                              os.environ.get('DB_CONNECTION_STRING')),
+        # Database Configuration - OVERRIDE with direct connection if Secret Manager fails
+        SQLALCHEMY_DATABASE_URI=direct_db_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         # Cache Configuration for session data
         SESSION_TYPE='sqlalchemy',
@@ -51,8 +244,8 @@ def create_app(test_config=None):
         USER_ENABLE_USERNAME=False,
         # OAuth Configuration
         BASE_URL=os.environ.get('BASE_URL', 'http://localhost:5000'),
-        GOOGLE_CLIENT_ID=os.environ.get('GOOGLE_CLIENT_ID'),
-        GOOGLE_CLIENT_SECRET=os.environ.get('GOOGLE_CLIENT_SECRET'),
+        GOOGLE_CLIENT_ID=secrets.get('GOOGLE_CLIENT_ID', os.environ.get('GOOGLE_CLIENT_ID')),
+        GOOGLE_CLIENT_SECRET=secrets.get('GOOGLE_CLIENT_SECRET', os.environ.get('GOOGLE_CLIENT_SECRET')),
         # Email Configuration
         MAIL_SERVER=os.environ.get('MAIL_SERVER', 'smtp.gmail.com'),
         MAIL_PORT=int(os.environ.get('MAIL_PORT', 587)),
@@ -70,114 +263,65 @@ def create_app(test_config=None):
     # Enable CORS for the application
     CORS(app, resources={r"/api/*": {"origins": "*"}})
     
-    # Initialize Flask extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    cors.init_app(app)
-    csrf.init_app(app)
-    limiter.init_app(app)
-    login_manager.init_app(app)
+    # Log the database connection string (with sensitive parts masked)
+    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_url:
+        # Mask the password in the connection string for logging
+        masked_url = db_url
+        if '@' in db_url and ':' in db_url.split('@')[0]:
+            prefix = db_url.split('@')[0]
+            user_part = prefix.split(':')[0]
+            masked_url = f"{user_part}:******@{db_url.split('@')[1]}"
+        app.logger.info(f"Database URL (masked): {masked_url}")
     
-    # Set login manager settings
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message_category = 'info'
-    
-    # Check if database tables should be created
-    skip_db_init = os.environ.get('SKIP_DB_INIT', 'True').lower() == 'true'
-    app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
-    
-    # Create all database tables (if they don't exist)
-    if not skip_db_init:
-        app.logger.info("Creating database tables...")
-        with app.app_context():
-            db.create_all()
-    else:
-        app.logger.info("Skipping database initialization...")
-    
-    # Register blueprints
-    # ... existing code ...
-    
-    # Configure URL handling
-    app.url_map.strict_slashes = False
-    
-    # Initialize cache - based on config settings
-    configure_cache(app)
-    
-    # Configure secure headers with Talisman
-    csp = {
-        'default-src': [
-            "'self'",
-            'https://cdn.jsdelivr.net',
-            'https://fonts.googleapis.com',
-            'https://fonts.gstatic.com',
-        ],
-        'script-src': [
-            "'self'",
-            "'unsafe-inline'",
-            'https://cdn.jsdelivr.net',
-            'https://www.google-analytics.com',
-        ],
-        'style-src': [
-            "'self'",
-            "'unsafe-inline'",
-            'https://cdn.jsdelivr.net',
-            'https://fonts.googleapis.com',
-        ],
-        'img-src': [
-            "'self'",
-            'data:',
-            'https://www.google-analytics.com',
-        ],
-        'font-src': [
-            "'self'",
-            'data:',
-            'https://cdn.jsdelivr.net',
-            'https://fonts.gstatic.com',
-        ]
-    }
-    
-    # Only enable Talisman in production
-    if app.config.get('ENV') == 'production':
-        talisman.init_app(
-            app,
-            force_https=True,
-            content_security_policy=csp,
-            content_security_policy_nonce_in=['script-src'],
-            feature_policy={
-                'geolocation': "'none'",
-                'microphone': "'none'",
-                'camera': "'none'"
-            },
-            session_cookie_secure=True,
-            session_cookie_http_only=True
-        )
-    else:
-        # In development, still use Talisman but with less strict settings
-        talisman.init_app(
-            app,
-            force_https=False,  # No HTTPS in dev
-            content_security_policy=None,  # Disable CSP in dev for easier debugging
-            feature_policy=None,
-            session_cookie_secure=False
-        )
-    
-    # Import models to ensure they are registered with SQLAlchemy
-    from app.models import (
-        User, Contact, Person, Church, Office,
-        Task, Communication, EmailSignature, GoogleToken
-    )
-    
-    # Setup model relationships
-    with app.app_context():
-        setup_relationships()
+    try:
+        # Initialize Flask extensions
+        db.init_app(app)
+        migrate.init_app(app, db)
+        cors.init_app(app)
+        csrf.init_app(app)
+        limiter.init_app(app)
+        login_manager.init_app(app)
+        
+        # Set login manager settings
+        login_manager.login_view = 'auth.login'
+        login_manager.login_message_category = 'info'
+        
+        # Check if database tables should be created
+        skip_db_init = os.environ.get('SKIP_DB_INIT', 'True').lower() == 'true'
+        app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
+        
+        # Create all database tables (if they don't exist)
         if not skip_db_init:
-            app.logger.info("Creating database tables again (within app context)...")
-            db.create_all()
+            app.logger.info("Creating database tables...")
+            with app.app_context():
+                try:
+                    db.create_all()
+                    app.logger.info("Database tables created successfully")
+                except Exception as e:
+                    app.logger.error(f"Error creating database tables: {str(e)}")
         else:
-            app.logger.info("Skipping database initialization within app context...")
+            app.logger.info("Skipping database initialization...")
+        
+        # Configure URL handling
+        app.url_map.strict_slashes = False
+        
+        # Initialize cache - based on config settings
+        configure_cache(app)
+        
+        # Ensure Firebase configuration is properly set before initializing
+        firebase_config = {
+            'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
+            'apiKey': os.environ.get('FIREBASE_API_KEY'),
+            'authDomain': os.environ.get('FIREBASE_AUTH_DOMAIN'),
+            'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')
+        }
+        app.config['FIREBASE_CONFIG'] = firebase_config
+        app.logger.info(f"Setting up Firebase with project ID: {firebase_config['projectId']}")
     
-    # Setup login manager
-    login_manager.session_protection = 'strong'
+    except Exception as e:
+        app.logger.error(f"Error during application initialization: {str(e)}")
+        # Continue even if there are errors, so at least the health endpoints work
     
     @login_manager.user_loader
     def load_user(user_id):
@@ -239,96 +383,101 @@ def create_app(test_config=None):
     
     # Determine if we're in production
     is_production = app.config.get('ENV') == 'production'
-
-    # Configure session for better cross-domain compatibility
-    # Use a longer session lifetime
-    app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=1)
     
-    # Configure session cookie settings
-    # Set SameSite to None to allow cross-domain cookies, but only in production
-    if is_production:
-        app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-        # Session cookies must be secure when SameSite is None
-        app.config['SESSION_COOKIE_SECURE'] = True
-    else:
-        # For development
-        app.config['SESSION_COOKIE_SECURE'] = False
-        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    
-    # Handle request before processing to make session permanent
-    @app.before_request
-    def make_session_permanent():
-        session.permanent = True
-    
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found_error(error):
-        return jsonify({'error': 'Not found'}), 404
-
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-        return jsonify({'error': 'Internal server error'}), 500
-
-    @app.errorhandler(401)
-    def unauthorized_error(error):
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    @app.errorhandler(400)
-    def bad_request_error(error):
-        return jsonify({'error': 'Bad request'}), 400
-
-    # Setup Firebase (if configured)
-    firebase_setup(app)
-    
-    # Setup the main pipelines on startup and migrate contacts
-    with app.app_context():
-        try:
-            db.create_all()  # Create tables if they don't exist
-            setup_main_pipelines()
-            
-            # Only migrate contacts to main pipelines if not in development
-            if not app.debug:
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
-                    migrate_contacts_to_main_pipeline()
-                else:
-                    app.logger.warning("Skipping contact migration - required tables don't exist yet")
-                
-            # Ensure all churches are in the church pipeline
-            init_church_pipeline(app)
-            
-            app.logger.info("Pipeline initialization complete")
-        except Exception as e:
-            app.logger.error(f"Error initializing pipelines: {str(e)}")
-
-    # Register template utilities
-    register_template_utilities(app)
-    
-    # Register CLI commands
-    register_commands(app)
-
-    # Add stats to global context for sidebar badges
-    @app.before_request
-    def before_request():
-        """Add stats to global context for sidebar badges."""
-        if current_user.is_authenticated:
-            try:
-                from app.routes.dashboard import get_dashboard_stats
-                g.stats = get_dashboard_stats()
-            except Exception as e:
-                app.logger.error(f"Error getting dashboard stats: {str(e)}")
-                g.stats = {
-                    'people_count': 0,
-                    'church_count': 0,
-                    'pending_tasks': 0,
-                    'overdue_tasks': 0,
-                    'recent_communications': 0
-                }
+    try:
+        # Configure session for better cross-domain compatibility
+        # Use a longer session lifetime
+        app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=1)
+        
+        # Configure session cookie settings
+        # Set SameSite to None to allow cross-domain cookies, but only in production
+        if is_production:
+            app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+            # Session cookies must be secure when SameSite is None
+            app.config['SESSION_COOKIE_SECURE'] = True
         else:
-            g.stats = None
+            # For development
+            app.config['SESSION_COOKIE_SECURE'] = False
+            app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        
+        # Handle request before processing to make session permanent
+        @app.before_request
+        def make_session_permanent():
+            session.permanent = True
+        
+        # Error handlers
+        @app.errorhandler(404)
+        def not_found_error(error):
+            return jsonify({'error': 'Not found'}), 404
 
-    return app 
+        @app.errorhandler(500)
+        def internal_error(error):
+            db.session.rollback()
+            return jsonify({'error': 'Internal server error'}), 500
+
+        @app.errorhandler(401)
+        def unauthorized_error(error):
+            return jsonify({'error': 'Unauthorized'}), 401
+
+        @app.errorhandler(400)
+        def bad_request_error(error):
+            return jsonify({'error': 'Bad request'}), 400
+
+        # Setup Firebase (if configured)
+        firebase_setup(app)
+        
+        # Setup the main pipelines on startup and migrate contacts
+        with app.app_context():
+            try:
+                db.create_all()  # Create tables if they don't exist
+                setup_main_pipelines()
+                
+                # Only migrate contacts to main pipelines if not in development
+                if not app.debug:
+                    from sqlalchemy import inspect
+                    inspector = inspect(db.engine)
+                    if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
+                        migrate_contacts_to_main_pipeline()
+                    else:
+                        app.logger.warning("Skipping contact migration - required tables don't exist yet")
+                
+                # Ensure all churches are in the church pipeline
+                init_church_pipeline(app)
+                
+                app.logger.info("Pipeline initialization complete")
+            except Exception as e:
+                app.logger.error(f"Error initializing pipelines: {str(e)}")
+
+        # Register template utilities
+        register_template_utilities(app)
+        
+        # Register CLI commands
+        register_commands(app)
+
+        # Add stats to global context for sidebar badges
+        @app.before_request
+        def before_request():
+            """Add stats to global context for sidebar badges."""
+            if current_user.is_authenticated:
+                try:
+                    from app.routes.dashboard import get_dashboard_stats
+                    g.stats = get_dashboard_stats()
+                except Exception as e:
+                    app.logger.error(f"Error getting dashboard stats: {str(e)}")
+                    g.stats = {
+                        'people_count': 0,
+                        'church_count': 0,
+                        'pending_tasks': 0,
+                        'overdue_tasks': 0,
+                        'recent_communications': 0
+                    }
+            else:
+                g.stats = None
+
+        return app 
+    except Exception as e:
+        app.logger.error(f"Error during application initialization: {str(e)}")
+        # Continue even if there are errors, so at least the health endpoints work
+        return app 

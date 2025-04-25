@@ -15,10 +15,11 @@ from app.utils.user_utils import create_person_for_user
 import uuid
 import os
 from urllib.parse import urlencode
+from sqlalchemy import text
 
 auth_bp = Blueprint('auth', __name__)
 
-# Google OAuth2 scopes
+# Google OAuth2 scopes (updated 2024-05-07 15:45)
 GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
@@ -110,13 +111,10 @@ def verify_token():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Handle user login."""
-    # For GET requests, render the login template
+    """Handle user login via API."""
+    # For GET requests, return unauthorized JSON
     if request.method == 'GET':
-        # If user is already logged in, redirect to dashboard
-        if current_user.is_authenticated:
-            return redirect(url_for('dashboard.index'))
-        return render_template('auth/login.html')
+        return jsonify({'error': 'Unauthorized'}), 401
     
     # For POST requests, process login data (API)
     data = request.get_json()
@@ -299,37 +297,49 @@ def get_current_user():
 @auth_bp.route('/dev-login')
 def dev_login():
     """Development-only route for testing login functionality."""
-    # Always allow dev login for testing purposes
-    # Find or create a test user
-    test_user = User.query.filter_by(email='test@example.com').first()
-    if not test_user:
-        test_user = User(
-            email='test@example.com',
-            username='testuser',
-            firebase_uid='dev-test-user',
-            first_name='Test',
-            last_name='User',
-            role='super_admin',  # Make the test user a super admin for full access
-            office_id=1,  # Default office ID
-            is_active=True,
-            first_login=True  # New users should go through onboarding
-        )
-        db.session.add(test_user)
-        db.session.commit()
-    else:
-        # For existing test user, keep their current first_login status
-        pass
-    
-    # Log in the test user
-    login_user(test_user)
-    
-    # Add office context to session
-    session['office_id'] = test_user.office_id
-    session['user_role'] = test_user.role
-    session['office_admin'] = test_user.is_admin()
-    
-    # Redirect to dashboard
-    return redirect(url_for('dashboard.index'))
+    try:
+        # Log diagnostic information
+        current_app.logger.info("Dev login attempt - checking database connection")
+        
+        # Test database connection - use text() for SQLAlchemy 2.0+
+        db_test = db.session.execute(text("SELECT 1")).fetchone()
+        current_app.logger.info(f"Database connection test: {db_test}")
+        
+        # Always allow dev login for testing purposes
+        # Find or create a test user
+        test_user = User.query.filter_by(email='test@example.com').first()
+        if not test_user:
+            test_user = User(
+                email='test@example.com',
+                username='testuser',
+                firebase_uid='dev-test-user',
+                first_name='Test',
+                last_name='User',
+                role='super_admin',  # Make the test user a super admin for full access
+                office_id=1,  # Default office ID
+                is_active=True,
+                first_login=True  # New users should go through onboarding
+            )
+            db.session.add(test_user)
+            db.session.commit()
+        else:
+            # For existing test user, keep their current first_login status
+            pass
+        
+        # Log in the test user
+        login_user(test_user)
+        
+        # Add office context to session
+        session['office_id'] = test_user.office_id
+        session['user_role'] = test_user.role
+        session['office_admin'] = test_user.is_admin()
+        
+        # Redirect to dashboard
+        return redirect(url_for('dashboard.index'))
+    except Exception as e:
+        # Log the error to help with debugging
+        current_app.logger.error(f"Dev login error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @auth_bp.route('/dev-login-standard')
 def dev_login_standard():
@@ -465,4 +475,17 @@ def reauth_google():
     except Exception as e:
         current_app.logger.error(f"Error during Google reauth: {str(e)}")
         flash(f'Error during Google reauthorization: {str(e)}', 'error')
-        return redirect(url_for('dashboard.index')) 
+        return redirect(url_for('dashboard.index'))
+
+@auth_bp.route('/health-check')
+def health_check():
+    """Simple endpoint to check application health without DB access. Updated 2024-05-07."""
+    try:
+        return jsonify({
+            'status': 'ok',
+            'message': 'Application is running',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        current_app.logger.error(f"Health check error: {str(e)}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500 

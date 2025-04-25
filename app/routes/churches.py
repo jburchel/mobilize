@@ -697,8 +697,10 @@ def search():
         pipeline_stages = ['PROMOTION', 'INFORMATION', 'INVITATION', 'CONFIRMATION', 'EN42', 'AUTOMATION']
         for stage in pipeline_stages:
             if stage in search_term:
-                query = query.outerjoin(PipelineContact, Church.id == PipelineContact.contact_id) \
-                           .outerjoin(PipelineStage, PipelineContact.current_stage_id == PipelineStage.id) \
+                query = query.join(PipelineContact, Church.id == PipelineContact.contact_id) \
+                           .join(PipelineStage, PipelineContact.current_stage_id == PipelineStage.id) \
+                           .join(Pipeline, Pipeline.id == PipelineContact.pipeline_id) \
+                           .filter(Pipeline.is_main_pipeline == True) \
                            .filter(PipelineStage.name == stage)
                 pipeline_match = True
                 break
@@ -752,7 +754,11 @@ def search():
             ).first()
             
             if pipeline_contact and pipeline_contact.current_stage:
-                church_dict['church_pipeline'] = pipeline_contact.current_stage.name
+                church_dict['pipeline_stage'] = pipeline_contact.current_stage.name
+            else:
+                church_dict['pipeline_stage'] = 'Not in Pipeline'
+        else:
+            church_dict['pipeline_stage'] = 'No Pipeline Found'
         
         # Ensure main contact information is included
         if church.main_contact_id:
