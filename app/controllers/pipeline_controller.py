@@ -250,7 +250,7 @@ def view(pipeline_id):
                 current_app.logger.info(f"Direct SQL count for church pipeline: {direct_sql_count}")
             
             current_app.logger.info(f"Super admin view: found {len(pipeline_contacts)} contacts for pipeline {pipeline_id}")
-        elif current_user.is_office_admin():
+        elif current_user.role == 'office_admin':
             # Office admins see contacts from their office
             office_id = current_user.office_id
             
@@ -342,7 +342,7 @@ def view(pipeline_id):
             if current_user.is_super_admin():
                 # Super admins see all people
                 pass
-            elif current_user.is_office_admin():
+            elif current_user.role == 'office_admin':
                 # Office admins see people from their office
                 people_query = people_query.filter(Person.office_id == current_user.office_id)
             else:
@@ -367,7 +367,7 @@ def view(pipeline_id):
             if current_user.is_super_admin():
                 # Super admins see all churches
                 pass
-            elif current_user.is_office_admin():
+            elif current_user.role == 'office_admin':
                 # Office admins see churches from their office
                 church_query = church_query.filter(Church.office_id == current_user.office_id)
             else:
@@ -889,7 +889,7 @@ def delete(pipeline_id):
     # Check if user has permission to delete the pipeline
     # Only office admins or super admins can delete pipelines
     if not (current_user.is_super_admin() or 
-            (pipeline.office and current_user.is_office_admin(pipeline.office_id))):
+            (pipeline.office and current_user.role == 'office_admin' and pipeline.office_id == current_user.office_id)):
         flash('You do not have permission to delete this pipeline', 'danger')
         return redirect(url_for('pipeline.index'))
     
@@ -933,7 +933,7 @@ def update_pipeline():
         
         # Check permissions - only owner, office admin, or super admin can edit
         if not (current_user.is_super_admin() or 
-                (pipeline.office and current_user.is_office_admin(pipeline.office_id)) or
+                (pipeline.office and current_user.role == 'office_admin' and pipeline.office_id == current_user.office_id) or
                 pipeline.created_by_id == current_user.id):
             flash('You do not have permission to edit this pipeline.', 'danger')
             return redirect(url_for('pipeline.index'))

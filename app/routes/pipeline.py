@@ -571,7 +571,7 @@ def church_view():
         if current_user.is_super_admin():
             # Super admins see all churches
             filtered_contacts = pipeline_contacts
-        elif current_user.is_office_admin():
+        elif current_user.role == 'office_admin':
             # Office admins see contacts from their office
             filtered_contacts = [
                 pc for pc in pipeline_contacts
@@ -609,7 +609,7 @@ def church_view():
         if current_user.is_super_admin():
             # Super admins see all churches
             pass
-        elif current_user.is_office_admin():
+        elif current_user.role == 'office_admin':
             # Office admins see churches from their office
             church_query = church_query.filter(Church.office_id == current_user.office_id)
         else:
