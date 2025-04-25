@@ -10,6 +10,7 @@ from app.models.constants import (
 )
 from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
 
+from app.models.pipeline import PipelineContact
 class Church(Contact):
     """Model for representing a church in the system."""
     __tablename__ = 'churches'
@@ -84,6 +85,25 @@ class Church(Contact):
     def church_last_name(self, value: Optional[str]) -> None:
         pass  # Churches don't use last_name
     
+    
+    @property
+    def pipeline_id(self):
+        """Virtual property to handle queries that expect a pipeline_id column."""
+        # Get the pipeline entry for this contact
+        pipeline_contact = db.session.query(PipelineContact).filter_by(
+            contact_id=self.id
+        ).first()
+        return pipeline_contact.pipeline_id if pipeline_contact else None
+                
+    @property
+    def pipeline_stage_id(self):
+        """Virtual property to handle queries that expect a pipeline_stage_id column."""
+        # Get the pipeline entry for this contact
+        pipeline_contact = db.session.query(PipelineContact).filter_by(
+            contact_id=self.id
+        ).first()
+        return pipeline_contact.current_stage_id if pipeline_contact else None
+
     def __repr__(self) -> str:
         return f"<Church {self.name}>"
 

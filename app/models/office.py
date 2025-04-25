@@ -1,9 +1,16 @@
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from sqlalchemy import String, Boolean, JSON, ForeignKey, Table, Column, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions import db
 from app.models.base import Base
+
+# Import models using TYPE_CHECKING to avoid circular imports
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.church import Church
+    from app.models.communication import Communication
+    from app.models.base import Contact
 
 # Association table for User-Office many-to-many relationship
 user_offices = Table(
@@ -47,6 +54,7 @@ class Office(Base):
     users: Mapped[List["User"]] = relationship('User', back_populates='office', lazy='dynamic')
     churches: Mapped[List["Church"]] = relationship('Church', back_populates='office', lazy='dynamic', overlaps="contacts")
     communications: Mapped[List["Communication"]] = relationship('Communication', back_populates='office', lazy='dynamic')
+    contacts: Mapped[List["Contact"]] = relationship('Contact', back_populates='office', lazy='dynamic')
     
     def __repr__(self) -> str:
         return f'<Office {self.name}>'

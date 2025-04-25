@@ -6,6 +6,7 @@ from googleapiclient.discovery import build
 import os
 import json
 from datetime import datetime, timezone, timedelta
+from app.auth.ngrok_fix import get_oauth_redirect_uri
 
 # OAuth 2.0 scopes for various Google services we'll use
 SCOPES = [
@@ -24,18 +25,20 @@ SCOPES = [
 
 def create_oauth_flow():
     """Create a Google OAuth2 flow instance."""
+    # Get the proper redirect URI that works with ngrok
+    redirect_uri = get_oauth_redirect_uri()
+    
     client_config = {
         "web": {
             "client_id": os.getenv('GOOGLE_CLIENT_ID'),
             "client_secret": os.getenv('GOOGLE_CLIENT_SECRET'),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [url_for('auth.oauth2callback', _external=True)]
+            "redirect_uris": [redirect_uri]
         }
     }
     
     # Print the redirect URI for debugging
-    redirect_uri = url_for('auth.oauth2callback', _external=True)
     current_app.logger.debug(f"Using redirect URI: {redirect_uri}")
     
     flow = Flow.from_client_config(
@@ -43,7 +46,7 @@ def create_oauth_flow():
         scopes=SCOPES
     )
     
-    flow.redirect_uri = url_for('auth.oauth2callback', _external=True)
+    flow.redirect_uri = redirect_uri
     return flow
 
 def get_google_auth_url():

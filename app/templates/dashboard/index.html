@@ -102,7 +102,7 @@
                 <div class="card-footer">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge bg-secondary fs-6 p-2" id="people-total-count">Total: 0 contacts</span>
+                            <span class="badge bg-secondary fs-6 p-2" id="people-total-count">Total: 0 People</span>
                         </div>
                         <div class="d-flex align-items-center">
                             <a href="{{ url_for('pipeline.view_by_query', pipeline_id=people_pipeline.id, pipeline_type='person') if people_pipeline else '#' }}" 
@@ -153,7 +153,7 @@
                 <div class="card-footer">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge bg-secondary fs-6 p-2" id="church-total-count">Total: 0 contacts</span>
+                            <span class="badge bg-secondary fs-6 p-2" id="church-total-count">Total: 0 Churches</span>
                         </div>
                         <div class="d-flex align-items-center">
                             <!-- Direct hardcoded link to Church Pipeline using both URL and onclick -->
@@ -602,7 +602,7 @@ function renderPipelineChart(chartType, containerSelector, data) {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Contacts',
+                    label: chartType === 'person' ? 'People' : 'Churches',
                     data: counts,
                     backgroundColor: colors,
                     borderWidth: 1
@@ -644,7 +644,7 @@ function renderPipelineChart(chartType, containerSelector, data) {
     const totalCountId = chartType === 'person' ? 'people-total-count' : 'church-total-count';
     const totalCountElem = document.getElementById(totalCountId);
     if (totalCountElem) {
-        totalCountElem.textContent = `Total: ${data.total_contacts} contacts`;
+        totalCountElem.textContent = `Total: ${data.total_contacts} ${chartType === 'person' ? 'People' : 'Churches'}`;
     }
     
     // Update the chart style buttons active state
@@ -706,6 +706,7 @@ function testPipelineApi(chartType) {
             
             // Calculate total contacts for display
             const totalContacts = data.total_contacts || 0;
+            const contactType = chartType === 'person' ? 'People' : 'Churches';
             
             // Format stage distribution for the alert
             let stageDistribution = '';
@@ -716,7 +717,7 @@ function testPipelineApi(chartType) {
             }
             
             // Create success message
-            const successMsg = `API test successful!\n\nPipeline: ${data.pipeline_name}\nTotal Contacts: ${totalContacts}\n\nStage Distribution:\n${stageDistribution}`;
+            const successMsg = `API test successful!\n\nPipeline: ${data.pipeline_name}\nTotal ${contactType}: ${totalContacts}\n\nStage Distribution:\n${stageDistribution}`;
             
             // Update UI
             statusElement.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-2"></i>API working!</span>';

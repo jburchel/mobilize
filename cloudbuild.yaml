@@ -1,42 +1,69 @@
 steps:
-# Build the container image
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA', '.']
+  # Print the environment variables (for debugging)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Build started on $(date)"
+        echo "FIREBASE_PROJECT_ID: $$FIREBASE_PROJECT_ID"
+        echo "GOOGLE_CLOUD_PROJECT: $$GOOGLE_CLOUD_PROJECT"
+    env:
+      - 'FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
+      - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID}'
 
-# Push the container image to Artifact Registry
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA']
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA', '.']
+    env:
+      - 'FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
+      - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID}'
 
-# Deploy container image to Cloud Run
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  entrypoint: gcloud
-  args:
-  - 'run'
-  - 'deploy'
-  - 'mobilize-crm'
-  - '--image'
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA'
-  - '--region'
-  - 'us-central1'
-  - '--platform'
-  - 'managed'
-  - '--allow-unauthenticated'
-  - '--set-secrets'
-  - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest,GOOGLE_CLIENT_ID=mobilize-google-client-id:latest,GOOGLE_CLIENT_SECRET=mobilize-google-client-secret:latest'
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA']
 
-# Tag with latest for easy reference
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['tag', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:latest']
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'mobilize-crm'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--service-account'
+      - 'mobilize-crm-service-account@mobilize-crm.iam.gserviceaccount.com'
+      - '--set-env-vars'
+      - 'FLASK_APP=app.py,FLASK_ENV=production,LOG_LEVEL=INFO,LOG_TO_STDOUT=True,PREFERRED_URL_SCHEME=https,BASE_URL=https://mobilize-crm.org,SKIP_DB_INIT=True,FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}'
+      - '--set-secrets'
+      - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest,FIREBASE_CREDENTIALS=firebase-credentials:latest'
 
-# Push the latest tag
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:latest']
+  # Tag with latest for easy reference
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['tag', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:latest']
 
+  # Push the latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:latest']
+
+# Substitution variables
+substitutions:
+  _REGION: us-central1
+  _FIREBASE_PROJECT_ID: mobilize-crm
+
+# Images to store in Container Registry
 images:
-- 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA'
-- 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/mobilize-crm:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY
 
+# Timeout for the entire build
 timeout: 1800s 

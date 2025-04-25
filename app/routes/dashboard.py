@@ -403,7 +403,7 @@ def debug_chart_data(chart_type):
                 ORDER BY people_pipeline
                 """
                 params = {}
-            elif current_user.is_office_admin():
+            elif current_user.role == 'office_admin':
                 # Office admin sees people in their office
                 query = """
                 SELECT 
@@ -445,7 +445,7 @@ def debug_chart_data(chart_type):
                 ORDER BY church_pipeline
                 """
                 params = {}
-            elif current_user.is_office_admin() or True:  # Regular users see office churches
+            elif current_user.role == 'office_admin' or True:  # Regular users see office churches
                 # Office admin or regular user sees churches in their office
                 query = """
                 SELECT 

@@ -7,6 +7,7 @@
   - [x] Test connection to Supabase database
 - [x] Complete SQLite to PostgreSQL migration
   - [x] Follow instructions in `docs/sqlite_to_postgres_migration.md`
+  - [x] Use `pg_migration_test_final.py` script to preview SQL migration commands
   - [x] Verify database schema was properly created
   - [x] Confirm all data was migrated successfully
   - [x] Run validation queries to check data integrity
@@ -68,9 +69,23 @@
   - [x] Connect Git repository to Cloud Build
   - [x] Create build trigger for main/master branch
   - [x] Verify cloudbuild.yaml is properly configured
-  - [ ] Push code to repository to trigger deployment
+  - [x] Push code to repository to trigger deployment
 
-**Note:** Continuous Deployment has been successfully set up! The GitHub repository (jburchel/mobilize) is connected to Cloud Build with a trigger named "Mobilize-Trigger" that will deploy on pushes to the main branch. All verification checks have passed. To deploy, simply push changes to the main branch.
+**Note:** Continuous Deployment has been successfully set up! The GitHub repository (jburchel/mobilize) is connected to Cloud Build with a trigger named "Mobilize-Trigger" that will deploy on pushes to the main branch. The deployment process has been triggered and is currently running. You can monitor the progress in the Google Cloud Console under Cloud Build > History.
+
+**Troubleshooting Steps Taken:**
+1. Added permission roles to service account:
+   - roles/logging.logWriter - For logging build output
+   - roles/storage.admin - For accessing storage buckets
+   - roles/containerregistry.ServiceAgent - For using Container Registry
+   - roles/artifactregistry.writer - For pushing to Artifact Registry
+   - roles/run.admin - For deploying to Cloud Run
+
+2. Created Artifact Registry repository:
+   - Command: `gcloud artifacts repositories create mobilize-crm --repository-format=docker --location=us-central1`
+
+3. Updated cloudbuild.yaml to use Artifact Registry instead of Container Registry:
+   - Changed image paths from `gcr.io/$PROJECT_ID/...` to `us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/...`
 
 ## 6. Domain Configuration (Optional)
 

@@ -12,6 +12,7 @@ import json
 from app.services.notification_service import send_notification
 from app.services.email_service import send_email, send_pipeline_reminder_email
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -161,30 +162,38 @@ def process_automatic_reminders():
         if pipeline.office_id:
             office = Office.query.get(pipeline.office_id)
             if office:
-                office_users = User.query.filter_by(office_id=office.id, is_active=True).all()
-                office_admins = [u for u in office_users if u.is_office_admin(office.id)]
+                office_users = User.query.filter_by(office_id=office.id).all()
+                if not office_users:
+                    logger.warning(f"No users found for office {office.id} when assigning fallback.")
+                    continue
+                
+                # Try to find an office admin first
+                office_admins = [u for u in office_users if u.role == 'office_admin']
+                if office_admins:
+                    user = random.choice(office_admins)
+                else:
+                    user = random.choice(office_users)
                 
                 # Send reminders to office admins
                 for threshold, contacts in contacts_by_threshold.items():
                     if contacts:
-                        for user in office_admins:
-                            try:
-                                send_pipeline_reminder_email(
-                                    user=user,
-                                    stage=stage,
-                                    pipeline=pipeline,
-                                    contacts=contacts,
-                                    days=threshold
-                                )
-                                reminders_sent += 1
-                                
-                                current_app.logger.info(
-                                    f"Sent {threshold}-day reminder to {user.email} for {len(contacts)} contacts in {stage.name}"
-                                )
-                            except Exception as e:
-                                current_app.logger.error(
-                                    f"Error sending reminder email to {user.email}: {str(e)}"
-                                )
+                        try:
+                            send_pipeline_reminder_email(
+                                user=user,
+                                stage=stage,
+                                pipeline=pipeline,
+                                contacts=contacts,
+                                days=threshold
+                            )
+                            reminders_sent += 1
+                            
+                            current_app.logger.info(
+                                f"Sent {threshold}-day reminder to {user.email} for {len(contacts)} contacts in {stage.name}"
+                            )
+                        except Exception as e:
+                            current_app.logger.error(
+                                f"Error sending reminder email to {user.email}: {str(e)}"
+                            )
     
     return reminders_sent
 
