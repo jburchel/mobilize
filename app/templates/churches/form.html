@@ -213,83 +213,35 @@
                             </div>
                         </div>
                         
-                        <!-- Leadership Information Section -->
+                        <!-- Pastor Selection Section -->
                         <div class="row mb-4 mt-4">
                             <div class="col-12">
-                                <h5 class="border-bottom pb-2">Leadership Information</h5>
+                                <h5 class="border-bottom pb-2">Pastor Assignment</h5>
                             </div>
                         </div>
-
                         <div class="row">
                             <div class="col-md-6">
-                                <!-- Senior Pastor Information -->
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        {{ form.senior_pastor_first_name.label(class="form-label") }}
-                                        {{ form.senior_pastor_first_name(class="form-control" + (" is-invalid" if form.senior_pastor_first_name.errors else "")) }}
-                                        {% if form.senior_pastor_first_name.errors %}
-                                            <div class="invalid-feedback">{{ form.senior_pastor_first_name.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="col-md-6">
-                                        {{ form.senior_pastor_last_name.label(class="form-label") }}
-                                        {{ form.senior_pastor_last_name(class="form-control" + (" is-invalid" if form.senior_pastor_last_name.errors else "")) }}
-                                        {% if form.senior_pastor_last_name.errors %}
-                                            <div class="invalid-feedback">{{ form.senior_pastor_last_name.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                
                                 <div class="mb-3">
-                                    {{ form.senior_pastor_phone.label(class="form-label") }}
-                                    {{ form.senior_pastor_phone(class="form-control" + (" is-invalid" if form.senior_pastor_phone.errors else "")) }}
-                                    {% if form.senior_pastor_phone.errors %}
-                                        <div class="invalid-feedback">{{ form.senior_pastor_phone.errors[0] }}</div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="mb-3">
-                                    {{ form.senior_pastor_email.label(class="form-label") }}
-                                    {{ form.senior_pastor_email(class="form-control" + (" is-invalid" if form.senior_pastor_email.errors else "")) }}
-                                    {% if form.senior_pastor_email.errors %}
-                                        <div class="invalid-feedback">{{ form.senior_pastor_email.errors[0] }}</div>
-                                    {% endif %}
+                                    <label for="senior_pastor_id" class="form-label">Senior Pastor</label>
+                                    <select name="senior_pastor_id" id="senior_pastor_id" class="form-select">
+                                        <option value="">Select a person</option>
+                                        {% for person in people %}
+                                            <option value="{{ person.id }}" {% if person.church_role == 'senior_pastor' %}selected{% endif %}>{{ person.first_name }} {{ person.last_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Assign a Senior Pastor from associated people. <a href="{{ url_for('people.add') }}" target="_blank">Add new person</a> if needed.</div>
                                 </div>
                             </div>
-                            
                             <div class="col-md-6">
-                                <!-- Missions Pastor Information -->
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        {{ form.missions_pastor_first_name.label(class="form-label") }}
-                                        {{ form.missions_pastor_first_name(class="form-control" + (" is-invalid" if form.missions_pastor_first_name.errors else "")) }}
-                                        {% if form.missions_pastor_first_name.errors %}
-                                            <div class="invalid-feedback">{{ form.missions_pastor_first_name.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="col-md-6">
-                                        {{ form.missions_pastor_last_name.label(class="form-label") }}
-                                        {{ form.missions_pastor_last_name(class="form-control" + (" is-invalid" if form.missions_pastor_last_name.errors else "")) }}
-                                        {% if form.missions_pastor_last_name.errors %}
-                                            <div class="invalid-feedback">{{ form.missions_pastor_last_name.errors[0] }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                
                                 <div class="mb-3">
-                                    {{ form.mission_pastor_phone.label(class="form-label") }}
-                                    {{ form.mission_pastor_phone(class="form-control" + (" is-invalid" if form.mission_pastor_phone.errors else "")) }}
-                                    {% if form.mission_pastor_phone.errors %}
-                                        <div class="invalid-feedback">{{ form.mission_pastor_phone.errors[0] }}</div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="mb-3">
-                                    {{ form.mission_pastor_email.label(class="form-label") }}
-                                    {{ form.mission_pastor_email(class="form-control" + (" is-invalid" if form.mission_pastor_email.errors else "")) }}
-                                    {% if form.mission_pastor_email.errors %}
-                                        <div class="invalid-feedback">{{ form.mission_pastor_email.errors[0] }}</div>
-                                    {% endif %}
+                                    <label for="missions_pastor_id" class="form-label">Missions Pastor</label>
+                                    <select name="missions_pastor_id" id="missions_pastor_id" class="form-select">
+                                        <option value="">Select a person</option>
+                                        {% for person in people %}
+                                            <option value="{{ person.id }}" {% if person.church_role == 'missions_pastor' %}selected{% endif %}>{{ person.first_name }} {{ person.last_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Assign a Missions Pastor from associated people. <a href="{{ url_for('people.add') }}" target="_blank">Add new person</a> if needed.</div>
                                 </div>
                             </div>
                         </div>

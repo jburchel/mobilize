@@ -331,102 +331,16 @@ let peopleChart = null;
 let churchChart = null;
 
 // Function to fetch pipeline data and update charts
-function updatePipelineChart(chartType, containerSelector, retryCount = 0) {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] Updating ${chartType} pipeline chart...`);
-    
-    // Show loading state
-    const container = document.querySelector(containerSelector);
-    if (!container) {
-        console.error(`Container ${containerSelector} not found`);
-        return;
-    }
-    
-    // Show loading indicator
-    const loadingId = `${chartType}-chart-loading`;
-    const loadingElem = document.getElementById(loadingId);
-    if (loadingElem) {
-        loadingElem.style.display = 'flex';
-    }
-    
-    // Use our debug endpoint for chart data
-    fetch(`/dashboard/debug/chart-data/${chartType}?timestamp=${Date.now()}`)
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`API returned ${response.status}: ${response.statusText}\n${text}`);
-                });
-            }
-            
-            // First capture the raw text for debugging
-            return response.text().then(text => {
-                try {
-                    // Then parse it as JSON
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.error(`Failed to parse response as JSON: ${text}`);
-                    throw new Error(`Invalid JSON response: ${e.message}`);
-                }
-            });
-        })
+function fetchPipelineChartData(chartType) {
+    const endpoint = `/dashboard/pipeline-chart-data?type=${chartType}`;
+    fetch(endpoint)
+        .then(response => response.json())
         .then(data => {
-            console.log(`[${timestamp}] ${chartType} pipeline data:`, data);
-            
-            // Hide loading indicator immediately
-            if (loadingElem) {
-                loadingElem.style.display = 'none';
-            }
-            
-            if (!data.stages || data.stages.length === 0) {
-                container.innerHTML = `<div class="alert alert-info">No ${chartType} pipeline data available.</div>`;
-                return;
-            }
-            
-            // Render the chart
-            renderPipelineChart(chartType, containerSelector, data);
-            
-            // Update view button URLs
-            updateViewButtons(chartType, data.pipeline_id);
+            console.log(`[${chartType} pipeline chart data]`, data); // Debug API response
+            const containerId = chartType === 'person' ? '#peoplePipelineChart' : '#churchPipelineChart';
+            renderPipelineChart(chartType, containerId, data);
         })
-        .catch(error => {
-            console.error(`[${timestamp}] Error updating ${chartType} pipeline chart:`, error);
-            
-            // Hide loading indicator
-            if (loadingElem) {
-                loadingElem.style.display = 'none';
-            }
-            
-            // Show error message
-            const errorId = `${chartType}-chart-error`;
-            const errorElem = document.getElementById(errorId);
-            if (errorElem) {
-                errorElem.style.display = 'block';
-                errorElem.innerHTML = `
-                    <div class="alert alert-danger">
-                        <p><strong>Failed to load chart data:</strong> ${error.message}</p>
-                        <button class="btn btn-sm btn-outline-danger mt-2 retry-btn">Retry</button>
-                    </div>
-                `;
-                
-                // Add retry functionality
-                const retryBtn = errorElem.querySelector('.retry-btn');
-                if (retryBtn) {
-                    retryBtn.addEventListener('click', function() {
-                        errorElem.style.display = 'none';
-                        updatePipelineChart(chartType, containerSelector, 0);
-                    });
-                }
-            }
-            
-            // Auto-retry with exponential backoff, but only up to 3 times
-            if (retryCount < 3) {
-                const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
-                console.log(`Retrying in ${delay/1000}s... (Attempt ${retryCount + 1}/3)`);
-                setTimeout(() => {
-                    updatePipelineChart(chartType, containerSelector, retryCount + 1);
-                }, delay);
-            }
-        });
+        .catch(err => console.error(`${chartType} fetch error:`, err));
 }
 
 // Function to hard refresh all charts
@@ -449,8 +363,8 @@ function hardRefreshCharts() {
     }
     
     // Force fetch fresh data with cache busting
-    updatePipelineChart('person', '#peoplePipelineChart');
-    updatePipelineChart('church', '#churchPipelineChart');
+    fetchPipelineChartData('person');
+    fetchPipelineChartData('church');
     
     return false; // Prevent default link behavior
 }
@@ -523,7 +437,7 @@ function renderPipelineChart(chartType, containerSelector, data) {
     
     // Prepare chart data
     const labels = data.stages.map(stage => stage.name);
-    const counts = data.stages.map(stage => stage.count);
+    const counts = data.stages.map(stage => stage.contact_count);
     const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name));
     
     // Debug
@@ -694,13 +608,7 @@ function testPipelineApi(chartType) {
     }
     
     // Use our debug endpoint for chart data
-    fetch(`/dashboard/debug/chart-data/${chartType}?timestamp=${Date.now()}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`API returned ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
+    fetchPipelineChartData(chartType)
         .then(data => {
             console.log(`[${timestamp}] API test successful:`, data);
             
@@ -712,7 +620,7 @@ function testPipelineApi(chartType) {
             let stageDistribution = '';
             if (data.stages && data.stages.length > 0) {
                 stageDistribution = data.stages.map(stage => 
-                    `${stage.name}: ${stage.count} (${stage.percentage}%)`
+                    `${stage.name}: ${stage.contact_count} (${stage.percentage}%)`
                 ).join('\n');
             }
             
@@ -726,7 +634,7 @@ function testPipelineApi(chartType) {
             alert(successMsg);
             
             // Force refresh the chart
-            updatePipelineChart(chartType, `#${chartType}PipelineChart`, 0);
+            fetchPipelineChartData(chartType);
         })
         .catch(error => {
             console.error(`[${timestamp}] API test failed:`, error);
@@ -760,8 +668,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize charts with delay to ensure DOM is fully ready
     setTimeout(() => {
         console.log('Starting chart initialization');
-        updatePipelineChart('person', '#peoplePipelineChart');
-        updatePipelineChart('church', '#churchPipelineChart');
+        fetchPipelineChartData('person');
+        fetchPipelineChartData('church');
     }, 500);
     
     // Add event listeners for API test buttons
@@ -771,18 +679,6 @@ document.addEventListener('DOMContentLoaded', function() {
             testPipelineApi(pipeline);
         });
     });
-    
-    // Force a direct test of the APIs for debugging
-    console.log('Direct API test:');
-    fetch('/dashboard/debug/chart-data/person')
-        .then(r => r.json())
-        .then(data => console.log('Person data:', data))
-        .catch(err => console.error('Person fetch error:', err));
-        
-    fetch('/dashboard/debug/chart-data/church')
-        .then(r => r.json())
-        .then(data => console.log('Church data:', data))
-        .catch(err => console.error('Church fetch error:', err));
 });
 </script>
 {% endblock %}

@@ -217,7 +217,7 @@ function initializeChurchesSearch() {
                         ${formatPipelineBadge(church.pipeline_stage)}
                     </td>
                     <td>
-                        ${church.email ? `<a href="mailto:${church.email}" class="me-2" title="Email"><i class="bi bi-envelope"></i></a>` : ''}
+                        ${church.email ? `<a href="#" class="email-link me-2" title="Email" data-email="${church.email}" data-name="${church.name}" data-id="${church.id}" data-type="church"><i class="bi bi-envelope"></i></a>` : ''}
                         ${church.phone ? `<a href="tel:${church.phone}" class="me-2" title="Call"><i class="bi bi-telephone"></i></a>` : ''}
                         ${church.website ? `<a href="${church.website}" target="_blank" title="Website"><i class="bi bi-globe"></i></a>` : ''}
                     </td>

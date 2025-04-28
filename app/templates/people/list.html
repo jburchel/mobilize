@@ -131,9 +131,9 @@
                                     <td>{{ person.email }}</td>
                                     <td>{{ person.phone }}</td>
                                     <td>
-                                        {% if person.pipeline_stage %}
-                                        <span class="badge badge-{{ 'primary' if person.pipeline_stage == 'PROMOTION' else 'success' if person.pipeline_stage == 'INFORMATION' else 'warning' if person.pipeline_stage == 'INVITATION' else 'info' if person.pipeline_stage == 'CONFIRMATION' else 'secondary' }}">
-                                            {{ person.pipeline_stage }}
+                                        {% if person.main_pipeline_stage %}
+                                        <span class="badge badge-{{ 'primary' if person.main_pipeline_stage == 'PROMOTION' else 'success' if person.main_pipeline_stage == 'INFORMATION' else 'warning' if person.main_pipeline_stage == 'INVITATION' else 'info' if person.main_pipeline_stage == 'CONFIRMATION' else 'secondary' }}">
+                                            {{ person.main_pipeline_stage }}
                                         </span>
                                         {% else %}
                                         <span class="badge badge-secondary">None</span>

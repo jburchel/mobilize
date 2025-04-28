@@ -368,14 +368,33 @@ def compose():
     # Pass current datetime for the meeting scheduler
     now = datetime.now()
     
-    return render_template('communications/compose.html', 
+    # Get pre-selected person or church if provided
+    person_id = request.args.get('person_id')
+    church_id = request.args.get('church_id')
+    
+    # Modal/partial support
+    if request.args.get('modal') == '1' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('communications/compose_modal.html',
+                              people=people,
+                              churches=churches,
+                              reply_to=reply_to,
+                              default_signature=default_signature,
+                              now=now,
+                              timedelta=timedelta,
+                              person_id=person_id,
+                              church_id=church_id,
+                              email=request.args.get('email'),
+                              name=request.args.get('name'))
+    return render_template('communications/compose.html',
                           people=people,
                           churches=churches,
                           reply_to=reply_to,
                           default_signature=default_signature,
                           now=now,
                           timedelta=timedelta,
-                          page_title="Compose Message")
+                          page_title="Compose Message",
+                          person_id=person_id,
+                          church_id=church_id)
 
 @communications_bp.route('/view/<int:id>')
 @login_required

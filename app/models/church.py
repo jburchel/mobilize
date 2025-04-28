@@ -104,6 +104,21 @@ class Church(Contact):
         ).first()
         return pipeline_contact.current_stage_id if pipeline_contact else None
 
+    @property
+    def main_pipeline_stage(self):
+        from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
+        main_pipeline = Pipeline.query.filter_by(pipeline_type="church", is_main_pipeline=True).first()
+        if not main_pipeline:
+            return None
+        pipeline_contact = PipelineContact.query.filter_by(
+            contact_id=self.id,
+            pipeline_id=main_pipeline.id
+        ).first()
+        if pipeline_contact and pipeline_contact.current_stage_id:
+            stage = PipelineStage.query.get(pipeline_contact.current_stage_id)
+            return stage.name if stage else None
+        return None
+
     def __repr__(self) -> str:
         return f"<Church {self.name}>"
 

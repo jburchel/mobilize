@@ -9,6 +9,7 @@ import enum
 class TaskStatus(enum.Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
+    ON_HOLD = "on_hold"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
@@ -83,6 +84,7 @@ class Task(Base):
     assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
     owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
+    office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'))
     
     # Note: All relationships are defined in relationships.py
     
@@ -116,6 +118,7 @@ class Task(Base):
             'assigned_to': self.assigned_to,
             'owner_id': self.owner_id,
             'created_by': self.created_by,
+            'office_id': self.office_id,
             'google_calendar_event_id': self.google_calendar_event_id,
             'google_calendar_sync_enabled': self.google_calendar_sync_enabled,
             'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None,

@@ -119,7 +119,7 @@
                     {% if church.main_contact.email %}
                     <div class="mb-2">
                         <i class="bi bi-envelope me-2"></i>
-                        <a href="mailto:{{ church.main_contact.email }}">{{ church.main_contact.email }}</a>
+                        <a href="#" class="email-link" data-email="{{ church.main_contact.email }}" data-name="{{ church.main_contact.first_name }} {{ church.main_contact.last_name }}" data-id="{{ church.main_contact.id }}" data-type="person">{{ church.main_contact.email }}</a>
                     </div>
                     {% endif %}
 
@@ -139,7 +139,7 @@
             </div>
             {% endif %}
             
-            <!-- Basic Information -->
+            <!-- Virtuous badge at the top of Basic Information card -->
             <div class="card detail-card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Basic Information</h5>
@@ -149,34 +149,50 @@
                         <div class="col-4 text-muted">Church Name:</div>
                         <div class="col-8">{{ church.name }}</div>
                     </div>
-                    
                     {% if church.location %}
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Location:</div>
                         <div class="col-8">{{ church.location }}</div>
                     </div>
                     {% endif %}
-                    
                     {% if church.denomination %}
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Denomination:</div>
                         <div class="col-8">{{ church.denomination }}</div>
                     </div>
                     {% endif %}
-                    
                     {% if church.weekly_attendance %}
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Weekly Attendance:</div>
                         <div class="col-8">{{ church.weekly_attendance }}</div>
                     </div>
                     {% endif %}
-                    
                     {% if church.year_founded %}
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Year Founded:</div>
                         <div class="col-8">{{ church.year_founded }}</div>
                     </div>
                     {% endif %}
+                    <!-- Move Virtuous to the bottom with a visual indicator -->
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Virtuous:</div>
+                        <div class="col-8">
+                            {% if church.virtuous %}
+                                <!-- Checked Checkbox SVG -->
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="2" y="2" width="16" height="16" rx="3" fill="#198754" stroke="#198754" stroke-width="2"/>
+                                    <path d="M6 10.5L9 13.5L14 8.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="ms-2 text-success">Yes</span>
+                            {% else %}
+                                <!-- Unchecked Checkbox SVG -->
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="2" y="2" width="16" height="16" rx="3" fill="white" stroke="#adb5bd" stroke-width="2"/>
+                                </svg>
+                                <span class="ms-2 text-muted">No</span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -190,7 +206,7 @@
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Email:</div>
                         <div class="col-8">
-                            <a href="mailto:{{ church.email }}">{{ church.email }}</a>
+                            <a href="#" class="email-link" data-email="{{ church.email }}" data-name="{{ church.name }}" data-id="{{ church.id }}" data-type="church">{{ church.email }}</a>
                         </div>
                     </div>
                     {% endif %}
@@ -235,55 +251,26 @@
                     <h5 class="card-title mb-0">Leadership</h5>
                 </div>
                 <div class="card-body">
-                    {% if church.senior_pastor_name %}
+                    {% for person in church.people if person.church_role == 'senior_pastor' %}
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Senior Pastor:</div>
-                        <div class="col-8">{{ church.senior_pastor_name }}</div>
-                    </div>
-                    {% endif %}
-                    
-                    {% if church.senior_pastor_phone %}
-                    <div class="row mb-3">
-                        <div class="col-4 text-muted">Senior Pastor Phone:</div>
                         <div class="col-8">
-                            <a href="tel:{{ church.senior_pastor_phone }}">{{ church.senior_pastor_phone }}</a>
+                            <a href="{{ url_for('people.show', id=person.id) }}">{{ person.full_name }}</a>
+                            {% if person.email %}<br>Email: <a href="#" class="email-link" data-email="{{ person.email }}" data-name="{{ person.full_name }}" data-id="{{ person.id }}" data-type="person">{{ person.email }}</a>{% endif %}
+                            {% if person.phone %}<br>Phone: {{ person.phone }}{% endif %}
                         </div>
                     </div>
-                    {% endif %}
-                    
-                    {% if church.senior_pastor_email %}
-                    <div class="row mb-3">
-                        <div class="col-4 text-muted">Senior Pastor Email:</div>
-                        <div class="col-8">
-                            <a href="mailto:{{ church.senior_pastor_email }}">{{ church.senior_pastor_email }}</a>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    {% if church.missions_pastor_first_name or church.missions_pastor_last_name %}
+                    {% endfor %}
+                    {% for person in church.people if person.church_role == 'missions_pastor' %}
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Missions Pastor:</div>
-                        <div class="col-8">{{ church.missions_pastor_first_name }} {{ church.missions_pastor_last_name }}</div>
-                    </div>
-                    {% endif %}
-                    
-                    {% if church.mission_pastor_phone %}
-                    <div class="row mb-3">
-                        <div class="col-4 text-muted">Missions Pastor Phone:</div>
                         <div class="col-8">
-                            <a href="tel:{{ church.mission_pastor_phone }}">{{ church.mission_pastor_phone }}</a>
+                            <a href="{{ url_for('people.show', id=person.id) }}">{{ person.full_name }}</a>
+                            {% if person.email %}<br>Email: <a href="#" class="email-link" data-email="{{ person.email }}" data-name="{{ person.full_name }}" data-id="{{ person.id }}" data-type="person">{{ person.email }}</a>{% endif %}
+                            {% if person.phone %}<br>Phone: {{ person.phone }}{% endif %}
                         </div>
                     </div>
-                    {% endif %}
-                    
-                    {% if church.mission_pastor_email %}
-                    <div class="row mb-3">
-                        <div class="col-4 text-muted">Missions Pastor Email:</div>
-                        <div class="col-8">
-                            <a href="mailto:{{ church.mission_pastor_email }}">{{ church.mission_pastor_email }}</a>
-                        </div>
-                    </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -299,13 +286,16 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="row mb-3">
-                                <div class="col-5 text-muted">Pipeline:</div>
-                                <div class="col-7">{{ church.church_pipeline or 'Not specified' }}</div>
+                                <div class="col-5 text-muted">Main Pipeline Stage:</div>
+                                <div class="col-7">{{ church.main_pipeline_stage or 'Not specified' }}</div>
                             </div>
-                            
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Priority:</div>
                                 <div class="col-7">{{ church.priority or 'Not specified' }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted" style="font-size: 0.95rem; white-space: nowrap;">Secondary Pipeline Stage:</div>
+                                <div class="col-7">{{ church.secondary_pipeline_stage or 'Not specified' }}</div>
                             </div>
                         </div>
                         
@@ -411,7 +401,7 @@
                                             <td>{{ person.church_role or 'Not specified' }}</td>
                                             <td>
                                                 {% if person.email %}
-                                                    <a href="mailto:{{ person.email }}" class="me-2"><i class="bi bi-envelope"></i></a>
+                                                    <a href="#" class="email-link me-2" data-email="{{ person.email }}" data-name="{{ person.full_name }}" data-id="{{ person.id }}" data-type="person"><i class="bi bi-envelope"></i></a>
                                                 {% endif %}
                                                 {% if person.phone %}
                                                     <a href="tel:{{ person.phone }}"><i class="bi bi-telephone"></i></a>
@@ -608,7 +598,7 @@
                                                 <div class="d-flex flex-column">
                                                     {% if person.email %}
                                                         <div class="small text-truncate">
-                                                            <a href="mailto:{{ person.email }}">{{ person.email }}</a>
+                                                            <a href="#" class="email-link" data-email="{{ person.email }}" data-name="{{ person.full_name }}" data-id="{{ person.id }}" data-type="person">{{ person.email }}</a>
                                                         </div>
                                                     {% endif %}
                                                     {% if person.phone %}
@@ -634,6 +624,51 @@
                         </form>
                     {% else %}
                         <p class="text-muted mb-0">No people associated with this church.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Additional Information Card -->
+            <div class="card detail-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Additional Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if church.info_given %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Information Given:</div>
+                        <div class="col-8">{{ church.info_given }}</div>
+                    </div>
+                    {% endif %}
+                    {% if church.tags %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Tags:</div>
+                        <div class="col-8">
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for tag in church.tags.split(',') %}
+                                    <span class="badge bg-primary">{{ tag.strip() }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if church.reason_closed %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Reason Closed:</div>
+                        <div class="col-8">{{ church.reason_closed }}</div>
+                    </div>
+                    {% endif %}
+                    {% if church.date_closed %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Date Closed:</div>
+                        <div class="col-8">{{ church.date_closed }}</div>
+                    </div>
+                    {% endif %}
+                    {% if church.notes %}
+                    <div class="row mb-3">
+                        <div class="col-4 text-muted">Notes:</div>
+                        <div class="col-8">{{ church.notes|safe|nl2br }}</div>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -739,32 +774,14 @@
 
 <!-- Log Communication Modal -->
 <div class="modal fade" id="logCommunicationModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Log Communication</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <form id="logCommunicationForm" action="{{ url_for('communications.add') }}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="church_id" value="{{ church.id }}">
-                    <div class="mb-3">
-                        <label for="commType" class="form-label">Type</label>
-                        <select class="form-select" id="commType" name="type" required>
-                            <option value="Email">Email</option>
-                            <option value="Phone">Phone</option>
-                            <option value="Meeting">Meeting</option>
-                            <option value="Text">Text</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="commNotes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="commNotes" name="notes" rows="4" required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Log Communication</button>
-                </form>
+            <div class="modal-body p-0">
+                {% include 'communications/compose_form.html' with context %}
             </div>
         </div>
     </div>
@@ -824,6 +841,11 @@
         </div>
     </div>
 </div>
+
+<!-- Add Virtuous badge if set -->
+{% if church.virtuous %}
+    <div class="alert alert-success p-2 mb-2">Virtuous Church</div>
+{% endif %}
 
 {% endblock %}
 

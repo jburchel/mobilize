@@ -177,23 +177,23 @@ def process_automatic_reminders():
                 # Send reminders to office admins
                 for threshold, contacts in contacts_by_threshold.items():
                     if contacts:
-                        try:
-                            send_pipeline_reminder_email(
-                                user=user,
-                                stage=stage,
-                                pipeline=pipeline,
-                                contacts=contacts,
-                                days=threshold
-                            )
-                            reminders_sent += 1
-                            
-                            current_app.logger.info(
-                                f"Sent {threshold}-day reminder to {user.email} for {len(contacts)} contacts in {stage.name}"
-                            )
-                        except Exception as e:
-                            current_app.logger.error(
-                                f"Error sending reminder email to {user.email}: {str(e)}"
-                            )
+                            try:
+                                send_pipeline_reminder_email(
+                                    user=user,
+                                    stage=stage,
+                                    pipeline=pipeline,
+                                    contacts=contacts,
+                                    days=threshold
+                                )
+                                reminders_sent += 1
+                                
+                                current_app.logger.info(
+                                    f"Sent {threshold}-day reminder to {user.email} for {len(contacts)} contacts in {stage.name}"
+                                )
+                            except Exception as e:
+                                current_app.logger.error(
+                                    f"Error sending reminder email to {user.email}: {str(e)}"
+                                )
     
     return reminders_sent
 

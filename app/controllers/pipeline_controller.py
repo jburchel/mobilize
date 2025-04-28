@@ -8,6 +8,7 @@ from sqlalchemy import inspect
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy.orm import selectinload
 from sqlalchemy import desc
+from sqlalchemy import or_
 
 pipeline_bp = Blueprint('pipeline', __name__, url_prefix='/pipeline')
 
@@ -19,9 +20,16 @@ def index():
     custom_pipelines = Pipeline.query.filter_by(is_main_pipeline=False).all()
     
     # Get main pipelines
-    people_main_pipeline = Pipeline.query.filter_by(is_main_pipeline=True, pipeline_type='person').first()
+    # Main people pipeline may use 'person' or 'people' type
+    people_main_pipeline = Pipeline.query.filter(
+        Pipeline.is_main_pipeline==True,
+        Pipeline.pipeline_type.in_(['person','people'])
+    ).first()
+    
     if not people_main_pipeline:
-        people_main_pipeline = Pipeline.query.filter_by(pipeline_type='person').first()
+        people_main_pipeline = Pipeline.query.filter(
+            Pipeline.pipeline_type.in_(['person','people'])
+        ).first()
         
     church_main_pipeline = Pipeline.query.filter_by(is_main_pipeline=True, pipeline_type='church').first()
     if not church_main_pipeline:
@@ -1190,18 +1198,4 @@ def add_contact():
             })
         else:
             flash(f'Error adding contact: {str(e)}', 'danger')
-            return redirect(url_for('pipeline.view', pipeline_id=pipeline_id))
-
-@pipeline_bp.app_context_processor
-def inject_pipeline_utilities():
-    """Add utility functions to the template context."""
-    def get_pipeline_count(pipeline_id):
-        """Get contact count for a pipeline directly from the database."""
-        from sqlalchemy import text
-        result = db.session.execute(
-            text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
-            {"pipeline_id": pipeline_id}
-        )
-        return result.scalar() or 0
-    
-    return dict(get_pipeline_count=get_pipeline_count) 
+            return redirect(url_for('pipeline.view', pipeline_id=pipeline_id)) 

@@ -109,13 +109,20 @@ def verify_token():
         current_app.logger.error(f"Error in verify_token: {str(e)}")
         return jsonify({'error': 'Invalid token'}), 401
 
+@auth_bp.route('/login-page', methods=['GET'])
+def login_page():
+    """Render the login page."""
+    # You might want to pass some variables like OAuth URLs here
+    google_auth_url = get_google_auth_url()
+    return render_template('auth/login.html', google_auth_url=google_auth_url)
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Handle user login via API."""
-    # For GET requests, return unauthorized JSON
+    """Handle user login via API or redirect GET to login page."""
     if request.method == 'GET':
-        return jsonify({'error': 'Unauthorized'}), 401
-    
+        # Redirect GET requests to the actual login page route
+        return redirect(url_for('auth.login_page'))
+
     # For POST requests, process login data (API)
     data = request.get_json()
     

@@ -211,5 +211,8 @@
     <script src="{{ url_for('static', filename='js/search.js') }}"></script>
     
     {% block scripts %}{% endblock %}
+    <!-- Global Email Modal Container for AJAX-loaded modals -->
+    <div id="global-email-modal-container"></div>
+    <script src="{{ url_for('static', filename='js/email-modal.js') }}"></script>
 </body>
 </html> 

@@ -17,38 +17,88 @@ depends_on = None
 
 
 def upgrade():
-    # ### Using batch mode for SQLite compatibility ###
+    bind = op.get_bind()
+    is_sqlite = bind.dialect.name == 'sqlite'
+
+    # Check for columns *before* batch for SQLite
+    created_by_exists_sqlite = is_sqlite and column_exists('tasks', 'created_by')
+    user_id_exists_sqlite = is_sqlite and column_exists('tasks', 'user_id')
+
     with op.batch_alter_table('tasks', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('created_by', sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column('reminder_1_day', sa.Boolean(), nullable=True))
-        batch_op.add_column(sa.Column('reminder_2_hours', sa.Boolean(), nullable=True))
-        batch_op.add_column(sa.Column('completed_date', sa.DateTime(), nullable=True))
-        batch_op.add_column(sa.Column('completion_notes', sa.Text(), nullable=True))
-        # Create the foreign key after dropping the old one
-        if op.get_bind().dialect.name != 'sqlite':  # Skip for SQLite
-            batch_op.drop_constraint(None, type_='foreignkey')
-            batch_op.create_foreign_key(None, 'users', ['created_by'], ['id'])
-            batch_op.drop_column('user_id')
+        # Add columns if they don't exist
+        if not column_exists('tasks', 'created_by'):
+            batch_op.add_column(sa.Column('created_by', sa.Integer(), nullable=True))
+        if not column_exists('tasks', 'reminder_1_day'):
+            batch_op.add_column(sa.Column('reminder_1_day', sa.Boolean(), nullable=True))
+        if not column_exists('tasks', 'reminder_2_hours'):
+            batch_op.add_column(sa.Column('reminder_2_hours', sa.Boolean(), nullable=True))
+        if not column_exists('tasks', 'completed_date'):
+            batch_op.add_column(sa.Column('completed_date', sa.DateTime(), nullable=True))
+        if not column_exists('tasks', 'completion_notes'):
+            batch_op.add_column(sa.Column('completion_notes', sa.Text(), nullable=True))
+
+        # Foreign key and column drop logic (handle dialect differences)
+        if not is_sqlite:
+            # Attempt to drop old FK if it exists (using a generic name might fail if specific name was used)
+            # This part is risky if the old FK name isn't known or consistent.
+            # Consider commenting out if it causes issues.
+            # try:
+            #     batch_op.drop_constraint(None, type_='foreignkey') 
+            # except Exception as e:
+            #     print(f"Could not drop potentially existing FK: {e}")
+
+            if column_exists('tasks', 'created_by'): # Only create FK if column exists
+                batch_op.create_foreign_key('fk_tasks_created_by_users', 'users', ['created_by'], ['id'])
+            
+            if column_exists('tasks', 'user_id'): # Only drop if it exists
+                batch_op.drop_column('user_id')
         else:
-            # For SQLite, we can't drop and create constraints, we just add the column
-            # and will set up relationships in the model
-            pass
+             # Explicitly drop user_id for SQLite outside batch if it exists, as batch drop might fail
+             # We already checked user_id_exists_sqlite before the batch
+             pass # We will handle SQLite drop after batch
     
-    # For SQLite, let's just add a separate operation to drop the user_id column
-    if op.get_bind().dialect.name == 'sqlite':
-        with op.batch_alter_table('tasks', schema=None) as batch_op:
-            batch_op.drop_column('user_id')
+    # Handle SQLite specific drop outside batch
+    if is_sqlite and user_id_exists_sqlite:
+         # Need a new batch context to drop column in SQLite
+         with op.batch_alter_table('tasks', schema=None) as batch_op_sqlite_drop:
+            batch_op_sqlite_drop.drop_column('user_id')
 
 
 def downgrade():
-    # ### Using batch mode for SQLite compatibility ###
+    bind = op.get_bind()
+    is_sqlite = bind.dialect.name == 'sqlite'
+    
+    # Use batch mode for downgrade as well
     with op.batch_alter_table('tasks', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('user_id', sa.INTEGER(), nullable=True))
-        if op.get_bind().dialect.name != 'sqlite':  # Skip for SQLite
-            batch_op.drop_constraint(None, type_='foreignkey')
-            batch_op.create_foreign_key(None, 'users', ['user_id'], ['id'])
-        batch_op.drop_column('completion_notes')
-        batch_op.drop_column('completed_date')
-        batch_op.drop_column('reminder_2_hours')
-        batch_op.drop_column('reminder_1_day')
-        batch_op.drop_column('created_by')
+        # Add user_id back if it doesn't exist
+        if not column_exists('tasks', 'user_id'):
+            batch_op.add_column(sa.Column('user_id', sa.INTEGER(), nullable=True))
+
+        if not is_sqlite:
+            # Drop the new FK if it exists
+            try:
+                batch_op.drop_constraint('fk_tasks_created_by_users', type_='foreignkey')
+            except Exception as e:
+                 print(f"Could not drop FK constraint fk_tasks_created_by_users: {e}")
+            # Recreate old FK if user_id exists (Again, risky if original name was different)
+            # if column_exists('tasks', 'user_id'):
+            #     batch_op.create_foreign_key(None, 'users', ['user_id'], ['id'])
+        
+        # Drop added columns if they exist
+        if column_exists('tasks', 'completion_notes'):
+            batch_op.drop_column('completion_notes')
+        if column_exists('tasks', 'completed_date'):
+            batch_op.drop_column('completed_date')
+        if column_exists('tasks', 'reminder_2_hours'):
+            batch_op.drop_column('reminder_2_hours')
+        if column_exists('tasks', 'reminder_1_day'):
+            batch_op.drop_column('reminder_1_day')
+        if column_exists('tasks', 'created_by'):
+            batch_op.drop_column('created_by')
+
+# Helper function to check if column exists
+def column_exists(table_name, column_name):
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c['name'] for c in inspector.get_columns(table_name)]
+    return column_name in columns

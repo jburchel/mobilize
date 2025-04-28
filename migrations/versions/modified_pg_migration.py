@@ -17,6 +17,10 @@ depends_on = None
 
 
 def upgrade():
+    # Skip this PostgreSQL-specific migration on SQLite
+    bind = op.get_bind()
+    if bind.dialect.name == 'sqlite':
+        return
     # Create PostgreSQL-compatible schema with relaxed constraints
     # to facilitate data migration
     
@@ -362,6 +366,10 @@ def upgrade():
 
 
 def downgrade():
+    # Skip this PostgreSQL-specific migration on SQLite
+    bind = op.get_bind()
+    if bind.dialect.name == 'sqlite':
+        return
     # Drop tables in reverse order of creation to avoid foreign key constraints
     op.drop_table('email_tracking')
     op.drop_table('email_campaigns')

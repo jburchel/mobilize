@@ -203,22 +203,16 @@ def pipeline_chart_data():
     office_id = current_user.office_id
     
     try:
-        # Use a more efficient query with proper indexing and caching
-        # Convert pipeline type to a list for IN clause
-        pipeline_types = ['person', 'people'] if pipeline_type == 'person' else [pipeline_type]
-        
-        # Build an optimized query that gets all the data at once
+        # Use the correct pipeline_type value as in the DB
+        pipeline_type_value = 'people' if pipeline_type == 'person' else 'church'
         query = """
         WITH pipeline_data AS (
-            -- Select the appropriate pipeline
+            -- Select the universal main pipeline
             SELECT p.id, p.name
             FROM pipelines p
-            WHERE p.pipeline_type IN :pipeline_types
+            WHERE p.pipeline_type = :pipeline_type
             AND p.is_main_pipeline = 1
-            AND (p.office_id = :office_id OR :is_super_admin = 1)
-            ORDER BY 
-                CASE WHEN p.office_id = :office_id THEN 0 ELSE 1 END,
-                p.id
+            ORDER BY p.id
             LIMIT 1
         )
         -- Get the stage data with counts in a single query
@@ -247,17 +241,13 @@ def pipeline_chart_data():
         ORDER BY 
             ps."order"
         """
-        
-        # Execute the query with proper parameter binding
         results = db.session.execute(text(query), {
-            "pipeline_types": tuple(pipeline_types),
-            "office_id": office_id,
-            "is_super_admin": 1 if current_user.is_super_admin() else 0
+            "pipeline_type": pipeline_type_value
         }).fetchall()
         
         # If no results, return empty response
         if not results:
-            current_app.logger.error(f"No pipeline or stages found for types: {pipeline_types}")
+            current_app.logger.error(f"No pipeline or stages found for type: {pipeline_type}")
             empty_response = {
                 'pipeline_id': None,
                 'pipeline_name': None,

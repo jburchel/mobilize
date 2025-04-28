@@ -264,7 +264,7 @@
                         </div>
                         <h5>{{ communication.person.first_name }} {{ communication.person.last_name }}</h5>
                         {% if communication.person.email %}
-                        <p><a href="mailto:{{ communication.person.email }}">{{ communication.person.email }}</a></p>
+                        <p><a href="#" class="email-link" data-email="{{ communication.person.email }}" data-name="{{ communication.person.full_name }}" data-id="{{ communication.person.id }}" data-type="person">{{ communication.person.email }}</a></p>
                         {% endif %}
                         {% if communication.person.phone %}
                         <p><a href="tel:{{ communication.person.phone }}">{{ communication.person.phone }}</a></p>
@@ -286,7 +286,7 @@
                         </div>
                         <h5>{{ communication.church.name }}</h5>
                         {% if communication.church.email %}
-                        <p><a href="mailto:{{ communication.church.email }}">{{ communication.church.email }}</a></p>
+                        <p><a href="#" class="email-link" data-email="{{ communication.church.email }}" data-name="{{ communication.church.name }}" data-id="{{ communication.church.id }}" data-type="church">{{ communication.church.email }}</a></p>
                         {% endif %}
                         {% if communication.church.phone %}
                         <p><a href="tel:{{ communication.church.phone }}">{{ communication.church.phone }}</a></p>

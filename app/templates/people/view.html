@@ -61,8 +61,8 @@
                         </h4>
                         
                         <div class="mt-2">
-                            {% if person.people_pipeline %}
-                                <span class="badge bg-info">{{ person.people_pipeline }}</span>
+                            {% if person.main_pipeline_stage %}
+                                <span class="badge bg-info">{{ person.main_pipeline_stage }}</span>
                             {% endif %}
                             {% if person.priority %}
                                 <span class="badge bg-{{ person.priority.lower() }}">{{ person.priority }}</span>
@@ -129,7 +129,7 @@
                     <div class="row mb-3">
                         <div class="col-4 text-muted">Email:</div>
                         <div class="col-8">
-                            <a href="mailto:{{ person.email }}">{{ person.email }}</a>
+                            <a href="#" class="email-link" data-email="{{ person.email }}" data-name="{{ person.full_name }}" data-id="{{ person.id }}" data-type="person">{{ person.email }}</a>
                         </div>
                     </div>
                     {% endif %}
@@ -197,67 +197,45 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="row mb-3">
-                                <div class="col-5 text-muted">Pipeline:</div>
-                                <div class="col-7">{{ person.people_pipeline }}</div>
+                                <div class="col-5 text-muted">Main Pipeline Stage:</div>
+                                <div class="col-7">Promotion</div>
                             </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-5 text-muted">Status:</div>
-                                <div class="col-7">{{ person.pipeline_status }}</div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-5 text-muted">Stage:</div>
-                                <div class="col-7">{{ person.pipeline_stage }}</div>
-                            </div>
-                            
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Priority:</div>
                                 <div class="col-7">{{ person.priority }}</div>
                             </div>
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted" style="font-size: 0.95rem; white-space: nowrap;">Secondary Pipeline Stage:</div>
+                                <div class="col-7"></div>
+                            </div>
                         </div>
-                        
                         <div class="col-md-6">
+                            <div class="row mb-3">
+                                <div class="col-5 text-muted">Status:</div>
+                                <div class="col-7">{{ person.pipeline_status }}</div>
+                            </div>
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Source:</div>
                                 <div class="col-7">{{ person.source }}</div>
                             </div>
-                            
-                            {% if person.referred_by %}
-                            <div class="row mb-3">
-                                <div class="col-5 text-muted">Referred By:</div>
-                                <div class="col-7">{{ person.referred_by }}</div>
-                            </div>
-                            {% endif %}
-                            
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Assigned To:</div>
                                 <div class="col-7">{{ person.assigned_to }}</div>
                             </div>
-                            
-                            {% if person.date_closed %}
-                            <div class="row mb-3">
-                                <div class="col-5 text-muted">Date Closed:</div>
-                                <div class="col-7">{{ person.date_closed }}</div>
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
-                    
                     {% if person.info_given %}
                     <div class="row mb-3">
                         <div class="col-12 text-muted mb-1">Information Given:</div>
                         <div class="col-12">{{ person.info_given }}</div>
                     </div>
                     {% endif %}
-                    
                     {% if person.desired_service %}
                     <div class="row mb-3">
                         <div class="col-12 text-muted mb-1">Desired Service:</div>
                         <div class="col-12">{{ person.desired_service }}</div>
                     </div>
                     {% endif %}
-                    
                     {% if person.reason_closed %}
                     <div class="row mb-3">
                         <div class="col-12 text-muted mb-1">Reason Closed:</div>
@@ -305,7 +283,7 @@
                                             <td>{{ task.title }}</td>
                                             <td>{{ task.due_date.strftime('%Y-%m-%d') }}</td>
                                             <td>
-                                                <span class="badge bg-{{ task.priority.lower() }}">
+                                                <span class="badge bg-{{ task.priority|string|lower }}">
                                                     {{ task.priority }}
                                                 </span>
                                             </td>
@@ -525,37 +503,14 @@
 
 <!-- Log Communication Modal -->
 <div class="modal fade" id="logCommunicationModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Log Communication</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <form id="logCommunicationForm" action="{{ url_for('communications.add') }}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="person_id" value="{{ person.id }}">
-                    <div class="mb-3">
-                        <label for="commType" class="form-label">Type</label>
-                        <select class="form-select" id="commType" name="type" required>
-                            <option value="Email">Email</option>
-                            <option value="Phone">Phone</option>
-                            <option value="Video Conference">Video Conference</option>
-                            <option value="In Person">In Person</option>
-                            <option value="Meeting">Meeting</option>
-                            <option value="Text">Text</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="commNotes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="commNotes" name="notes" rows="4" required></textarea>
-                    </div>
-                    <div class="text-end">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Log Communication</button>
-                    </div>
-                </form>
+            <div class="modal-body p-0">
+                {% include 'communications/compose_form.html' with context %}
             </div>
         </div>
     </div>

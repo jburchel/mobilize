@@ -130,21 +130,21 @@
                                         <span class="badge badge-secondary">{{ church.denomination or "Not Set" }}</span>
                                     </td>
                                     <td>
-                                        {% if church.pipeline_stage %}
-                                            {% if church.pipeline_stage == 'INFORMATION' %}
+                                        {% if church.main_pipeline_stage %}
+                                            {% if church.main_pipeline_stage == 'INFORMATION' %}
                                                 <span class="badge bg-info">Information</span>
-                                            {% elif church.pipeline_stage == 'PROMOTION' %}
+                                            {% elif church.main_pipeline_stage == 'PROMOTION' %}
                                                 <span class="badge bg-primary">Promotion</span>
-                                            {% elif church.pipeline_stage == 'INVITATION' %}
+                                            {% elif church.main_pipeline_stage == 'INVITATION' %}
                                                 <span class="badge bg-warning">Invitation</span>
-                                            {% elif church.pipeline_stage == 'CONFIRMATION' %}
+                                            {% elif church.main_pipeline_stage == 'CONFIRMATION' %}
                                                 <span class="badge bg-success">Confirmation</span>
-                                            {% elif church.pipeline_stage == 'EN42' %}
+                                            {% elif church.main_pipeline_stage == 'EN42' %}
                                                 <span class="badge bg-secondary">EN42</span>
-                                            {% elif church.pipeline_stage == 'AUTOMATION' %}
+                                            {% elif church.main_pipeline_stage == 'AUTOMATION' %}
                                                 <span class="badge bg-dark">Automation</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ church.pipeline_stage|replace("_", " ")|title }}</span>
+                                                <span class="badge bg-secondary">{{ church.main_pipeline_stage|replace("_", " ")|title }}</span>
                                             {% endif %}
                                         {% else %}
                                             <span class="badge bg-light text-dark">Not Set</span>
@@ -152,7 +152,7 @@
                                     </td>
                                     <td>
                                         {% if church.email %}
-                                            <a href="mailto:{{ church.email }}" class="me-2" title="Email">
+                                            <a href="#" class="email-link me-2" title="Email" data-email="{{ church.email }}" data-name="{{ church.name }}" data-id="{{ church.id }}" data-type="church">
                                                 <i class="bi bi-envelope"></i>
                                             </a>
                                         {% endif %}
@@ -329,10 +329,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge badge-secondary">${church.denomination || "Not Set"}</span>
                     </td>
                     <td>
-                        ${formatPipelineBadge(church.pipeline_stage)}
+                        ${formatPipelineBadge(church.main_pipeline_stage)}
                     </td>
                     <td>
-                        ${church.email ? `<a href="mailto:${church.email}" class="me-2" title="Email"><i class="bi bi-envelope"></i></a>` : ''}
+                        ${church.email ? `<a href="#" class="email-link me-2" title="Email" data-email="${church.email}" data-name="${church.name}" data-id="${church.id}" data-type="church"><i class="bi bi-envelope"></i></a>` : ''}
                         ${church.phone ? `<a href="tel:${church.phone}" class="me-2" title="Call"><i class="bi bi-telephone"></i></a>` : ''}
                         ${church.website ? `<a href="${church.website}" target="_blank" title="Website"><i class="bi bi-globe"></i></a>` : ''}
                     </td>

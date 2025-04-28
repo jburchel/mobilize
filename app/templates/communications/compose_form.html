@@ -1,0 +1,163 @@
+{% block extra_css %}
+<style>
+.compose-modal-card {
+    box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.05);
+    border-radius: 8px;
+    background: #fff;
+    padding: 24px 24px 12px 24px;
+    margin: 16px;
+}
+.compose-modal-card .form-label {
+    font-weight: 500;
+}
+.compose-modal-card .form-control,
+.compose-modal-card .form-select {
+    margin-bottom: 18px;
+}
+.compose-modal-card .d-grid {
+    margin-top: 18px;
+}
+@media (max-width: 600px) {
+    .compose-modal-card {
+        padding: 12px 4px 4px 4px;
+        margin: 4px;
+    }
+}
+</style>
+{% endblock %}
+<div class="compose-modal-card">
+<form id="compose-form" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="mb-3">
+        <label for="message-type" class="form-label">Message Type</label>
+        <select class="form-select" id="message-type" name="type" required>
+            <option value="email" selected>Email</option>
+            <option value="sms">SMS</option>
+            <option value="phone">Phone Call Log</option>
+            <option value="video_conference">Video Conference</option>
+            <option value="in_person">In Person</option>
+            <option value="letter">Letter</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="recipient-type" class="form-label">Recipient Type</label>
+        <select class="form-select" id="recipient-type" name="recipient_type" required>
+            <option value="person" selected>Person</option>
+            <option value="church">Church</option>
+        </select>
+    </div>
+    <div class="mb-3" id="person-recipient-group">
+        <label for="person-recipient" class="form-label">Recipient (Person)</label>
+        <select class="form-select" id="person-recipient" name="person_id" data-email="{{ email if person_id and email else '' }}">
+            <option value="">Select a person...</option>
+            {% for person in people %}
+            <option value="{{ person.id }}" {% if person and person.id == person_id %}selected{% endif %}>{{ person.first_name }} {{ person.last_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3" id="church-recipient-group" style="display: none;">
+        <label for="church-recipient" class="form-label">Recipient (Church)</label>
+        <select class="form-select" id="church-recipient" name="church_id" data-email="{{ email if church_id and email else '' }}">
+            <option value="">Select a church...</option>
+            {% for church in churches %}
+            <option value="{{ church.id }}" {% if church and church.id == church_id %}selected{% endif %}>{{ church.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="email-specific-fields">
+        <div class="mb-3">
+            <label for="email-subject" class="form-label">Subject</label>
+            <input type="text" class="form-control" id="email-subject" name="subject" placeholder="Enter email subject" required>
+        </div>
+        <div class="mb-3">
+            <label for="template-select" class="form-label">Use Template</label>
+            <select class="form-select" id="template-select" name="template_id">
+                <option value="">No template</option>
+                <option value="1">Welcome Email</option>
+                <option value="2">Follow-up Meeting</option>
+                <option value="3">Thank You</option>
+            </select>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="message-content" class="form-label">Message Content</label>
+        <textarea class="form-control" id="message-content" name="message" rows="10" required></textarea>
+    </div>
+    <div class="video-conference-fields" style="display: none;">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle-fill me-2"></i>Schedule a Google Meet video conference
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="meeting-date" class="form-label">Meeting Date</label>
+                    <input type="date" class="form-control" id="meeting-date" name="meeting_date" value="{{ (now + timedelta(days=1)).strftime('%Y-%m-%d') if now is defined and timedelta is defined else '' }}">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="meeting-time" class="form-label">Meeting Time</label>
+                    <input type="time" class="form-control" id="meeting-time" name="meeting_time" value="{{ (now + timedelta(hours=1)).strftime('%H:%M') if now is defined and timedelta is defined else '' }}">
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="meeting-duration" class="form-label">Duration</label>
+                    <select class="form-select" id="meeting-duration" name="meeting_duration">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>1 hour</option>
+                        <option value="90">1.5 hours</option>
+                        <option value="120">2 hours</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="meeting-timezone" class="form-label">Time Zone</label>
+                    <select class="form-select" id="meeting-timezone" name="meeting_timezone">
+                        <option value="America/New_York" selected>Eastern Time (ET)</option>
+                        <option value="America/Chicago">Central Time (CT)</option>
+                        <option value="America/Denver">Mountain Time (MT)</option>
+                        <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="email-specific-fields">
+        <div class="mb-3">
+            <label for="attachments" class="form-label">Attachments</label>
+            <input class="form-control" type="file" id="attachments" name="attachments" multiple>
+        </div>
+    </div>
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="track-email" name="track_email" checked>
+        <label class="form-check-label" for="track-email">
+            Track email opens and clicks
+        </label>
+    </div>
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <button type="button" class="btn btn-secondary me-md-2" id="preview-button">
+            <i class="bi bi-eye me-2"></i>Preview
+        </button>
+        <button type="button" class="btn btn-info me-md-2" id="save-draft-button">
+            <i class="bi bi-save me-2"></i>Save Draft
+        </button>
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-send me-2"></i>Send Message
+        </button>
+    </div>
+</form>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // If a hidden recipient-email is present, update the preview and subject
+    var recipientEmailInput = document.getElementById('recipient-email');
+    if (recipientEmailInput) {
+        // Optionally, you can set this email somewhere in the UI or use it in JS preview logic
+        // For now, just ensure it's available for backend use
+    }
+});
+</script> 

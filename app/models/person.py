@@ -10,7 +10,7 @@ from app.models.constants import (
     ASSIGNED_TO_CHOICES, SOURCE_CHOICES
 )
 
-from app.models.pipeline import PipelineContact
+from app.models.pipeline import PipelineContact, Pipeline, PipelineStage
 class Person(Contact):
     """Person model for tracking individual contacts."""
     __tablename__ = 'people'
@@ -146,6 +146,20 @@ class Person(Contact):
             contact_id=self.id
         ).first()
         return pipeline_contact.current_stage_id if pipeline_contact else None
+
+    @property
+    def main_pipeline_stage(self):
+        main_pipeline = Pipeline.query.filter_by(pipeline_type="people", is_main_pipeline=True).first()
+        if not main_pipeline:
+            return None
+        pipeline_contact = PipelineContact.query.filter_by(
+            contact_id=self.id,
+            pipeline_id=main_pipeline.id
+        ).first()
+        if pipeline_contact and pipeline_contact.current_stage_id:
+            stage = PipelineStage.query.get(pipeline_contact.current_stage_id)
+            return stage.name if stage else None
+        return None
 
     def __repr__(self) -> str:
         return f"<Person(name='{self.first_name} {self.last_name}', email='{self.email}')>"

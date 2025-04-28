@@ -19,16 +19,27 @@ depends_on = None
 
 def upgrade():
     """Add main pipeline fields to pipelines table."""
-    # Add is_main_pipeline column with default value of False
-    op.add_column('pipelines', sa.Column('is_main_pipeline', sa.Boolean(), 
-                                        nullable=False, server_default='0'))
+    # Add columns only if they don't exist
+    if not column_exists('pipelines', 'is_main_pipeline'):
+        op.add_column('pipelines', sa.Column('is_main_pipeline', sa.Boolean(), 
+                                            nullable=False, server_default='0'))
     
-    # Add parent_pipeline_stage column as nullable string
-    op.add_column('pipelines', sa.Column('parent_pipeline_stage', sa.String(50), 
-                                        nullable=True))
+    if not column_exists('pipelines', 'parent_pipeline_stage'):
+        op.add_column('pipelines', sa.Column('parent_pipeline_stage', sa.String(50), 
+                                            nullable=True))
 
 
 def downgrade():
     """Remove the added columns if needed."""
-    op.drop_column('pipelines', 'parent_pipeline_stage')
-    op.drop_column('pipelines', 'is_main_pipeline') 
+    # Drop columns only if they exist
+    if column_exists('pipelines', 'parent_pipeline_stage'):
+        op.drop_column('pipelines', 'parent_pipeline_stage')
+    if column_exists('pipelines', 'is_main_pipeline'):
+        op.drop_column('pipelines', 'is_main_pipeline')
+
+# Helper function to check if column exists
+def column_exists(table_name, column_name):
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c['name'] for c in inspector.get_columns(table_name)]
+    return column_name in columns 

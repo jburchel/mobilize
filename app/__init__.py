@@ -229,7 +229,7 @@ def create_app(test_config=None):
         limiter.init_app(app)
         login_manager.init_app(app)
 
-        login_manager.login_view = 'auth.login'
+        login_manager.login_view = 'auth.login_page'
         login_manager.login_message_category = 'info'
 
         skip_db_init = os.environ.get('SKIP_DB_INIT', 'False').lower() == 'true' or app.config.get('TESTING')
@@ -315,6 +315,17 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_csrf_token():
         return dict(csrf_token=generate_csrf())
+    @app.context_processor
+    def inject_pipeline_utilities():
+        from app.extensions import db
+        def get_pipeline_count(pipeline_id):
+            from sqlalchemy import text
+            result = db.session.execute(
+                text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
+                {"pipeline_id": pipeline_id}
+            )
+            return result.scalar() or 0
+        return dict(get_pipeline_count=get_pipeline_count)
 
     # Session Configuration (Keep logic from development)
     is_production = app.config.get('ENV') == 'production'
