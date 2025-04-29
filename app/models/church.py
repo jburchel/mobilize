@@ -9,6 +9,7 @@ from app.models.constants import (
     CHURCH_PIPELINE_CHOICES, PRIORITY_CHOICES, ASSIGNED_TO_CHOICES, SOURCE_CHOICES
 )
 from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
+from app.models.person import Person
 
 from app.models.pipeline import PipelineContact
 class Church(Contact):
@@ -183,7 +184,6 @@ class Church(Contact):
         
     def debug_members(self) -> List['Person']:
         """Debug method to check church members"""
-        from app.models.person import Person
         direct_query = Person.query.filter_by(church_id=self.id).all()
         print(f"Debug - Church ID: {self.id}, Name: {self.name}")
         print(f"Debug - Direct query found {len(direct_query)} members")

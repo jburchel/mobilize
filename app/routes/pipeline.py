@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from flask import jsonify
 from sqlalchemy import inspect
 from app.extensions import db
+from app.models.pipeline import PipelineStage
 
 pipeline_bp = Blueprint('pipeline', __name__, url_prefix='/pipeline')
 
