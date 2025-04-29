@@ -239,11 +239,9 @@ def create_app(test_config=None):
             app.logger.info("Attempting to create database tables...")
             with app.app_context():
                 try:
-                    # Import models here inside context if necessary
                     from app.models import User, Contact, Person, Church, Office, Task, Communication, EmailSignature, GoogleToken, Role, Permission # etc
                     db.create_all()
                     app.logger.info("Database tables checked/created successfully.")
-                    # Setup relationships after tables exist
                     setup_relationships()
                     app.logger.info("Model relationships set up.")
                 except Exception as e:
@@ -251,10 +249,8 @@ def create_app(test_config=None):
         else:
             app.logger.info("Skipping automatic database initialization.")
             with app.app_context():
-                 # Still need to setup relationships even if skipping create_all
                  setup_relationships()
                  app.logger.info("Model relationships set up (skipped create_all)." )
-
 
         app.url_map.strict_slashes = False
         configure_cache(app)
@@ -276,22 +272,21 @@ def create_app(test_config=None):
             talisman.init_app(app, force_https=False, content_security_policy=None,
                               feature_policy=None, session_cookie_secure=False)
 
-
     except Exception as e:
         app.logger.error(f"Error during application extension initialization: {str(e)}")
 
+    # --- MOVE ALL REGISTRATIONS BELOW THIS LINE ---
 
     @login_manager.user_loader
     def load_user(user_id):
-         # Ensure models are imported if called early
-        from app.models.user import User
-        return User.query.get(int(user_id))
+         from app.models.user import User
+         return User.query.get(int(user_id))
 
     jwt.init_app(app)
-    init_firebase(app) # Ensure Firebase is initialized after config load
+    init_firebase(app)
     init_scheduler(app)
 
-    # Register Blueprints (Keep combined logic)
+    # Register Blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(auth_bp, url_prefix='/auth', name='auth_web')
     from app.routes.api.v1 import api_bp
