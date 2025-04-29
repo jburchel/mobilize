@@ -1,12 +1,20 @@
-# SQLite to PostgreSQL Migration Checklist
+# SQLite to PostgreSQL Migration & Cloud Deployment Checklist
 **Completed: April 21, 2025**
 
 ## Pre-Deployment Tasks
+
+- [x] **Google Cloud Platform (GCP) Project Setup**
+  - [x] Create/select a GCP project
+  - [x] Enable required APIs: Cloud Run, Secret Manager, Cloud SQL Admin, Cloud Build
 
 - [x] **Environment Setup**
   - [x] Update `.env.production` file with PostgreSQL connection string
   - [x] Install required packages: `psycopg2-binary`, `python-dotenv`
   - [x] Verify Python version compatibility (3.8+)
+
+- [x] **Secret Manager Setup**
+  - [x] Store database and app secrets in GCP Secret Manager using `gcloud secrets create ...`
+  - [x] Grant service account access to secrets
 
 - [x] **Migration Files Analysis**
   - [x] Run `python3 pg_migration_sql_commands.py` to analyze the latest migration
@@ -43,24 +51,33 @@
   - [x] Set appropriate connection pool settings
   - [x] Configure environment variables for production
 
+- [x] **Docker & Build Setup**
+  - [x] Create/update `Dockerfile` for production
+  - [x] Update `requirements.txt` with deployment dependencies
+  - [x] Create/update `cloudbuild.yaml` for CI/CD
+
+- [x] **Modify app.py for Production Secrets**
+  - [x] Add code to load secrets from Secret Manager in production
+
 - [x] **Testing**
   - [x] Test application functionality with PostgreSQL
   - [x] Verify CRUD operations work correctly
   - [x] Test performance with expected load
   - [x] Check for any degradation in query performance
 
-## Post-Deployment Tasks
+## Deployment & Post-Deployment Tasks
 
 - [x] **Application Deployment**
-  - [x] Deploy updated application using Cloud Build
+  - [x] Deploy updated application using Cloud Build or manual Docker/GCP commands
   - [x] Verify service account permissions
   - [x] Check application starts correctly
   - [x] Monitor for any startup errors
 
-- [x] **Monitoring**
+- [x] **Monitoring & Logging**
   - [x] Set up database monitoring
   - [x] Configure alerts for database issues
   - [x] Monitor application logs for database-related errors
+  - [x] Use GCP logging commands to troubleshoot deployment issues
 
 - [x] **Rollback Plan**
   - [x] Document rollback procedure
@@ -91,6 +108,10 @@
   - [x] Set up Serverless VPC Access if required
   - [x] Configure Cloud SQL proxy if using Cloud SQL
 
+- [x] **Custom Domain & SSL (Optional)**
+  - [x] Set up custom domain mapping in Cloud Run
+  - [x] Verify automatic SSL provisioning
+
 ## Final Verification
 
 - [x] **End-to-End Testing**
@@ -105,6 +126,9 @@
   - [x] Analyze database connection patterns
 
 - [x] **Documentation Update**
-  - [x] Update project documentation with PostgreSQL details
+  - [x] Update project documentation with PostgreSQL and deployment details
   - [x] Document any configuration changes
-  - [x] Update maintenance procedures for PostgreSQL 
+  - [x] Update maintenance procedures for PostgreSQL and Cloud Run
+
+- [x] **Troubleshooting**
+  - [x] Reference GCP logs and deployment guide for troubleshooting tips 

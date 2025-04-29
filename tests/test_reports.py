@@ -7,12 +7,13 @@ from flask_login import current_user, login_user
 import datetime
 import json
 from flask import url_for
+from app.config.config import TestingConfig
 
 
 @pytest.fixture
 def app():
     """Create and configure a Flask app for testing."""
-    app = create_app('testing')
+    app = create_app(TestingConfig)
     app.config['WTF_CSRF_ENABLED'] = False  # Disable CSRF for testing
     app.config['TESTING'] = True
     app.config['LOGIN_DISABLED'] = False

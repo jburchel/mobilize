@@ -2,10 +2,11 @@ import pytest
 from flask import current_app
 from app import create_app, db
 from app.models import User, Office, Contact, Person, Church, Task, Communication
+from app.config.config import TestingConfig
 
 @pytest.fixture
 def app():
-    app = create_app('testing')
+    app = create_app(TestingConfig)
     with app.app_context():
         db.create_all()
         yield app
@@ -60,4 +61,4 @@ def test_database_connection(app):
 
     # Test relationships
     assert person.office == office
-    assert person.user == user 
+    assert person.user_id == user.id 

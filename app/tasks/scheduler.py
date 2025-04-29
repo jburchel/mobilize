@@ -6,8 +6,9 @@ from datetime import datetime
 
 def init_scheduler(app):
     """Initialize the scheduler with the Flask app."""
-    scheduler.init_app(app)
-    scheduler.start()
+    if not getattr(scheduler, 'running', False):
+        scheduler.init_app(app)
+        scheduler.start()
 
     # Add jobs with app context wrappers
     def sync_all_users_with_context():

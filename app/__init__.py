@@ -68,8 +68,11 @@ def create_app(test_config=None):
     secrets = access_secrets()
 
     if test_config:
-        app.config.from_object(TestingConfig)
-        app.config.update(test_config) # Apply test specifics
+        if isinstance(test_config, dict):
+            app.config.from_object(TestingConfig)
+            app.config.update(test_config)
+        else:
+            app.config.from_object(test_config)
     elif env == 'production':
         app.config.from_object(ProductionConfig)
         app.config.update(

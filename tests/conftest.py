@@ -31,6 +31,7 @@ from flask_login import LoginManager
 import threading
 import time
 import socket
+from sqlalchemy import inspect
 
 # Utility functions for testing
 def mock_db_query(model_class, model_data, session=None):
@@ -296,7 +297,7 @@ def db_session(app):
         setup_relationships()
         
         # Print out the tables that were created
-        print("Created tables:", db.engine.table_names())
+        print("Created tables:", inspect(db.engine).get_table_names())
         
         # Use the application's session
         yield db.session
@@ -310,7 +311,7 @@ def test_office(app, db_session):
     """Create a test office."""
     with app.app_context():
         # Print out the tables that were created
-        print("Tables before office creation:", db.engine.table_names())
+        print("Tables before office creation:", inspect(db.engine).get_table_names())
         
         office = Office(
             name='Test Office',

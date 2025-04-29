@@ -95,14 +95,16 @@ def test_office_isolation(app, client, office1, office2, super_admin, office_adm
             first_name='John',
             last_name='Doe',
             email='john@test.com',
-            office_id=office1.id
+            office_id=office1.id,
+            user_id=super_admin.id  # Add user_id instead of user object
         )
         # Office 2 contact
         contact2 = Contact(
             first_name='Jane',
             last_name='Smith',
             email='jane@test.com',
-            office_id=office2.id
+            office_id=office2.id,
+            user_id=office_admin.id  # Add user_id instead of user object
         )
         db.session.add_all([contact1, contact2])
         db.session.commit()
@@ -114,11 +116,9 @@ def test_office_isolation(app, client, office1, office2, super_admin, office_adm
         
         # Test office admin access
         login_user(office_admin)  # Set office admin as current user
-        filtered_query = OfficeDataFilter.filter_query(
-            Contact.query.filter_by(office_id=office1.id),
-            Contact
-        )
+        filtered_query = OfficeDataFilter.filter_query(Contact.query, Contact)
         assert filtered_query.count() == 1  # Office admin sees only their office's contacts
+        assert filtered_query.first().office_id == office_admin.office_id  # Verify correct office
 
 def test_user_office_association(app, client, office1, regular_user):
     """Test user-office associations."""
