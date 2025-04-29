@@ -86,6 +86,9 @@ class Task(Base):
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
     office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'))
     
+    # Relationships
+    assigned_user = db.relationship("User", back_populates="assigned_tasks", foreign_keys=[assigned_to])
+    
     # Note: All relationships are defined in relationships.py
     
     def __init__(self, **kwargs):
