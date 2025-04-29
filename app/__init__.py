@@ -230,10 +230,16 @@ def create_app(test_config=None):
         cors.init_app(app)
         csrf.init_app(app)
         limiter.init_app(app)
+        
+        # Initialize and configure login_manager first
         login_manager.init_app(app)
-
         login_manager.login_view = 'auth.login_page'
         login_manager.login_message_category = 'info'
+        
+        @login_manager.user_loader
+        def load_user(user_id):
+            from app.models.user import User
+            return User.query.get(int(user_id))
 
         skip_db_init = os.environ.get('SKIP_DB_INIT', 'False').lower() == 'true' or app.config.get('TESTING')
         app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
@@ -279,11 +285,6 @@ def create_app(test_config=None):
         app.logger.error(f"Error during application extension initialization: {str(e)}")
 
     # --- MOVE ALL REGISTRATIONS BELOW THIS LINE ---
-
-    @login_manager.user_loader
-    def load_user(user_id):
-         from app.models.user import User
-         return User.query.get(int(user_id))
 
     jwt.init_app(app)
     init_firebase(app)
