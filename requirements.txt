@@ -38,3 +38,4 @@ Flask-Talisman==1.1.0
 Faker==37.1.0
 pandas
 selenium>=4.0.0
+webdriver_manager>=4.0.0
