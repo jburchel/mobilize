@@ -385,13 +385,18 @@ def create_app(test_config=None):
     @app.before_request
     def before_request():
         """Add stats to global context for sidebar badges."""
-        if current_user.is_authenticated:
-            try:
-                from app.routes.dashboard import get_dashboard_stats
-                g.stats = get_dashboard_stats()
-            except Exception as e:
-                app.logger.error(f"Error getting dashboard stats: {str(e)}")
-                g.stats = {'people_count': 0, 'church_count': 0, 'pending_tasks': 0, 'overdue_tasks': 0, 'recent_communications': 0}
+        # Defensive: Only use current_user if login_manager is present
+        if hasattr(app, 'login_manager') and hasattr(app.login_manager, '_load_user'):
+            from flask_login import current_user
+            if current_user.is_authenticated:
+                try:
+                    from app.routes.dashboard import get_dashboard_stats
+                    g.stats = get_dashboard_stats()
+                except Exception as e:
+                    app.logger.error(f"Error getting dashboard stats: {str(e)}")
+                    g.stats = {'people_count': 0, 'church_count': 0, 'pending_tasks': 0, 'overdue_tasks': 0, 'recent_communications': 0}
+            else:
+                g.stats = None
         else:
             g.stats = None
 
