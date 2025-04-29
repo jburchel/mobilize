@@ -86,7 +86,12 @@ class Task(Base):
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
     office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'))
     
-    # Relationships
+    # Relationship stubs for SQLAlchemy mapper
+    owner = None
+    person = None
+    church = None
+    created_by_user = None
+    # assigned_user is already defined below
     assigned_user = db.relationship("User", back_populates="assigned_tasks", foreign_keys=[assigned_to])
     
     # Note: All relationships are defined in relationships.py
