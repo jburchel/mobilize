@@ -225,13 +225,7 @@ def create_app(test_config=None):
 
     # Initialize Flask extensions (Combined section)
     try:
-        db.init_app(app)
-        migrate.init_app(app, db)
-        cors.init_app(app)
-        csrf.init_app(app)
-        limiter.init_app(app)
-        
-        # Initialize and configure login_manager first
+        # Initialize login_manager first, before any other extensions
         login_manager.init_app(app)
         login_manager.login_view = 'auth.login_page'
         login_manager.login_message_category = 'info'
@@ -241,6 +235,13 @@ def create_app(test_config=None):
             from app.models.user import User
             return User.query.get(int(user_id))
 
+        # Then initialize other extensions
+        db.init_app(app)
+        migrate.init_app(app, db)
+        cors.init_app(app)
+        csrf.init_app(app)
+        limiter.init_app(app)
+        
         skip_db_init = os.environ.get('SKIP_DB_INIT', 'False').lower() == 'true' or app.config.get('TESTING')
         app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
 
@@ -383,19 +384,16 @@ def create_app(test_config=None):
     # Add stats to global context for sidebar badges
     @app.before_request
     def before_request():
-        """Add stats to global context for sidebar badges."""
-        # Defensive: Only use current_user if login_manager is present
-        if hasattr(app, 'login_manager') and hasattr(app.login_manager, '_load_user'):
-            from flask_login import current_user
-            if current_user.is_authenticated:
-                try:
-                    from app.routes.dashboard import get_dashboard_stats
-                    g.stats = get_dashboard_stats()
-                except Exception as e:
-                    app.logger.error(f"Error getting dashboard stats: {str(e)}")
-                    g.stats = {'people_count': 0, 'church_count': 0, 'pending_tasks': 0, 'overdue_tasks': 0, 'recent_communications': 0}
-            else:
-                g.stats = None
+        if not hasattr(app, 'login_manager') or not app.login_manager:
+            g.stats = None
+            return
+            
+        if current_user.is_authenticated:
+            g.stats = {
+                'tasks_count': current_user.count_owned_records('tasks'),
+                'churches_count': current_user.count_owned_records('churches'),
+                'people_count': current_user.count_owned_records('people')
+            }
         else:
             g.stats = None
 
