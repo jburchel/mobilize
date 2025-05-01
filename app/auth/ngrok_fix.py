@@ -1,21 +1,26 @@
-"""Temporary fix for ngrok OAuth redirects."""
+"""Temporary fix for ngrok OAuth redirects and Cloud Run OAuth redirects."""
 
-import os
 from flask import request
 
 def get_oauth_redirect_uri():
     """
-    Get the OAuth redirect URI, handling ngrok URLs properly.
+    Get the OAuth redirect URI, handling ngrok URLs and Cloud Run URLs properly.
     
-    When running behind ngrok, the normal url_for with _external=True
-    may not correctly detect the ngrok URL. This function provides a fix.
+    When running behind ngrok or on Cloud Run, the normal url_for with _external=True
+    may not correctly detect the URL. This function provides a fix.
     """
-    # Check if we're running behind ngrok
+    # Get the host from the request headers
     host = request.headers.get('Host', '')
-    if 'ngrok' in host:
-        scheme = request.headers.get('X-Forwarded-Proto', 'https')
-        return f"{scheme}://{host}/auth/google/callback"
+    scheme = request.headers.get('X-Forwarded-Proto', 'https')
     
-    # Not running behind ngrok, let Flask handle it normally
+    # Check if we're running behind ngrok
+    if 'ngrok' in host:
+        return f"{scheme}://{host}/api/auth/google/callback"
+    
+    # Check if we're running on Cloud Run
+    if 'run.app' in host:
+        return f"{scheme}://{host}/api/auth/google/callback"
+    
+    # Not running behind ngrok or Cloud Run, let Flask handle it normally
     from flask import url_for
     return url_for('auth.oauth2callback', _external=True) 
