@@ -34,6 +34,7 @@ class Communication(Base):
     person = db.relationship("Person", foreign_keys=[person_id], back_populates="communications")
     user = db.relationship('User', foreign_keys=[user_id], backref='received_communications')
     owner = db.relationship('User', foreign_keys=[owner_id], backref='created_communications')
+    office = db.relationship('Office', foreign_keys=[office_id], back_populates='communications')
 
     def __repr__(self):
         return f"<Communication(type='{self.type}', date_sent='{self.date_sent}')>"
