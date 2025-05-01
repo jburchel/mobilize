@@ -66,6 +66,16 @@ def create_app(test_config=None):
     # Load configuration (Keep logic from development)
     env = os.getenv('FLASK_ENV', 'development')
     secrets = access_secrets()
+    
+    # Check if we're running in Cloud Run
+    is_cloud_run = os.environ.get('K_SERVICE') is not None
+    
+    # Ensure DB_CONNECTION_STRING is properly set in environment variables
+    if is_cloud_run and os.environ.get('DB_CONNECTION_STRING'):
+        # Make sure DATABASE_URL is set for SQLAlchemy
+        if not os.environ.get('DATABASE_URL'):
+            os.environ['DATABASE_URL'] = os.environ.get('DB_CONNECTION_STRING')
+            app.logger.info('Set DATABASE_URL from DB_CONNECTION_STRING for Cloud Run')
 
     if test_config:
         if isinstance(test_config, dict):
@@ -75,12 +85,18 @@ def create_app(test_config=None):
             app.config.from_object(test_config)
     elif env == 'production':
         app.config.from_object(ProductionConfig)
+        # Prioritize DB_CONNECTION_STRING for Cloud Run
+        db_uri = os.environ.get('DB_CONNECTION_STRING')
+        if not db_uri:
+            db_uri = secrets.get('DATABASE_URL', os.environ.get('DATABASE_URL'))
+        
         app.config.update(
             SECRET_KEY=secrets.get('SECRET_KEY', app.config.get('SECRET_KEY')),
-            SQLALCHEMY_DATABASE_URI=secrets.get('DATABASE_URL', os.environ.get('DB_CONNECTION_STRING')),
+            SQLALCHEMY_DATABASE_URI=db_uri,
             GOOGLE_CLIENT_ID=secrets.get('GOOGLE_CLIENT_ID', os.environ.get('GOOGLE_CLIENT_ID')),
             GOOGLE_CLIENT_SECRET=secrets.get('GOOGLE_CLIENT_SECRET', os.environ.get('GOOGLE_CLIENT_SECRET')),
         )
+        app.logger.info(f'Database URI set to: {db_uri and db_uri[:10]}...')
     elif env == 'testing':
         app.config.from_object(TestingConfig)
     else: # Development or default
