@@ -12,18 +12,53 @@ from psycopg2 import sql
 import pandas as pd
 from tabulate import tabulate
 from dotenv import load_dotenv
+import time
 
 # Load environment variables
 load_dotenv('.env.production')
 
-# Connection parameters
-db_params = {
-    'host': 'fwnitauuyzxnsvgsbrzr.supabase.co',
-    'database': 'postgres',
-    'user': 'postgres',
-    'password': 'Fruitin2025!',
-    'port': 5432
-}
+# Try multiple connection options
+connection_options = [
+    {
+        # Direct connection
+        'name': 'Direct Connection',
+        'params': {
+            'host': 'fwnitauuyzxnsvgsbrzr.supabase.co',
+            'dbname': 'postgres',
+            'user': 'postgres',
+            'password': 'postgres',
+            'port': 5432,
+            'sslmode': 'require',
+            'connect_timeout': 10
+        }
+    },
+    {
+        # Pooler connection
+        'name': 'Pooler Connection',
+        'params': {
+            'host': 'aws-0-us-east-1.pooler.supabase.com',
+            'dbname': 'postgres',
+            'user': 'postgres',
+            'password': 'postgres',
+            'port': 5432,
+            'sslmode': 'require',
+            'connect_timeout': 10
+        }
+    },
+    {
+        # Alternative form with postgres.ref format
+        'name': 'Pooler with Project Reference',
+        'params': {
+            'host': 'aws-0-us-east-1.pooler.supabase.com',
+            'dbname': 'postgres',
+            'user': 'postgres.fwnitauuyzxnsvgsbrzr',
+            'password': 'postgres',
+            'port': 5432,
+            'sslmode': 'require',
+            'connect_timeout': 10
+        }
+    }
+]
 
 # Define validation queries
 validation_queries = {
@@ -144,15 +179,57 @@ def run_query(conn, query):
         print(f"Error executing query: {e}")
         return pd.DataFrame([{"Error": str(e)}])
 
+def build_connection_string(params):
+    """Build a PostgreSQL connection string from parameters."""
+    # Format: postgresql://username:password@host:port/database?sslmode=require
+    return f"postgresql://{params['user']}:{params['password']}@{params['host']}:{params['port']}/{params['dbname']}?sslmode={params['sslmode']}"
+
 def main():
+    # Try all connection options
+    conn = None
+    successful_option = None
+    
+    for option in connection_options:
+        try:
+            print(f"\nTrying {option['name']}...")
+            conn = psycopg2.connect(**option['params'])
+            print(f"Connection successful with {option['name']}!")
+            successful_option = option
+            break
+        except Exception as e:
+            print(f"Connection failed: {e}")
+    
+    if conn is None:
+        print("\nFailed to connect to database with any option. Exiting.")
+        sys.exit(1)
+    
     try:
-        # Connect to the database
-        print("Connecting to Supabase PostgreSQL database...")
-        conn = psycopg2.connect(**db_params)
-        print("Connection successful!\n")
+        # Connection successful, log successful parameters and update .env.production if possible
+        if successful_option:
+            conn_string = build_connection_string(successful_option['params'])
+            print(f"\nSuccessful connection string: {conn_string}")
+            
+            try:
+                # Optional: Update .env.production with working connection string
+                if os.access('.env.production', os.W_OK):
+                    with open('.env.production', 'r') as f:
+                        env_content = f.readlines()
+                    
+                    with open('.env.production', 'w') as f:
+                        for line in env_content:
+                            if not (line.startswith('DB_CONNECTION_STRING=') or line.startswith('SQLALCHEMY_DATABASE_URI=')):
+                                f.write(line)
+                        
+                        # Add the working connection string
+                        f.write(f"\nDB_CONNECTION_STRING={conn_string}\n")
+                        f.write(f"SQLALCHEMY_DATABASE_URI={conn_string}\n")
+                    
+                    print("Updated .env.production with working connection string")
+            except Exception as e:
+                print(f"Note: Could not update .env.production: {e}")
         
-        # Run table record counts
-        print("=== TABLE RECORD COUNTS ===")
+        # Running validation queries
+        print("\n=== TABLE RECORD COUNTS ===")
         df = run_query(conn, validation_queries['table_record_counts'])
         print(tabulate(df, headers='keys', tablefmt='psql', showindex=False))
         print()
@@ -209,6 +286,8 @@ def main():
         
     except Exception as e:
         print(f"Error: {e}")
+        if conn:
+            conn.close()
         sys.exit(1)
 
 if __name__ == "__main__":

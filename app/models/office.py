@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.church import Church
     from app.models.communication import Communication
     from app.models.base import Contact
+    from app.models.task import Task
 
 # Association table for User-Office many-to-many relationship
 user_offices = Table(
@@ -55,6 +56,7 @@ class Office(Base):
     churches: Mapped[List["Church"]] = relationship('Church', back_populates='office', lazy='dynamic', overlaps="contacts")
     communications: Mapped[List["Communication"]] = relationship('Communication', back_populates='office', lazy='dynamic')
     contacts: Mapped[List["Contact"]] = relationship('Contact', back_populates='office', lazy='dynamic')
+    tasks: Mapped[List["Task"]] = relationship('Task', back_populates='office', lazy='dynamic', overlaps="assigned_tasks")
     
     def __repr__(self) -> str:
         return f'<Office {self.name}>'

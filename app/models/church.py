@@ -69,6 +69,12 @@ class Church(Contact):
         foreign_keys='Person.church_id',
         lazy='dynamic'
     )
+
+    tasks = relationship(
+        'Task',
+        back_populates='church',
+        cascade='all, delete-orphan'
+    )
     
     @hybrid_property
     def church_first_name(self) -> Optional[str]:

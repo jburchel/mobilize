@@ -1,0 +1,44 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/migrations:$COMMIT_SHA', '.']
+
+  # Run migrations
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run jobs create migrate-db \
+          --image us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/migrations:$COMMIT_SHA \
+          --region us-central1 \
+          --service-account mobilize-crm-service-account@mobilize-crm.iam.gserviceaccount.com \
+          --set-env-vars FLASK_APP=app.py,FLASK_ENV=production \
+          --set-secrets DATABASE_URL=mobilize-db-url:latest \
+          --command python \
+          --args scripts/deployment/run_migrations.py \
+          || gcloud run jobs update migrate-db \
+             --image us-central1-docker.pkg.dev/$PROJECT_ID/mobilize-crm/migrations:$COMMIT_SHA \
+             --region us-central1 \
+             --service-account mobilize-crm-service-account@mobilize-crm.iam.gserviceaccount.com \
+             --set-env-vars FLASK_APP=app.py,FLASK_ENV=production \
+             --set-secrets DATABASE_URL=mobilize-db-url:latest \
+             --command python \
+             --args scripts/deployment/run_migrations.py
+
+  # Execute the migration job
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'jobs'
+      - 'execute'
+      - 'migrate-db'
+      - '--region'
+      - 'us-central1'
+      - '--wait'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s 

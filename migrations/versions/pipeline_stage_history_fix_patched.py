@@ -24,7 +24,7 @@ class PipelineStageHistory(Base):
     __tablename__ = 'pipeline_stage_history'
     id = sa.Column(sa.Integer, primary_key=True)
     moved_at = sa.Column(sa.DateTime)
-    created_at = sa.Column(sa.DateTime)
+    created_at = sa.Column(sa.DateTime, nullable=True)
 
 def upgrade():
     connection = op.get_bind()

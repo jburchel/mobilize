@@ -91,6 +91,11 @@ class Person(Contact):
         back_populates="main_contact",
         foreign_keys="Church.main_contact_id"
     )
+    tasks = relationship(
+        "Task",
+        back_populates="person",
+        cascade="all, delete-orphan"
+    )
 
     @hybrid_property
     def person_first_name(self) -> Optional[str]:

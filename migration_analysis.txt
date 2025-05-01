@@ -1,0 +1,172 @@
+Found 28 migration files.
+
+=== c6b19f008037_add_google_sync_columns_to_contacts.py ===
+
+=== 4cf4e63b4fc5_merge_migration_history_branches.py ===
+
+=== add_roles_and_permissions.py ===
+SQL Commands: 4
+  1. INSERT INTO roles (name, description, created_at, updated_at) VALUES ('super_adm...
+  2. INSERT INTO roles (name, description, created_at, updated_at) VALUES ('office_ad...
+  3. INSERT INTO roles (name, description, created_at, updated_at) VALUES ('standard_...
+  4. INSERT INTO roles (name, description, created_at, updated_at) VALUES ('limited_u...
+Create Table Commands: 2
+  - roles
+  - role_permissions
+
+=== ab1e0d1b31aa_rename_person_role_to_church_role_for_.py ===
+
+=== 5be09d8bc98a_add_image_and_preferred_contact_method_.py ===
+
+=== add_scopes_to_google_tokens.py ===
+
+=== b604f5030685_merge_heads.py ===
+
+=== add_main_pipeline_fields.py ===
+
+=== 4e0db47e268c_update_task_model_for_task_management_ui.py ===
+
+=== 078ff034365a_add_owner_id_to_task_model.py ===
+SQL Commands: 3
+  1. UPDATE tasks SET owner_id = 1 WHERE owner_id IS NULL
+  2. UPDATE tasks SET owner_id = 1 WHERE owner_id IS NULL
+  3. UPDATE tasks SET owner_id = 1 WHERE owner_id IS NULL
+
+=== modified_pg_migration.py ===
+Create Table Commands: 20
+  - users
+  - offices
+  - people
+  - contacts
+  - churches
+  - pipelines
+  - pipeline_stages
+  - pipeline_contacts
+  - pipeline_stage_history
+  - tasks
+  - communications
+  - google_tokens
+  - permissions
+  - roles
+  - role_permissions
+  - user_roles
+  - email_templates
+  - email_signatures
+  - email_campaigns
+  - email_tracking
+
+=== 00a6f3565d53_replace_reminder_booleans_with_reminder_.py ===
+
+=== bbda44b09940_add_user_id_to_contact_model.py ===
+
+=== 1593af608f53_add_owner_id_to_communication_model.py ===
+SQL Commands: 2
+  1. UPDATE communications SET owner_id = 1 WHERE owner_id IS NULL
+  2. UPDATE churches SET owner_id = 1 WHERE owner_id IS NULL
+
+=== pipeline_stage_history_fix_patched.py ===
+Issues Found:
+  - Column definition without explicit nullable setting: sa.Column(sa.DateTime)
+    created_at = sa.Column(sa.DateTime)
+
+def upgrade():
+    connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    existing_columns = [c['name'] for c in inspector.get_columns('pipeline_stage_history')
+
+=== add_google_meet_link.py ===
+
+=== 9761ea2e6b58_add_person_id_to_users_table.py ===
+
+=== 04cbc41d6bfd_production_ready_schema.py ===
+Issues Found:
+  - Found potentially problematic pattern: AUTOINCREMENT - 2 occurrences
+
+=== add_missing_person_fields.py ===
+Issues Found:
+  - Column definition without explicit nullable setting: sa.Column(sa.Date()
+  - Column definition without explicit nullable setting: sa.Column(sa.Date()
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+  - Column definition without explicit nullable setting: sa.Column(sa.Text()
+  - Column definition without explicit nullable setting: sa.Column(sa.Text()
+  - Column definition without explicit nullable setting: sa.Column(sa.Text()
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=200)
+  - Column definition without explicit nullable setting: sa.Column(sa.DateTime()
+  - Column definition without explicit nullable setting: sa.Column(sa.DateTime()
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+  - Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+  - Column definition without explicit nullable setting: sa.Column(sa.Text()
+  - Column definition without explicit nullable setting: sa.Column(sa.Date()
+  - Column definition without explicit nullable setting: sa.Column(sa.Text()
+
+=== eeb2b80b5f20_.py ===
+
+=== 54265a913aab_merge_multiple_heads.py ===
+
+=== zz_add_sqlite_fixes.py ===
+
+=== 8ed80b7eaa73_.py ===
+
+=== 811e9744caca_add_additional_church_fields_from_old_.py ===
+
+=== pipeline_migration.py ===
+Create Table Commands: 4
+  - pipelines
+  - pipeline_stages
+  - pipeline_contacts
+  - pipeline_stage_history
+
+=== a85c9265937c_add_additional_person_fields_from_old_.py ===
+
+=== 4cb401521a9e_add_is_primary_contact_to_person_and_.py ===
+
+=== 2bf46cf32aa0_add_office_id_to_communication_model.py ===
+SQL Commands: 3
+  1. UPDATE communications SET office_id = 1 WHERE office_id IS NULL
+  2. UPDATE communications SET office_id = 1 WHERE office_id IS NULL
+  3. UPDATE communications SET office_id = 1 WHERE office_id IS NULL
+
+=== Summary ===
+Found 25 potential issues across all migration files:
+1. pipeline_stage_history_fix_patched.py: Column definition without explicit nullable setting: sa.Column(sa.DateTime)
+    created_at = sa.Column(sa.DateTime)
+
+def upgrade():
+    connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    existing_columns = [c['name'] for c in inspector.get_columns('pipeline_stage_history')
+2. 04cbc41d6bfd_production_ready_schema.py: Found potentially problematic pattern: AUTOINCREMENT - 2 occurrences
+3. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Date()
+4. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Date()
+5. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+6. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+7. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Text()
+8. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Text()
+9. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Text()
+10. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+11. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+12. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+13. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=100)
+14. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=200)
+15. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.DateTime()
+16. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.DateTime()
+17. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+18. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+19. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+20. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+21. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+22. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.String(length=50)
+23. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Text()
+24. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Date()
+25. add_missing_person_fields.py: Column definition without explicit nullable setting: sa.Column(sa.Text()
+
+Recommendation: Review these issues and make necessary adjustments for PostgreSQL compatibility.

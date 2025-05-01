@@ -182,4 +182,14 @@ class User(UserMixin, Base):
             'churches': len(self.owned_churches),
             'communications': len(self.owned_communications),
             'tasks': len(self.owned_tasks)
-        } 
+        }
+
+    def count_owned_records(self, record_type: str) -> int:
+        """Count owned records of a specific type."""
+        if record_type == 'churches':
+            return len(self.owned_churches)
+        elif record_type == 'communications':
+            return len(self.owned_communications)
+        elif record_type == 'tasks':
+            return len(self.owned_tasks)
+        return 0 

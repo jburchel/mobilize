@@ -88,14 +88,12 @@ def create_app(test_config=None):
         # Ensure loaded .env.development values override DevelopmentConfig defaults
         app.config.update({k: v for k, v in os.environ.items() if k in app.config})
 
-
     # Ensure required environment variables are present, falling back to config if necessary
     # Example: Database URI
     if not app.config.get('SQLALCHEMY_DATABASE_URI'):
          app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', os.environ.get('DB_CONNECTION_STRING'))
          if not app.config['SQLALCHEMY_DATABASE_URI']:
              app.logger.error("CRITICAL: SQLALCHEMY_DATABASE_URI is not set!")
-
 
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
@@ -242,6 +240,11 @@ def create_app(test_config=None):
         csrf.init_app(app)
         limiter.init_app(app)
         
+        # Set up relationships before any database operations
+        with app.app_context():
+            setup_relationships()
+            app.logger.info("Model relationships set up.")
+        
         skip_db_init = os.environ.get('SKIP_DB_INIT', 'False').lower() == 'true' or app.config.get('TESTING')
         app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
 
@@ -252,15 +255,10 @@ def create_app(test_config=None):
                     from app.models import User, Contact, Person, Church, Office, Task, Communication, EmailSignature, GoogleToken, Role, Permission # etc
                     db.create_all()
                     app.logger.info("Database tables checked/created successfully.")
-                    setup_relationships()
-                    app.logger.info("Model relationships set up.")
                 except Exception as e:
-                    app.logger.error(f"Error during DB initialization or relationship setup: {str(e)}")
+                    app.logger.error(f"Error during DB initialization: {str(e)}")
         else:
             app.logger.info("Skipping automatic database initialization.")
-            with app.app_context():
-                 setup_relationships()
-                 app.logger.info("Model relationships set up (skipped create_all)." )
 
         app.url_map.strict_slashes = False
         configure_cache(app)

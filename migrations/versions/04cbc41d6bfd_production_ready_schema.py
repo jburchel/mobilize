@@ -270,8 +270,7 @@ def upgrade():
     with op.batch_alter_table('pipeline_contacts', schema=None) as batch_op:
         batch_op.alter_column('id',
                existing_type=sa.INTEGER(),
-               nullable=False,
-               autoincrement=True)
+               nullable=False)
         if index_exists('pipeline_contacts', 'idx_pipeline_contacts_contact_id'):
             batch_op.drop_index('idx_pipeline_contacts_contact_id')
         if index_exists('pipeline_contacts', 'idx_pipeline_contacts_current_stage_id'):
@@ -494,8 +493,7 @@ def downgrade():
         batch_op.create_index('idx_pipeline_contacts_contact_id', ['contact_id'], unique=False)
         batch_op.alter_column('id',
                existing_type=sa.INTEGER(),
-               nullable=True,
-               autoincrement=True)
+               nullable=True)
 
     with op.batch_alter_table('permissions', schema=None) as batch_op:
         batch_op.alter_column('updated_at',
