@@ -72,8 +72,13 @@ def handle_oauth2_callback():
     
     try:
         flow = create_oauth_flow()
+        # Ensure we're using HTTPS for the authorization response
+        authorization_response = request.url
+        if authorization_response.startswith('http:') and 'run.app' in authorization_response:
+            authorization_response = authorization_response.replace('http:', 'https:', 1)
+        
         flow.fetch_token(
-            authorization_response=request.url
+            authorization_response=authorization_response
         )
         credentials = flow.credentials
         
