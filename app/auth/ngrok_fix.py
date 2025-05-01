@@ -19,7 +19,7 @@ def get_oauth_redirect_uri():
     
     # Check if we're running on Cloud Run
     if 'run.app' in host:
-        return f"{scheme}://{host}/api/auth/google/callback"
+        return f"https://{host}/api/auth/google/callback"
     
     # Not running behind ngrok or Cloud Run, let Flask handle it normally
     from flask import url_for
