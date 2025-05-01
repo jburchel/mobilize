@@ -67,7 +67,7 @@ class User(UserMixin, Base):
     )
     communications = relationship(
         'Communication',
-        back_populates='sender',
+        backref='user_sender',
         foreign_keys='Communication.user_id'
     )
     owned_communications = relationship(
