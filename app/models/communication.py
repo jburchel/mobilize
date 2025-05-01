@@ -16,6 +16,7 @@ class Communication(Base):
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     office_id = db.Column(db.Integer, db.ForeignKey('offices.id'), nullable=False)
     direction = db.Column(db.String(50), nullable=False, default='outbound')  # 'inbound' or 'outbound'
+    sender = db.Column(db.String(255), nullable=True)  # Added to match database schema
     
     # Gmail integration fields
     gmail_message_id = db.Column(db.String, nullable=True)
@@ -51,6 +52,7 @@ class Communication(Base):
             'owner_id': self.owner_id,
             'office_id': self.office_id,
             'direction': self.direction,
+            'sender': self.sender,
             'gmail_message_id': self.gmail_message_id,
             'gmail_thread_id': self.gmail_thread_id,
             'email_status': self.email_status,
