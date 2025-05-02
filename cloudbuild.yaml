@@ -40,7 +40,9 @@ steps:
       - '--service-account'
       - 'mobilize-crm-service-account@mobilize-crm.iam.gserviceaccount.com'
       - '--set-env-vars'
-      - 'FLASK_APP=app.py,FLASK_ENV=production,LOG_LEVEL=INFO,LOG_TO_STDOUT=True,PREFERRED_URL_SCHEME=https,BASE_URL=https://mobilize-crm.org,SKIP_DB_INIT=True,FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}'
+      - 'FLASK_APP=app.py,FLASK_ENV=production,LOG_LEVEL=INFO,LOG_TO_STDOUT=True,PREFERRED_URL_SCHEME=https,SKIP_DB_INIT=True,FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}'
+      - '--update-env-vars'
+      - 'BASE_URL=https://mobilize-crm.org'
       - '--set-secrets'
       - 'DATABASE_URL=mobilize-db-url:latest,SECRET_KEY=mobilize-flask-secret:latest,FIREBASE_CREDENTIALS=firebase-credentials:latest'
 
