@@ -220,66 +220,94 @@ def pipeline_chart_data(pipeline_type=None):
         
         # Choose the right query and parameters based on pipeline type and user role
         if pipeline_type == 'person':
-            # Query directly from the people table using the people_pipeline field
-            if is_super_admin:
-                # Super admin sees all people
-                query = """
-                SELECT 
-                    people_pipeline as stage_name,
-                    COUNT(*) as count
-                FROM people
-                GROUP BY people_pipeline
-                ORDER BY people_pipeline
-                """
-                params = {}
-            else:
-                # Regular user sees only their office's people
-                query = """
-                SELECT 
-                    people_pipeline as stage_name,
-                    COUNT(*) as count
-                FROM people
-                JOIN contacts ON people.id = contacts.id
-                WHERE contacts.office_id = :office_id
-                GROUP BY people_pipeline
-                ORDER BY people_pipeline
-                """
-                params = {"office_id": office_id}
+            # Find the main people pipeline
+            current_app.logger.info("Looking for main people pipeline")
+            main_pipeline = db.session.execute(
+                text("SELECT id, name FROM pipelines WHERE pipeline_type IN ('person', 'people') AND is_main_pipeline = TRUE LIMIT 1")
+            ).fetchone()
+            
+            if not main_pipeline:
+                current_app.logger.warning("No main people pipeline found, looking for any people pipeline")
+                main_pipeline = db.session.execute(
+                    text("SELECT id, name FROM pipelines WHERE pipeline_type IN ('person', 'people') LIMIT 1")
+                ).fetchone()
                 
+            if not main_pipeline:
+                current_app.logger.error("No people pipeline found")
+                return jsonify({
+                    "error": "No people pipeline found",
+                    "pipeline_id": None,
+                    "pipeline_name": "People Pipeline",
+                    "stages": [],
+                    "total_contacts": 0
+                })
+                
+            pipeline_id = main_pipeline[0]
+            pipeline_name = main_pipeline[1] or "People Pipeline"
+            current_app.logger.info(f"Found people pipeline: {pipeline_id} - {pipeline_name}")
+            
+            # Query pipeline stages
+            query = """
+            SELECT 
+                ps.id as stage_id,
+                ps.name as stage_name,
+                ps.color as stage_color,
+                COUNT(pc.id) as count
+            FROM pipeline_stages ps
+            LEFT JOIN pipeline_contacts pc ON ps.id = pc.current_stage_id
+            WHERE ps.pipeline_id = :pipeline_id
+            GROUP BY ps.id, ps.name, ps.color
+            ORDER BY ps.order
+            """
+            
             # Get the main pipeline name
-            pipeline_name = "People Pipeline"
             total_contacts = stats.get('people_count', 0)
+            params = {"pipeline_id": pipeline_id}
             
         else:  # church type
-            # Query directly from the churches table using the church_pipeline field
-            if is_super_admin:
-                # Super admin sees all churches
-                query = """
-                SELECT 
-                    church_pipeline as stage_name,
-                    COUNT(*) as count
-                FROM churches
-                GROUP BY church_pipeline
-                ORDER BY church_pipeline
-                """
-                params = {}
-            else:
-                # Regular user sees only their office's churches
-                query = """
-                SELECT 
-                    church_pipeline as stage_name,
-                    COUNT(*) as count
-                FROM churches
-                JOIN contacts ON churches.id = contacts.id
-                WHERE contacts.office_id = :office_id
-                GROUP BY church_pipeline
-                ORDER BY church_pipeline
-                """
-                params = {"office_id": office_id}
+            # Find the main church pipeline
+            current_app.logger.info("Looking for main church pipeline")
+            main_pipeline = db.session.execute(
+                text("SELECT id, name FROM pipelines WHERE pipeline_type = 'church' AND is_main_pipeline = TRUE LIMIT 1")
+            ).fetchone()
+            
+            if not main_pipeline:
+                current_app.logger.warning("No main church pipeline found, looking for any church pipeline")
+                main_pipeline = db.session.execute(
+                    text("SELECT id, name FROM pipelines WHERE pipeline_type = 'church' LIMIT 1")
+                ).fetchone()
                 
+            if not main_pipeline:
+                current_app.logger.error("No church pipeline found")
+                return jsonify({
+                    "error": "No church pipeline found",
+                    "pipeline_id": None,
+                    "pipeline_name": "Church Pipeline",
+                    "stages": [],
+                    "total_contacts": 0
+                })
+                
+            pipeline_id = main_pipeline[0]
+            pipeline_name = main_pipeline[1] or "Church Pipeline"
+            current_app.logger.info(f"Found church pipeline: {pipeline_id} - {pipeline_name}")
+            
+            # Query pipeline stages
+            query = """
+            SELECT 
+                ps.id as stage_id,
+                ps.name as stage_name,
+                ps.color as stage_color,
+                COUNT(pc.id) as count
+            FROM pipeline_stages ps
+            LEFT JOIN pipeline_contacts pc ON ps.id = pc.current_stage_id
+            WHERE ps.pipeline_id = :pipeline_id
+            GROUP BY ps.id, ps.name, ps.color
+            ORDER BY ps.order
+            """
+            
             # Get the main pipeline name
-            pipeline_name = "Church Pipeline"
             total_contacts = stats.get('church_count', 0)
+            params = {"pipeline_id": pipeline_id}
         
         # Execute the query
         connection = db.engine.connect()
@@ -300,27 +328,13 @@ def pipeline_chart_data(pipeline_type=None):
         if not results:
             current_app.logger.warning(f"No results found for {pipeline_type} pipeline stages")
             return jsonify({
-                "pipeline_id": 1,  # Use dummy ID
+                "pipeline_id": pipeline_id,
                 "pipeline_name": pipeline_name,
                 "stages": [],
                 "total_contacts": total_contacts
             })
         
-        # Define colors for stages
-        stage_colors = {
-            'CONTACT': '#3498db',      # Blue
-            'CONNECT': '#2ecc71',      # Green
-            'COMMITTED': '#f1c40f',    # Yellow
-            'COACHING': '#e67e22',     # Orange
-            'MULTIPLYING': '#9b59b6',  # Purple
-            'UNKNOWN': '#95a5a6',      # Gray
-            'NEW': '#3498db',          # Blue
-            'CONTACT': '#2ecc71',      # Green
-            'CONNECT': '#f1c40f',      # Yellow
-            'COMMITTED': '#e67e22',    # Orange
-            'COACHING': '#9b59b6',     # Purple
-            'MULTIPLYING': '#1abc9c',  # Teal
-        }
+        current_app.logger.info(f"Found {len(results)} stages for {pipeline_type} pipeline with {stage_total} total contacts")
         
         for row in results:
             stage_name = row.stage_name or 'Unknown'
@@ -331,8 +345,8 @@ def pipeline_chart_data(pipeline_type=None):
             if stage_total > 0:
                 percentage = round((count / stage_total) * 100, 1)
             
-            # Get color for the stage
-            color = stage_colors.get(stage_name.upper(), get_default_color(stage_name))
+            # Get color from the database or use a default
+            color = row.stage_color or get_default_color(stage_name)
             
             # Add stage to the list
             stages.append({
