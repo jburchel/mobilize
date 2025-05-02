@@ -442,6 +442,7 @@ def debug_pipeline_data():
 
 
 @dashboard_bp.route('/dashboard/debug/chart-data/<chart_type>')
+@dashboard_bp.route('/dashboard/fallback-chart-data/<chart_type>')
 @login_required
 def debug_chart_data(chart_type):
     """Endpoint to get pipeline chart data based on user role."""

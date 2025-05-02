@@ -6,6 +6,20 @@
 
 {% block content %}
 <div class="container-fluid px-4">
+    <!-- Debug Panel -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Debug Panel</h5>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearDebugLogs()">Clear Logs</button>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div id="debug-log" class="small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Statistics Row -->
     <div class="row g-3 mb-4">
         <!-- Total People Stat Card -->
@@ -326,21 +340,109 @@ setTimeout(function() {
     }
 }, 100);
 
-// Chart variables
+// Debug logging functions
+function logDebug(message, data) {
+    const debugLog = document.getElementById('debug-log');
+    if (!debugLog) return;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+    
+    let content = `<strong>${timestamp}</strong>: ${message}`;
+    if (data) {
+        try {
+            content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (e) {
+            content += `<pre>Error stringifying data: ${e.message}</pre>`;
+        }
+    }
+    
+    logEntry.innerHTML = content;
+    debugLog.appendChild(logEntry);
+    debugLog.scrollTop = debugLog.scrollHeight;
+}
+
+function clearDebugLogs() {
+    const debugLog = document.getElementById('debug-log');
+    if (debugLog) {
+        debugLog.innerHTML = '';
+    }
+}
+
+// Global chart objects
 let peopleChart = null;
 let churchChart = null;
 
-// Function to fetch pipeline data and update charts
+// Function to fetch pipeline data and update charts with fallback
 function fetchPipelineChartData(chartType) {
-    const endpoint = `/dashboard/api/chart-data/${chartType}`;
+    logDebug(`Fetching pipeline data for ${chartType}...`);
+    
+    // Try different endpoints in sequence
+    tryFetchPipelineData(chartType, 0);
+}
+
+// Different API endpoints to try
+const API_ENDPOINTS = [
+    (chartType) => `/dashboard/pipeline-chart-data?type=${chartType}`,
+    (chartType) => `/dashboard/api/chart-data/${chartType}`,
+    (chartType) => `/dashboard/debug/chart-data/${chartType}`,
+    (chartType) => `/dashboard/fallback-chart-data/${chartType}`
+];
+
+function tryFetchPipelineData(chartType, endpointIndex) {
+    if (endpointIndex >= API_ENDPOINTS.length) {
+        logDebug(`All endpoints failed for ${chartType}`);
+        const errorContainerId = chartType === 'person' ? 'people-chart-error' : 'church-chart-error';
+        const errorContainer = document.getElementById(errorContainerId);
+        if (errorContainer) {
+            errorContainer.textContent = `Error: Could not load chart data after trying all endpoints`;
+            errorContainer.style.display = 'block';
+        }
+        return;
+    }
+    
+    const endpoint = API_ENDPOINTS[endpointIndex](chartType);
+    logDebug(`Trying endpoint ${endpointIndex + 1}/${API_ENDPOINTS.length}: ${endpoint}`);
+    
+    // Show error container
+    const errorContainerId = chartType === 'person' ? 'people-chart-error' : 'church-chart-error';
+    const errorContainer = document.getElementById(errorContainerId);
+    if (errorContainer) {
+        errorContainer.style.display = 'none';
+    }
+    
     fetch(endpoint)
-        .then(response => response.json())
-        .then(data => {
-            console.log(`[${chartType} pipeline chart data]`, data); // Debug API response
-            const containerId = chartType === 'person' ? '#peoplePipelineChart' : '#churchPipelineChart';
-            renderPipelineChart(chartType, containerId, data);
+        .then(response => {
+            logDebug(`Response status for ${chartType} (endpoint ${endpointIndex + 1}):`, { status: response.status });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
         })
-        .catch(err => console.error(`${chartType} fetch error:`, err));
+        .then(data => {
+            logDebug(`[${chartType} pipeline data from endpoint ${endpointIndex + 1}]`, data);
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // If we got valid data, render the chart
+            if (data && data.stages) {
+                const containerId = chartType === 'person' ? '#peoplePipelineChart' : '#churchPipelineChart';
+                renderPipelineChart(chartType, containerId, data);
+                return; // Success!
+            } else {
+                throw new Error('Invalid data format: missing stages');
+            }
+        })
+        .catch(err => {
+            logDebug(`${chartType} fetch error for endpoint ${endpointIndex + 1}:`, { error: err.message });
+            
+            // Try the next endpoint
+            setTimeout(() => {
+                tryFetchPipelineData(chartType, endpointIndex + 1);
+            }, 500); // Add a small delay between attempts
+        });
 }
 
 // Function to hard refresh all charts
