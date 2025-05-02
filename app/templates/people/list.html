@@ -163,6 +163,42 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination Controls -->
+                    {% if pagination and pagination.pages > 1 %}
+                    <div class="d-flex justify-content-center mt-4">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                <!-- Previous button -->
+                                <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
+                                    <a class="page-link" href="{{ url_for('people.index', page=pagination.prev_num) if pagination.has_prev else '#' }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                
+                                <!-- Page numbers -->
+                                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                    {% if page_num %}
+                                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                                            <a class="page-link" href="{{ url_for('people.index', page=page_num) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                <!-- Next button -->
+                                <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
+                                    <a class="page-link" href="{{ url_for('people.index', page=pagination.next_num) if pagination.has_next else '#' }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -279,90 +315,52 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Search function using API
-    async function searchPeople() {
+    // Search function - redirects to the same page with search parameters
+    function searchPeople() {
         const searchTerm = searchInput.value.trim();
-        const pipeline = pipelineFilter.value;
-        const priority = priorityFilter.value;
         
         // Show/hide clear button
-        clearSearchBtn.style.display = (searchTerm || pipeline || priority) ? 'block' : 'none';
+        clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
         
-        try {
-            // Build query parameters
-            const params = new URLSearchParams();
-            if (searchTerm) params.append('q', searchTerm);
-            params.append('type', 'person');
-            if (pipeline) params.append('pipeline', pipeline);
-            if (priority) params.append('priority', priority);
-            
-            // Call API
-            console.log('Calling API with params:', params.toString());
-            const response = await fetch(`/people/search?${params.toString()}`);
-            
-            if (!response.ok) {
-                console.error('API error:', response.status, await response.text());
-                throw new Error(`Search request failed with status ${response.status}`);
-            }
-            
-            const people = await response.json();
-            console.log('API response:', people);
-            
-            // Clear table
-            tableBody.innerHTML = '';
-            
-            // Update visible count
-            visibleCountElement.textContent = people.length;
-            
-            if (people.length === 0) {
-                // Show no results message
-                const noResultsRow = document.createElement('tr');
-                noResultsRow.className = 'no-results';
-                noResultsRow.innerHTML = '<td colspan="7" class="text-center">No people match your search criteria.</td>';
-                tableBody.appendChild(noResultsRow);
-                return;
-            }
-            
-            // Populate table with results
-            people.forEach(person => {
-                const row = document.createElement('tr');
-                
-                // Create initials for avatar
-                const firstInitial = person.first_name ? person.first_name[0] : '';
-                const lastInitial = person.last_name ? person.last_name[0] : '';
-                const initials = firstInitial + lastInitial;
-                
-                // Determine avatar background color based on priority
-                const bgColor = person.priority === 'HIGH' || person.priority === 'URGENT' 
-                    ? 'var(--color-primary)' 
-                    : person.priority === 'MEDIUM' 
-                        ? 'var(--color-info)' 
-                        : 'var(--color-secondary)';
-                
-                // Create HTML structure
-                row.innerHTML = `
-                    <td>
-                        <div class="table-user">
-                            <div class="table-user-avatar" style="background-color: ${bgColor};">
-                                ${initials}
-                            </div>
-                            <div class="table-user-info">
-                                <a href="/people/${person.id}" class="text-decoration-none">
-                                    <div class="table-user-name">${person.first_name} ${person.last_name}</div>
-                                    <div class="table-user-title">${person.role || "Contact"}</div>
-                                </a>
-                            </div>
-                        </div>
-                    </td>
-                    <td>${person.email || ''}</td>
-                    <td>${person.phone || ''}</td>
-                    <td>
-                        ${person.people_pipeline ? 
-                            `<span class="badge badge-${getBadgeColorForPipeline(person.people_pipeline)}">
-                                ${person.people_pipeline}
-                            </span>` : 
-                            '<span class="badge badge-secondary">None</span>'}
-                    </td>
+        // Build query parameters for server-side search
+        const params = new URLSearchParams(window.location.search);
+        
+        // Update or remove search parameter
+        if (searchTerm) {
+            params.set('q', searchTerm);
+        } else {
+            params.delete('q');
+        }
+        
+        // Always reset to page 1 when searching
+        params.set('page', 1);
+        
+        // Redirect to the same page with updated parameters
+        window.location.href = `${window.location.pathname}?${params.toString()}`;
+    }
+    
+    // Handle search input
+    searchInput.addEventListener('keyup', function(event) {
+        if (event.key === 'Enter') {
+            searchPeople();
+        }
+    });
+    
+    // Clear search when clicking the clear button
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        const params = new URLSearchParams(window.location.search);
+        params.delete('q');
+        window.location.href = `${window.location.pathname}?${params.toString()}`;
+    });
+    
+    // Set search input value from URL parameter if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('q');
+    if (searchParam) {
+        searchInput.value = searchParam;
+        clearSearchBtn.style.display = 'block';
+    }
                     <td>
                         ${person.priority ? 
                             `<span class="badge badge-${getBadgeColorForPriority(person.priority)}">

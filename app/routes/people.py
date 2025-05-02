@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
+from sqlalchemy.orm import load_only
 from sqlalchemy import or_
 from app.models.person import Person
 from app.models.church import Church
-from app.models.user import User
 from app.models.communication import Communication
 from app.models.task import Task
 from app.models.pipeline import Pipeline, PipelineStage, PipelineContact
@@ -14,7 +14,6 @@ from datetime import datetime
 import os
 import pandas as pd
 import uuid
-from werkzeug.utils import secure_filename
 
 people_bp = Blueprint('people', __name__, template_folder='../templates/people')
 
@@ -22,16 +21,47 @@ people_bp = Blueprint('people', __name__, template_folder='../templates/people')
 @login_required
 @office_required
 def index():
-    """Show list of all people."""
-    # For super admins, show all people across all offices
-    if current_user.is_super_admin():
-        people = Person.query.all()
-    else:
-        people = Person.query.filter_by(office_id=current_user.office_id).all()
+    """Show list of all people with pagination and search functionality."""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20  # Number of records per page
+    search_query = request.args.get('q', '')
     
-    # Pass data to template
+    # Create base query
+    query = Person.query
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        query = query.filter_by(office_id=current_user.office_id)
+    
+    # Apply search filter if provided
+    if search_query:
+        search_term = f'%{search_query}%'
+        query = query.filter(
+            or_(
+                Person.first_name.ilike(search_term),
+                Person.last_name.ilike(search_term),
+                Person.email.ilike(search_term),
+                Person.phone.ilike(search_term),
+                Person.people_pipeline.ilike(search_term)
+            )
+        )
+    
+    # Only select necessary columns for the list view to improve performance
+    # Using pagination to limit the number of records fetched
+    pagination = query.options(
+        load_only(Person.id, Person.first_name, Person.last_name, Person.email, 
+                 Person.phone, Person.people_pipeline, Person.status, Person.priority)
+    ).order_by(Person.last_name, Person.first_name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    people = pagination.items
+    
+    # Pass data to template with pagination info
     return render_template('people/list.html', 
-                          people=people, 
+                          people=people,
+                          pagination=pagination,
+                          search_query=search_query,
                           page_title="People Management")
 
 @people_bp.route('/new', methods=['GET', 'POST'])
