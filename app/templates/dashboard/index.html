@@ -332,7 +332,7 @@ let churchChart = null;
 
 // Function to fetch pipeline data and update charts
 function fetchPipelineChartData(chartType) {
-    const endpoint = `/dashboard/pipeline-chart-data?type=${chartType}`;
+    const endpoint = `/dashboard/api/chart-data/${chartType}`;
     fetch(endpoint)
         .then(response => response.json())
         .then(data => {
