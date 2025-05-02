@@ -46,16 +46,36 @@ def index():
             )
         )
     
-    # Only select necessary columns for the list view to improve performance
     # Using pagination to limit the number of records fetched
-    pagination = query.options(
-        load_only(Person.id, Person.first_name, Person.last_name, Person.email, 
-                 Person.phone, Person.people_pipeline, Person.status, Person.priority)
-    ).order_by(Person.last_name, Person.first_name).paginate(
+    pagination = query.order_by(Person.last_name, Person.first_name).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
     people = pagination.items
+    
+    # Get the main pipeline for proper pipeline stages
+    main_pipeline = Pipeline.query.filter_by(
+        pipeline_type='person',
+        is_main_pipeline=True
+    ).first()
+    
+    if main_pipeline:
+        # Get pipeline stages for all people in the current page
+        person_ids = [p.id for p in people]
+        pipeline_contacts = PipelineContact.query.filter(
+            PipelineContact.contact_id.in_(person_ids),
+            PipelineContact.pipeline_id == main_pipeline.id
+        ).all()
+        
+        # Create a mapping of person_id to pipeline stage
+        pipeline_stages = {}
+        for pc in pipeline_contacts:
+            if pc.current_stage:
+                pipeline_stages[pc.contact_id] = pc.current_stage.name
+        
+        # Attach pipeline stage to each person object
+        for person in people:
+            person.current_pipeline_stage = pipeline_stages.get(person.id, 'Not in Pipeline')
     
     # Pass data to template with pagination info
     return render_template('people/list.html', 

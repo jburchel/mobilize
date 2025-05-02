@@ -113,7 +113,7 @@
                                 <tr data-name="{{ person.first_name }} {{ person.last_name }}" 
                                     data-email="{{ person.email|default('') }}" 
                                     data-phone="{{ person.phone|default('') }}"
-                                    data-pipeline="{{ person.people_pipeline|default('') }}"
+                                    data-pipeline="{{ person.current_pipeline_stage|default('') }}"
                                     data-priority="{{ person.priority|default('') }}">
                                     <td>
                                         <div class="table-user">
@@ -131,12 +131,12 @@
                                     <td>{{ person.email }}</td>
                                     <td>{{ person.phone }}</td>
                                     <td>
-                                        {% if person.main_pipeline_stage %}
-                                        <span class="badge badge-{{ 'primary' if person.main_pipeline_stage == 'PROMOTION' else 'success' if person.main_pipeline_stage == 'INFORMATION' else 'warning' if person.main_pipeline_stage == 'INVITATION' else 'info' if person.main_pipeline_stage == 'CONFIRMATION' else 'secondary' }}">
-                                            {{ person.main_pipeline_stage }}
+                                        {% if person.current_pipeline_stage %}
+                                        <span class="badge badge-{{ 'primary' if person.current_pipeline_stage == 'PROMOTION' else 'success' if person.current_pipeline_stage == 'INFORMATION' else 'warning' if person.current_pipeline_stage == 'INVITATION' else 'info' if person.current_pipeline_stage == 'CONFIRMATION' else 'secondary' }}">
+                                            {{ person.current_pipeline_stage }}
                                         </span>
                                         {% else %}
-                                        <span class="badge badge-secondary">None</span>
+                                        <span class="badge badge-secondary">Not in Pipeline</span>
                                         {% endif %}
                                     </td>
                                     <td>
