@@ -14,6 +14,13 @@ from sqlalchemy.orm import joinedload
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
+@dashboard_bp.route('/debug')
+@login_required
+@office_required
+def debug():
+    """Render the dashboard debug page."""
+    return render_template('dashboard/debug.html')
+
 @dashboard_bp.route('/')
 @login_required
 @office_required
@@ -371,7 +378,7 @@ def pipeline_chart_data(pipeline_type=None):
         stages.sort(key=lambda x: stage_order.get(x['name'].upper(), 999))
         
         response_data = {
-            "pipeline_id": 1,  # Use dummy ID
+            "pipeline_id": pipeline_id,  # Use actual pipeline ID
             "pipeline_name": pipeline_name,
             "stages": stages,
             "total_contacts": total_contacts
@@ -554,7 +561,7 @@ def debug_chart_data(chart_type):
         if not results:
             current_app.logger.warning(f"No results found for {chart_type} pipeline stages")
             return jsonify({
-                "pipeline_id": 1,  # Use dummy ID
+                "pipeline_id": pipeline_id,  # Use actual pipeline ID
                 "pipeline_name": pipeline_name,
                 "stages": [],
                 "total_contacts": total_contacts
@@ -605,7 +612,7 @@ def debug_chart_data(chart_type):
         stages.sort(key=lambda x: stage_order.get(x['name'].upper(), 999))
         
         response_data = {
-            "pipeline_id": 1,  # Use dummy ID
+            "pipeline_id": pipeline_id,  # Use actual pipeline ID
             "pipeline_name": pipeline_name,
             "stages": stages,
             "total_contacts": total_contacts

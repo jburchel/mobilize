@@ -1,10 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from app.extensions import db
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.hybrid import hybrid_property
 from app.models.constants import PEOPLE_PIPELINE_CHOICES, CHURCH_PIPELINE_CHOICES
-from flask import current_app
-from sqlalchemy import desc
 import enum
 
 class PipelineType(str, enum.Enum):
@@ -32,10 +28,10 @@ class Pipeline(db.Model):
     
     # Relationships
     office = db.relationship('Office', backref=db.backref('pipelines', lazy=True))
-    stages = db.relationship('PipelineStage', backref='pipeline', lazy='dynamic', 
+    stages = db.relationship('PipelineStage', back_populates='pipeline', lazy='dynamic', 
                            cascade='all, delete-orphan',
                            order_by='PipelineStage.order')
-    pipeline_contacts = db.relationship('PipelineContact', backref='pipeline', lazy='dynamic')
+    pipeline_contacts = db.relationship('PipelineContact', back_populates='pipeline_parent', lazy='dynamic')
     
     def __repr__(self):
         return f'<Pipeline {self.name}>'
@@ -123,17 +119,14 @@ class PipelineStage(db.Model):
     auto_task_template = db.Column(db.Text, nullable=True)
     
     # Relationships
-    contacts_in_stage = db.relationship('PipelineContact', backref='current_stage', lazy='dynamic',
-                                      foreign_keys='PipelineContact.current_stage_id')
-    history_entries = db.relationship('PipelineStageHistory', 
-                                    primaryjoin="or_(PipelineStage.id==PipelineStageHistory.from_stage_id, PipelineStage.id==PipelineStageHistory.to_stage_id)",
-                                    backref='related_stage', lazy='dynamic')
+    pipeline = db.relationship('Pipeline', back_populates='stages')
+    contacts_in_stage = db.relationship('PipelineContact', back_populates='current_stage')
     from_stage_history = db.relationship('PipelineStageHistory',
-                                    foreign_keys='PipelineStageHistory.from_stage_id', lazy='dynamic',
-                                    back_populates='from_stage')
+                              foreign_keys='PipelineStageHistory.from_stage_id', lazy='dynamic',
+                              back_populates='from_stage')
     to_stage_history = db.relationship('PipelineStageHistory',
-                                  foreign_keys='PipelineStageHistory.to_stage_id', lazy='dynamic',
-                                  back_populates='to_stage')
+                              foreign_keys='PipelineStageHistory.to_stage_id', lazy='dynamic',
+                              back_populates='to_stage')
     
     def __repr__(self):
         return f'<PipelineStage {self.name} (Pipeline: {self.pipeline_id})>'
@@ -168,9 +161,11 @@ class PipelineContact(db.Model):
     last_updated = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # Relationships
-    contact = db.relationship('Contact', backref=db.backref('pipeline_entries', lazy=True))
-    stage_history = db.relationship('PipelineStageHistory', back_populates='pipeline_contact', lazy=True,
-                             cascade='all, delete-orphan')
+    contact = db.relationship('Contact', backref='pipeline_contacts')
+    pipeline_parent = db.relationship('Pipeline', back_populates='pipeline_contacts')
+    current_stage = db.relationship('PipelineStage', back_populates='contacts_in_stage')
+    stage_history = db.relationship('PipelineStageHistory', back_populates='pipeline_contact',
+                             cascade='all, delete-orphan', passive_deletes=True)
     
     def __repr__(self):
         return f'<PipelineContact {self.contact_id} in Pipeline {self.pipeline_id}>'
@@ -200,7 +195,7 @@ class PipelineContact(db.Model):
             db.session.commit()
             
             return True
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             import traceback
             traceback.print_exc()
@@ -228,7 +223,7 @@ class PipelineStageHistory(db.Model):
     __tablename__ = 'pipeline_stage_history'
     
     id = db.Column(db.Integer, primary_key=True)
-    pipeline_contact_id = db.Column(db.Integer, db.ForeignKey('pipeline_contacts.id'))
+    pipeline_contact_id = db.Column(db.Integer, db.ForeignKey('pipeline_contacts.id', ondelete='CASCADE'))
     from_stage_id = db.Column(db.Integer, db.ForeignKey('pipeline_stages.id'))
     to_stage_id = db.Column(db.Integer, db.ForeignKey('pipeline_stages.id'))
     created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))

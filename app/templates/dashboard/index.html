@@ -489,8 +489,11 @@ function renderPipelineChart(chartType, containerSelector, data) {
     container.appendChild(canvas);
     
     // Prepare chart data
+    // Log the raw data structure
+    console.log('Raw chart data:', data);
+
     const labels = data.stages.map(stage => stage.name);
-    const counts = data.stages.map(stage => stage.contact_count);
+    const counts = data.stages.map(stage => stage.contact_count || stage.count || 0);
     const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name));
     
     // Debug
