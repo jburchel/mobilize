@@ -610,6 +610,20 @@ function renderPipelineChart(chartType, containerSelector, data) {
     document.getElementById('people-chart-loading').style.display = 'none';
     document.getElementById('church-chart-loading').style.display = 'none';
     
+    // Enhanced debugging - log the full data object
+    console.log('CHART DEBUG - Full data object:', JSON.stringify(data, null, 2));
+    
+    // Check if data has the expected structure
+    if (!data || !data.stages || !Array.isArray(data.stages)) {
+        console.error(`Invalid chart data structure for ${chartType}:`, data);
+        const errorContainer = document.getElementById(`${chartType === 'person' ? 'people' : 'church'}-chart-error`);
+        if (errorContainer) {
+            errorContainer.textContent = `Error: Invalid data structure received from server`;
+            errorContainer.style.display = 'block';
+        }
+        return;
+    }
+    
     // Get container and prepare for chart
     const container = document.querySelector(containerSelector);
     if (!container) {
@@ -628,10 +642,23 @@ function renderPipelineChart(chartType, containerSelector, data) {
     canvas.style.height = '100%';
     container.appendChild(canvas);
     
-    // Prepare chart data
-    const labels = data.stages.map(stage => stage.name);
-    const counts = data.stages.map(stage => stage.count);
-    const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name));
+    // Debug each stage
+    console.log(`CHART DEBUG - ${chartType} stages:`, data.stages);
+    data.stages.forEach((stage, index) => {
+        console.log(`Stage ${index}:`, stage);
+    });
+    
+    // Prepare chart data with fallbacks for missing properties
+    const labels = data.stages.map(stage => stage.name || 'Unknown');
+    
+    // Try different property names for counts (count, contact_count, or a numeric value)
+    const counts = data.stages.map(stage => {
+        if (typeof stage.count === 'number') return stage.count;
+        if (typeof stage.contact_count === 'number') return stage.contact_count;
+        return 0; // Default to 0 if no count property found
+    });
+    
+    const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name || 'Unknown'));
     
     // Debug
     console.log(`Rendering ${chartType} chart with data:`, {
