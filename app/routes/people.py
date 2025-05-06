@@ -53,25 +53,31 @@ def index():
     
     people = pagination.items
     
-    # Get the main pipeline for proper pipeline stages
+    # Get the main pipeline for proper pipeline stages - optimized query
     main_pipeline = Pipeline.query.filter_by(
         pipeline_type='person',
         is_main_pipeline=True
     ).first()
     
     if main_pipeline:
-        # Get pipeline stages for all people in the current page
+        # Use a more efficient query with joins to get pipeline stages in a single query
+        # This avoids the N+1 query problem and significantly improves performance
         person_ids = [p.id for p in people]
-        pipeline_contacts = PipelineContact.query.filter(
+        
+        # Use a join to efficiently get pipeline stages for all people at once
+        pipeline_data = db.session.query(
+            PipelineContact.contact_id, 
+            PipelineStage.name
+        ).join(
+            PipelineStage, 
+            PipelineContact.current_stage_id == PipelineStage.id
+        ).filter(
             PipelineContact.contact_id.in_(person_ids),
             PipelineContact.pipeline_id == main_pipeline.id
         ).all()
         
         # Create a mapping of person_id to pipeline stage
-        pipeline_stages = {}
-        for pc in pipeline_contacts:
-            if pc.current_stage:
-                pipeline_stages[pc.contact_id] = pc.current_stage.name
+        pipeline_stages = {contact_id: stage_name for contact_id, stage_name in pipeline_data}
         
         # Attach pipeline stage to each person object
         for person in people:

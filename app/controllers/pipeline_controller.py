@@ -1,14 +1,14 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from app.models import Pipeline, PipelineStage, PipelineContact, PipelineStageHistory, Contact, Office, Person, Church
+from app.models import Pipeline, PipelineStage, PipelineContact, PipelineStageHistory, Contact, Person, Church, Office
 from app.extensions import db
 from datetime import datetime
 import json
 from sqlalchemy import inspect
-from flask_wtf.csrf import generate_csrf
-from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import desc
-from sqlalchemy import or_
+# from flask_wtf.csrf import generate_csrf  # Unused import
+from sqlalchemy.orm import joinedload
+# from sqlalchemy import desc  # Unused import
+# from sqlalchemy import or_  # Unused import
 
 pipeline_bp = Blueprint('pipeline', __name__, url_prefix='/pipeline')
 
@@ -22,7 +22,7 @@ def index():
     # Get main pipelines
     # Main people pipeline may use 'person' or 'people' type
     people_main_pipeline = Pipeline.query.filter(
-        Pipeline.is_main_pipeline==True,
+        Pipeline.is_main_pipeline,
         Pipeline.pipeline_type.in_(['person','people'])
     ).first()
     
@@ -78,7 +78,7 @@ def index():
 @login_required
 def create():
     """Create a new pipeline."""
-    from app.models import Office
+    # Office is already imported at the top of the file
     
     # Get all offices for the dropdown
     offices = Office.query.all()
@@ -452,7 +452,7 @@ def edit(pipeline_id):
         flash('System pipelines cannot be edited', 'warning')
         return redirect(url_for('pipeline.index'))
     
-    from app.models import Office
+    # Office is already imported at the top of the file
     offices = Office.query.all()
     
     if request.method == 'POST':
@@ -902,6 +902,10 @@ def api_pipeline_contacts(pipeline_id):
     """API endpoint to get all contacts in a pipeline with their stages."""
     pipeline = Pipeline.query.get_or_404(pipeline_id)
     
+    # Use pipeline to check access permission (important for security)
+    if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
+        return jsonify({"error": "You do not have permission to access this pipeline"}), 403
+        
     pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
     
     result = []
