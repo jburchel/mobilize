@@ -22,6 +22,7 @@ import csv
 import time
 from io import BytesIO
 import os
+import sqlite3
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -638,52 +639,28 @@ def edit_user(user_id):
 
 # System Logs and Monitoring Routes
 @admin_bp.route('/logs/system')
+@login_required
 @admin_required
 def system_logs():
-    # Sample data for system logs
-    logs = []
+    """Display system logs."""
+    from app.utils.log_utils import get_system_logs, get_log_statistics
     
-    # Generate some sample log entries
-    log_levels = ['INFO', 'WARNING', 'ERROR']
-    log_messages = [
-        'User login successful',
-        'Failed login attempt',
-        'Database connection established',
-        'High memory usage detected',
-        'API request completed',
-        'Email sending failed',
-        'Background task completed',
-        'File upload successful',
-        'Permission denied for user',
-        'Configuration update applied'
-    ]
+    # Get query parameters for filtering
+    level_filter = request.args.get('level')
+    search_term = request.args.get('search')
+    max_entries = int(request.args.get('max', 1000))
     
-    # Create 20 sample log entries
-    for i in range(20):
-        # Randomize timestamp within the last 24 hours
-        hours_ago = random.randint(0, 24)
-        minutes_ago = random.randint(0, 59)
-        timestamp = datetime.now() - timedelta(hours=hours_ago, minutes=minutes_ago)
-        
-        # Weighted random level (more INFO than WARNING, more WARNING than ERROR)
-        level_weights = [0.7, 0.2, 0.1]  # 70% INFO, 20% WARNING, 10% ERROR
-        level = random.choices(log_levels, weights=level_weights, k=1)[0]
-        
-        # Random message
-        message = random.choice(log_messages)
-        if level == 'ERROR':
-            message = f"ERROR: {message}"
-        elif level == 'WARNING':
-            message = f"WARNING: {message}"
-        
-        logs.append({
-            'timestamp': timestamp,
-            'level': level,
-            'message': message
-        })
+    # Get logs using the log_utils module
+    logs = get_system_logs(max_entries=max_entries, level_filter=level_filter, search_term=search_term)
     
-    # Sort logs by timestamp, newest first
-    logs.sort(key=lambda x: x['timestamp'], reverse=True)
+    # If no logs are found, create a sample log entry to avoid empty display
+    if not logs:
+        logs = [{
+            'timestamp': datetime.now(),
+            'level': 'INFO',
+            'message': 'No log entries found. This could be because the application is new, logs have been cleared, or the log file is not accessible.',
+            'color': 'text-info'
+        }]
     
     return render_template('admin/logs/system_logs.html', logs=logs)
 
@@ -819,119 +796,125 @@ def system_performance():
 
 @admin_bp.route('/logs/activity')
 @login_required
+@admin_required
 def activity_logs():
     """Display activity logs."""
-    # Generate sample activity data
-    activities = []
+    from app.utils.log_utils import get_activity_logs
     
-    # Define sample timestamps spread over the last 30 days
-    now = datetime.now()
+    # Get activity logs from the log_utils module
+    activities = get_activity_logs(max_entries=100)
     
-    # Define sample subsystems
-    subsystems = ['Authentication', 'Database', 'API', 'File System', 'Background Jobs', 
-                 'Email Service', 'Payment Processing', 'User Management', 'Church Management']
-    
-    # Define sample operations
-    operations = ['CREATE', 'READ', 'UPDATE', 'DELETE', 'IMPORT', 'EXPORT', 'SCHEDULE', 
-                 'CANCEL', 'PROCESS', 'SYNC', 'BACKUP', 'RESTORE']
-    
-    # Define sample status values
-    statuses = ['SUCCESS', 'FAILURE', 'WARNING', 'PENDING', 'TIMEOUT', 'ABORTED']
-    
-    # Define sample impacts
-    impacts = ['HIGH', 'MEDIUM', 'LOW', 'NONE']
-    
-    # Define sample users
-    users = [
-        {'email': 'admin@example.com', 'name': 'System Admin'},
-        {'email': 'john.doe@example.com', 'name': 'John Doe'},
-        {'email': 'jane.smith@example.com', 'name': 'Jane Smith'},
-        {'email': 'pastor@church.org', 'name': 'Pastor Williams'},
-        {'email': 'coordinator@ministry.com', 'name': 'Sarah Johnson'},
-        None  # For system activities with no user
-    ]
-    
-    # Generate 40 random activity logs
-    for _ in range(40):
-        # Random timestamp in the last 30 days
-        days_ago = random.randint(0, 30)
-        hours_ago = random.randint(0, 23)
-        mins_ago = random.randint(0, 59)
-        timestamp = now - timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
+    # If no logs are found, generate sample data for demonstration
+    if not activities:
+        # Define sample data for demonstration purposes
+        activities = []
+        now = datetime.now()
         
-        # Random subsystem and operation
-        subsystem = random.choice(subsystems)
-        operation = random.choice(operations)
+        # Define sample subsystems
+        subsystems = ['Authentication', 'Database', 'API', 'File System', 'Background Jobs', 
+                     'Email Service', 'Payment Processing', 'User Management', 'Church Management']
         
-        # Status with weighted probability (success more likely)
-        status_weights = [0.7, 0.1, 0.1, 0.05, 0.025, 0.025]  # Probabilities for each status
-        status = random.choices(statuses, weights=status_weights, k=1)[0]
+        # Define sample operations
+        operations = ['CREATE', 'READ', 'UPDATE', 'DELETE', 'IMPORT', 'EXPORT', 'SCHEDULE', 
+                     'CANCEL', 'PROCESS', 'SYNC', 'BACKUP', 'RESTORE']
         
-        # Random impact level based on status
-        if status == 'SUCCESS':
-            impact = random.choices(impacts, weights=[0.05, 0.15, 0.3, 0.5], k=1)[0]
-        elif status == 'FAILURE':
-            impact = random.choices(impacts, weights=[0.6, 0.3, 0.1, 0], k=1)[0]
-        else:
-            impact = random.choices(impacts, weights=[0.2, 0.4, 0.3, 0.1], k=1)[0]
+        # Define sample status values
+        statuses = ['SUCCESS', 'FAILURE', 'WARNING', 'PENDING', 'TIMEOUT', 'ABORTED']
         
-        # Random user (sometimes None for system activities)
-        user = random.choice(users)
+        # Define sample impacts
+        impacts = ['HIGH', 'MEDIUM', 'LOW', 'NONE']
         
-        # Generate a description based on subsystem and operation
-        if subsystem == 'Authentication':
-            resource = random.choice(['user session', 'password', 'account', 'token'])
-            if operation == 'CREATE':
-                description = f"New {resource} created"
-            elif operation in ['UPDATE', 'PROCESS']:
-                description = f"{resource.capitalize()} updated"
-            elif operation == 'DELETE':
-                description = f"{resource.capitalize()} removed"
+        # Define sample users
+        users = [
+            {'email': 'admin@example.com', 'name': 'System Admin'},
+            {'email': 'john.doe@example.com', 'name': 'John Doe'},
+            {'email': 'jane.smith@example.com', 'name': 'Jane Smith'},
+            {'email': 'pastor@church.org', 'name': 'Pastor Williams'},
+            {'email': 'coordinator@ministry.com', 'name': 'Sarah Johnson'},
+            None  # For system activities with no user
+        ]
+        
+        # Generate 40 random activity logs
+        for _ in range(40):
+            # Random timestamp in the last 30 days
+            days_ago = random.randint(0, 30)
+            hours_ago = random.randint(0, 23)
+            mins_ago = random.randint(0, 59)
+            timestamp = now - timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
+            
+            # Random subsystem and operation
+            subsystem = random.choice(subsystems)
+            operation = random.choice(operations)
+            
+            # Status with weighted probability (success more likely)
+            status_weights = [0.7, 0.1, 0.1, 0.05, 0.025, 0.025]  # Probabilities for each status
+            status = random.choices(statuses, weights=status_weights, k=1)[0]
+            
+            # Random impact level based on status
+            if status == 'SUCCESS':
+                impact = random.choices(impacts, weights=[0.05, 0.15, 0.3, 0.5], k=1)[0]
+            elif status == 'FAILURE':
+                impact = random.choices(impacts, weights=[0.6, 0.3, 0.1, 0], k=1)[0]
             else:
-                description = f"{operation.capitalize()} operation on {resource}"
-        
-        elif subsystem == 'Database':
-            resource = random.choice(['record', 'table', 'query', 'connection', 'index'])
-            description = f"Database {operation.lower()} on {resource}"
+                impact = random.choices(impacts, weights=[0.2, 0.4, 0.3, 0.1], k=1)[0]
             
-        elif subsystem == 'API':
-            resource = random.choice(['endpoint', 'request', 'response', 'integration'])
-            description = f"API {operation.lower()} - {resource}"
+            # Random user (sometimes None for system activities)
+            user = random.choice(users)
             
-        elif subsystem in ['User Management', 'Church Management']:
-            resource = random.choice(['profile', 'role', 'permission', 'group', 'membership'])
-            description = f"{subsystem} {operation.lower()} - {resource}"
+            # Generate a description based on subsystem and operation
+            if subsystem == 'Authentication':
+                resource = random.choice(['user session', 'password', 'account', 'token'])
+                if operation == 'CREATE':
+                    description = f"New {resource} created"
+                elif operation in ['UPDATE', 'PROCESS']:
+                    description = f"{resource.capitalize()} updated"
+                elif operation == 'DELETE':
+                    description = f"{resource.capitalize()} removed"
+                else:
+                    description = f"{operation.capitalize()} operation on {resource}"
             
-        else:
-            description = f"{subsystem} {operation.lower()} operation"
-        
-        # Add more details for failed operations
-        if status == 'FAILURE':
-            description += " - " + random.choice([
-                "Resource not found", 
-                "Permission denied",
-                "Validation error",
-                "Timeout exceeded",
-                "Conflict detected",
-                "Rate limit reached",
-                "Invalid input"
-            ])
-        
-        # Generate a random IP address
-        ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
-        
-        # Create the activity log entry
-        activities.append({
-            'timestamp': timestamp,
-            'subsystem': subsystem,
-            'operation': operation,
-            'description': description,
-            'status': status,
-            'impact': impact,
-            'user': user['name'] if user else 'System',
-            'email': user['email'] if user else None,
-            'ip_address': ip_address if user else None,
-            'duration': random.randint(1, 5000) if operation not in ['CREATE', 'DELETE'] else None,
+            elif subsystem == 'Database':
+                resource = random.choice(['record', 'table', 'query', 'connection', 'index'])
+                description = f"Database {operation.lower()} on {resource}"
+                
+            elif subsystem == 'API':
+                resource = random.choice(['endpoint', 'request', 'response', 'integration'])
+                description = f"API {operation.lower()} - {resource}"
+                
+            elif subsystem in ['User Management', 'Church Management']:
+                resource = random.choice(['profile', 'role', 'permission', 'group', 'membership'])
+                description = f"{subsystem} {operation.lower()} - {resource}"
+                
+            else:
+                description = f"{subsystem} {operation.lower()} operation"
+            
+            # Add more details for failed operations
+            if status == 'FAILURE':
+                description += " - " + random.choice([
+                    "Resource not found", 
+                    "Permission denied",
+                    "Validation error",
+                    "Timeout exceeded",
+                    "Conflict detected",
+                    "Rate limit reached",
+                    "Invalid input"
+                ])
+            
+            # Generate a random IP address
+            ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
+            
+            # Create the activity log entry
+            activities.append({
+                'timestamp': timestamp,
+                'subsystem': subsystem,
+                'operation': operation,
+                'description': description,
+                'status': status,
+                'impact': impact,
+                'user': user['name'] if user else 'System',
+                'email': user['email'] if user else None,
+                'ip_address': ip_address if user else None,
+                'duration': random.randint(1, 5000) if operation not in ['CREATE', 'DELETE'] else None,
             'resource_id': f"{random.randint(1000, 9999)}" if random.random() > 0.3 else None
         })
     
@@ -968,60 +951,68 @@ def activity_logs():
 
 @admin_bp.route('/logs/security')
 @login_required
+@admin_required
 def security_logs():
     """Display security logs."""
-    # Generate sample security log data
-    security_logs = []
+    from app.utils.log_utils import get_security_logs
     
-    # Define sample timestamps spread over the last 30 days
-    now = datetime.now()
+    # Get security logs from the log_utils module
+    security_logs = get_security_logs(max_entries=100)
     
-    # Define sample security event types
-    event_types = [
-        'LOGIN_FAILURE', 'PERMISSION_DENIED', 'DATA_ACCESS', 'ACCOUNT_LOCKED', 
-        'CONFIG_CHANGE', 'PASSWORD_CHANGE', 'PRIVILEGE_ESCALATION', 'SUSPICIOUS_ACTIVITY',
-        'BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'UNUSUAL_LOGIN_TIME', 'UNUSUAL_LOGIN_LOCATION'
-    ]
-    
-    # Define security levels
-    levels = ['CRITICAL', 'WARNING', 'INFO']
-    level_weights = [0.2, 0.3, 0.5]  # Probabilities for each level
-    
-    # Define sample users
-    users = [
-        {'email': 'admin@example.com', 'name': 'System Admin'},
-        {'email': 'john.doe@example.com', 'name': 'John Doe'},
-        {'email': 'jane.smith@example.com', 'name': 'Jane Smith'},
-        {'email': 'pastor@church.org', 'name': 'Pastor Williams'},
-        {'email': 'coordinator@ministry.com', 'name': 'Sarah Johnson'},
-        None  # For anonymous activities
-    ]
-    
-    # Generate sample security logs
-    for i in range(50):
-        # Random timestamp in the last 30 days
-        days_ago = random.randint(0, 30)
-        hours_ago = random.randint(0, 23)
-        mins_ago = random.randint(0, 59)
-        timestamp = now - timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
+    # If no logs are found, generate sample data for demonstration
+    if not security_logs:
+        # Generate sample security log data
+        security_logs = []
         
-        # Random event type
-        event_type = random.choice(event_types)
+        # Define sample timestamps spread over the last 30 days
+        now = datetime.now()
         
-        # Security level with weighted probability
-        level = random.choices(levels, weights=level_weights, k=1)[0]
+        # Define sample security event types
+        event_types = [
+            'LOGIN_FAILURE', 'PERMISSION_DENIED', 'DATA_ACCESS', 'ACCOUNT_LOCKED', 
+            'CONFIG_CHANGE', 'PASSWORD_CHANGE', 'PRIVILEGE_ESCALATION', 'SUSPICIOUS_ACTIVITY',
+            'BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'UNUSUAL_LOGIN_TIME', 'UNUSUAL_LOGIN_LOCATION'
+        ]
         
-        # Adjust level based on event type for more realism
-        if event_type in ['BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'PRIVILEGE_ESCALATION']:
-            level = 'CRITICAL'
-        elif event_type in ['LOGIN_FAILURE', 'UNUSUAL_LOGIN_LOCATION', 'PERMISSION_DENIED']:
-            level = random.choices(['CRITICAL', 'WARNING'], weights=[0.3, 0.7], k=1)[0]
+        # Define security levels
+        levels = ['CRITICAL', 'WARNING', 'INFO']
+        level_weights = [0.2, 0.3, 0.5]  # Probabilities for each level
         
-        # Random user (sometimes None for anonymous activities)
-        user = random.choice(users)
+        # Define sample users
+        users = [
+            {'email': 'admin@example.com', 'name': 'System Admin'},
+            {'email': 'john.doe@example.com', 'name': 'John Doe'},
+            {'email': 'jane.smith@example.com', 'name': 'Jane Smith'},
+            {'email': 'pastor@church.org', 'name': 'Pastor Williams'},
+            {'email': 'coordinator@ministry.com', 'name': 'Sarah Johnson'},
+            None  # For anonymous activities
+        ]
         
-        # Generate IP address and location info
-        ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
+        # Generate sample security logs
+        for i in range(50):
+                # Random timestamp in the last 30 days
+            days_ago = random.randint(0, 30)
+            hours_ago = random.randint(0, 23)
+            mins_ago = random.randint(0, 59)
+            timestamp = now - timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
+            
+            # Random event type
+            event_type = random.choice(event_types)
+            
+            # Security level with weighted probability
+            level = random.choices(levels, weights=level_weights, k=1)[0]
+            
+            # Adjust level based on event type for more realism
+            if event_type in ['BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'PRIVILEGE_ESCALATION']:
+                level = 'CRITICAL'
+            elif event_type in ['LOGIN_FAILURE', 'UNUSUAL_LOGIN_LOCATION', 'PERMISSION_DENIED']:
+                level = random.choices(['CRITICAL', 'WARNING'], weights=[0.3, 0.7], k=1)[0]
+        
+            # Random user (sometimes None for anonymous activities)
+            user = random.choice(users)
+            
+            # Generate IP address and location info
+            ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
         
         # Generate a description based on event type
         if event_type == 'LOGIN_FAILURE':
@@ -1172,88 +1163,16 @@ def security_logs():
 @login_required
 def export_security_logs():
     """Export security logs as CSV."""
-    # In a real application, this would query the database
-    # For the demo, we'll reuse the sample data generation
-    security_logs = []
-    
-    # Define sample timestamps spread over the last 30 days
-    now = datetime.now()
-    
-    # Define sample security event types
-    event_types = [
-        'LOGIN_FAILURE', 'PERMISSION_DENIED', 'DATA_ACCESS', 'ACCOUNT_LOCKED', 
-        'CONFIG_CHANGE', 'PASSWORD_CHANGE', 'PRIVILEGE_ESCALATION', 'SUSPICIOUS_ACTIVITY',
-        'BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'UNUSUAL_LOGIN_TIME', 'UNUSUAL_LOGIN_LOCATION'
-    ]
-    
-    # Define security levels
-    levels = ['CRITICAL', 'WARNING', 'INFO']
-    level_weights = [0.2, 0.3, 0.5]  # Probabilities for each level
-    
-    # Define sample users
-    users = [
-        {'email': 'admin@example.com', 'name': 'System Admin'},
-        {'email': 'john.doe@example.com', 'name': 'John Doe'},
-        {'email': 'jane.smith@example.com', 'name': 'Jane Smith'},
-        {'email': 'pastor@church.org', 'name': 'Pastor Williams'},
-        {'email': 'coordinator@ministry.com', 'name': 'Sarah Johnson'},
-        None  # For anonymous activities
-    ]
-    
-    # Generate sample security logs
-    for i in range(50):
-        # Random timestamp in the last 30 days
-        days_ago = random.randint(0, 30)
-        hours_ago = random.randint(0, 23)
-        mins_ago = random.randint(0, 59)
-        timestamp = now - timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
-        
-        # Random event type
-        event_type = random.choice(event_types)
-        
-        # Security level with weighted probability
-        level = random.choices(levels, weights=level_weights, k=1)[0]
-        
-        # Adjust level based on event type for more realism
-        if event_type in ['BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'PRIVILEGE_ESCALATION']:
-            level = 'CRITICAL'
-        elif event_type in ['LOGIN_FAILURE', 'UNUSUAL_LOGIN_LOCATION', 'PERMISSION_DENIED']:
-            level = random.choices(['CRITICAL', 'WARNING'], weights=[0.3, 0.7], k=1)[0]
-        
-        # Random user (sometimes None for anonymous activities)
-        user = random.choice(users)
-        
-        # Generate IP address
-        ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
-        
-        # Generate a description based on event type
-        if event_type == 'LOGIN_FAILURE':
-            description = f"Failed login attempt for {user['email'] if user else 'unknown user'}"
-        elif event_type == 'PERMISSION_DENIED':
-            resources = ['user data', 'admin settings', 'financial records', 'member database', 'settings page']
-            description = f"Attempted unauthorized access to {random.choice(resources)}"
-        elif event_type == 'DATA_ACCESS':
-            description = f"Unusual data access pattern detected for user {user['name'] if user else 'Unknown'}"
-        elif event_type == 'ACCOUNT_LOCKED':
-            description = f"Account locked after multiple failed login attempts"
-        elif event_type == 'CONFIG_CHANGE':
-            configs = ['security settings', 'user permissions', 'system configuration', 'email templates', 'payment gateway']
-            description = f"Configuration change in {random.choice(configs)}"
-        else:
-            description = f"{event_type.replace('_', ' ').title()} detected"
-        
-        # Create the security log entry
-        security_logs.append({
-            'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            'level': level,
-            'event_type': event_type,
-            'ip_address': ip_address,
-            'user': user['name'] if user else 'Anonymous',
-            'description': description,
-        })
-    
-    # Sort logs by timestamp in descending order
-    security_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+    # Get security logs using log_utils
+    try:
+        from app.utils.log_utils import get_security_logs
+        # Get all security logs for the past 30 days
+        security_logs = get_security_logs(days=30)
+    except Exception as e:
+        current_app.logger.error(f"Error fetching security logs for export: {str(e)}")
+        # Fallback to empty list if there's an error
+        security_logs = []
+        flash(f"Error exporting security logs: {str(e)}", 'error')
     
     # Create a CSV response
     output = io.StringIO()
@@ -1483,36 +1402,16 @@ def preview_email_template(template_id):
 @admin_required
 def database_management():
     """Database Management."""
-    # Get mock database stats
-    db_stats = {
-        'size': '287.5 MB',
-        'tables': 24,
-        'records': 14572,
-        'avg_query_time': 83,
-        'last_optimization': datetime.now() - timedelta(days=2),
-        'health_score': 85,
-        'fragmentation': 25,
-        'slow_queries': 8
-    }
+    from app.utils.db_utils import get_database_stats, get_table_stats, get_database_backups
     
-    # Get mock table stats
-    table_stats = [
-        {'name': 'users', 'records': 531, 'size': '12.5 MB', 'last_updated': datetime.now() - timedelta(hours=4), 'status': 'Healthy'},
-        {'name': 'contacts', 'records': 2815, 'size': '64.2 MB', 'last_updated': datetime.now() - timedelta(hours=2), 'status': 'Healthy'},
-        {'name': 'churches', 'records': 472, 'size': '18.9 MB', 'last_updated': datetime.now() - timedelta(days=1), 'status': 'Needs Optimization'},
-        {'name': 'people', 'records': 2343, 'size': '45.3 MB', 'last_updated': datetime.now() - timedelta(hours=6), 'status': 'Healthy'},
-        {'name': 'messages', 'records': 8324, 'size': '112.7 MB', 'last_updated': datetime.now() - timedelta(hours=1), 'status': 'Needs Optimization'},
-        {'name': 'tasks', 'records': 2087, 'size': '33.9 MB', 'last_updated': datetime.now() - timedelta(hours=3), 'status': 'Healthy'}
-    ]
+    # Get real database stats
+    db_stats = get_database_stats()
     
-    # Get mock recent backups
-    backups = [
-        {'id': 1, 'created_at': datetime.now() - timedelta(days=1), 'size': '281.2 MB', 'created_by': 'System', 'type': 'Automated', 'status': 'Complete'},
-        {'id': 2, 'created_at': datetime.now() - timedelta(days=2), 'size': '280.7 MB', 'created_by': 'System', 'type': 'Automated', 'status': 'Complete'},
-        {'id': 3, 'created_at': datetime.now() - timedelta(days=3), 'size': '279.8 MB', 'created_by': 'admin@example.com', 'type': 'Manual', 'status': 'Complete'},
-        {'id': 4, 'created_at': datetime.now() - timedelta(days=4), 'size': '278.5 MB', 'created_by': 'System', 'type': 'Automated', 'status': 'Complete'},
-        {'id': 5, 'created_at': datetime.now() - timedelta(days=8), 'size': '276.1 MB', 'created_by': 'System', 'type': 'Automated', 'status': 'Complete'}
-    ]
+    # Get real table stats
+    table_stats = get_table_stats()
+    
+    # Get real database backups
+    backups = get_database_backups()
     
     return render_template('admin/system/database.html', db_stats=db_stats, table_stats=table_stats, backups=backups)
 
@@ -1521,11 +1420,15 @@ def database_management():
 @admin_required
 def create_database_backup():
     """Create a database backup."""
-    # In a real app, we would create an actual backup
-    # For now, just simulate success
-    time.sleep(2)  # Simulate backup creation time
+    from app.utils.db_utils import create_database_backup as create_backup
     
-    flash('Database backup created successfully', 'success')
+    backup_id = create_backup()
+    
+    if backup_id:
+        flash('Database backup created successfully', 'success')
+    else:
+        flash('Failed to create database backup', 'error')
+        
     return redirect(url_for('admin.database_management'))
 
 @admin_bp.route('/system/database/optimize', methods=['POST'])
@@ -1533,11 +1436,15 @@ def create_database_backup():
 @admin_required
 def optimize_database():
     """Optimize the database."""
-    # In a real app, we would optimize the database
-    # For now, just simulate success
-    time.sleep(3)  # Simulate optimization time
+    from app.utils.db_utils import optimize_database as optimize_db
     
-    flash('Database optimized successfully', 'success')
+    success = optimize_db()
+    
+    if success:
+        flash('Database optimized successfully', 'success')
+    else:
+        flash('Failed to optimize database', 'error')
+        
     return redirect(url_for('admin.database_management'))
 
 @admin_bp.route('/system/database/restore/<int:backup_id>', methods=['POST'])
@@ -1545,11 +1452,15 @@ def optimize_database():
 @admin_required
 def restore_database(backup_id):
     """Restore the database from a backup."""
-    # In a real app, we would restore from the specified backup
-    # For now, just simulate success
-    time.sleep(4)  # Simulate restoration time
+    from app.utils.db_utils import restore_database_from_backup
     
-    flash('Database restored successfully from backup', 'success')
+    success = restore_database_from_backup(backup_id)
+    
+    if success:
+        flash('Database restored successfully from backup', 'success')
+    else:
+        flash('Failed to restore database from backup', 'error')
+        
     return redirect(url_for('admin.database_management'))
 
 @admin_bp.route('/system/database/download/<int:backup_id>')
@@ -1557,45 +1468,50 @@ def restore_database(backup_id):
 @admin_required
 def download_database_backup(backup_id):
     """Download a database backup file."""
-    # In a real app, we would retrieve the actual backup file and send it
-    # For now, just generate a dummy SQL file
+    from app.utils.db_utils import get_backup_by_id
     
-    # Create a simple SQL dump as an example
-    sql_content = f"""-- Database backup {backup_id}
--- Generated on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
--- This is a sample backup file for demonstration purposes
-
-BEGIN TRANSACTION;
-
--- Table structure for users
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    name VARCHAR(100),
-    is_active BOOLEAN DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Sample data
-INSERT INTO users (email, password_hash, name) VALUES
-('admin@example.com', 'hashed_password_here', 'Admin User'),
-('user@example.com', 'hashed_password_here', 'Regular User');
-
--- Additional tables would be included in a real backup
-
-COMMIT;
-"""
+    backup = get_backup_by_id(backup_id)
     
-    # Create a BytesIO object
-    bytes_io = BytesIO(sql_content.encode('utf-8'))
+    if not backup or 'path' not in backup:
+        flash('Backup not found', 'error')
+        return redirect(url_for('admin.database_management'))
+    
+    backup_path = backup['path']
+    
+    if not os.path.exists(backup_path):
+        flash('Backup file not found', 'error')
+        return redirect(url_for('admin.database_management'))
+    
+    # Get the filename from the path
+    filename = os.path.basename(backup_path)
     
     # Return the file as an attachment
     return send_file(
-        bytes_io,
-        mimetype='application/sql',
+        backup_path,
         as_attachment=True,
-        download_name=f'database_backup_{backup_id}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.sql'
+        download_name=f'database_backup_{backup_id}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.db'
+    )
+
+@admin_bp.route('/system/database/table/<table_name>')
+@login_required
+@admin_required
+def table_details(table_name):
+    """View details of a specific database table."""
+    from app.utils.db_utils import get_table_structure
+    
+    # Get table structure, indexes, and sample data
+    table_data = get_table_structure(table_name)
+    
+    if not table_data or not table_data['columns']:
+        flash(f'Table {table_name} not found or is empty', 'error')
+        return redirect(url_for('admin.database_management'))
+    
+    return render_template(
+        'admin/system/table_details.html',
+        table_name=table_name,
+        columns=table_data['columns'],
+        indexes=table_data['indexes'],
+        sample_data=table_data['sample_data']
     )
 
 @admin_bp.route('/system/database/import', methods=['POST'])
