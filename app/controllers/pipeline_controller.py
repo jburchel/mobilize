@@ -211,221 +211,182 @@ def view(pipeline_id):
             # Success message
             flash(f'Contact added to pipeline in {first_stage.name} stage', 'success')
             
-        # Get stages with their contacts
+        # Get stages with their contacts - optimize by eager loading
         stages = pipeline.get_active_stages()
         
-        # Get pipeline contacts based on user role - optimized query
+        # Get pipeline contacts based on user role - optimized query with single database hit
         current_app.logger.info(f"Loading pipeline contacts for pipeline {pipeline_id}")
         start_time = datetime.now()
         
-        # Use SQL joins to filter contacts efficiently at the database level
-        if current_user.is_super_admin():
-            # Super admins see all contacts - use a more efficient query with joinedload
-            pipeline_contacts = PipelineContact.query.options(
-                joinedload(PipelineContact.contact)
-            ).filter(
-                PipelineContact.pipeline_id == pipeline_id
-            ).all()
-            
-            current_app.logger.info(f"Super admin view: found {len(pipeline_contacts)} contacts for pipeline {pipeline_id} in {(datetime.now() - start_time).total_seconds()} seconds")
-            
-            # Count church contacts for debugging
-            if pipeline.pipeline_type == 'church':
-                from app.models.church import Church
-                all_churches = Church.query.count()
-                church_contacts = db.session.query(PipelineContact.contact_id).filter_by(pipeline_id=pipeline_id).all()
-                church_contact_ids = [c[0] for c in church_contacts]
-                current_app.logger.info(f"Super admin church pipeline debug: Total churches in DB: {all_churches}")
-                current_app.logger.info(f"Church contacts in pipeline: {len(church_contact_ids)}")
-                
-                # Additional verification with direct SQL
-                direct_sql_count = db.session.execute(
-                    db.text("""
-                        SELECT COUNT(*) 
-                        FROM pipeline_contacts 
-                        WHERE pipeline_id = :pipeline_id
-                    """),
-                    {"pipeline_id": pipeline_id}
-                ).scalar() or 0
-                current_app.logger.info(f"Direct SQL count for church pipeline: {direct_sql_count}")
-            
-            current_app.logger.info(f"Super admin view: found {len(pipeline_contacts)} contacts for pipeline {pipeline_id}")
-        elif current_user.role == 'office_admin':
-            # Office admins see contacts from their office - use SQL join instead of Python filtering
-            office_id = current_user.office_id
-            
-            # Use a join to filter by office_id at the database level
-            if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'people':
-                # For people pipelines
-                pipeline_contacts = db.session.query(PipelineContact).join(
-                    Person, PipelineContact.contact_id == Person.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Person.office_id == office_id
-                ).options(joinedload(PipelineContact.contact)).all()
-            elif pipeline.pipeline_type == 'church':
-                # For church pipelines
-                pipeline_contacts = db.session.query(PipelineContact).join(
-                    Church, PipelineContact.contact_id == Church.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Church.office_id == office_id
-                ).options(joinedload(PipelineContact.contact)).all()
-            else:
-                # For both or other types, use a union approach
-                person_contacts = db.session.query(PipelineContact).join(
-                    Person, PipelineContact.contact_id == Person.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Person.office_id == office_id
-                ).options(joinedload(PipelineContact.contact)).all()
-                
-                church_contacts = db.session.query(PipelineContact).join(
-                    Church, PipelineContact.contact_id == Church.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Church.office_id == office_id
-                ).options(joinedload(PipelineContact.contact)).all()
-                
-                pipeline_contacts = person_contacts + church_contacts
-            
-            current_app.logger.info(f"Office admin view: found {len(pipeline_contacts)} contacts for pipeline {pipeline_id} in {(datetime.now() - start_time).total_seconds()} seconds")
-        else:
-            # Regular users see only their assigned contacts - use SQL join instead of Python filtering
-            user_id = current_user.id
-            office_id = current_user.office_id
-            
-            # Use a join to filter by user_id and office_id at the database level
-            if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'people':
-                # For people pipelines
-                pipeline_contacts = db.session.query(PipelineContact).join(
-                    Person, PipelineContact.contact_id == Person.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Person.office_id == office_id,
-                    Person.assigned_to_id == user_id
-                ).options(joinedload(PipelineContact.contact)).all()
-            elif pipeline.pipeline_type == 'church':
-                # For church pipelines
-                pipeline_contacts = db.session.query(PipelineContact).join(
-                    Church, PipelineContact.contact_id == Church.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Church.office_id == office_id,
-                    Church.assigned_to_id == user_id
-                ).options(joinedload(PipelineContact.contact)).all()
-            else:
-                # For both or other types, use a union approach
-                person_contacts = db.session.query(PipelineContact).join(
-                    Person, PipelineContact.contact_id == Person.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Person.office_id == office_id,
-                    Person.assigned_to_id == user_id
-                ).options(joinedload(PipelineContact.contact)).all()
-                
-                church_contacts = db.session.query(PipelineContact).join(
-                    Church, PipelineContact.contact_id == Church.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Church.office_id == office_id,
-                    Church.assigned_to_id == user_id
-                ).options(joinedload(PipelineContact.contact)).all()
-                
-                pipeline_contacts = person_contacts + church_contacts
-            
-            current_app.logger.info(f"Regular user view: found {len(pipeline_contacts)} contacts for pipeline {pipeline_id} in {(datetime.now() - start_time).total_seconds()} seconds")
+        # Prepare base query with all necessary joins to avoid N+1 query problem
+        base_query = db.session.query(PipelineContact)
         
-        # Organize contacts by stage
+        # Eager load contact and stage data to avoid additional queries
+        base_query = base_query.options(
+            joinedload(PipelineContact.contact),
+            joinedload(PipelineContact.current_stage)
+        )
+        
+        # Filter by pipeline_id - common to all queries
+        base_query = base_query.filter(PipelineContact.pipeline_id == pipeline_id)
+        
+        # Apply role-based filtering
+        if not current_user.is_super_admin():
+            # For non-super admins, we need to filter by office and possibly by assigned user
+            office_id = current_user.office_id
+            
+            if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'people':
+                # For people pipelines
+                base_query = base_query.join(Person, PipelineContact.contact_id == Person.id)
+                base_query = base_query.filter(Person.office_id == office_id)
+                
+                # Regular users only see their assigned contacts
+                if current_user.role != 'office_admin':
+                    base_query = base_query.filter(Person.assigned_to_id == current_user.id)
+                    
+            elif pipeline.pipeline_type == 'church':
+                # For church pipelines
+                base_query = base_query.join(Church, PipelineContact.contact_id == Church.id)
+                base_query = base_query.filter(Church.office_id == office_id)
+                
+                # Regular users only see their assigned contacts
+                if current_user.role != 'office_admin':
+                    base_query = base_query.filter(Church.assigned_to_id == current_user.id)
+            else:
+                # For 'both' type, we need to handle people and churches separately
+                # and combine the results
+                person_query = db.session.query(PipelineContact).join(
+                    Person, PipelineContact.contact_id == Person.id
+                ).filter(
+                    PipelineContact.pipeline_id == pipeline_id,
+                    Person.office_id == office_id
+                )
+                
+                church_query = db.session.query(PipelineContact).join(
+                    Church, PipelineContact.contact_id == Church.id
+                ).filter(
+                    PipelineContact.pipeline_id == pipeline_id,
+                    Church.office_id == office_id
+                )
+                
+                # Regular users only see their assigned contacts
+                if current_user.role != 'office_admin':
+                    person_query = person_query.filter(Person.assigned_to_id == current_user.id)
+                    church_query = church_query.filter(Church.assigned_to_id == current_user.id)
+                
+                # Apply eager loading
+                person_query = person_query.options(
+                    joinedload(PipelineContact.contact),
+                    joinedload(PipelineContact.current_stage)
+                )
+                
+                church_query = church_query.options(
+                    joinedload(PipelineContact.contact),
+                    joinedload(PipelineContact.current_stage)
+                )
+                
+                # Execute both queries and combine results
+                person_contacts = person_query.all()
+                church_contacts = church_query.all()
+                pipeline_contacts = person_contacts + church_contacts
+                
+                # Skip the main query execution since we've already done it
+                current_app.logger.info(f"Combined query found {len(pipeline_contacts)} contacts in {(datetime.now() - start_time).total_seconds()} seconds")
+                
+                # Organize contacts by stage - use a dictionary comprehension for efficiency
+                contacts_by_stage = {stage.id: [] for stage in stages}
+                for pc in pipeline_contacts:
+                    if pc.current_stage_id in contacts_by_stage:
+                        contacts_by_stage[pc.current_stage_id].append(pc)
+                
+                # Get available contacts for dropdown - do this in a single query per type
+                # to avoid loading all contacts into memory
+                existing_contact_ids = [pc.contact_id for pc in pipeline_contacts]
+                
+                # Limit the number of contacts for dropdown to improve performance
+                max_dropdown_contacts = 100
+                
+                # For people pipeline type
+                people = []
+                if pipeline.pipeline_type in ['person', 'both', 'people']:
+                    people_query = Person.query.filter(~Person.id.in_(existing_contact_ids))
+                    
+                    # Apply role-based filters
+                    if not current_user.is_super_admin():
+                        people_query = people_query.filter(Person.office_id == office_id)
+                        if current_user.role != 'office_admin':
+                            people_query = people_query.filter(Person.assigned_to_id == current_user.id)
+                    
+                    # Limit results and only select necessary columns
+                    people = people_query.limit(max_dropdown_contacts).all()
+                
+                # For church pipeline type
+                churches = []
+                if pipeline.pipeline_type in ['church', 'both']:
+                    church_query = Church.query.filter(~Church.id.in_(existing_contact_ids))
+                    
+                    # Apply role-based filters
+                    if not current_user.is_super_admin():
+                        church_query = church_query.filter(Church.office_id == office_id)
+                        if current_user.role != 'office_admin':
+                            church_query = church_query.filter(Church.assigned_to_id == current_user.id)
+                    
+                    # Limit results and only select necessary columns
+                    churches = church_query.limit(max_dropdown_contacts).all()
+                
+                # Skip the rest of the function since we've already handled everything
+                return render_template('pipeline/view.html',
+                                    pipeline=pipeline,
+                                    stages=stages,
+                                    contacts_by_stage=contacts_by_stage,
+                                    people=people,
+                                    churches=churches)
+        
+        # Execute the query for super admins or single-type pipelines
+        pipeline_contacts = base_query.all()
+        query_time = (datetime.now() - start_time).total_seconds()
+        current_app.logger.info(f"Query found {len(pipeline_contacts)} contacts in {query_time} seconds")
+        
+        # Organize contacts by stage - use a dictionary comprehension for efficiency
         contacts_by_stage = {stage.id: [] for stage in stages}
         for pc in pipeline_contacts:
             if pc.current_stage_id in contacts_by_stage:
                 contacts_by_stage[pc.current_stage_id].append(pc)
         
-        # Log contact counts for debugging
-        for stage_id, contacts in contacts_by_stage.items():
-            stage = next((s for s in stages if s.id == stage_id), None)
-            stage_name = stage.name if stage else "Unknown"
-            current_app.logger.info(f"Stage {stage_id} ({stage_name}) has {len(contacts)} contacts")
+        # Get available contacts for dropdown - do this in a single query per type
+        # to avoid loading all contacts into memory
+        existing_contact_ids = [pc.contact_id for pc in pipeline_contacts]
         
-        # Debug contact entries
-        if contact_count > 0 and len(pipeline_contacts) < contact_count:
-            current_app.logger.warning(f"Pipeline {pipeline_id} has {contact_count} contacts in DB but only {len(pipeline_contacts)} were loaded for display")
-            
-            # Check if some contacts weren't loaded correctly
-            missing_contacts = db.session.execute(
-                db.text("""
-                SELECT pc.id, pc.contact_id, pc.current_stage_id
-                FROM pipeline_contacts pc 
-                WHERE pc.pipeline_id = :pipeline_id
-                """), 
-                {"pipeline_id": pipeline_id}
-            ).fetchall()
-            
-            if missing_contacts:
-                current_app.logger.info(f"First 5 pipeline contacts DB records: {missing_contacts[:5]}")
-
-        # Get available contacts to populate the Add Contact dropdown based on user role
-        people = []
-        churches = []
-        
-        # Get IDs of contacts already in this pipeline
-        current_app.logger.info(f"Getting contacts for pipeline {pipeline_id} of type {pipeline.pipeline_type}")
-        existing_contact_ids = db.session.query(PipelineContact.contact_id)\
-                                       .filter(PipelineContact.pipeline_id == pipeline_id)\
-                                       .all()
-        existing_contact_ids = [p[0] for p in existing_contact_ids]
-        current_app.logger.info(f"Found {len(existing_contact_ids)} existing contacts in this pipeline")
+        # Limit the number of contacts for dropdown to improve performance
+        max_dropdown_contacts = 100
         
         # For people pipeline type
-        if pipeline.pipeline_type in ['person', 'both']:
-            people_query = Person.query
+        people = []
+        if pipeline.pipeline_type in ['person', 'both', 'people']:
+            people_query = Person.query.filter(~Person.id.in_(existing_contact_ids))
             
-            # Apply exclusion for existing contacts
-            if existing_contact_ids:
-                people_query = people_query.filter(~Person.id.in_(existing_contact_ids))
-            
-            # Apply filters based on user role
-            if current_user.is_super_admin():
-                # Super admins see all people
-                pass
-            elif current_user.role == 'office_admin':
-                # Office admins see people from their office
+            # Apply role-based filters
+            if not current_user.is_super_admin():
                 people_query = people_query.filter(Person.office_id == current_user.office_id)
-            else:
-                # Regular users see only their assigned people
-                people_query = people_query.filter(
-                    Person.office_id == current_user.office_id,
-                    Person.assigned_to_id == current_user.id
-                )
-                
-            people = people_query.all()
-            current_app.logger.info(f"Found {len(people)} available people for dropdown")
-
-        # For church pipeline type
-        if pipeline.pipeline_type in ['church', 'both']:
-            church_query = Church.query
+                if current_user.role != 'office_admin':
+                    people_query = people_query.filter(Person.assigned_to_id == current_user.id)
             
-            # Apply exclusion for existing contacts
-            if existing_contact_ids:
-                church_query = church_query.filter(~Church.id.in_(existing_contact_ids))
-                
-            # Apply filters based on user role
-            if current_user.is_super_admin():
-                # Super admins see all churches
-                pass
-            elif current_user.role == 'office_admin':
-                # Office admins see churches from their office
+            # Limit results and only select necessary columns
+            people = people_query.limit(max_dropdown_contacts).all()
+        
+        # For church pipeline type
+        churches = []
+        if pipeline.pipeline_type in ['church', 'both']:
+            church_query = Church.query.filter(~Church.id.in_(existing_contact_ids))
+            
+            # Apply role-based filters
+            if not current_user.is_super_admin():
                 church_query = church_query.filter(Church.office_id == current_user.office_id)
-            else:
-                # Regular users see only their assigned churches
-                church_query = church_query.filter(
-                    Church.office_id == current_user.office_id,
-                    Church.assigned_to_id == current_user.id
-                )
-                
-            churches = church_query.all()
-            current_app.logger.info(f"Found {len(churches)} available churches for dropdown")
+                if current_user.role != 'office_admin':
+                    church_query = church_query.filter(Church.assigned_to_id == current_user.id)
+            
+            # Limit results and only select necessary columns
+            churches = church_query.limit(max_dropdown_contacts).all()
             
         # Render the template with the data
         return render_template('pipeline/view.html',
