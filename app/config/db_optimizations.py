@@ -11,7 +11,9 @@ def optimize_db_connections(app):
     to improve database performance in production environments.
     """
     # Only apply optimizations in production
-    if app.config['ENV'] != 'production':
+    # Check environment in a way compatible with newer Flask versions
+    is_production = app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production'
+    if not is_production:
         current_app.logger.info("Database optimizations not applied in non-production environment")
         return
     

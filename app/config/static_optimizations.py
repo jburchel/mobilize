@@ -13,7 +13,9 @@ def optimize_static_files(app):
     to improve load times in production.
     """
     # Only apply in production
-    if app.config['ENV'] != 'production':
+    # Check environment in a way compatible with newer Flask versions
+    is_production = app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production'
+    if not is_production:
         return
     
     current_app.logger.info("Applying static file optimizations for production")

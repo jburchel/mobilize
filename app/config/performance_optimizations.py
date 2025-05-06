@@ -10,7 +10,9 @@ def optimize_flask_app(app):
     in a production environment.
     """
     # Only apply optimizations in production
-    if app.config['ENV'] != 'production':
+    # Check environment in a way compatible with newer Flask versions
+    is_production = app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production'
+    if not is_production:
         return
     
     current_app.logger.info("Applying Flask performance optimizations for production")
