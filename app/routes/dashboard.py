@@ -1,16 +1,16 @@
 from flask import Blueprint, render_template, request, current_app, url_for, redirect, flash, g, session, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import or_, and_, desc, func, text
-from app.extensions import db, cache
+from sqlalchemy import or_, text  # Removed unused imports: and_, desc, func
+from app.extensions import db  # Removed unused import: cache
 from app.models.pipeline import Pipeline, PipelineStage
 from app.models.task import Task
 from app.models.communication import Communication
-from app.models.church import Church
+# Removed unused import: from app.models.church import Church
 from app.models.user import User
-from app.models.person import Person
+# Removed unused import: from app.models.person import Person
 from app.utils.decorators import office_required
 from datetime import datetime, timedelta
-from sqlalchemy.orm import joinedload
+# Removed unused import: from sqlalchemy.orm import joinedload
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -204,7 +204,7 @@ def pipeline_chart_data(pipeline_type=None):
             if not fresh_user:
                 return jsonify({"error": "User not found"}), 401
                 
-            # Get the office ID from the fresh user
+            # Note: office_id and is_super_admin are used later in the function
             office_id = fresh_user.office_id
             is_super_admin = fresh_user.role == 'super_admin'
         except Exception as e:
