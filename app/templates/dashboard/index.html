@@ -630,7 +630,7 @@ function renderPipelineChart(chartType, containerSelector, data) {
     
     // Prepare chart data
     const labels = data.stages.map(stage => stage.name);
-    const counts = data.stages.map(stage => stage.contact_count);
+    const counts = data.stages.map(stage => stage.count);
     const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name));
     
     // Debug
@@ -813,7 +813,7 @@ function testPipelineApi(chartType) {
             let stageDistribution = '';
             if (data.stages && data.stages.length > 0) {
                 stageDistribution = data.stages.map(stage => 
-                    `${stage.name}: ${stage.contact_count} (${stage.percentage}%)`
+                    `${stage.name}: ${stage.count} (${stage.percentage}%)`
                 ).join('\n');
             }
             
