@@ -32,6 +32,10 @@ from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
 
+# Import performance optimizations
+from app.config.performance_optimizations import optimize_flask_app
+from app.config.static_optimizations import optimize_static_files
+
 # Load environment variables from .env.development first
 load_dotenv(find_dotenv(".env.development"), override=True) # Keep from main, ensure override=True
 
@@ -370,7 +374,11 @@ def create_app(test_config=None):
 
     # Setup Firebase (if configured)
     firebase_setup(app)
-
+    
+    # Apply performance optimizations for production
+    optimize_flask_app(app)
+    optimize_static_files(app)
+    
     # Setup pipelines and migrate contacts (Keep logic from development)
     with app.app_context():
         try:
