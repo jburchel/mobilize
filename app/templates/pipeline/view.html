@@ -41,12 +41,18 @@
             <p class="text-muted">{{ pipeline.description }}</p>
             
             <div class="btn-group" role="group">
+                {% if not pipeline.is_main_pipeline %}
                 <a href="{{ url_for('pipeline.edit', pipeline_id=pipeline.id) }}" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-edit"></i> Edit Pipeline
                 </a>
                 <a href="{{ url_for('pipeline.manage_stages', pipeline_id=pipeline.id) }}" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-list"></i> Edit Stages
                 </a>
+                {% else %}
+                <span class="btn btn-sm btn-outline-secondary disabled" data-bs-toggle="tooltip" title="Main pipelines cannot be modified through the UI">
+                    <i class="fas fa-lock"></i> System Pipeline (Locked)
+                </span>
+                {% endif %}
                 <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContactModal">
                     <i class="fas fa-user-plus"></i> Add Contact
                 </button>

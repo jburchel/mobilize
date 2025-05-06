@@ -1,12 +1,11 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
-from flask_login import login_required, current_user
-from app.models.pipeline import Pipeline, PipelineStage, PipelineContact, PipelineType
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_required
+from app.models.pipeline import PipelineStage
+from app.models.pipeline_contact import PipelineContact
 from app.models.base import Contact
-from app.models.person import Person
-from app.models.church import Church
-from app.extensions import db
 from app.utils.decorators import office_required
 from app.controllers.pipeline_controller import PipelineController
+from app.controllers.pipeline_guard import PipelineGuard
 import json
 
 pipelines_bp = Blueprint('pipelines', __name__)
@@ -88,6 +87,11 @@ def show(id):
 @office_required
 def edit(id):
     """Edit a pipeline."""
+    # Check if this is a main pipeline (which cannot be modified)
+    can_modify, response = PipelineGuard.can_modify_pipeline(id)
+    if not can_modify:
+        return response
+        
     pipeline = PipelineController.get_pipeline_by_id(id)
     
     if not pipeline:
@@ -114,6 +118,11 @@ def edit(id):
 @office_required
 def delete(id):
     """Delete a pipeline."""
+    # Check if this is a main pipeline (which cannot be deleted)
+    can_delete, response = PipelineGuard.can_delete_pipeline(id)
+    if not can_delete:
+        return response
+        
     if PipelineController.delete_pipeline(id):
         flash('Pipeline deleted successfully', 'success')
     else:
@@ -126,6 +135,11 @@ def delete(id):
 @office_required
 def create_stage(id):
     """Create a new stage for a pipeline."""
+    # Check if this is a main pipeline (which cannot be modified)
+    can_modify, response = PipelineGuard.can_modify_pipeline(id)
+    if not can_modify:
+        return response
+        
     pipeline = PipelineController.get_pipeline_by_id(id)
     
     if not pipeline:
@@ -159,6 +173,11 @@ def edit_stage(id):
     if not stage:
         flash('Stage not found', 'danger')
         return redirect(url_for('pipelines.index'))
+    
+    # Check if this is a main pipeline (which cannot be modified)
+    can_modify, response = PipelineGuard.can_modify_pipeline(stage.pipeline_id)
+    if not can_modify:
+        return response
     
     pipeline = PipelineController.get_pipeline_by_id(stage.pipeline_id)
     if not pipeline:

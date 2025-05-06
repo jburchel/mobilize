@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
-from sqlalchemy.orm import load_only
 from sqlalchemy import or_
 from app.models.person import Person
 from app.models.church import Church
@@ -54,9 +53,10 @@ def index():
     people = pagination.items
     
     # Get the main pipeline for proper pipeline stages
-    main_pipeline = Pipeline.query.filter_by(
-        pipeline_type='person',
-        is_main_pipeline=True
+    # Check for both 'person' and 'people' pipeline types since both are used
+    main_pipeline = Pipeline.query.filter(
+        Pipeline.is_main_pipeline,
+        Pipeline.pipeline_type.in_(['person', 'people'])
     ).first()
     
     if main_pipeline:
@@ -346,7 +346,7 @@ def edit(id):
                         pipeline_contact.move_to_stage(
                             selected_stage.id, 
                             user_id=current_user.id,
-                            notes=f"Updated from person edit form"
+                            notes="Updated from person edit form"
                         )
                     else:
                         # Add person to pipeline
@@ -592,7 +592,7 @@ def import_people():
                         else:
                             skipped += 1
                     
-                    except Exception as e:
+                    except Exception:
                         errors += 1
                         continue
                 
@@ -682,10 +682,11 @@ def search():
         person_dict = person.to_dict()
         
         # Get the main pipeline stage for the person
-        main_pipeline = Pipeline.query.filter_by(
-            pipeline_type='person',
-            is_main_pipeline=True,
-            office_id=person.office_id
+        # Check for both 'person' and 'people' pipeline types since both are used
+        main_pipeline = Pipeline.query.filter(
+            Pipeline.is_main_pipeline,
+            Pipeline.pipeline_type.in_(['person', 'people']),
+            Pipeline.office_id == person.office_id
         ).first()
         
         if main_pipeline:
