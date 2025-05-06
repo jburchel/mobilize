@@ -6,27 +6,6 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Debug Panel -->
-    <div id="debugPanel" style="display: block; margin-top: 20px; padding: 10px; border: 1px solid #ccc; background-color: #f8f9fa;">
-        <h5>Debug Information</h5>
-        <div id="apiRequests"></div>
-        <div id="apiResponses"></div>
-        <div id="errorLogs"></div>
-        <button class="btn btn-sm btn-primary mt-2" onclick="testAllEndpoints()">Test All Endpoints</button>
-    </div>
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Debug Panel</h5>
-                    <button class="btn btn-sm btn-outline-danger" onclick="clearDebugLogs()">Clear Logs</button>
-                </div>
-                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                    <div id="debug-log" class="small"></div>
-                </div>
-            </div>
-        </div>
-    </div>
     <!-- Statistics Row -->
     <div class="row g-3 mb-4">
         <!-- Total People Stat Card -->
@@ -336,108 +315,9 @@
 // Debug logging - run immediately on script load
 console.log('[DASHBOARD DEBUG] Script loaded');
 
-// Debug logging functions
-function logDebug(message, data) {
-    const debugPanel = document.getElementById('apiRequests');
-    if (debugPanel) {
-        const debugItem = document.createElement('div');
-        debugItem.className = 'debug-item';
-        debugItem.innerHTML = `<strong>${message}</strong>`;
-        if (data) {
-            debugItem.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-        }
-        debugPanel.appendChild(debugItem);
-    }
+// Console logging for chart data
+function logChartData(message, data) {
     console.log(message, data);
-}
-
-function logError(message, error) {
-    const errorLogs = document.getElementById('errorLogs');
-    if (errorLogs) {
-        const errorItem = document.createElement('div');
-        errorItem.className = 'error-item';
-        errorItem.style.color = 'red';
-        errorItem.innerHTML = `<strong>ERROR:</strong> ${message}`;
-        if (error) {
-            errorItem.innerHTML += `<pre>${JSON.stringify(error, null, 2)}</pre>`;
-        }
-        errorLogs.appendChild(errorItem);
-    }
-    console.error(message, error);
-}
-
-function testAllEndpoints() {
-    // Clear previous logs
-    document.getElementById('apiRequests').innerHTML = '';
-    document.getElementById('apiResponses').innerHTML = '';
-    document.getElementById('errorLogs').innerHTML = '';
-    
-    logDebug('Testing all endpoints...');
-    
-    // Test each endpoint for both chart types
-    API_ENDPOINTS.forEach((endpointFn, index) => {
-        const personEndpoint = endpointFn('person');
-        const churchEndpoint = endpointFn('church');
-        
-        logDebug(`Testing endpoint ${index + 1}: ${personEndpoint}`);
-        fetch(personEndpoint)
-            .then(response => {
-                logDebug(`Person endpoint ${index + 1} status: ${response.status}`);
-                return response.text();
-            })
-            .then(text => {
-                try {
-                    // Try to parse as JSON to see if it's valid
-                    const data = JSON.parse(text);
-                    document.getElementById('apiResponses').innerHTML += 
-                        `<div><strong>Person Endpoint ${index + 1}:</strong> <span style="color:green">SUCCESS</span></div>`;
-                    logDebug(`Person endpoint ${index + 1} data:`, data);
-                } catch (e) {
-                    // Not valid JSON
-                    document.getElementById('apiResponses').innerHTML += 
-                        `<div><strong>Person Endpoint ${index + 1}:</strong> <span style="color:red">INVALID JSON</span></div>`;
-                    logError(`Person endpoint ${index + 1} returned invalid JSON:`, text);
-                }
-            })
-            .catch(err => {
-                document.getElementById('apiResponses').innerHTML += 
-                    `<div><strong>Person Endpoint ${index + 1}:</strong> <span style="color:red">ERROR</span></div>`;
-                logError(`Person endpoint ${index + 1} error:`, err.message);
-            });
-        
-        logDebug(`Testing endpoint ${index + 1}: ${churchEndpoint}`);
-        fetch(churchEndpoint)
-            .then(response => {
-                logDebug(`Church endpoint ${index + 1} status: ${response.status}`);
-                return response.text();
-            })
-            .then(text => {
-                try {
-                    // Try to parse as JSON to see if it's valid
-                    const data = JSON.parse(text);
-                    document.getElementById('apiResponses').innerHTML += 
-                        `<div><strong>Church Endpoint ${index + 1}:</strong> <span style="color:green">SUCCESS</span></div>`;
-                    logDebug(`Church endpoint ${index + 1} data:`, data);
-                } catch (e) {
-                    // Not valid JSON
-                    document.getElementById('apiResponses').innerHTML += 
-                        `<div><strong>Church Endpoint ${index + 1}:</strong> <span style="color:red">INVALID JSON</span></div>`;
-                    logError(`Church endpoint ${index + 1} returned invalid JSON:`, text);
-                }
-            })
-            .catch(err => {
-                document.getElementById('apiResponses').innerHTML += 
-                    `<div><strong>Church Endpoint ${index + 1}:</strong> <span style="color:red">ERROR</span></div>`;
-                logError(`Church endpoint ${index + 1} error:`, err.message);
-            });
-    });
-}
-
-function clearDebugLogs() {
-    const debugLog = document.getElementById('debug-log');
-    if (debugLog) {
-        debugLog.innerHTML = '';
-    }
 }
 
 // Global chart objects
@@ -446,7 +326,7 @@ let churchChart = null;
 
 // Function to fetch pipeline data and update charts with fallback
 function fetchPipelineChartData(chartType) {
-    logDebug(`Fetching pipeline data for ${chartType}...`);
+    logChartData(`Fetching pipeline data for ${chartType}...`);
     
     // Try different endpoints in sequence
     tryFetchPipelineData(chartType, 0);
@@ -462,7 +342,7 @@ const API_ENDPOINTS = [
 
 function tryFetchPipelineData(chartType, endpointIndex) {
     if (endpointIndex >= API_ENDPOINTS.length) {
-        logError(`All endpoints failed for ${chartType} chart`, 'No more endpoints to try');
+        logChartData(`All endpoints failed for ${chartType} chart`, 'No more endpoints to try');
         const errorContainerId = chartType === 'person' ? 'people-chart-error' : 'church-chart-error';
         const errorContainer = document.getElementById(errorContainerId);
         if (errorContainer) {
@@ -473,7 +353,7 @@ function tryFetchPipelineData(chartType, endpointIndex) {
     }
     
     const endpoint = API_ENDPOINTS[endpointIndex](chartType);
-    logDebug(`Trying endpoint ${endpointIndex + 1}/${API_ENDPOINTS.length}: ${endpoint}`);
+    logChartData(`Trying endpoint ${endpointIndex + 1}/${API_ENDPOINTS.length}: ${endpoint}`);
     
     // Show error container
     const errorContainerId = chartType === 'person' ? 'people-chart-error' : 'church-chart-error';
@@ -484,7 +364,7 @@ function tryFetchPipelineData(chartType, endpointIndex) {
     
     fetch(endpoint)
         .then(response => {
-            logDebug(`Response status for ${chartType} (endpoint ${endpointIndex + 1}):`, { status: response.status });
+            logChartData(`Response status for ${chartType} (endpoint ${endpointIndex + 1}):`, { status: response.status });
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -494,7 +374,7 @@ function tryFetchPipelineData(chartType, endpointIndex) {
             try {
                 // Try to parse as JSON
                 const data = JSON.parse(text);
-                logDebug(`[${chartType} pipeline data from endpoint ${endpointIndex + 1}]`, data);
+                logChartData(`[${chartType} pipeline data from endpoint ${endpointIndex + 1}]`, data);
                 
                 if (data.error) {
                     throw new Error(data.error);
@@ -510,12 +390,12 @@ function tryFetchPipelineData(chartType, endpointIndex) {
                 }
             } catch (e) {
                 // JSON parsing error or other issue with the data
-                logError(`JSON parsing error for ${chartType} endpoint ${endpointIndex + 1}`, { error: e.message, rawResponse: text });
+                logChartData(`JSON parsing error for ${chartType} endpoint ${endpointIndex + 1}`, { error: e.message, rawResponse: text });
                 throw new Error(`Invalid JSON response: ${e.message}`);
             }
         })
         .catch(err => {
-            logError(`${chartType} fetch error for endpoint ${endpointIndex + 1}`, { error: err.message });
+            logChartData(`${chartType} fetch error for endpoint ${endpointIndex + 1}`, { error: err.message });
             
             // Try the next endpoint
             setTimeout(() => {
@@ -559,20 +439,12 @@ function updateViewButtons(chartType, pipelineId) {
     const button = document.getElementById(buttonId);
     
     if (button) {
-        // Special case for church pipeline - always go directly to pipeline ID 2
-        if (chartType === 'church') {
-            const url = `/pipeline/2`;
-            button.setAttribute('href', url);
-            console.log(`SPECIAL CASE: Setting ${buttonId} button to fixed URL: ${url}`);
-            
-            // Ensure the onclick handler takes precedence
-            button.setAttribute('onclick', "event.preventDefault(); window.location.href='/pipeline/2';");
-        } else {
-            // Format the correct URL for person pipeline
-            const url = `/pipeline/view?pipeline_id=${pipelineId}`;
-            button.setAttribute('href', url);
-            console.log(`Updated ${buttonId} button to URL: ${url}`);
-        }
+        // Format the correct URL for the pipeline
+        const url = `/pipeline/${pipelineId}`;
+        button.setAttribute('href', url);
+        console.log(`Setting ${buttonId} button to URL: ${url}`);
+    } else {
+        console.warn(`Button with ID ${buttonId} not found`);
     }
 }
 
