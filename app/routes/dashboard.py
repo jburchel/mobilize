@@ -1,16 +1,16 @@
 from flask import Blueprint, render_template, request, current_app, url_for, redirect, flash, g, session, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import or_, text  # Removed unused imports: and_, desc, func
-from app.extensions import db  # Removed unused import: cache
+from sqlalchemy import or_, and_, desc, func, text
+from app.extensions import db, cache
 from app.models.pipeline import Pipeline, PipelineStage
 from app.models.task import Task
 from app.models.communication import Communication
-# Removed unused import: from app.models.church import Church
+from app.models.church import Church
 from app.models.user import User
-# Removed unused import: from app.models.person import Person
+from app.models.person import Person
 from app.utils.decorators import office_required
 from datetime import datetime, timedelta
-# Removed unused import: from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -204,7 +204,7 @@ def pipeline_chart_data(pipeline_type=None):
             if not fresh_user:
                 return jsonify({"error": "User not found"}), 401
                 
-            # Note: office_id and is_super_admin are used later in the function
+            # Get the office ID from the fresh user
             office_id = fresh_user.office_id
             is_super_admin = fresh_user.role == 'super_admin'
         except Exception as e:
@@ -333,11 +333,6 @@ def pipeline_chart_data(pipeline_type=None):
                 "stages": [],
                 "total_contacts": total_contacts
             })
-            
-        # Enhanced logging for debugging
-        current_app.logger.info(f"[CHART DEBUG] Raw SQL results for {pipeline_type} pipeline:")
-        for row in results:
-            current_app.logger.info(f"[CHART DEBUG] Stage: {row.stage_name}, Count: {row.count}, Color: {row.stage_color}")
         
         current_app.logger.info(f"Found {len(results)} stages for {pipeline_type} pipeline with {stage_total} total contacts")
         
@@ -353,20 +348,14 @@ def pipeline_chart_data(pipeline_type=None):
             # Get color from the database or use a default
             color = row.stage_color or get_default_color(stage_name)
             
-            # Create stage object with detailed logging
-            stage_obj = {
+            # Add stage to the list
+            stages.append({
                 'id': len(stages) + 1,  # Generate sequential ID
                 'name': stage_name,
                 'count': count,
                 'percentage': percentage,
                 'color': color
-            }
-            
-            # Log each stage object for debugging
-            current_app.logger.info(f"[CHART DEBUG] Created stage object: {stage_obj}")
-            
-            # Add stage to the list
-            stages.append(stage_obj)
+            })
         
         # Define stage order for sorting
         stage_order = {
@@ -388,9 +377,7 @@ def pipeline_chart_data(pipeline_type=None):
             "total_contacts": total_contacts
         }
         
-        # Enhanced logging for the final response data
-        current_app.logger.info(f"[CHART DEBUG] Final response data for {pipeline_type} pipeline: {response_data}")
-        current_app.logger.info(f"[CHART DEBUG] JSON response: {jsonify(response_data).get_data(as_text=True)}")
+        # Log the response data for debugging
         current_app.logger.info(f"Returning {len(stages)} stages for {pipeline_type} pipeline. Total contacts: {total_contacts}")
         
         return jsonify(response_data)

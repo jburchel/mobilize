@@ -332,17 +332,7 @@
 
 {% block scripts %}
 {{ super() }}
-<!-- Load Chart.js directly without integrity checks to ensure it loads -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-<!-- Backup CDN -->
-<script>
-    if (typeof Chart === 'undefined') {
-        console.error('Primary Chart.js failed to load. Loading backup...');
-        document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"><\/script>');
-    } else {
-        console.log('Chart.js loaded successfully from primary CDN');
-    }
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Debug logging - run immediately on script load
 console.log('[CHURCH PIPELINE DEBUG] Script loaded');
@@ -488,15 +478,8 @@ function tryFetchPipelineData(chartType, endpointIndex) {
         const errorContainerId = chartType === 'person' ? 'people-chart-error' : 'church-chart-error';
         const errorContainer = document.getElementById(errorContainerId);
         if (errorContainer) {
-            errorContainer.textContent = `Using fallback data for ${chartType} chart`;
+            errorContainer.textContent = `Error: Could not load chart data after trying all endpoints`;
             errorContainer.style.display = 'block';
-        }
-        
-        // Use fallback data instead of showing an error
-        console.log(`Using fallback data for ${chartType} chart`);
-        if (window.fallbackChartData && window.fallbackChartData[chartType]) {
-            const containerId = chartType === 'person' ? '#peoplePipelineChart' : '#churchPipelineChart';
-            renderPipelineChart(chartType, containerId, window.fallbackChartData[chartType]);
         }
         return;
     }
@@ -621,82 +604,148 @@ function getDefaultColor(stageName) {
     return '#95a5a6'; // Gray
 }
 
-// Function to render a pipeline chart - simplified version
+// Function to render a pipeline chart
 function renderPipelineChart(chartType, containerSelector, data) {
-    console.log(`Rendering ${chartType} chart`);
+    // Hide ALL loading spinners immediately - regardless of chart type
+    document.getElementById('people-chart-loading').style.display = 'none';
+    document.getElementById('church-chart-loading').style.display = 'none';
     
-    // Hide loading indicators
-    document.getElementById('people-chart-loading')?.style.display = 'none';
-    document.getElementById('church-chart-loading')?.style.display = 'none';
-    
-    // Get the container
+    // Get container and prepare for chart
     const container = document.querySelector(containerSelector);
     if (!container) {
-        console.error(`Container not found: ${containerSelector}`);
+        console.error(`Cannot find chart container: ${containerSelector}`);
         return;
     }
     
     // Clear the container
     container.innerHTML = '';
     
-    // Use fallback data if API data is invalid
-    if (!data || !data.stages || !Array.isArray(data.stages) || data.stages.length === 0) {
-        console.log('Using fallback data for', chartType);
-        data = window.fallbackChartData[chartType];
-    }
-    
-    // Create canvas
+    // Create canvas for chart
+    const canvasId = `${chartType}ChartCanvas`;
     const canvas = document.createElement('canvas');
-    canvas.id = `${chartType}Canvas`;
+    canvas.id = canvasId;
     canvas.style.width = '100%';
-    canvas.style.height = '300px';
+    canvas.style.height = '100%';
     container.appendChild(canvas);
     
-    // Prepare data
+    // Prepare chart data
     const labels = data.stages.map(stage => stage.name);
-    const counts = data.stages.map(stage => stage.count || stage.contact_count || 0);
-    const colors = data.stages.map(stage => stage.color || getRandomColor());
+    const counts = data.stages.map(stage => stage.contact_count);
+    const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name));
     
-    // Create chart
-    try {
-        new Chart(canvas, {
-            type: 'doughnut',
+    // Debug
+    console.log(`Rendering ${chartType} chart with data:`, {
+        labels, counts, colors, container, canvasId
+    });
+    
+    // Create chart context
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    // Get chart type preference (pie or bar)
+    const chartStyle = localStorage.getItem(`${chartType}ChartType`) || 'pie';
+    
+    // Destroy existing chart if it exists
+    if (window[`${chartType}Chart`]) {
+        window[`${chartType}Chart`].destroy();
+    }
+    
+    // Common options for both chart types
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.raw || 0;
+                        const percentage = data.stages[context.dataIndex].percentage;
+                        return `${label}: ${value} (${percentage}%)`;
+                    }
+                },
+                titleFont: {
+                    size: 14
+                },
+                bodyFont: {
+                    size: 14
+                }
+            }
+        }
+    };
+    
+    // Configure chart based on type
+    if (chartStyle === 'pie') {
+        window[`${chartType}Chart`] = new Chart(ctx, {
+            type: 'pie',
             data: {
                 labels: labels,
                 datasets: [{
                     data: counts,
                     backgroundColor: colors,
-                    borderWidth: 1,
-                    borderColor: '#fff'
+                    borderWidth: 1
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                ...commonOptions,
                 plugins: {
+                    ...commonOptions.plugins,
                     legend: {
-                        position: 'right'
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15,
+                            font: {
+                                size: 13
+                            }
+                        }
                     }
                 }
             }
         });
-        
-        // Add total count
-        const totalCount = counts.reduce((a, b) => a + b, 0);
-        const totalElement = document.createElement('div');
-        totalElement.className = 'text-center mt-3';
-        totalElement.innerHTML = `<strong>Total: ${totalCount}</strong>`;
-        container.appendChild(totalElement);
-        
-        // Update total in footer
-        const totalCountElement = document.getElementById(`${chartType}-total-count`);
-        if (totalCountElement) {
-            totalCountElement.textContent = `Total: ${totalCount} ${chartType === 'person' ? 'People' : 'Churches'}`;
-        }
-    } catch (error) {
-        console.error('Error creating chart:', error);
-        container.innerHTML = `<div class="alert alert-danger">Error creating chart: ${error.message}</div>`;
+    } else {
+        // Bar chart
+        window[`${chartType}Chart`] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: chartType === 'person' ? 'People' : 'Churches',
+                    data: counts,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0, // No decimal places for integer counts
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
     }
+    
+    console.log(`Rendered ${chartStyle} chart for ${chartType} pipeline with ${labels.length} stages`);
     
     // Update total contacts in the footer
     const totalCountId = chartType === 'person' ? 'people-total-count' : 'church-total-count';
@@ -764,7 +813,7 @@ function testPipelineApi(chartType) {
             let stageDistribution = '';
             if (data.stages && data.stages.length > 0) {
                 stageDistribution = data.stages.map(stage => 
-                    `${stage.name}: ${stage.count} (${stage.percentage}%)`
+                    `${stage.name}: ${stage.contact_count} (${stage.percentage}%)`
                 ).join('\n');
             }
             
@@ -791,47 +840,30 @@ function testPipelineApi(chartType) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded - initializing charts');
     
-    // Define fallback data
-    window.fallbackChartData = {
-        person: {
-            pipeline_id: 1,
-            pipeline_name: 'People Pipeline',
-            stages: [
-                { id: 1, name: 'NEW', count: 5, percentage: 20, color: '#3498db' },
-                { id: 2, name: 'CONTACT', count: 8, percentage: 32, color: '#2ecc71' },
-                { id: 3, name: 'CONNECT', count: 6, percentage: 24, color: '#f1c40f' },
-                { id: 4, name: 'COMMITTED', count: 4, percentage: 16, color: '#e67e22' },
-                { id: 5, name: 'COACHING', count: 2, percentage: 8, color: '#9b59b6' }
-            ],
-            total_contacts: 25
-        },
-        church: {
-            pipeline_id: 2,
-            pipeline_name: 'Church Pipeline',
-            stages: [
-                { id: 1, name: 'NEW', count: 3, percentage: 30, color: '#3498db' },
-                { id: 2, name: 'CONTACT', count: 2, percentage: 20, color: '#2ecc71' },
-                { id: 3, name: 'CONNECT', count: 2, percentage: 20, color: '#f1c40f' },
-                { id: 4, name: 'COMMITTED', count: 2, percentage: 20, color: '#e67e22' },
-                { id: 5, name: 'COACHING', count: 1, percentage: 10, color: '#9b59b6' }
-            ],
-            total_contacts: 10
-        }
-    };
+    // Log what elements we can find
+    console.log('Chart containers:',  
+        document.querySelector('#peoplePipelineChart'),
+        document.querySelector('#churchPipelineChart')
+    );
     
-    // Show loading indicators
-    document.getElementById('people-chart-loading')?.style.display = 'flex';
-    document.getElementById('church-chart-loading')?.style.display = 'flex';
+    console.log('Loading indicators:',
+        document.getElementById('people-chart-loading'),
+        document.getElementById('church-chart-loading')
+    );
     
-    // Render charts immediately with fallback data first
-    renderPipelineChart('person', '#peoplePipelineChart', window.fallbackChartData.person);
-    renderPipelineChart('church', '#churchPipelineChart', window.fallbackChartData.church);
+    // Force loading indicators to be visible initially
+    const peopleLoading = document.getElementById('people-chart-loading');
+    const churchLoading = document.getElementById('church-chart-loading');
     
-    // Then try to get real data
+    if (peopleLoading) peopleLoading.style.display = 'flex';
+    if (churchLoading) churchLoading.style.display = 'flex';
+    
+    // Initialize charts with delay to ensure DOM is fully ready
     setTimeout(() => {
+        console.log('Starting chart initialization');
         fetchPipelineChartData('person');
         fetchPipelineChartData('church');
-    }, 100);
+    }, 500);
     
     // Add event listeners for API test buttons
     document.querySelectorAll('.test-api-btn').forEach(button => {
