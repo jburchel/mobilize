@@ -333,6 +333,11 @@ def pipeline_chart_data(pipeline_type=None):
                 "stages": [],
                 "total_contacts": total_contacts
             })
+            
+        # Enhanced logging for debugging
+        current_app.logger.info(f"[CHART DEBUG] Raw SQL results for {pipeline_type} pipeline:")
+        for row in results:
+            current_app.logger.info(f"[CHART DEBUG] Stage: {row.stage_name}, Count: {row.count}, Color: {row.stage_color}")
         
         current_app.logger.info(f"Found {len(results)} stages for {pipeline_type} pipeline with {stage_total} total contacts")
         
@@ -348,14 +353,20 @@ def pipeline_chart_data(pipeline_type=None):
             # Get color from the database or use a default
             color = row.stage_color or get_default_color(stage_name)
             
-            # Add stage to the list
-            stages.append({
+            # Create stage object with detailed logging
+            stage_obj = {
                 'id': len(stages) + 1,  # Generate sequential ID
                 'name': stage_name,
                 'count': count,
                 'percentage': percentage,
                 'color': color
-            })
+            }
+            
+            # Log each stage object for debugging
+            current_app.logger.info(f"[CHART DEBUG] Created stage object: {stage_obj}")
+            
+            # Add stage to the list
+            stages.append(stage_obj)
         
         # Define stage order for sorting
         stage_order = {
@@ -377,7 +388,9 @@ def pipeline_chart_data(pipeline_type=None):
             "total_contacts": total_contacts
         }
         
-        # Log the response data for debugging
+        # Enhanced logging for the final response data
+        current_app.logger.info(f"[CHART DEBUG] Final response data for {pipeline_type} pipeline: {response_data}")
+        current_app.logger.info(f"[CHART DEBUG] JSON response: {jsonify(response_data).get_data(as_text=True)}")
         current_app.logger.info(f"Returning {len(stages)} stages for {pipeline_type} pipeline. Total contacts: {total_contacts}")
         
         return jsonify(response_data)
