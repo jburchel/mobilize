@@ -305,6 +305,12 @@ def get_current_user():
 def dev_login():
     """Development-only route for testing login functionality."""
     try:
+        # Check if we're in production and test users are disabled
+        if current_app.config.get('FLASK_ENV') == 'production' and current_app.config.get('DISABLE_TEST_USERS', False):
+            current_app.logger.warning("Dev login attempted in production with test users disabled")
+            flash("Dev login is disabled in production", "danger")
+            return redirect(url_for('auth.login'))
+            
         # Log diagnostic information
         current_app.logger.info("Dev login attempt - checking database connection")
         
@@ -312,7 +318,6 @@ def dev_login():
         db_test = db.session.execute(text("SELECT 1")).fetchone()
         current_app.logger.info(f"Database connection test: {db_test}")
         
-        # Always allow dev login for testing purposes
         # Find or create a test user
         test_user = User.query.filter_by(email='test@example.com').first()
         if not test_user:
@@ -329,9 +334,10 @@ def dev_login():
             )
             db.session.add(test_user)
             db.session.commit()
+            current_app.logger.info("Created test user for development")
         else:
             # For existing test user, keep their current first_login status
-            pass
+            current_app.logger.info("Using existing test user")
         
         # Log in the test user
         login_user(test_user)

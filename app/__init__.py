@@ -382,7 +382,12 @@ def create_app(test_config=None):
     # Setup pipelines and migrate contacts (Keep logic from development)
     with app.app_context():
         try:
-             # Ensure tables exist before pipeline setup
+            # Ensure test users don't appear in production
+            if app.config.get('FLASK_ENV') == 'production':
+                app.config['DISABLE_TEST_USERS'] = True
+                app.logger.info("Test users disabled in production environment")
+                
+            # Ensure tables exist before pipeline setup
             db.create_all()
             setup_main_pipelines()
             if not app.debug:
