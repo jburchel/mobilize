@@ -464,13 +464,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterTasks() {
         const activeStatusFilter = document.querySelector('[data-status].active').getAttribute('data-status');
         const activePriorityFilter = document.querySelector('[data-priority].active').getAttribute('data-priority');
+        const searchText = currentSearchText || '';
         
         const rows = document.querySelectorAll('#tasks-table tbody tr');
+        let visibleCount = 0;
         
         rows.forEach(row => {
             const rowStatus = row.getAttribute('data-status');
             const rowPriority = row.getAttribute('data-priority');
             const isOverdue = row.getAttribute('data-is-overdue') === 'true';
+            
+            // Get task details for search
+            const titleCell = row.querySelector('td:first-child');
+            if (!titleCell) return;
+            
+            const title = titleCell.textContent.toLowerCase();
+            
+            // Check if the search matches the title
+            const searchMatch = !searchText || title.includes(searchText);
             
             // Special handling for overdue filter
             let statusMatch = false;
@@ -484,8 +495,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const priorityMatch = activePriorityFilter === 'all' || activePriorityFilter === rowPriority;
             
-            if (statusMatch && priorityMatch) {
+            if (statusMatch && priorityMatch && searchMatch) {
                 row.style.display = '';
+                visibleCount++;
             } else {
                 row.style.display = 'none';
             }
@@ -547,24 +559,27 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Search functionality
-    document.getElementById('search-button').addEventListener('click', function() {
-        const searchText = document.getElementById('search-tasks').value.toLowerCase();
-        const rows = document.querySelectorAll('#tasks-table tbody tr');
-        
-        rows.forEach(row => {
-            const title = row.querySelector('td:first-child').textContent.toLowerCase();
-            if (title.includes(searchText)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+    let currentSearchText = '';
+    
+    function performSearch() {
+        currentSearchText = document.getElementById('search-tasks').value.toLowerCase();
+        filterTasks();
+    }
+    
+    // Search button click handler
+    document.getElementById('search-button').addEventListener('click', performSearch);
+    
+    // Dynamic search as user types - with debounce for better performance
+    let searchTimeout;
+    document.getElementById('search-tasks').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 300); // 300ms debounce
     });
     
     // Also trigger search on enter key
     document.getElementById('search-tasks').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-            document.getElementById('search-button').click();
+            performSearch();
         }
     });
 });

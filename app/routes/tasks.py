@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort, current_app, session
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
-from app.models.task import Task
+from app.models.task import Task, TaskStatus, TaskPriority
 from app.models.contact import Contact
 from app.models.person import Person
 from app.models.church import Church
@@ -33,19 +33,41 @@ def index():
     # By default, don't show completed tasks unless explicitly requested
     if status_filter:
         if status_filter != 'all':
-            query = query.filter(Task.status == status_filter)
+            if status_filter == 'overdue':
+                # Special handling for overdue tasks
+                current_date = datetime.now().date()
+                query = query.filter(
+                    Task.status != TaskStatus.COMPLETED,
+                    Task.due_date < current_date
+                )
+            else:
+                # Convert string status to Enum
+                try:
+                    status_enum = TaskStatus(status_filter)
+                    query = query.filter(Task.status == status_enum)
+                except ValueError:
+                    # If invalid status provided, log it and ignore the filter
+                    current_app.logger.warning(f"Invalid status filter: {status_filter}")
     else:
         # Default behavior: exclude completed tasks
-        query = query.filter(Task.status != 'completed')
+        query = query.filter(Task.status != TaskStatus.COMPLETED)
     
     # Execute query with ordering
-    tasks = query.order_by(Task.due_date.asc()).all()
+    filtered_tasks = query.order_by(Task.due_date.asc()).all()
+    
+    # Get all tasks for statistics (including completed)
+    all_tasks_query = Task.query.filter(
+        (Task.assigned_to == str(current_user.id)) | 
+        (Task.created_by == current_user.id) |
+        (Task.owner_id == current_user.id)
+    )
+    all_tasks = all_tasks_query.all()
     
     # Calculate overdue tasks
     overdue_count = 0
     current_date = datetime.now().date()
-    for task in tasks:
-        if task.status != 'completed' and task.due_date:
+    for task in filtered_tasks:
+        if task.status != TaskStatus.COMPLETED and task.due_date:
             # Compare dates to detect overdue tasks
             if hasattr(task.due_date, 'date'):
                 due_date_val = task.due_date.date()
@@ -55,10 +77,11 @@ def index():
                 overdue_count += 1
             
     return render_template('tasks/index.html', 
-                          tasks=tasks, 
+                          tasks=filtered_tasks, 
+                          all_tasks=all_tasks,
                           overdue_count=overdue_count,
                           current_date=current_date,
-                          show_completed=(status_filter == 'completed'),
+                          show_completed=(status_filter == 'completed' or status_filter == TaskStatus.COMPLETED.value),
                           page_title="My Tasks")
 
 @tasks_bp.route('/add', methods=['GET', 'POST'])
@@ -204,8 +227,22 @@ def edit(id):
         # Update task with form data
         task.title = request.form.get('title')
         task.description = request.form.get('description')
-        task.status = request.form.get('status')
-        task.priority = request.form.get('priority')
+        
+        # Handle status as Enum
+        status_value = request.form.get('status')
+        if status_value:
+            task.status = TaskStatus(status_value)
+            # If task is being marked as completed, set completed_at timestamp
+            if status_value == 'completed' and task.status != TaskStatus.COMPLETED:
+                task.completed_at = datetime.now()
+            # If task is being unmarked as completed, clear completed_at timestamp
+            elif status_value != 'completed' and task.status == TaskStatus.COMPLETED:
+                task.completed_at = None
+        
+        # Handle priority as Enum
+        priority_value = request.form.get('priority')
+        if priority_value:
+            task.priority = TaskPriority(priority_value)
         
         due_date_str = request.form.get('due_date')
         was_due_date_changed = False
@@ -329,8 +366,8 @@ def complete(id):
     task = Task.query.get_or_404(id)
     
     # Update the task
-    task.status = 'completed'
-    task.completed_date = datetime.now()
+    task.status = TaskStatus.COMPLETED
+    task.completed_at = datetime.now()
     
     # Add completion notes if provided
     completion_notes = request.form.get('completion_notes')
