@@ -5,13 +5,15 @@ from app.models.person import Person
 from app.models.church import Church
 from app.models.email_template import EmailTemplate
 from app.models.email_signature import EmailSignature
-from app.extensions import db
+from app.extensions import db, cache
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import text
+from sqlalchemy.orm import joinedload
 import json
 from app.utils.decorators import office_required
 from app.utils.upload import save_uploaded_file
 from app.utils.time import format_date
+from app.utils.query_optimization import optimize_query, with_pagination, cached_query
 
 communications_bp = Blueprint('communications', __name__, template_folder='../templates/communications')
 
@@ -28,18 +30,39 @@ def get_default_signature(user_id):
 @communications_bp.route('/')
 @communications_bp.route('/index')
 @login_required
+@cached_query(timeout=60)  # Cache results for 1 minute in production
 def index():
     """Display communications hub."""
+    start_time = datetime.now()
+    
     # Get filter parameters
     person_id = request.args.get('person_id')
     church_id = request.args.get('church_id')
+    
+    # Convert IDs to integers if they exist to avoid type mismatch
+    try:
+        person_id = int(person_id) if person_id else None
+    except (ValueError, TypeError):
+        person_id = None
+        current_app.logger.error(f"Invalid person_id format: {person_id}")
+    
+    try:
+        church_id = int(church_id) if church_id else None
+    except (ValueError, TypeError):
+        church_id = None
+        current_app.logger.error(f"Invalid church_id format: {church_id}")
     comm_type = request.args.get('type')
     direction = request.args.get('direction')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)  # Default to 50 items per page
     
-    # Build query
-    query = Communication.query
+    # Build query with eager loading to prevent N+1 query problems
+    query = Communication.query.options(
+        joinedload(Communication.person),
+        joinedload(Communication.church)
+    )
     
     # Apply filters
     if person_id:
@@ -71,16 +94,33 @@ def index():
     if current_user.role != 'super_admin':
         query = query.filter(Communication.office_id == current_user.office_id)
     
-    # Fetch communications from database
+    # Order by date sent descending
+    query = query.order_by(Communication.date_sent.desc())
+    
+    # Apply pagination to avoid loading too many records at once
     try:
-        communications = query.order_by(Communication.date_sent.desc()).all()
+        communications, pagination = with_pagination(query, page=page, per_page=per_page)
     except Exception as e:
         current_app.logger.error(f"Error fetching communications: {str(e)}")
         communications = []
+        pagination = {
+            'page': 1,
+            'per_page': per_page,
+            'total': 0,
+            'pages': 0,
+            'has_next': False,
+            'has_prev': False
+        }
         flash('Error loading communications. Please try again later.', 'error')
     
+    # Log performance metrics
+    elapsed_time = (datetime.now() - start_time).total_seconds()
+    if elapsed_time > 0.5:  # Log if it took more than 500ms
+        current_app.logger.warning(f"Communications index took {elapsed_time:.2f}s to load")
+    
     return render_template('communications/index.html', 
-                          communications=communications, 
+                          communications=communications,
+                          pagination=pagination,
                           page_title="Communications Hub")
 
 @communications_bp.route('/compose', methods=['GET', 'POST'])
@@ -770,6 +810,13 @@ def signatures():
                 flash('Signature created successfully', 'success')
             
             elif action == 'update':
+                # Convert signature_id to integer to avoid type mismatch
+                try:
+                    signature_id = int(signature_id) if signature_id else None
+                except (ValueError, TypeError):
+                    flash('Invalid signature ID', 'error')
+                    return redirect(url_for('communications.signatures'))
+                    
                 # Update existing signature
                 signature = EmailSignature.query.filter_by(
                     id=signature_id, 
@@ -798,6 +845,13 @@ def signatures():
         
         elif action == 'delete':
             signature_id = request.form.get('signature_id')
+            # Convert signature_id to integer to avoid type mismatch
+            try:
+                signature_id = int(signature_id) if signature_id else None
+            except (ValueError, TypeError):
+                flash('Invalid signature ID', 'error')
+                return redirect(url_for('communications.signatures'))
+                
             signature = EmailSignature.query.filter_by(
                 id=signature_id, 
                 user_id=current_user.id
@@ -812,6 +866,13 @@ def signatures():
         
         elif action == 'set_default':
             signature_id = request.form.get('signature_id')
+            
+            # Convert signature_id to integer to avoid type mismatch
+            try:
+                signature_id = int(signature_id) if signature_id else None
+            except (ValueError, TypeError):
+                flash('Invalid signature ID', 'error')
+                return redirect(url_for('communications.signatures'))
             
             # Remove default from all signatures for this user
             EmailSignature.query.filter_by(user_id=current_user.id).update({'is_default': False})

@@ -22,6 +22,21 @@ def register_template_functions(app):
         current_year=lambda: datetime.now().year,
         format_date=format_date,
         format_phone=format_phone,
+        isinstance=isinstance,
+        list=list,
+        str=str,
+        int=int,
+        float=float,
+        len=len,
+        min=min,
+        max=max,
+        sum=sum,
+        sorted=sorted,
+        zip=zip,
+        dict=dict,
+        enumerate=enumerate,
+        getattr=getattr,
+        hasattr=hasattr
     ))
 
 def format_datetime(value, format='%Y-%m-%d %H:%M'):

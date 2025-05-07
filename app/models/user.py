@@ -186,10 +186,17 @@ class User(UserMixin, Base):
 
     def count_owned_records(self, record_type: str) -> int:
         """Count owned records of a specific type."""
+        from app.models.person import Person
+        from sqlalchemy import func
+        from app.extensions import db
+        
         if record_type == 'churches':
             return len(self.owned_churches)
         elif record_type == 'communications':
             return len(self.owned_communications)
         elif record_type == 'tasks':
             return len(self.owned_tasks)
+        elif record_type == 'people':
+            # Count people records where this user is the owner (using user_id field)
+            return db.session.query(func.count(Person.id)).filter(Person.user_id == self.id).scalar() or 0
         return 0 
