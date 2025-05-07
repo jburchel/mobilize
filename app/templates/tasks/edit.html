@@ -186,7 +186,7 @@
                         <div class="col-7">{{ task.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
                     </div>
                     
-                    {% if task.status != 'completed' and task.due_date and task.due_date < current_date %}
+                    {% if task.status != 'completed' and task.due_date and (task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date %}
                     <div class="alert alert-danger mt-3">
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         <strong>Warning:</strong> This task is overdue!
