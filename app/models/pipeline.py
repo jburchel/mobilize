@@ -54,15 +54,11 @@ class Pipeline(db.Model):
             )
             count = result.scalar() or 0
             
-            # Debug log
-            import sys
-            print(f"Pipeline {self.id} count: {count}", file=sys.stderr)
-            
+            # Return the count without logging to stderr which can cause BrokenPipeError
             return count
-        except Exception as e:
-            # Log the error but don't crash
-            import sys
-            print(f"Error counting pipeline contacts: {str(e)}", file=sys.stderr)
+        except Exception:
+            # Silently handle the error without writing to stderr
+            # This prevents BrokenPipeError when the pipe is closed
             return 0
         
     def contact_count(self):
