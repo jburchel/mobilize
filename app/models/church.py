@@ -130,8 +130,22 @@ class Church(Contact):
         return f"<Church {self.name}>"
 
     def get_name(self) -> str:
-        """Get display name for the church"""
-        return self.name or "Unnamed Church"
+        """Get display name for the church
+        
+        Checks both the church fields and the contact fields to ensure we display a name
+        even if data is stored inconsistently between tables.
+        """
+        # First try the church's own name field
+        church_name = self.name
+        
+        # If missing, try to get from the contact fields
+        # This is necessary because the data might be stored in either table due to inheritance
+        contact_name = super().first_name if hasattr(super(), 'first_name') else None
+        
+        # Use the first non-null value from either table
+        name = church_name or contact_name or ''
+        
+        return name or "Unnamed Church"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the church to a dictionary."""

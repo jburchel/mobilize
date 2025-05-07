@@ -110,7 +110,7 @@
                             </thead>
                             <tbody>
                                 {% for person in people %}
-                                <tr data-name="{{ person.first_name }} {{ person.last_name }}" 
+                                <tr data-name="{{ person.get_name() }}" 
                                     data-email="{{ person.email|default('') }}" 
                                     data-phone="{{ person.phone|default('') }}"
                                     data-pipeline="{{ person.current_pipeline_stage|default('') }}"
@@ -118,11 +118,11 @@
                                     <td>
                                         <div class="table-user">
                                             <div class="table-user-avatar" style="background-color: {% if person.priority == 'HIGH' %}var(--color-primary){% elif person.priority == 'MEDIUM' %}var(--color-info){% else %}var(--color-secondary){% endif %};">
-                                                {{ person.first_name[0] }}{{ person.last_name[0] }}
+                                                {{ person.initials }}
                                             </div>
                                             <div class="table-user-info">
                                                 <a href="{{ url_for('people.show', id=person.id) }}" class="text-decoration-none">
-                                                    <div class="table-user-name">{{ person.first_name }} {{ person.last_name }}</div>
+                                                    <div class="table-user-name">{{ person.get_name() }}</div>
                                                     <div class="table-user-title">{{ person.role or "Contact" }}</div>
                                                 </a>
                                             </div>

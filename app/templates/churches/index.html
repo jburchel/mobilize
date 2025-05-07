@@ -114,11 +114,11 @@
                                     <td>
                                         <div class="table-user">
                                             <div class="table-user-avatar" style="background-color: var(--color-primary-blue);">
-                                                {{ church.name[0:2] }}
+                                                {{ church.get_name()[0:2] if church.get_name() != "Unnamed Church" else 'CH' }}
                                             </div>
                                             <div class="table-user-info">
                                                 <a href="{{ url_for('churches.show', id=church.id) }}" class="text-decoration-none">
-                                                    <div class="table-user-name">{{ church.name }}</div>
+                                                    <div class="table-user-name">{{ church.get_name() }}</div>
                                                     <div class="table-user-title">{{ church.type or "Church" }}</div>
                                                 </a>
                                             </div>

@@ -170,8 +170,25 @@ class Person(Contact):
         return f"<Person(name='{self.first_name} {self.last_name}', email='{self.email}')>"
 
     def get_name(self) -> str:
-        """Get display name for the person."""
-        return f"{self.first_name or ''} {self.last_name or ''}".strip() or "Unnamed Person"
+        """Get display name for the person.
+        
+        Checks both the person fields and the contact fields to ensure we display a name
+        even if data is stored inconsistently between tables.
+        """
+        # First try the person's own fields
+        person_first = self.first_name
+        person_last = self.last_name
+        
+        # If either is missing, try to get from the contact fields
+        # This is necessary because the data might be stored in either table due to inheritance
+        contact_first = super().first_name if hasattr(super(), 'first_name') else None
+        contact_last = super().last_name if hasattr(super(), 'last_name') else None
+        
+        # Use the first non-null value from either table
+        first_name = person_first or contact_first or ''
+        last_name = person_last or contact_last or ''
+        
+        return f"{first_name} {last_name}".strip() or "Unnamed Person"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert person to dictionary."""
