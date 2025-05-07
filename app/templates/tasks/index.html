@@ -25,32 +25,7 @@
         </div>
     </div>
     
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <form method="get" class="row row-cols-lg-auto g-3 align-items-center">
-                        <div class="col-12">
-                            <label class="visually-hidden" for="status">Status</label>
-                            <select class="form-select" id="status" name="status">
-                                <option value="">All Statuses</option>
-                                <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
-                                <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>In Progress</option>
-                                <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
-                                <option value="cancelled" {% if request.args.get('status') == 'cancelled' %}selected{% endif %}>Cancelled</option>
-                                <option value="on_hold" {% if request.args.get('status') == 'on_hold' %}selected{% endif %}>On Hold</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary">Filter</button>
-                            <a href="{{ url_for('tasks.index') }}" class="btn btn-outline-secondary">Clear</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+
     
     <div class="row mb-4">
         <div class="col-md-8">
@@ -90,6 +65,7 @@
                                 <button type="button" class="btn btn-outline-primary {% if request.args.get('status') == 'in_progress' %}active{% endif %}" data-status="in_progress">In Progress</button>
                                 <button type="button" class="btn btn-outline-primary {% if request.args.get('status') == 'completed' %}active{% endif %}" data-status="completed">Completed</button>
                                 <button type="button" class="btn btn-outline-primary {% if request.args.get('status') == 'overdue' %}active{% endif %}" data-status="overdue">Overdue</button>
+                                <a href="{{ url_for('tasks.index') }}" class="btn btn-outline-secondary">Clear Filters</a>
                             </div>
                             <div class="float-end">
                                 <div class="btn-group" role="group">
@@ -118,7 +94,7 @@
                                 {% if tasks %}
                                     {% for task in tasks %}
                                     <tr data-status="{{ task.status }}" data-priority="{{ task.priority }}" 
-                                        {% if task.due_date and task.due_date.date() < current_date and task.status != 'completed' %}data-is-overdue="true"{% endif %}>
+                                        {% if task.due_date and ((task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date) and task.status != 'completed' %}data-is-overdue="true"{% endif %}>
                                         <td>
                                             <a href="{{ url_for('tasks.edit', id=task.id) }}">
                                                 {{ task.title }}
@@ -141,10 +117,10 @@
                                         </td>
                                         <td>
                                             {% if task.due_date %}
-                                                {% if task.due_date.date() < current_date and task.status != 'completed' %}
-                                                    <span class="text-danger">{{ task.due_date.strftime('%Y-%m-%d') }}</span>
+                                                {% if (task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date and task.status != 'completed' %}
+                                                    <span class="text-danger">{{ task.due_date.strftime('%Y-%m-%d') if hasattr(task.due_date, 'strftime') else task.due_date }}</span>
                                                 {% else %}
-                                                    {{ task.due_date.strftime('%Y-%m-%d') }}
+                                                    {{ task.due_date.strftime('%Y-%m-%d') if hasattr(task.due_date, 'strftime') else task.due_date }}
                                                 {% endif %}
                                             {% else %}
                                                 <span class="text-muted">No due date</span>
@@ -287,8 +263,8 @@
                             <div class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ task.title }}</h6>
-                                    <small class="{% if task.due_date.date() < current_date %}text-danger{% endif %}">
-                                        {{ task.due_date.strftime('%Y-%m-%d') }}
+                                    <small class="{% if (task.due_date.date() if hasattr(task.due_date, 'date') else task.due_date) < current_date %}text-danger{% endif %}">
+                                        {{ task.due_date.strftime('%Y-%m-%d') if hasattr(task.due_date, 'strftime') else task.due_date }}
                                     </small>
                                 </div>
                                 <div class="d-flex w-100 justify-content-between">
@@ -411,7 +387,7 @@
                                             </div>
                                         </td>
                                         <td>{{ task.title }}</td>
-                                        <td>{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else 'No due date' }}</td>
+                                        <td>{{ task.due_date.strftime('%Y-%m-%d') if task.due_date and hasattr(task.due_date, 'strftime') else (task.due_date if task.due_date else 'No due date') }}</td>
                                         <td>{{ task.get_reminder_display() }}</td>
                                     </tr>
                                     {% endif %}
@@ -458,8 +434,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Setup filter button event handlers
     statusFilters.forEach(button => {
         button.addEventListener('click', function() {
+            // Skip if this is the Clear Filters button (which is an <a> tag, not a button)
+            if (this.tagName.toLowerCase() === 'a') return;
+            
             // Update active state
-            statusFilters.forEach(btn => btn.classList.remove('active'));
+            statusFilters.forEach(btn => {
+                if (btn.tagName.toLowerCase() !== 'a') { // Skip the Clear Filters link
+                    btn.classList.remove('active');
+                }
+            });
             this.classList.add('active');
             
             // Apply filter
