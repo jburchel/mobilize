@@ -5,7 +5,7 @@ set -e
 
 # Print Python and environment information
 echo "Python version:"
-python --version
+python3 --version
 echo
 
 echo "Environment variables:"
@@ -60,12 +60,12 @@ EOL
 
 # Test Firebase initialization separately
 echo "Testing Firebase initialization..."
-python test_firebase.py || echo "Firebase initialization test failed, but continuing startup"
+python3 test_firebase.py || echo "Firebase initialization test failed, but continuing startup"
 echo
 
 # Run test script to verify imports
 echo "Running import test script..."
-python test_app_imports.py || echo "Import test failed, but continuing startup"
+python3 test_app_imports.py || echo "Import test failed, but continuing startup"
 echo
 
 # Check app structure

@@ -33,17 +33,20 @@
                             <div class="col-md-6">
                                 <label for="task-status" class="form-label">Status *</label>
                                 <select class="form-select" id="task-status" name="status" required>
-                                    <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
-                                    <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                                    <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="pending" {% if task.status.value == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="in_progress" {% if task.status.value == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="on_hold" {% if task.status.value == 'on_hold' %}selected{% endif %}>On Hold</option>
+                                    <option value="completed" {% if task.status.value == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="cancelled" {% if task.status.value == 'cancelled' %}selected{% endif %}>Cancelled</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label for="task-priority" class="form-label">Priority *</label>
                                 <select class="form-select" id="task-priority" name="priority" required>
-                                    <option value="low" {% if task.priority == 'low' %}selected{% endif %}>Low</option>
-                                    <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>Medium</option>
-                                    <option value="high" {% if task.priority == 'high' %}selected{% endif %}>High</option>
+                                    <option value="low" {% if task.priority.value == 'low' %}selected{% endif %}>Low</option>
+                                    <option value="medium" {% if task.priority.value == 'medium' %}selected{% endif %}>Medium</option>
+                                    <option value="high" {% if task.priority.value == 'high' %}selected{% endif %}>High</option>
+                                    <option value="urgent" {% if task.priority.value == 'urgent' %}selected{% endif %}>Urgent</option>
                                 </select>
                             </div>
                         </div>
@@ -186,7 +189,7 @@
                         <div class="col-7">{{ task.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
                     </div>
                     
-                    {% if task.status != 'completed' and task.due_date and (task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date %}
+                    {% if task.status.value != 'completed' and task.due_date and (task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date %}
                     <div class="alert alert-danger mt-3">
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         <strong>Warning:</strong> This task is overdue!
