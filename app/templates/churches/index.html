@@ -130,22 +130,27 @@
                                         <span class="badge badge-secondary">{{ church.denomination or "Not Set" }}</span>
                                     </td>
                                     <td>
-                                        {% if church.main_pipeline_stage %}
-                                            {% if church.main_pipeline_stage == 'INFORMATION' %}
-                                                <span class="badge bg-info">Information</span>
-                                            {% elif church.main_pipeline_stage == 'PROMOTION' %}
-                                                <span class="badge bg-primary">Promotion</span>
-                                            {% elif church.main_pipeline_stage == 'INVITATION' %}
-                                                <span class="badge bg-warning">Invitation</span>
-                                            {% elif church.main_pipeline_stage == 'CONFIRMATION' %}
-                                                <span class="badge bg-success">Confirmation</span>
-                                            {% elif church.main_pipeline_stage == 'EN42' %}
-                                                <span class="badge bg-secondary">EN42</span>
-                                            {% elif church.main_pipeline_stage == 'AUTOMATION' %}
-                                                <span class="badge bg-dark">Automation</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">{{ church.main_pipeline_stage|replace("_", " ")|title }}</span>
-                                            {% endif %}
+                                        {% set pipeline_stage = church.cached_pipeline_stage if hasattr(church, 'cached_pipeline_stage') else church.main_pipeline_stage %}
+                                        {% if pipeline_stage %}
+                                            {% set badge_class = {
+                                                'INFORMATION': 'bg-info',
+                                                'PROMOTION': 'bg-primary',
+                                                'INVITATION': 'bg-warning',
+                                                'CONFIRMATION': 'bg-success',
+                                                'EN42': 'bg-secondary',
+                                                'AUTOMATION': 'bg-dark'
+                                            }.get(pipeline_stage, 'bg-secondary') %}
+                                            
+                                            {% set display_name = {
+                                                'INFORMATION': 'Information',
+                                                'PROMOTION': 'Promotion',
+                                                'INVITATION': 'Invitation',
+                                                'CONFIRMATION': 'Confirmation',
+                                                'EN42': 'EN42',
+                                                'AUTOMATION': 'Automation'
+                                            }.get(pipeline_stage, pipeline_stage|replace("_", " ")|title) %}
+                                            
+                                            <span class="badge {{ badge_class }}">{{ display_name }}</span>
                                         {% else %}
                                             <span class="badge bg-light text-dark">Not Set</span>
                                         {% endif %}

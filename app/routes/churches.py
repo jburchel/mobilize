@@ -21,12 +21,56 @@ churches_bp = Blueprint('churches', __name__, template_folder='../templates/chur
 @login_required
 @office_required
 def index():
-    """Show list of all churches."""
-    # For super admins, show all churches across all offices
-    if current_user.is_super_admin():
-        churches = Church.query.all()
-    else:
-        churches = Church.query.filter_by(office_id=current_user.office_id).all()
+    """Show list of all churches with optimized loading."""
+    from sqlalchemy.orm import joinedload, contains_eager
+    from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
+    
+    # Get the main pipeline for churches
+    main_pipeline = Pipeline.query.filter_by(
+        pipeline_type='church',
+        is_main_pipeline=True,
+        office_id=current_user.office_id if not current_user.is_super_admin() else None
+    ).first()
+    
+    # Build the base query with eager loading
+    query = Church.query\
+        .options(
+            joinedload(Church.main_contact),  # Eager load main contact
+            joinedload(Church.owner)          # Eager load owner
+        )
+    
+    # Add pipeline stage eager loading if main pipeline exists
+    if main_pipeline:
+        # Preload pipeline stages for all churches
+        pipeline_contacts = {}
+        pipeline_stages = {}
+        
+        # Get all pipeline contacts for churches in a single query
+        contacts = PipelineContact.query.filter_by(pipeline_id=main_pipeline.id).all()
+        for contact in contacts:
+            pipeline_contacts[contact.contact_id] = contact.current_stage_id
+            
+        # Get all pipeline stages in a single query
+        stages = PipelineStage.query.filter(PipelineStage.id.in_([
+            pc.current_stage_id for pc in contacts if pc.current_stage_id is not None
+        ])).all() if contacts else []
+        
+        for stage in stages:
+            pipeline_stages[stage.id] = stage.name
+    
+    # Apply office filter for non-super admins
+    if not current_user.is_super_admin():
+        query = query.filter_by(office_id=current_user.office_id)
+    
+    # Execute the query
+    churches = query.all()
+    
+    # Attach pipeline stage names to churches to avoid template queries
+    if main_pipeline:
+        for church in churches:
+            stage_id = pipeline_contacts.get(church.id)
+            church.cached_pipeline_stage = pipeline_stages.get(stage_id) if stage_id else None
+    
     return render_template('churches/index.html', churches=churches)
 
 @churches_bp.route('/new', methods=['GET', 'POST'])
