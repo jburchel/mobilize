@@ -35,6 +35,7 @@ from app.cli import register_commands
 # Import performance optimizations
 from app.config.performance_optimizations import optimize_flask_app
 from app.config.static_optimizations import optimize_static_files
+from app.config.database_optimizations import optimize_database_queries
 
 # Load environment variables from .env.development first
 load_dotenv(find_dotenv(".env.development"), override=True) # Keep from main, ensure override=True
@@ -114,6 +115,11 @@ def create_app(test_config=None):
          app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', os.environ.get('DB_CONNECTION_STRING'))
          if not app.config['SQLALCHEMY_DATABASE_URI']:
              app.logger.error("CRITICAL: SQLALCHEMY_DATABASE_URI is not set!")
+    
+    # Print database connection info for debugging
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
+    masked_uri = db_uri.replace("://", "://***:***@") if "://" in db_uri else db_uri
+    app.logger.info(f"[DATABASE CONNECTION] Using database: {masked_uri}")
 
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
@@ -378,6 +384,7 @@ def create_app(test_config=None):
     # Apply performance optimizations for production
     optimize_flask_app(app)
     optimize_static_files(app)
+    optimize_database_queries(app)
     
     # Setup pipelines and migrate contacts (Keep logic from development)
     with app.app_context():

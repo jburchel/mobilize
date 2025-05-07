@@ -41,3 +41,5 @@ selenium>=4.0.0
 webdriver_manager>=4.0.0
 # Performance optimization libraries
 brotli==1.1.0
+# Date/time formatting
+humanize==4.12.3

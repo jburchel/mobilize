@@ -18,6 +18,8 @@ from .permission import Permission
 from .role import Role
 from .role_permission import RolePermission
 from .google_token import GoogleToken
+from .google_settings import GoogleWorkspaceSettings
+from .email_settings import EmailSettings
 from .email_signature import EmailSignature
 from .sync_history import SyncHistory
 from .pipeline import Pipeline, PipelineStage, PipelineContact, PipelineStageHistory
@@ -40,6 +42,8 @@ __all__ = [
     'Role',
     'RolePermission',
     'GoogleToken',
+    'GoogleWorkspaceSettings',
+    'EmailSettings',
     'EmailSignature',
     'SyncHistory',
     'Pipeline',

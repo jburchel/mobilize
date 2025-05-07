@@ -1034,27 +1034,44 @@ def export_security_logs():
 @admin_required
 def google_workspace_settings():
     """Google Workspace Integration Settings."""
-    # Get current settings from database (using mock data for now)
-    settings = {
-        'enabled': True,
-        'domain': 'example.org',
-        'client_id': 'your-client-id.apps.googleusercontent.com',
-        'client_secret': '••••••••••••••••••',  # Masked for security
-        'scopes': ['calendar', 'contacts', 'drive', 'gmail'],
-        'sync_frequency': 'hourly',
-        'last_sync': datetime.now() - timedelta(hours=2),
-        'connected_users': 8
-    }
+    from app.utils.log_utils import log_activity
+    from app.models.google_settings import GoogleWorkspaceSettings
+    from app.models.google_token import GoogleToken
     
-    # Add status information
+    # Log this activity
+    log_activity(
+        subsystem='Admin',
+        operation='VIEW',
+        description='Viewed Google Workspace settings',
+        status='SUCCESS',
+        impact='LOW'
+    )
+    
+    # Get current settings from database
+    settings_obj = GoogleWorkspaceSettings.get_settings()
+    settings = settings_obj.to_dict()
+    
+    # Mask the client secret if it exists
+    if settings['client_secret']:
+        settings['client_secret'] = '•' * 16
+    
+    # Get the application URL for the redirect URI if not set
+    if not settings['redirect_uri']:
+        settings['redirect_uri'] = request.url_root.rstrip('/') + '/auth/google/callback'
+    
+    # Count connected users
+    connected_users = GoogleToken.query.count()
+    settings['connected_users'] = connected_users
+    
+    # Create status information
     status = {
-        'connected': True,
-        'token_valid': True,
-        'last_sync': datetime.now() - timedelta(hours=2),
+        'connected': settings['enabled'] and bool(settings['client_id']) and bool(settings['client_secret']),
+        'token_valid': connected_users > 0,
+        'last_sync': settings['last_sync'] or datetime.now() - timedelta(days=30),
         'synced_resources': {
-            'users': 42,
-            'groups': 8,
-            'events': 156
+            'users': settings['synced_users'],
+            'groups': settings['synced_groups'],
+            'events': settings['synced_events']
         }
     }
     
@@ -1065,8 +1082,38 @@ def google_workspace_settings():
 @admin_required
 def update_google_workspace_settings():
     """Update Google Workspace Integration Settings."""
-    # In a real app, we would validate and save the form data to the database
-    flash('Google Workspace settings updated successfully', 'success')
+    from app.utils.log_utils import log_activity
+    from app.models.google_settings import GoogleWorkspaceSettings
+    
+    # Get current settings from database
+    settings = GoogleWorkspaceSettings.get_settings()
+    
+    # Update settings from form data
+    try:
+        settings.update_from_form(request.form)
+        
+        # Log the activity
+        log_activity(
+            subsystem='Admin',
+            operation='UPDATE',
+            description='Updated Google Workspace settings',
+            status='SUCCESS',
+            impact='MEDIUM'
+        )
+        
+        flash('Google Workspace settings updated successfully', 'success')
+    except Exception as e:
+        # Log the error
+        current_app.logger.error(f"Error updating Google Workspace settings: {str(e)}")
+        log_activity(
+            subsystem='Admin',
+            operation='UPDATE',
+            description=f"Failed to update Google Workspace settings: {str(e)}",
+            status='FAILURE',
+            impact='HIGH'
+        )
+        flash(f'Error updating Google Workspace settings: {str(e)}', 'danger')
+    
     return redirect(url_for('admin.google_workspace_settings'))
 
 @admin_bp.route('/system/email-settings')
@@ -1074,76 +1121,168 @@ def update_google_workspace_settings():
 @admin_required
 def email_settings():
     """Email System Settings."""
-    # Get current settings from database (using mock data for now)
-    settings = {
-        'mail_default_sender': 'Mobilize App <info@mobilize-app.org>',
-        'email_signature': '<p>Blessings,<br>The Team at Mobilize App</p>'
-    }
+    from app.utils.log_utils import log_activity
+    from app.models.email_settings import EmailSettings
+    from app.models.email_template import EmailTemplate
+    from app.models.google_token import GoogleToken
     
-    # Get sample email templates
-    templates = [
-        {'id': 1, 'name': 'Welcome Email', 'subject': 'Welcome to Mobilize App', 'last_modified': datetime.now() - timedelta(days=3)},
-        {'id': 2, 'name': 'Password Reset', 'subject': 'Reset Your Password', 'last_modified': datetime.now() - timedelta(weeks=2)},
-        {'id': 3, 'name': 'Account Verification', 'subject': 'Verify Your Account', 'last_modified': datetime.now() - timedelta(days=3)},
-        {'id': 4, 'name': 'New Message Notification', 'subject': 'You Have a New Message', 'last_modified': datetime.now() - timedelta(days=5)},
-        {'id': 5, 'name': 'Task Assignment', 'subject': 'New Task Assigned to You', 'last_modified': datetime.now() - timedelta(days=1)}
-    ]
+    # Log this activity
+    log_activity(
+        subsystem='Admin',
+        operation='VIEW',
+        description='Viewed email settings',
+        status='SUCCESS',
+        impact='LOW'
+    )
     
-    # Get email stats (load from Gmail API if the user is authenticated)
+    # Get current settings from database
+    settings_obj = EmailSettings.get_settings()
+    settings = settings_obj.to_dict()
+    
+    # Get real email templates from the database
+    email_templates = EmailTemplate.query.order_by(EmailTemplate.updated_at.desc()).all()
+    templates = []
+    for template in email_templates:
+        templates.append({
+            'id': template.id,
+            'name': template.name,
+            'description': template.subject,
+            'modified_at': template.updated_at.strftime('%Y-%m-%d %H:%M') if template.updated_at else 'N/A'
+        })
+    
+    # Get email stats from the settings object
     stats = {
-        'sent_today': 0,
-        'sent_week': 0,
-        'bounced': 0,
-        'failed': 0,
-        'delivery_rate': 100
+        'sent_today': settings_obj.sent_today,
+        'sent_week': settings_obj.sent_week,
+        'bounced': settings_obj.bounced,
+        'failed': settings_obj.failed,
+        'delivery_rate': settings_obj.delivery_rate
     }
     
-    # Try to get real data from Gmail API
+    # Try to get real data from Gmail API if available
     try:
         # Get Gmail token for current user
-        from app.models.google_token import GoogleToken
         token = GoogleToken.query.filter_by(user_id=current_user.id).first()
         
         if token:
             # Initialize the Gmail service if user has valid credentials
             gmail_service = GmailService(current_user.id)
             
-            # Get last 7 days of emails - normally we'd use the Gmail API to get these counts
-            # For demo, we'll use mock data until we implement more Gmail API metrics
-            stats = {
-                'sent_today': 47,
-                'sent_week': 342,
-                'bounced': 3,
-                'failed': 5,
-                'delivery_rate': 98
-            }
+            # In a real implementation, we would fetch actual metrics from Gmail API
+            # For now, we'll use the values from the database
+            pass
     except Exception as e:
+        current_app.logger.error(f"Error loading Gmail statistics: {str(e)}")
         flash(f"Unable to load Gmail statistics: {str(e)}", "warning")
     
-    # Mock recent email activities - these would come from real Gmail API data in production
-    recent_activities = [
-        {'subject': 'Welcome to Mobilize App', 'recipient': 'john.doe@example.com', 'time_ago': '12 minutes ago', 'status': 'Delivered', 'status_color': 'success'},
-        {'subject': 'Your Password Has Been Reset', 'recipient': 'jane.smith@example.com', 'time_ago': '1 hour ago', 'status': 'Delivered', 'status_color': 'success'},
-        {'subject': 'New Task Assignment', 'recipient': 'robert.johnson@example.com', 'time_ago': '3 hours ago', 'status': 'Opened', 'status_color': 'info'},
-        {'subject': 'Weekly Report', 'recipient': 'team@example.com', 'time_ago': '6 hours ago', 'status': 'Bounced', 'status_color': 'warning'},
-        {'subject': 'Meeting Reminder', 'recipient': 'lisa.wong@example.com', 'time_ago': '1 day ago', 'status': 'Failed', 'status_color': 'danger'}
-    ]
+    # Get recent email activities from the database using the EmailTracking model
+    from app.models.email_tracking import EmailTracking
+    from datetime import datetime, timedelta
     
-    return render_template('admin/system/email_settings.html', settings=settings, templates=templates, stats=stats, recent_activities=recent_activities)
+    # Try to import humanize, but provide a fallback if it's not available
+    try:
+        import humanize
+        humanize_available = True
+    except ImportError:
+        humanize_available = False
+        current_app.logger.warning("Humanize package not available, using basic time formatting instead")
+    
+    # Get the 10 most recent email activities
+    recent_email_tracks = EmailTracking.query.order_by(EmailTracking.sent_at.desc()).limit(10).all()
+    
+    # Convert to the format needed for the template
+    recent_activities = []
+    for track in recent_email_tracks:
+        # Calculate time ago in a human-readable format
+        time_diff = datetime.utcnow() - track.sent_at
+        if humanize_available:
+            time_ago = humanize.naturaltime(time_diff)
+        else:
+            # Basic time formatting fallback
+            if time_diff.days > 0:
+                time_ago = f"{time_diff.days} days ago"
+            elif time_diff.seconds >= 3600:
+                hours = time_diff.seconds // 3600
+                time_ago = f"{hours} hour{'s' if hours > 1 else ''} ago"
+            elif time_diff.seconds >= 60:
+                minutes = time_diff.seconds // 60
+                time_ago = f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+            else:
+                time_ago = f"{time_diff.seconds} second{'s' if time_diff.seconds != 1 else ''} ago"
+        
+        # Determine status color based on email status
+        status_color = 'secondary'  # Default
+        if track.status == 'sent' or track.status == 'delivered':
+            status_color = 'success'
+        elif track.status == 'opened':
+            status_color = 'info'
+        elif track.status == 'clicked':
+            status_color = 'primary'
+        elif track.status == 'bounced':
+            status_color = 'warning'
+        elif track.status == 'failed':
+            status_color = 'danger'
+        
+        recent_activities.append({
+            'subject': track.email_subject,
+            'recipient': track.recipient_email,
+            'time_ago': time_ago,
+            'status': track.status.capitalize(),
+            'status_color': status_color
+        })
+    
+    # If no real data exists yet, provide some sample data
+    if not recent_activities:
+        current_app.logger.info("No email tracking data found, using sample data")
+        recent_activities = [
+            {'subject': 'Welcome to Mobilize App', 'recipient': 'john.doe@example.com', 'time_ago': '12 minutes ago', 'status': 'Delivered', 'status_color': 'success'},
+            {'subject': 'Your Password Has Been Reset', 'recipient': 'jane.smith@example.com', 'time_ago': '1 hour ago', 'status': 'Delivered', 'status_color': 'success'},
+            {'subject': 'New Task Assignment', 'recipient': 'robert.johnson@example.com', 'time_ago': '3 hours ago', 'status': 'Opened', 'status_color': 'info'},
+            {'subject': 'Weekly Report', 'recipient': 'team@example.com', 'time_ago': '6 hours ago', 'status': 'Bounced', 'status_color': 'warning'},
+            {'subject': 'Meeting Reminder', 'recipient': 'lisa.wong@example.com', 'time_ago': '1 day ago', 'status': 'Failed', 'status_color': 'danger'}
+        ]
+
+    
+    return render_template('admin/system/email_settings.html', settings=settings, email_templates=templates, stats=stats, recent_activities=recent_activities)
 
 @admin_bp.route('/system/email-settings', methods=['POST'])
 @login_required
 @admin_required
 def update_email_settings():
     """Update Email Settings."""
-    # Get form data
-    mail_default_sender = request.form.get('mail_default_sender')
-    email_signature = request.form.get('email_signature')
+    from app.utils.log_utils import log_activity
+    from app.models.email_settings import EmailSettings
     
-    # In a real app, we would save these settings to the database
-    # For now, just simulate success
+    # Get current settings from database
+    settings = EmailSettings.get_settings()
     
-    flash('Email settings updated successfully', 'success')
+    # Update settings from form data
+    try:
+        # Update settings using the model's update_from_form method
+        settings.update_from_form(request.form)
+        
+        # Log the activity
+        log_activity(
+            subsystem='Admin',
+            operation='UPDATE',
+            description='Updated email settings',
+            status='SUCCESS',
+            impact='MEDIUM'
+        )
+        
+        flash('Email settings updated successfully', 'success')
+    except Exception as e:
+        # Log the error
+        current_app.logger.error(f"Error updating email settings: {str(e)}")
+        log_activity(
+            subsystem='Admin',
+            operation='UPDATE',
+            description=f"Failed to update email settings: {str(e)}",
+            status='FAILURE',
+            impact='HIGH'
+        )
+        flash(f'Error updating email settings: {str(e)}', 'danger')
+    
     return redirect(url_for('admin.email_settings'))
 
 @admin_bp.route('/system/email-settings/test', methods=['POST'])
