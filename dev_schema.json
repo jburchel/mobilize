@@ -1,0 +1,1910 @@
+{
+  "churches": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "YES"
+    },
+    {
+      "name": "location",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "YES"
+    },
+    {
+      "name": "main_contact_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "senior_pastor_name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "denomination",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "weekly_attendance",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "website",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "virtuous",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "senior_pastor_phone",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "senior_pastor_email",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "missions_pastor_first_name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "missions_pastor_last_name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "mission_pastor_phone",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "mission_pastor_email",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "priority",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "assigned_to",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "source",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "referred_by",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "info_given",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "reason_closed",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "year_founded",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "date_closed",
+      "type": "date",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "communications": [
+    {
+      "name": "type",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "message",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "date_sent",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "date",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "person_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "church_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "user_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "direction",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "sender",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "gmail_message_id",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "gmail_thread_id",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "email_status",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "subject",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "attachments",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_synced_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "google_meet_link",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "google_calendar_event_id",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "contacts": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "type",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "first_name",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_name",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "email",
+      "type": "character varying",
+      "max_length": 120,
+      "nullable": "YES"
+    },
+    {
+      "name": "phone",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "YES"
+    },
+    {
+      "name": "address",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "YES"
+    },
+    {
+      "name": "city",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "state",
+      "type": "character varying",
+      "max_length": 2,
+      "nullable": "YES"
+    },
+    {
+      "name": "zip_code",
+      "type": "character varying",
+      "max_length": 10,
+      "nullable": "YES"
+    },
+    {
+      "name": "country",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "user_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "image",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "preferred_contact_method",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "date_created",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "date_modified",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "google_contact_id",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "has_conflict",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "conflict_data",
+      "type": "json",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_synced_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "email_campaigns": [
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "status",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "subject",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "NO"
+    },
+    {
+      "name": "content",
+      "type": "text",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "scheduled_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "sent_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "recipient_count",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "recipient_filter",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "sent_count",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "open_count",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "click_count",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "bounce_count",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "template_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_by",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "email_signatures": [
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "content",
+      "type": "text",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "logo_url",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "is_default",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "user_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "email_templates": [
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "subject",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "NO"
+    },
+    {
+      "name": "content",
+      "type": "text",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "category",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "variables",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_by",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "email_tracking": [
+    {
+      "name": "email_subject",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "NO"
+    },
+    {
+      "name": "recipient_email",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "NO"
+    },
+    {
+      "name": "status",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "sent_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "opened_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "open_count",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_opened_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "clicked_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "click_count",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_clicked_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "message_id",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "tracking_pixel",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "template_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "sender_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "person_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "bulk_send_id",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "google_tokens": [
+    {
+      "name": "access_token",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "refresh_token",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "token_type",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "expires_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "user_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "scopes",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "email",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "offices": [
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "NO"
+    },
+    {
+      "name": "email",
+      "type": "character varying",
+      "max_length": 120,
+      "nullable": "YES"
+    },
+    {
+      "name": "phone",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "YES"
+    },
+    {
+      "name": "address",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "YES"
+    },
+    {
+      "name": "city",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "state",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "zip_code",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "YES"
+    },
+    {
+      "name": "country",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "office_hours",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "YES"
+    },
+    {
+      "name": "timezone",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "settings",
+      "type": "json",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "notification_settings",
+      "type": "json",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "workspace_domain",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "calendar_sync_enabled",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "meet_integration_enabled",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "drive_integration_enabled",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "oauth_settings",
+      "type": "json",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "people": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "first_name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "last_name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "spouse_first_name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "spouse_last_name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "church_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "church_role",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "is_primary_contact",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "virtuous",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "title",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "marital_status",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "birthday",
+      "type": "date",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "anniversary",
+      "type": "date",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "occupation",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "employer",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "interests",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "skills",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "languages",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "facebook",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "twitter",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "linkedin",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "instagram",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "website",
+      "type": "character varying",
+      "max_length": 200,
+      "nullable": "YES"
+    },
+    {
+      "name": "referred_by",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "info_given",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "desired_service",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_contact",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "next_contact",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "status",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "google_contact_id",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_synced_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "people_pipeline",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "pipeline_status",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "pipeline_stage",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "priority",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "assigned_to",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "source",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "reason_closed",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "date_closed",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "tags",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "permissions": [
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "pipeline_contacts": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "contact_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "pipeline_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "current_stage_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "entered_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_updated",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "pipeline_stage_history": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "pipeline_contact_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "from_stage_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "to_stage_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_by_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "pipeline_stages": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "order",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "color",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "YES"
+    },
+    {
+      "name": "pipeline_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "auto_move_days",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "auto_reminder",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "auto_task_template",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "pipeline_type",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "is_main_pipeline",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "parent_pipeline_stage",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    }
+  ],
+  "role_permissions": [
+    {
+      "name": "role_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "permission_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "roles": [
+    {
+      "name": "name",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "NO"
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "sync_history": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "user_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "sync_type",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "NO"
+    },
+    {
+      "name": "status",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "YES"
+    },
+    {
+      "name": "items_processed",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "items_created",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "items_updated",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "items_skipped",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "items_failed",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "error_message",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "completed_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "tasks": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "title",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "NO"
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "status",
+      "type": "character varying",
+      "max_length": 11,
+      "nullable": "NO"
+    },
+    {
+      "name": "priority",
+      "type": "character varying",
+      "max_length": 6,
+      "nullable": "NO"
+    },
+    {
+      "name": "type",
+      "type": "character varying",
+      "max_length": 9,
+      "nullable": "NO"
+    },
+    {
+      "name": "due_date",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "due_time",
+      "type": "character varying",
+      "max_length": 10,
+      "nullable": "YES"
+    },
+    {
+      "name": "completed_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "google_calendar_event_id",
+      "type": "character varying",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "google_calendar_sync_enabled",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "last_synced_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "reminder_option",
+      "type": "character varying",
+      "max_length": 50,
+      "nullable": "YES"
+    },
+    {
+      "name": "reminder_sent",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "person_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "church_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "assigned_to",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "owner_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_by",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    }
+  ],
+  "user_offices": [
+    {
+      "name": "user_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "role",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "NO"
+    },
+    {
+      "name": "assigned_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ],
+  "users": [
+    {
+      "name": "id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "username",
+      "type": "character varying",
+      "max_length": 64,
+      "nullable": "NO"
+    },
+    {
+      "name": "email",
+      "type": "character varying",
+      "max_length": 120,
+      "nullable": "NO"
+    },
+    {
+      "name": "password_hash",
+      "type": "character varying",
+      "max_length": 128,
+      "nullable": "YES"
+    },
+    {
+      "name": "firebase_uid",
+      "type": "character varying",
+      "max_length": 128,
+      "nullable": "YES"
+    },
+    {
+      "name": "first_name",
+      "type": "character varying",
+      "max_length": 64,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_name",
+      "type": "character varying",
+      "max_length": 64,
+      "nullable": "YES"
+    },
+    {
+      "name": "phone",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "YES"
+    },
+    {
+      "name": "profile_image",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "job_title",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "department",
+      "type": "character varying",
+      "max_length": 100,
+      "nullable": "YES"
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "first_login",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "role",
+      "type": "character varying",
+      "max_length": 20,
+      "nullable": "NO"
+    },
+    {
+      "name": "role_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "last_login",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "preferences",
+      "type": "json",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "notification_settings",
+      "type": "json",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "google_refresh_token",
+      "type": "character varying",
+      "max_length": 255,
+      "nullable": "YES"
+    },
+    {
+      "name": "google_calendar_sync",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "google_meet_enabled",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "email_sync_contacts_only",
+      "type": "boolean",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "office_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "person_id",
+      "type": "integer",
+      "max_length": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp without time zone",
+      "max_length": null,
+      "nullable": "NO"
+    }
+  ]
+}

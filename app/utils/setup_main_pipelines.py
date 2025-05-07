@@ -7,6 +7,7 @@ from app.models.pipeline import Pipeline, PipelineStage, PipelineContact
 from app.models.constants import PEOPLE_PIPELINE_CHOICES, CHURCH_PIPELINE_CHOICES
 from app.models.person import Person
 from app.models.church import Church
+from app.models.office import Office
 from datetime import datetime
 import logging
 
@@ -15,6 +16,18 @@ logger = logging.getLogger('setup')
 def setup_main_pipelines():
     """Set up a single universal main people and church pipeline, and assign all people/churches to it."""
     logger.info("Checking for universal main pipelines")
+    
+    # Get or create a default office
+    default_office = Office.query.first()
+    if not default_office:
+        logger.info("Creating default office")
+        default_office = Office(
+            name="Mobilize Global HQ",
+            email="info@example.com",
+            is_active=True
+        )
+        db.session.add(default_office)
+        db.session.flush()  # Get the ID before using it
 
     # --- PEOPLE PIPELINE ---
     people_pipeline = Pipeline.query.filter_by(
@@ -23,12 +36,13 @@ def setup_main_pipelines():
     ).first()
 
     if not people_pipeline:
-        logger.info(f"Creating universal Main People Pipeline")
+        logger.info("Creating universal Main People Pipeline")
         people_pipeline = Pipeline(
-            name="Mobilize Global HQ People Pipeline",
+            name="Main People Pipeline",
             pipeline_type="people",
             is_main_pipeline=True,
-            description="Main pipeline for tracking people contacts (universal)"
+            description="Universal pipeline for tracking people contacts",
+            office_id=default_office.id
         )
         db.session.add(people_pipeline)
         db.session.flush()  # Get the ID before adding stages
@@ -78,12 +92,13 @@ def setup_main_pipelines():
     ).first()
 
     if not church_pipeline:
-        logger.info(f"Creating universal Main Church Pipeline")
+        logger.info("Creating universal Main Church Pipeline")
         church_pipeline = Pipeline(
-            name="Mobilize Global HQ Church Pipeline",
+            name="Main Church Pipeline",
             pipeline_type="church",
             is_main_pipeline=True,
-            description="Main pipeline for tracking church contacts (universal)"
+            description="Universal pipeline for tracking church contacts",
+            office_id=default_office.id
         )
         db.session.add(church_pipeline)
         db.session.flush()

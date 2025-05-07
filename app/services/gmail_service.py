@@ -61,9 +61,9 @@ class GmailService:
                 db.session.commit()
                 logger.error("INIT DEBUG - Credentials refreshed successfully")
 
-            logger.error(f"INIT DEBUG - Building Gmail service with credentials")
+            logger.error("INIT DEBUG - Building Gmail service with credentials")
             self.service = build('gmail', 'v1', credentials=credentials)
-            logger.error(f"INIT DEBUG - Gmail service built successfully")
+            logger.error("INIT DEBUG - Gmail service built successfully")
             
         except Exception as e:
             import traceback
@@ -84,263 +84,242 @@ class GmailService:
             # IMPORTANT: Log token details for debugging
             logger = logging.getLogger(__name__)
             logger.error(f"TOKEN DEBUG - user_id: {self.user_id}, token found: {token is not None}")
+            
+            sender_email = None
             if token:
                 logger.error(f"TOKEN DEBUG - access_token exists: {bool(token.access_token)}")
                 logger.error(f"TOKEN DEBUG - refresh_token exists: {bool(token.refresh_token)}")
                 logger.error(f"TOKEN DEBUG - email field: {token.email}")
-                # If token.email is empty, get it from the authenticated user's profile
-                if not token.email:
-                    logger.error("TOKEN DEBUG - Email is empty, attempting to get from user profile")
-                    try:
-                        from google.oauth2.credentials import Credentials
-                        from googleapiclient.discovery import build
-                        import os
-                        
-                        # Create temp credentials
-                        credentials = Credentials(
-                            token=token.access_token,
-                            refresh_token=token.refresh_token,
-                            token_uri="https://oauth2.googleapis.com/token",
-                            client_id=os.getenv('GOOGLE_CLIENT_ID'),
-                            client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-                            scopes=['https://www.googleapis.com/auth/userinfo.email']
-                        )
-                        
-                        # Get user info to get email
-                        service = build('oauth2', 'v2', credentials=credentials)
-                        user_info = service.userinfo().get().execute()
-                        if 'email' in user_info:
-                            token.email = user_info['email']
-                            from app.extensions import db
-                            db.session.commit()
-                            logger.error(f"TOKEN DEBUG - Retrieved and saved email: {token.email}")
-                    except Exception as e:
-                        logger.error(f"TOKEN DEBUG - Failed to get email from profile: {str(e)}")
-            
-            from_email = token.email if token and hasattr(token, 'email') and token.email else 'me'
-            message['from'] = from_email
-            logger.error(f"TOKEN DEBUG - Using from_email: {from_email}")
+                if token.email:
+                    sender_email = token.email
+                    message['from'] = sender_email
+                else:
+                    logger.error("TOKEN DEBUG - Email field is empty, using default")
+                    message['from'] = 'noreply@mobilize-app.org'
+                    sender_email = 'noreply@mobilize-app.org'
+            else:
+                logger.error("TOKEN DEBUG - No token found, using default sender")
+                message['from'] = 'noreply@mobilize-app.org'
+                sender_email = 'noreply@mobilize-app.org'
 
-            # Add plain text version
+            # Add body parts
             message.attach(MIMEText(body, 'plain'))
-
+            
             # Add HTML version if provided
             if html:
                 message.attach(MIMEText(html, 'html'))
-
-            # Debug the message before sending
-            logger.debug(f"Sending email to: {to}, subject: {subject}, from: {from_email}")
+            else:
+                # Convert plain text to simple HTML
+                # Manually create HTML content without using f-string with backslash
+                body_html = body.replace('\n', '<br>')
+                html_content = '<html><body><p>' + body_html + '</p></body></html>'
+                message.attach(MIMEText(html_content, 'html'))
             
-            raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
+            # Encode the message
+            raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
             
-            # Debug the raw message size
-            logger.debug(f"Raw message size: {len(raw_message)} bytes")
-            
-            logger.error(f"TOKEN DEBUG - About to call Gmail API with userId='me', checking service: {self.service is not None}")
-            sent_message = self.service.users().messages().send(
+            # Send the message
+            result = self.service.users().messages().send(
                 userId='me',
                 body={'raw': raw_message}
             ).execute()
-
-            logger.info(f"Email sent successfully, Gmail message ID: {sent_message.get('id')}")
-
-            # Create communication record - do not create a duplicate record
-            # since the communications controller already creates one
-            return sent_message
-
+            
+            # Log the email event
+            from app.utils.log_utils import log_email_event
+            
+            # Create a unique ID for this email
+            email_id = result.get('id', str(random.randint(10000, 99999)))
+            
+            # Log the email event
+            log_email_event(
+                email_id=email_id,
+                sender=sender_email,
+                recipient=to,
+                subject=subject,
+                status='sent',
+                user_id=self.user_id
+            )
+            
+            # Create a Communication record for this email
+            communication = Communication(
+                user_id=self.user_id,
+                contact_email=to,
+                subject=subject,
+                content=body,
+                direction='outbound',
+                date_sent=datetime.now(),
+                email_status='sent',
+                gmail_message_id=result.get('id'),
+                gmail_thread_id=result.get('threadId')
+            )
+            db.session.add(communication)
+            db.session.commit()
+            
+            return result
+            
         except Exception as e:
-            import traceback
+            # Log the error
             logger = logging.getLogger(__name__)
-            logger.error(f"Failed to send email: {str(e)}")
-            logger.error(f"ERROR TRACEBACK: {traceback.format_exc()}")
-            raise Exception(f"Failed to send email: {str(e)}")
+            logger.error(f"Error sending email: {str(e)}")
+            
+            # Log the email event as failed
+            from app.utils.log_utils import log_email_event
+            
+            # Create a unique ID for this email
+            email_id = str(random.randint(10000, 99999))
+            
+            # Log the email event
+            log_email_event(
+                email_id=email_id,
+                sender=sender_email if 'sender_email' in locals() else 'unknown',
+                recipient=to,
+                subject=subject,
+                status='failed',
+                user_id=self.user_id,
+                error=str(e)
+            )
+            
+            # Create a Communication record for this failed email
+            communication = Communication(
+                user_id=self.user_id,
+                contact_email=to,
+                subject=subject,
+                content=body,
+                direction='outbound',
+                date_sent=datetime.now(),
+                email_status='failed',
+                error_message=str(e)
+            )
+            db.session.add(communication)
+            db.session.commit()
+            
+            # Re-raise the exception
+            raise
 
     def sync_emails(self, days_back=7):
         """Sync emails from Gmail to local database."""
         try:
-            # Calculate time range for sync
-            after_date = (datetime.utcnow() - timedelta(days=days_back)).strftime('%Y/%m/%d')
-            
-            # Get the user's sync preference
-            from app.models.user import User
-            user = User.query.get(self.user_id)
-            
-            # Check if the user has the email_sync_contacts_only attribute
-            # This helps with backward compatibility during the migration
-            sync_contacts_only = False
-            try:
-                if hasattr(user, 'email_sync_contacts_only'):
-                    sync_contacts_only = user.email_sync_contacts_only
-            except Exception as e:
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error checking email_sync_contacts_only preference: {str(e)}")
-                logger.info("Defaulting to sync all emails mode")
-            
-            # Get list of messages
-            results = self.service.users().messages().list(
-                userId='me',
-                q=f'after:{after_date}'
-            ).execute()
-
-            messages = results.get('messages', [])
-            synced_count = 0
             logger = logging.getLogger(__name__)
+            logger.info(f"Starting email sync for user {self.user_id}")
             
-            # If we're only syncing contacts, get all email addresses from the database
-            contact_emails = set()
-            if sync_contacts_only:
-                from app.models.person import Person
-                from app.models.church import Church
-                
-                # Get all person emails
-                people = Person.query.filter(Person.email != None, Person.email != '').all()
-                for person in people:
-                    if person.email:
-                        contact_emails.add(person.email.lower())
-                
-                # Get all church emails and related contacts
-                churches = Church.query.all()
-                for church in churches:
-                    # Add main church email
-                    if church.email:
-                        contact_emails.add(church.email.lower())
-                    
-                    # Add pastor emails
-                    if church.senior_pastor_email:
-                        contact_emails.add(church.senior_pastor_email.lower())
-                    if church.mission_pastor_email:
-                        contact_emails.add(church.mission_pastor_email.lower())
-                
-                logger.info(f"Found {len(contact_emails)} contact emails for filtering")
+            # Calculate date range for query
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
             
-            # Use session.no_autoflush to prevent premature flush operations
-            with db.session.no_autoflush:
-                for message in messages:
-                    # Function to check if message exists with retry logic
-                    def check_message_exists_with_retry(message_id, max_retries=3):
-                        for attempt in range(max_retries):
-                            try:
-                                return Communication.query.filter_by(
-                                    gmail_message_id=message_id
-                                ).first()
-                            except Exception as e:
-                                if "database is locked" in str(e) and attempt < max_retries - 1:
-                                    # Exponential backoff with jitter
-                                    sleep_time = (2 ** attempt) + random.random()
-                                    logger.warning(f"Database locked, retrying in {sleep_time:.2f} seconds...")
-                                    time.sleep(sleep_time)
-                                else:
-                                    raise
-                    
-                    # Check if message already synced with retry logic
+            # Format dates for Gmail API query
+            start_date_str = start_date.strftime('%Y/%m/%d')
+            end_date_str = end_date.strftime('%Y/%m/%d')
+            
+            # Query for emails in the date range
+            query = f"after:{start_date_str} before:{end_date_str}"
+            
+            # Get messages matching the query
+            response = self.service.users().messages().list(
+                userId='me',
+                q=query,
+                maxResults=100  # Limit to 100 messages for performance
+            ).execute()
+            
+            messages = response.get('messages', [])
+            synced_count = 0
+            
+            # Define a function to check if a message already exists in the database
+            def check_message_exists_with_retry(message_id, max_retries=3):
+                for attempt in range(max_retries):
                     try:
-                        existing = check_message_exists_with_retry(message['id'])
-                        
-                        if existing:
-                            continue
-                            
-                        # Get full message details
-                        msg = self.service.users().messages().get(
-                            userId='me',
-                            id=message['id']
-                        ).execute()
-
-                        headers = msg['payload']['headers']
-                        subject = next(
-                            (h['value'] for h in headers if h['name'].lower() == 'subject'),
-                            'No Subject'
-                        )
-                        
-                        # Get sender and recipient
-                        from_email = next(
-                            (h['value'] for h in headers if h['name'].lower() == 'from'),
-                            'Unknown'
-                        )
-                        
-                        to_email = next(
-                            (h['value'] for h in headers if h['name'].lower() == 'to'),
-                            'Unknown'
-                        )
-                        
-                        # Extract email addresses from the from/to fields
-                        from_email_address = self._extract_email_address(from_email)
-                        to_email_address = self._extract_email_address(to_email)
-                        
-                        # If we're only syncing contacts, check if this email is to/from a contact
-                        if sync_contacts_only:
-                            is_from_contact = from_email_address and from_email_address.lower() in contact_emails
-                            is_to_contact = to_email_address and to_email_address.lower() in contact_emails
-                            
-                            # Skip this email if it's not to or from a contact
-                            if not is_from_contact and not is_to_contact:
-                                continue
-                        
-                        # Determine direction (inbound or outbound)
-                        # Look up the user's email from GoogleToken
-                        token = GoogleToken.query.filter_by(user_id=self.user_id).first()
-                        user_email = token.email if token and token.email else None
-                        
-                        # If the user's email is in the 'to' field, it's inbound
-                        direction = 'inbound'
-                        if user_email and user_email in from_email:
-                            direction = 'outbound'
-                        
-                        # Get message body
-                        if 'parts' in msg['payload']:
-                            parts = msg['payload']['parts']
-                            body = next(
-                                (
-                                    base64.urlsafe_b64decode(p['body']['data']).decode()
-                                    for p in parts
-                                    if p['mimeType'] == 'text/plain'
-                                ),
-                                'No content'
-                            )
+                        existing = Communication.query.filter_by(
+                            gmail_message_id=message_id
+                        ).first()
+                        return existing is not None
+                    except Exception as e:
+                        logger.error(f"Error checking message existence (attempt {attempt+1}): {str(e)}")
+                        if attempt < max_retries - 1:
+                            time.sleep(0.5)  # Wait before retrying
                         else:
-                            body = base64.urlsafe_b64decode(
-                                msg['payload']['body']['data']
-                            ).decode() if 'data' in msg['payload']['body'] else 'No content'
-
-                        # Create communication record
-                        communication = Communication(
-                            type='email',
-                            message=body,
-                            subject=subject,
-                            direction=direction,
-                            date_sent=datetime.fromtimestamp(int(msg['internalDate'])/1000),
-                            date=datetime.fromtimestamp(int(msg['internalDate'])/1000),
-                            gmail_message_id=message['id'],
-                            gmail_thread_id=msg['threadId'],
-                            email_status='synced',
-                            user_id=self.user_id,
-                            owner_id=self.user_id,
-                            office_id=1,  # Default office ID - you may need to get this dynamically
-                            last_synced_at=datetime.now()
-                        )
-                        
-                        # Retry logic for adding and committing
-                        max_commit_retries = 3
-                        for commit_attempt in range(max_commit_retries):
-                            try:
-                                db.session.add(communication)
-                                db.session.commit()
-                                synced_count += 1
+                            raise
+                return False
+            
+            # Process each message
+            for message_data in messages:
+                message_id = message_data['id']
+                
+                # Skip if message already exists in database
+                if check_message_exists_with_retry(message_id):
+                    logger.info(f"Skipping already synced message {message_id}")
+                    continue
+                
+                try:
+                    # Get full message details
+                    message = self.service.users().messages().get(
+                        userId='me',
+                        id=message_id,
+                        format='full'
+                    ).execute()
+                    
+                    # Extract message details
+                    headers = message['payload']['headers']
+                    subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), 'No Subject')
+                    from_header = next((h['value'] for h in headers if h['name'].lower() == 'from'), 'Unknown')
+                    to_header = next((h['value'] for h in headers if h['name'].lower() == 'to'), 'Unknown')
+                    date_header = next((h['value'] for h in headers if h['name'].lower() == 'date'), None)
+                    
+                    # Extract sender email
+                    sender_email = self._extract_email_address(from_header)
+                    recipient_email = self._extract_email_address(to_header)
+                    
+                    # Determine direction (inbound/outbound)
+                    token = GoogleToken.query.filter_by(user_id=self.user_id).first()
+                    user_email = token.email if token else None
+                    
+                    direction = 'inbound'
+                    if user_email and recipient_email and user_email != recipient_email:
+                        direction = 'outbound'
+                    
+                    # Extract message body
+                    body = 'No content'
+                    if 'parts' in message['payload']:
+                        parts = message['payload']['parts']
+                        for part in parts:
+                            if part['mimeType'] == 'text/plain' and 'data' in part['body']:
+                                body = base64.urlsafe_b64decode(part['body']['data']).decode()
                                 break
-                            except Exception as commit_error:
-                                if "database is locked" in str(commit_error) and commit_attempt < max_commit_retries - 1:
-                                    # Exponential backoff with jitter
-                                    sleep_time = (2 ** commit_attempt) + random.random()
-                                    logger.warning(f"Database locked during commit, retrying in {sleep_time:.2f} seconds...")
-                                    time.sleep(sleep_time)
-                                    db.session.rollback()
-                                else:
-                                    logger.error(f"Error committing message {message['id']}: {str(commit_error)}")
-                                    db.session.rollback()
-                                    # If this specific message failed after all retries, continue with the next one
-                                    break
-                    except Exception as message_error:
-                        logger.error(f"Error processing message {message['id']}: {str(message_error)}")
-                        # Continue with next message
+                    elif 'body' in message['payload'] and 'data' in message['payload']['body']:
+                        body = base64.urlsafe_b64decode(message['payload']['body']['data']).decode()
+                    
+                    # Parse date
+                    date_sent = datetime.now()
+                    if 'internalDate' in message:
+                        date_sent = datetime.fromtimestamp(int(message['internalDate'])/1000)
+                    elif date_header:
+                        try:
+                            from email.utils import parsedate_to_datetime
+                            date_sent = parsedate_to_datetime(date_header)
+                        except Exception:
+                            pass
+                    
+                    # Create Communication record
+                    communication = Communication(
+                        user_id=self.user_id,
+                        contact_email=sender_email if direction == 'inbound' else recipient_email,
+                        subject=subject,
+                        content=body,
+                        direction=direction,
+                        date_sent=date_sent,
+                        email_status='received' if direction == 'inbound' else 'sent',
+                        gmail_message_id=message_id,
+                        gmail_thread_id=message.get('threadId')
+                    )
+                    
+                    db.session.add(communication)
+                    db.session.commit()
+                    synced_count += 1
+                    
+                    # Log success
+                    logger.info(f"Synced message {message_id} from {sender_email}")
+                    
+                except Exception as message_error:
+                    logger.error(f"Error processing message {message_id}: {str(message_error)}")
+                    # Continue with next message
 
             logger.info(f"Successfully synced {synced_count} emails from Gmail")
             return synced_count
@@ -401,14 +380,16 @@ class GmailService:
                         (
                             base64.urlsafe_b64decode(p['body']['data']).decode()
                             for p in parts
-                            if p['mimeType'] == 'text/plain'
+                            if p['mimeType'] == 'text/plain' and 'data' in p['body']
                         ),
                         'No content'
                     )
-                else:
+                elif 'body' in message['payload'] and 'data' in message['payload']['body']:
                     body = base64.urlsafe_b64decode(
                         message['payload']['body']['data']
                     ).decode()
+                else:
+                    body = 'No content'
 
                 messages.append({
                     'id': message['id'],
@@ -445,4 +426,4 @@ class GmailService:
             ).execute()
             return True
         except Exception as e:
-            raise Exception(f"Failed to archive message: {str(e)}") 
+            raise Exception(f"Failed to archive message: {str(e)}")

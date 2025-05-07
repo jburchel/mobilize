@@ -1,0 +1,253 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Table Details - {{ table_name }}{% endblock %}
+
+{% block page_title %}Table Details: {{ table_name }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.system_dashboard') }}">System</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('admin.database_management') }}">Database Management</a></li>
+<li class="breadcrumb-item active">{{ table_name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Table Structure</h5>
+        <div>
+          <a href="{{ url_for('admin.database_management') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Database
+          </a>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Nullable</th>
+                <th>Default</th>
+                <th>Key</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for column in columns %}
+              <tr>
+                <td>{{ column.name }}</td>
+                <td><code>{{ column.type }}</code></td>
+                <td>{{ column.nullable }}</td>
+                <td>{{ column.default }}</td>
+                <td>
+                  {% if column.key == 'PK' %}
+                  <span class="badge bg-primary">Primary Key</span>
+                  {% elif column.key == 'FK' %}
+                  <span class="badge bg-info">Foreign Key</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Indexes</h5>
+      </div>
+      <div class="card-body">
+        {% if indexes %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Index Name</th>
+                <th>Columns</th>
+                <th>Type</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for index in indexes %}
+              <tr>
+                <td>{{ index.name }}</td>
+                <td>{{ index.columns }}</td>
+                <td>
+                  {% if index.type == 'UNIQUE' %}
+                  <span class="badge bg-success">{{ index.type }}</span>
+                  {% else %}
+                  <span class="badge bg-secondary">{{ index.type }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ index.size }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">No indexes found for this table.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Sample Data</h5>
+        <div>
+          <form action="{{ url_for('admin.import_database_data') }}" method="post" enctype="multipart/form-data" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="targetTable" value="{{ table_name }}">
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">
+              <i class="fas fa-file-import me-1"></i> Import Data
+            </button>
+          </form>
+          <a href="#" class="btn btn-sm btn-success ms-1" onclick="exportTable('{{ table_name }}')">
+            <i class="fas fa-file-export me-1"></i> Export Data
+          </a>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if sample_data %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover">
+            <thead class="table-light">
+              <tr>
+                {% for column in sample_data[0].keys() %}
+                <th>{{ column }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in sample_data %}
+              <tr>
+                {% for value in row.values() %}
+                <td>{{ value }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div class="text-muted mt-2">Showing up to 5 rows of data</div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">No data found in this table.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('admin.import_database_data') }}" method="post" enctype="multipart/form-data" onsubmit="return confirmImport()">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="targetTable" value="{{ table_name }}">
+        
+        <div class="modal-header">
+          <h5 class="modal-title" id="importModalLabel">Import Data to {{ table_name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="importFile" class="form-label">Select File</label>
+            <input type="file" class="form-control" id="importFile" name="importFile" required>
+            <div class="form-text">Supported formats: CSV, JSON, SQL, Excel</div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="importFormat" class="form-label">Format</label>
+            <select class="form-select" id="importFormat" name="importFormat">
+              <option value="auto">Auto-detect</option>
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+              <option value="sql">SQL</option>
+              <option value="excel">Excel</option>
+            </select>
+          </div>
+          
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="truncateBeforeImport" name="truncateBeforeImport">
+            <label class="form-check-label" for="truncateBeforeImport">Truncate table before import</label>
+            <div class="form-text text-danger">Warning: This will delete all existing data in the table.</div>
+          </div>
+          
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="headerRow" name="headerRow" checked>
+            <label class="form-check-label" for="headerRow">File has header row</label>
+          </div>
+          
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="ignoreErrors" name="ignoreErrors">
+            <label class="form-check-label" for="ignoreErrors">Ignore errors</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Import</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Export table data
+  function exportTable(tableName) {
+    // Open the export modal and pre-select this table
+    document.getElementById('exportScopeSelected').checked = true;
+    document.getElementById('tableSelectContainer').style.display = 'block';
+    
+    // Clear all checkboxes
+    document.querySelectorAll('input[name="selectedTables"]').forEach(checkbox => {
+      checkbox.checked = false;
+    });
+    
+    // Find and check the specific table
+    document.querySelectorAll('input[name="selectedTables"]').forEach(checkbox => {
+      if (checkbox.value === tableName) {
+        checkbox.checked = true;
+      }
+    });
+    
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+  }
+  
+  // Confirm import
+  function confirmImport() {
+    const file = document.getElementById('importFile').files[0];
+    if (!file) {
+      alert('Please select a file to import');
+      return false;
+    }
+    
+    const format = document.getElementById('importFormat').value;
+    const truncate = document.getElementById('truncateBeforeImport').checked;
+    
+    let message = `Are you sure you want to import this file?\n\nFile: ${file.name}\nSize: ${(file.size / 1024).toFixed(2)} KB\nFormat: ${format}\nTable: {{ table_name }}`;
+    
+    if (truncate) {
+      message += '\n\nWARNING: All existing data in the table will be deleted!';
+    }
+    
+    return confirm(message);
+  }
+</script>
+{% endblock %}

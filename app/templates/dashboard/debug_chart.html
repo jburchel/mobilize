@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Chart Debug - Mobilize CRM{% endblock %}
+
+{% block page_title %}Chart Debug{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Chart Debug Information</h5>
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-outline-primary">Back to Dashboard</a>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Debug Mode:</strong> This page shows detailed information about chart data and rendering.
+                    </div>
+                    
+                    <h6>User Information</h6>
+                    <table class="table table-sm table-bordered">
+                        <tr>
+                            <th>User ID</th>
+                            <td>{{ debug_info.user_info.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email</th>
+                            <td>{{ debug_info.user_info.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Roles</th>
+                            <td>{{ debug_info.user_info.roles|join(", ") }}</td>
+                        </tr>
+                    </table>
+                    
+                    <h6>Pipeline Information</h6>
+                    <table class="table table-sm table-bordered">
+                        <tr>
+                            <th>Pipeline Type</th>
+                            <td>{{ debug_info.pipeline_info.type }}</td>
+                        </tr>
+                        <tr>
+                            <th>Pipeline Exists</th>
+                            <td>{{ debug_info.pipeline_info.exists }}</td>
+                        </tr>
+                    </table>
+                    
+                    <h6>Chart Data (API Response)</h6>
+                    <div class="bg-light p-3 mb-3" style="max-height: 400px; overflow-y: auto;">
+                        <pre>{{ debug_info.chart_data|tojson(indent=2) }}</pre>
+                    </div>
+                    
+                    <h6>Chart Preview</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Pie Chart</div>
+                                <div class="card-body">
+                                    <canvas id="debugPieChart" style="height: 300px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">Bar Chart</div>
+                                <div class="card-body">
+                                    <canvas id="debugBarChart" style="height: 300px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize charts when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Debug chart page loaded');
+    
+    // Get chart data from the page
+    const chartData = {{ debug_info.chart_data|tojson }};
+    console.log('Chart data:', chartData);
+    
+    // Check if Chart.js is loaded
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js is not loaded!');
+        document.getElementById('debugPieChart').parentNode.innerHTML = 
+            '<div class="alert alert-danger">ERROR: Chart.js library not loaded</div>';
+        document.getElementById('debugBarChart').parentNode.innerHTML = 
+            '<div class="alert alert-danger">ERROR: Chart.js library not loaded</div>';
+        return;
+    }
+    
+    // Prepare data for charts
+    if (chartData && chartData.stages && chartData.stages.length > 0) {
+        const labels = chartData.stages.map(stage => stage.name);
+        const counts = chartData.stages.map(stage => stage.count);
+        const colors = chartData.stages.map(stage => stage.color);
+        
+        // Create pie chart
+        const pieCtx = document.getElementById('debugPieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    title: {
+                        display: true,
+                        text: chartData.pipeline_name + ' Distribution'
+                    }
+                }
+            }
+        });
+        
+        // Create bar chart
+        const barCtx = document.getElementById('debugBarChart').getContext('2d');
+        new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Count',
+                    data: counts,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: chartData.pipeline_name + ' Distribution'
+                    }
+                }
+            }
+        });
+    } else {
+        // No data available
+        document.getElementById('debugPieChart').parentNode.innerHTML = 
+            '<div class="alert alert-warning">No chart data available</div>';
+        document.getElementById('debugBarChart').parentNode.innerHTML = 
+            '<div class="alert alert-warning">No chart data available</div>';
+    }
+});
+</script>
+{% endblock %}

@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     gcc \
+    postgresql-client \
     python3-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -55,4 +56,7 @@ EXPOSE 8080
 RUN echo "from flask import Flask\napp = Flask(__name__)\n@app.route('/health')\ndef health_check():\n    return {'status': 'ok'}\n\nif __name__ == '__main__':\n    app.run(host='0.0.0.0', port=8080)" > health_check.py
 
 # Use our startup script
-CMD exec gunicorn --bind :8080 --workers 1 --threads 8 --timeout 0 wsgi:app 
+# Use optimized Gunicorn configuration for better performance
+# Number of workers = (2 * CPU cores) + 1
+# We're setting to 3 for a 1 CPU instance
+CMD exec gunicorn --bind :8080 --workers 3 --threads 8 --timeout 0 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 wsgi:app

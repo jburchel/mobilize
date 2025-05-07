@@ -19,10 +19,15 @@ class Config:
     BASE_URL = os.getenv('BASE_URL', 'http://localhost:8000')
     
     # Database
-    if ENV == 'development':
-        SQLALCHEMY_DATABASE_URI = f'sqlite:///{ROOT_DIR}/instance/mobilize_crm.db'
-    else:
-        SQLALCHEMY_DATABASE_URI = os.getenv('DB_CONNECTION_STRING')
+    # Use the same PostgreSQL database for both development and production
+    SQLALCHEMY_DATABASE_URI = os.getenv('DB_CONNECTION_STRING')
+    # Configure SQLAlchemy for PostgreSQL
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 10,
+        'max_overflow': 20,
+        'pool_recycle': 300,  # recycle connections after 5 minutes
+        'pool_pre_ping': True,  # verify connections before use
+    }
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     

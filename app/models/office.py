@@ -1,4 +1,4 @@
-from datetime import datetime
+# datetime is used in type annotations
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from sqlalchemy import String, Boolean, JSON, ForeignKey, Table, Column, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,7 +20,7 @@ user_offices = Table(
     Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
     Column('office_id', Integer, ForeignKey('offices.id'), primary_key=True),
     Column('role', String(20), nullable=False),
-    Column('assigned_at', DateTime, nullable=False, server_default='CURRENT_TIMESTAMP')
+    Column('assigned_at', DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP'))
 )
 
 class Office(Base):

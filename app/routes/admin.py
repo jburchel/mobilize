@@ -95,15 +95,18 @@ def offices():
 @admin_required
 def dashboard():
     """Admin dashboard."""
-    # Get counts of various entities
-    user_count = 5  # Replace with actual query
-    contact_count = 120  # Replace with actual query
-    church_count = 35  # Replace with actual query
-    message_count = 450  # Replace with actual query
+    # Get real counts of various entities
+    from app.models import User, Contact, Church, Office, Communication
+    
+    user_count = User.query.count()
+    contact_count = Contact.query.count()
+    church_count = Church.query.count()
+    office_count = Office.query.count()
+    message_count = Communication.query.count()
     
     # Get counts of active and inactive users
-    active_users = 4  # Replace with actual query
-    inactive_users = 1  # Replace with actual query
+    active_users = User.query.filter_by(is_active=True).count()
+    inactive_users = User.query.filter_by(is_active=False).count()
     
     # Recent activity
     recent_activity = [
@@ -117,6 +120,7 @@ def dashboard():
                           contact_count=contact_count,
                           church_count=church_count,
                           message_count=message_count,
+                          office_count=office_count,
                           active_users=active_users,
                           inactive_users=inactive_users,
                           recent_activity=recent_activity)
@@ -665,124 +669,112 @@ def system_logs():
     return render_template('admin/logs/system_logs.html', logs=logs)
 
 @admin_bp.route('/logs/user-activity')
+@login_required
 @admin_required
 def user_activity():
-    # Sample data for user activity logs
-    activities = []
+    """Display user activity logs."""
+    from app.utils.log_utils import get_activity_logs, log_activity
     
-    # Sample users
-    users = [
-        {'email': 'admin@example.com', 'name': 'Admin User'},
-        {'email': 'john@example.com', 'name': 'John Smith'},
-        {'email': 'sarah@example.com', 'name': 'Sarah Johnson'},
-        {'email': 'mike@example.com', 'name': 'Mike Wilson'},
-        {'email': 'lisa@example.com', 'name': 'Lisa Brown'}
-    ]
+    # Log this activity
+    log_activity(
+        subsystem='Admin',
+        operation='VIEW',
+        description='Viewed user activity logs',
+        status='SUCCESS',
+        impact='LOW'
+    )
     
-    # Sample action types
-    actions = ['LOGIN', 'LOGOUT', 'CREATE', 'UPDATE', 'DELETE', 'VIEW', 'EXPORT']
+    # Get real activity logs from the log_utils module
+    # Increase max_entries to get more logs
+    activities = get_activity_logs(max_entries=200)
     
-    # Sample details for each action
-    details_templates = {
-        'LOGIN': 'User logged in from IP {ip}',
-        'LOGOUT': 'User logged out',
-        'CREATE': 'Created {resource_type} with ID {resource_id}',
-        'UPDATE': 'Updated {resource_type} with ID {resource_id}',
-        'DELETE': 'Deleted {resource_type} with ID {resource_id}',
-        'VIEW': 'Viewed {resource_type} with ID {resource_id}',
-        'EXPORT': 'Exported {resource_type} data'
-    }
-    
-    # Resource types
-    resource_types = ['CONTACT', 'CHURCH', 'USER', 'PIPELINE', 'TASK', 'EVENT']
-    
-    # Generate 30 random activities
-    for i in range(30):
-        # Random user
-        user = random.choice(users)
+    # Transform the logs to match the expected format in the template
+    transformed_activities = []
+    for activity in activities:
+        # Extract the user email if available
+        email = activity.get('email')
         
-        # Random timestamp in the last 7 days
-        hours_ago = random.randint(0, 168)  # Up to 7 days (168 hours)
-        minutes_ago = random.randint(0, 59)
-        timestamp = datetime.now() - timedelta(hours=hours_ago, minutes=minutes_ago)
+        # Map operation to action
+        action = activity.get('operation', 'UNKNOWN')
         
-        # Random action
-        action = random.choice(actions)
+        # Create details from description and other fields
+        details = activity.get('description', '')
+        if activity.get('ip_address'):
+            details += f" from IP {activity.get('ip_address')}"
+        if activity.get('resource_id'):
+            details += f" (Resource ID: {activity.get('resource_id')})"
         
-        # Generate appropriate details
-        if action in ['CREATE', 'UPDATE', 'DELETE', 'VIEW']:
-            resource_type = random.choice(resource_types)
-            resource_id = random.randint(1000, 9999)
-            details = details_templates[action].format(
-                resource_type=resource_type,
-                resource_id=resource_id
-            )
-        elif action == 'LOGIN':
-            ip_parts = [str(random.randint(1, 255)) for _ in range(4)]
-            ip = '.'.join(ip_parts)
-            details = details_templates[action].format(ip=ip)
-        else:
-            if action == 'EXPORT':
-                resource_type = random.choice(resource_types)
-                details = details_templates[action].format(resource_type=resource_type)
-            else:
-                details = details_templates[action]
-        
-        # Create activity entry
-        activities.append({
-            'timestamp': timestamp,
-            'user_email': user['email'],
+        # Create the transformed activity entry
+        transformed_activities.append({
+            'timestamp': activity.get('timestamp'),
+            'user_email': email,
             'action': action,
             'details': details
         })
     
-    # Sort activities by timestamp, newest first
-    activities.sort(key=lambda x: x['timestamp'], reverse=True)
+    # If no logs are found, create a message to inform the user
+    if not transformed_activities:
+        flash('No user activity logs found. This page will start populating as users interact with the system.', 'info')
+        
+        # Add the current view as the first activity
+        transformed_activities = [
+            {
+                'timestamp': datetime.now(),
+                'user_email': current_user.email if hasattr(current_user, 'email') else None,
+                'action': 'VIEW',
+                'details': 'Viewed user activity logs'
+            }
+        ]
     
-    return render_template('admin/logs/user_activity.html', activities=activities)
-
-@admin_bp.route('/logs/system-performance')
+    # Sort activities by timestamp, newest first
+    transformed_activities.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return render_template('admin/logs/user_activity.html', activities=transformed_activities)
+    
+@admin_bp.route('/system/performance')
+@login_required
 @admin_required
 def system_performance():
-    # Sample data for the system performance page
-    cpu_usage = 45
-    memory_usage = 62
-    disk_usage = 38
-    response_time = 120
-
-    # Sample worker processes
-    workers = [
-        {"name": "Web Server", "status": "Running", "cpu_usage": 12, "memory_usage": 345},
-        {"name": "Background Worker", "status": "Running", "cpu_usage": 8, "memory_usage": 210},
-        {"name": "Scheduler", "status": "Running", "cpu_usage": 5, "memory_usage": 125},
-        {"name": "Email Service", "status": "Running", "cpu_usage": 3, "memory_usage": 98}
-    ]
-
-    # Sample API stats
-    api_stats = [
-        {"path": "/api/contacts", "avg_response": 85, "requests_per_min": 42, "error_rate": 0.2},
-        {"path": "/api/churches", "avg_response": 92, "requests_per_min": 35, "error_rate": 0.5},
-        {"path": "/api/pipelines", "avg_response": 110, "requests_per_min": 28, "error_rate": 0.8},
-        {"path": "/api/tasks", "avg_response": 78, "requests_per_min": 22, "error_rate": 0.3},
-        {"path": "/api/events", "avg_response": 150, "requests_per_min": 18, "error_rate": 1.2},
-        {"path": "/api/auth", "avg_response": 65, "requests_per_min": 15, "error_rate": 2.5}
-    ]
-
-    # Sample DB stats
-    db_stats = {
-        "connection_pool": "20/50",
-        "active_connections": 8,
-        "cache_hit_rate": 92.5
-    }
-
-    # Sample system events
-    system_events = [
-        {"timestamp": datetime.now() - timedelta(minutes=5), "level": "INFO", "message": "Background task runner completed successfully"},
-        {"timestamp": datetime.now() - timedelta(minutes=30), "level": "WARNING", "message": "High memory usage detected (80%)"},
-        {"timestamp": datetime.now() - timedelta(hours=2), "level": "INFO", "message": "Database backup completed successfully"},
-        {"timestamp": datetime.now() - timedelta(hours=5), "level": "ERROR", "message": "Failed to connect to email service"},
-        {"timestamp": datetime.now() - timedelta(hours=8), "level": "INFO", "message": "System update applied successfully"}
-    ]
+    # Import system monitoring utilities
+    from app.utils.system_monitor import (
+        get_system_metrics,
+        get_worker_processes,
+        get_api_stats,
+        get_database_stats,
+        get_system_events,
+        get_response_time
+    )
+    
+    # Log this activity
+    from app.utils.log_utils import log_activity
+    log_activity(
+        subsystem='Admin',
+        operation='VIEW',
+        description='Viewed system performance dashboard',
+        status='SUCCESS',
+        impact='LOW'
+    )
+    
+    # Get real system metrics
+    system_metrics = get_system_metrics()
+    cpu_usage = system_metrics['cpu_usage']
+    memory_usage = system_metrics['memory_usage']
+    disk_usage = system_metrics['disk_usage']
+    
+    # Get response time
+    response_time = get_response_time()
+    
+    # Get worker processes
+    workers = get_worker_processes()
+    
+    # Get API stats
+    api_stats = get_api_stats()
+    
+    # Get database stats
+    db_stats = get_database_stats()
+    
+    # Get system events
+    system_events = get_system_events()
 
     return render_template('admin/logs/system_performance.html',
                           cpu_usage=cpu_usage,
@@ -799,124 +791,42 @@ def system_performance():
 @admin_required
 def activity_logs():
     """Display activity logs."""
-    from app.utils.log_utils import get_activity_logs
+    from app.utils.log_utils import get_activity_logs, log_activity
+    
+    # Log this activity
+    log_activity(
+        subsystem='Admin',
+        operation='VIEW',
+        description='Viewed activity logs',
+        status='SUCCESS',
+        impact='LOW'
+    )
     
     # Get activity logs from the log_utils module
-    activities = get_activity_logs(max_entries=100)
+    # Increase max_entries to get more logs
+    activities = get_activity_logs(max_entries=500)
     
-    # If no logs are found, generate sample data for demonstration
+    # If no logs are found, create a single entry for this view
     if not activities:
-        # Define sample data for demonstration purposes
-        activities = []
-        now = datetime.now()
+        # Create a message to inform the user
+        flash('No activity logs found. This page will start populating as users interact with the system.', 'info')
         
-        # Define sample subsystems
-        subsystems = ['Authentication', 'Database', 'API', 'File System', 'Background Jobs', 
-                     'Email Service', 'Payment Processing', 'User Management', 'Church Management']
-        
-        # Define sample operations
-        operations = ['CREATE', 'READ', 'UPDATE', 'DELETE', 'IMPORT', 'EXPORT', 'SCHEDULE', 
-                     'CANCEL', 'PROCESS', 'SYNC', 'BACKUP', 'RESTORE']
-        
-        # Define sample status values
-        statuses = ['SUCCESS', 'FAILURE', 'WARNING', 'PENDING', 'TIMEOUT', 'ABORTED']
-        
-        # Define sample impacts
-        impacts = ['HIGH', 'MEDIUM', 'LOW', 'NONE']
-        
-        # Define sample users
-        users = [
-            {'email': 'admin@example.com', 'name': 'System Admin'},
-            {'email': 'john.doe@example.com', 'name': 'John Doe'},
-            {'email': 'jane.smith@example.com', 'name': 'Jane Smith'},
-            {'email': 'pastor@church.org', 'name': 'Pastor Williams'},
-            {'email': 'coordinator@ministry.com', 'name': 'Sarah Johnson'},
-            None  # For system activities with no user
+        # Add the current view as the first activity
+        activities = [
+            {
+                'timestamp': datetime.now(),
+                'subsystem': 'Admin',
+                'operation': 'VIEW',
+                'description': 'Viewed activity logs',
+                'status': 'SUCCESS',
+                'impact': 'LOW',
+                'user': current_user.name if hasattr(current_user, 'name') else current_user.username,
+                'email': current_user.email if hasattr(current_user, 'email') else None,
+                'ip_address': request.remote_addr,
+                'duration': 0,
+                'resource_id': None
+            }
         ]
-        
-        # Generate 40 random activity logs
-        for _ in range(40):
-            # Random timestamp in the last 30 days
-            days_ago = random.randint(0, 30)
-            hours_ago = random.randint(0, 23)
-            mins_ago = random.randint(0, 59)
-            timestamp = now - timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
-            
-            # Random subsystem and operation
-            subsystem = random.choice(subsystems)
-            operation = random.choice(operations)
-            
-            # Status with weighted probability (success more likely)
-            status_weights = [0.7, 0.1, 0.1, 0.05, 0.025, 0.025]  # Probabilities for each status
-            status = random.choices(statuses, weights=status_weights, k=1)[0]
-            
-            # Random impact level based on status
-            if status == 'SUCCESS':
-                impact = random.choices(impacts, weights=[0.05, 0.15, 0.3, 0.5], k=1)[0]
-            elif status == 'FAILURE':
-                impact = random.choices(impacts, weights=[0.6, 0.3, 0.1, 0], k=1)[0]
-            else:
-                impact = random.choices(impacts, weights=[0.2, 0.4, 0.3, 0.1], k=1)[0]
-            
-            # Random user (sometimes None for system activities)
-            user = random.choice(users)
-            
-            # Generate a description based on subsystem and operation
-            if subsystem == 'Authentication':
-                resource = random.choice(['user session', 'password', 'account', 'token'])
-                if operation == 'CREATE':
-                    description = f"New {resource} created"
-                elif operation in ['UPDATE', 'PROCESS']:
-                    description = f"{resource.capitalize()} updated"
-                elif operation == 'DELETE':
-                    description = f"{resource.capitalize()} removed"
-                else:
-                    description = f"{operation.capitalize()} operation on {resource}"
-            
-            elif subsystem == 'Database':
-                resource = random.choice(['record', 'table', 'query', 'connection', 'index'])
-                description = f"Database {operation.lower()} on {resource}"
-                
-            elif subsystem == 'API':
-                resource = random.choice(['endpoint', 'request', 'response', 'integration'])
-                description = f"API {operation.lower()} - {resource}"
-                
-            elif subsystem in ['User Management', 'Church Management']:
-                resource = random.choice(['profile', 'role', 'permission', 'group', 'membership'])
-                description = f"{subsystem} {operation.lower()} - {resource}"
-                
-            else:
-                description = f"{subsystem} {operation.lower()} operation"
-            
-            # Add more details for failed operations
-            if status == 'FAILURE':
-                description += " - " + random.choice([
-                    "Resource not found", 
-                    "Permission denied",
-                    "Validation error",
-                    "Timeout exceeded",
-                    "Conflict detected",
-                    "Rate limit reached",
-                    "Invalid input"
-                ])
-            
-            # Generate a random IP address
-            ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
-            
-            # Create the activity log entry
-            activities.append({
-                'timestamp': timestamp,
-                'subsystem': subsystem,
-                'operation': operation,
-                'description': description,
-                'status': status,
-                'impact': impact,
-                'user': user['name'] if user else 'System',
-                'email': user['email'] if user else None,
-                'ip_address': ip_address if user else None,
-                'duration': random.randint(1, 5000) if operation not in ['CREATE', 'DELETE'] else None,
-            'resource_id': f"{random.randint(1000, 9999)}" if random.random() > 0.3 else None
-        })
     
     # Sort activities by timestamp in descending order
     activities.sort(key=lambda x: x['timestamp'], reverse=True)
@@ -955,109 +865,22 @@ def activity_logs():
 def security_logs():
     """Display security logs."""
     from app.utils.log_utils import get_security_logs
+    from datetime import datetime, timedelta
+    
+    # Define now for timestamp comparisons
+    now = datetime.now()
+    
+    # Get filter parameters from request
+    level_filter = request.args.get('level')
+    search_term = request.args.get('search')
+    days = int(request.args.get('days', 30))
     
     # Get security logs from the log_utils module
-    security_logs = get_security_logs(max_entries=100)
+    security_logs = get_security_logs(max_entries=100, level_filter=level_filter, search_term=search_term, days=days)
     
-    # If no logs are found, generate sample data for demonstration
+    # If no logs are found, show a message
     if not security_logs:
-        # Generate sample security log data
-        security_logs = []
-        
-        # Define sample timestamps spread over the last 30 days
-        now = datetime.now()
-        
-        # Define sample security event types
-        event_types = [
-            'LOGIN_FAILURE', 'PERMISSION_DENIED', 'DATA_ACCESS', 'ACCOUNT_LOCKED', 
-            'CONFIG_CHANGE', 'PASSWORD_CHANGE', 'PRIVILEGE_ESCALATION', 'SUSPICIOUS_ACTIVITY',
-            'BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'UNUSUAL_LOGIN_TIME', 'UNUSUAL_LOGIN_LOCATION'
-        ]
-        
-        # Define security levels
-        levels = ['CRITICAL', 'WARNING', 'INFO']
-        level_weights = [0.2, 0.3, 0.5]  # Probabilities for each level
-        
-        # Define sample users
-        users = [
-            {'email': 'admin@example.com', 'name': 'System Admin'},
-            {'email': 'john.doe@example.com', 'name': 'John Doe'},
-            {'email': 'jane.smith@example.com', 'name': 'Jane Smith'},
-            {'email': 'pastor@church.org', 'name': 'Pastor Williams'},
-            {'email': 'coordinator@ministry.com', 'name': 'Sarah Johnson'},
-            None  # For anonymous activities
-        ]
-        
-        # Generate sample security logs
-        for i in range(50):
-                # Random timestamp in the last 30 days
-            days_ago = random.randint(0, 30)
-            hours_ago = random.randint(0, 23)
-            mins_ago = random.randint(0, 59)
-            timestamp = now - timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
-            
-            # Random event type
-            event_type = random.choice(event_types)
-            
-            # Security level with weighted probability
-            level = random.choices(levels, weights=level_weights, k=1)[0]
-            
-            # Adjust level based on event type for more realism
-            if event_type in ['BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'PRIVILEGE_ESCALATION']:
-                level = 'CRITICAL'
-            elif event_type in ['LOGIN_FAILURE', 'UNUSUAL_LOGIN_LOCATION', 'PERMISSION_DENIED']:
-                level = random.choices(['CRITICAL', 'WARNING'], weights=[0.3, 0.7], k=1)[0]
-        
-            # Random user (sometimes None for anonymous activities)
-            user = random.choice(users)
-            
-            # Generate IP address and location info
-            ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
-        
-        # Generate a description based on event type
-        if event_type == 'LOGIN_FAILURE':
-            description = f"Failed login attempt for {user['email'] if user else 'unknown user'}"
-            if random.random() > 0.7:
-                description += " - Invalid password"
-            elif random.random() > 0.5:
-                description += " - Account not found"
-            else:
-                description += " - Account locked"
-        
-        elif event_type == 'PERMISSION_DENIED':
-            resources = ['user data', 'admin settings', 'financial records', 'member database', 'settings page']
-            description = f"Attempted unauthorized access to {random.choice(resources)}"
-        
-        elif event_type == 'DATA_ACCESS':
-            description = f"Unusual data access pattern detected for user {user['name'] if user else 'Unknown'}"
-        
-        elif event_type == 'ACCOUNT_LOCKED':
-            description = f"Account locked after multiple failed login attempts"
-        
-        elif event_type == 'CONFIG_CHANGE':
-            configs = ['security settings', 'user permissions', 'system configuration', 'email templates', 'payment gateway']
-            description = f"Configuration change in {random.choice(configs)}"
-        
-        elif event_type == 'BRUTE_FORCE_ATTEMPT':
-            description = f"Possible brute force attack detected from IP {ip_address}"
-        
-        elif event_type == 'UNUSUAL_LOGIN_LOCATION':
-            countries = ['United States', 'China', 'Russia', 'Brazil', 'India', 'Nigeria', 'Netherlands']
-            description = f"Login from unusual location: {random.choice(countries)}"
-        
-        else:
-            description = f"{event_type.replace('_', ' ').title()} detected"
-        
-        # Create the security log entry
-        security_logs.append({
-            'id': str(uuid.uuid4())[:8],  # Generate a short UUID as ID
-            'timestamp': timestamp,
-            'level': level,
-            'event_type': event_type,
-            'ip_address': ip_address,
-            'user': user['name'] if user else 'Anonymous',
-            'description': description,
-        })
+        return render_template('admin/logs/security_logs.html', logs=[], message="No security logs found.")
     
     # Sort logs by timestamp in descending order
     security_logs.sort(key=lambda x: x['timestamp'], reverse=True)
@@ -1577,64 +1400,110 @@ def import_database_data():
 @admin_required
 def email_logs():
     """Display email logs and analytics."""
-    # Get mock email stats
+    # Get filter parameters from request
+    status_filter = request.args.get('status')
+    search_term = request.args.get('search')
+    days = int(request.args.get('days', 30))
+    sender = request.args.get('sender')
+    recipient = request.args.get('recipient')
+    
+    # Get real email logs from the log file
+    from app.utils.log_utils import get_email_logs
+    logs_data = get_email_logs(
+        max_entries=100,
+        status_filter=status_filter,
+        search_term=search_term,
+        days=days,
+        sender=sender,
+        recipient=recipient
+    )
+    
+    # Process logs for display
+    logs = []
+    status_colors = {
+        'SENT': 'info',
+        'DELIVERED': 'primary',
+        'OPENED': 'success',
+        'FAILED': 'danger',
+        'BOUNCED': 'warning'
+    }
+    
+    # Calculate stats
+    total_sent = len(logs_data)
+    total_opened = sum(1 for log in logs_data if log['status'] == 'OPENED')
+    total_clicked = sum(1 for log in logs_data if log['click_count'] > 0)
+    total_bounced = sum(1 for log in logs_data if log['status'] == 'BOUNCED')
+    total_failed = sum(1 for log in logs_data if log['status'] == 'FAILED')
+    
+    # Calculate rates
+    open_rate = round((total_opened / total_sent * 100) if total_sent > 0 else 0)
+    click_rate = round((total_clicked / total_sent * 100) if total_sent > 0 else 0)
+    delivery_rate = round(((total_sent - total_bounced - total_failed) / total_sent * 100) if total_sent > 0 else 0)
+    bounce_rate = round((total_bounced / total_sent * 100) if total_sent > 0 else 0)
+    
+    # Create stats dictionary
     stats = {
-        'total_sent': 1287,
-        'total_opened': 856,
-        'total_clicked': 412,
-        'total_bounced': 37,
-        'open_rate': 66,
-        'click_rate': 32,
-        'delivery_rate': 97,
-        'bounce_rate': 3
+        'total_sent': total_sent,
+        'total_opened': total_opened,
+        'total_clicked': total_clicked,
+        'total_bounced': total_bounced,
+        'open_rate': open_rate,
+        'click_rate': click_rate,
+        'delivery_rate': delivery_rate,
+        'bounce_rate': bounce_rate
     }
     
     # Create summary for the dashboard cards
     summary = {
-        'total': 1287,
-        'delivered_rate': 97,
-        'failed_rate': 3,
-        'open_rate': 66
+        'total': total_sent,
+        'delivered_rate': delivery_rate,
+        'failed_rate': 100 - delivery_rate,
+        'open_rate': open_rate
     }
     
-    # Mock chart data
+    # Prepare chart data (last 7 days)
+    last_7_days = [(datetime.now() - timedelta(days=i)).date() for i in range(6, -1, -1)]
+    
+    # Initialize counts for each day
+    daily_sent = {day: 0 for day in last_7_days}
+    daily_opened = {day: 0 for day in last_7_days}
+    daily_clicked = {day: 0 for day in last_7_days}
+    
+    # Count emails for each day
+    for log in logs_data:
+        log_date = log['timestamp'].date()
+        if log_date in last_7_days:
+            daily_sent[log_date] += 1
+            if log['status'] == 'OPENED':
+                daily_opened[log_date] += 1
+            if log['click_count'] > 0:
+                daily_clicked[log_date] += 1
+    
+    # Create chart data
     chart_data = {
-        'labels': [(datetime.now() - timedelta(days=i)).strftime('%m/%d') for i in range(7, 0, -1)],
-        'sent': [42, 57, 36, 41, 29, 38, 47],
-        'opened': [28, 34, 21, 26, 17, 22, 31],
-        'clicked': [14, 18, 11, 15, 9, 12, 16]
+        'labels': [day.strftime('%m/%d') for day in last_7_days],
+        'sent': [daily_sent[day] for day in last_7_days],
+        'opened': [daily_opened[day] for day in last_7_days],
+        'clicked': [daily_clicked[day] for day in last_7_days]
     }
     
-    # Mock email logs
-    logs = []
-    statuses = ['sent', 'delivered', 'opened', 'bounced', 'failed']
-    status_colors = {
-        'sent': 'info',
-        'delivered': 'primary',
-        'opened': 'success',
-        'failed': 'danger',
-        'bounced': 'warning'
-    }
-    
-    # Generate mock log entries
-    for i in range(1, 25):
-        sent_time = datetime.now() - timedelta(hours=i*2)
-        status = random.choice(statuses)
-        opened = status in ['opened']
-        opened_at = sent_time + timedelta(hours=1) if opened else None
-        click_count = random.randint(0, 3) if opened else 0
+    # Format logs for display
+    for log in logs_data:
+        status = log['status']
+        opened = status == 'OPENED'
         
         logs.append({
-            'id': i,
-            'sent_at': sent_time.strftime('%m/%d/%Y %H:%M'),
-            'subject': f'Sample Email {i}',
-            'recipient_email': f'recipient{i}@example.com',
-            'sender_name': 'System Admin',
+            'id': log['id'],
+            'sent_at': log['timestamp'].strftime('%m/%d/%Y %H:%M'),
+            'subject': log['subject'],
+            'recipient_email': log['recipients'],
+            'sender_name': log['user'] if isinstance(log['user'], str) else 
+                          (log['user'].get('name') if isinstance(log['user'], dict) and 'name' in log['user'] else 'System'),
             'status': status,
-            'status_color': status_colors[status],
+            'status_color': status_colors.get(status, 'secondary'),
             'opened': opened,
-            'opened_at': opened_at.strftime('%m/%d/%Y %H:%M') if opened_at else None,
-            'click_count': click_count
+            'opened_at': log['timestamp'].strftime('%m/%d/%Y %H:%M') if opened else None,
+            'click_count': log['click_count']
         })
     
     return render_template('admin/logs/email_logs.html', stats=stats, chart_data=chart_data, logs=logs, summary=summary)
@@ -1646,28 +1515,71 @@ def email_logs_chart_data():
     """API endpoint to get email logs chart data based on period."""
     period = request.args.get('period', 'week')
     
-    # Generate different data based on the requested period
+    # Get email logs from the log file
+    from app.utils.log_utils import get_email_logs
+    
+    # Determine the time period for data retrieval
     if period == 'week':
-        labels = [(datetime.now() - timedelta(days=i)).strftime('%m/%d') for i in range(7, 0, -1)]
-        sent = [42, 57, 36, 41, 29, 38, 47]
-        opened = [28, 34, 21, 26, 17, 22, 31]
-        clicked = [14, 18, 11, 15, 9, 12, 16]
+        days = 7
+        interval_days = 1
+        date_format = '%m/%d'
     elif period == 'month':
-        labels = [(datetime.now() - timedelta(days=i*3)).strftime('%m/%d') for i in range(10, 0, -1)]
-        sent = [124, 157, 136, 141, 129, 138, 147, 118, 131, 142]
-        opened = [83, 94, 81, 86, 77, 82, 91, 75, 84, 89]
-        clicked = [42, 53, 41, 45, 39, 42, 46, 38, 42, 47]
+        days = 30
+        interval_days = 3
+        date_format = '%m/%d'
     else:  # year
-        labels = [(datetime.now() - timedelta(days=i*30)).strftime('%m/%Y') for i in range(12, 0, -1)]
-        sent = [356, 412, 378, 402, 367, 394, 425, 377, 412, 388, 412, 438]
-        opened = [218, 253, 231, 246, 225, 241, 261, 231, 254, 237, 255, 269]
-        clicked = [112, 131, 119, 128, 116, 125, 135, 119, 131, 123, 133, 139]
+        days = 365
+        interval_days = 30
+        date_format = '%m/%Y'
+    
+    # Get logs for the specified period
+    logs = get_email_logs(max_entries=1000, days=days)
+    
+    # Generate date labels based on the period
+    if period == 'week':
+        date_points = [(datetime.now() - timedelta(days=i)).date() for i in range(days-1, -1, -1)]
+    elif period == 'month':
+        date_points = [(datetime.now() - timedelta(days=i*interval_days)).date() for i in range(10, -1, -1)]
+    else:  # year
+        date_points = [(datetime.now() - timedelta(days=i*interval_days)).date() for i in range(12, -1, -1)]
+    
+    # Initialize data arrays
+    labels = [date.strftime(date_format) for date in date_points]
+    sent_data = [0] * len(date_points)
+    opened_data = [0] * len(date_points)
+    clicked_data = [0] * len(date_points)
+    
+    # Group logs by date
+    for log in logs:
+        log_date = log['timestamp'].date()
+        
+        # Find the corresponding date point index
+        for i, date_point in enumerate(date_points):
+            # For week, exact match; for month/year, find the closest period
+            if period == 'week':
+                if log_date == date_point:
+                    sent_data[i] += 1
+                    if log['status'] == 'OPENED':
+                        opened_data[i] += 1
+                    if log['click_count'] > 0:
+                        clicked_data[i] += 1
+                    break
+            else:
+                # For month/year, check if the log falls within the interval
+                next_date = date_point - timedelta(days=interval_days) if i < len(date_points)-1 else datetime.now().date() - timedelta(days=days)
+                if log_date >= next_date and log_date <= date_point:
+                    sent_data[i] += 1
+                    if log['status'] == 'OPENED':
+                        opened_data[i] += 1
+                    if log['click_count'] > 0:
+                        clicked_data[i] += 1
+                    break
     
     return jsonify({
         'labels': labels,
-        'sent': sent,
-        'opened': opened,
-        'clicked': clicked
+        'sent': sent_data,
+        'opened': opened_data,
+        'clicked': clicked_data
     })
 
 @admin_bp.route('/api/logs/email/details')
@@ -1680,43 +1592,53 @@ def email_details():
     if not email_id:
         return jsonify({'success': False, 'error': 'Email ID is required'})
     
-    # In a real app, we would fetch actual email data
-    # Generate mock email details
-    sent_time = datetime.now() - timedelta(hours=int(email_id))
-    delivered_time = sent_time + timedelta(minutes=2)
-    opened_time = sent_time + timedelta(hours=1)
+    # Get all email logs and find the specific one by ID
+    from app.utils.log_utils import get_email_logs
+    all_logs = get_email_logs(max_entries=1000, days=90)  # Get logs from the past 90 days
     
-    # Determine status randomly but consistently for the same ID
-    random.seed(int(email_id))
-    status_options = ['delivered', 'opened', 'bounced', 'failed']
-    status_weights = [0.5, 0.3, 0.1, 0.1]
-    status = random.choices(status_options, status_weights)[0]
+    # Find the email with the matching ID
+    email_log = None
+    for log in all_logs:
+        if log['id'] == email_id:
+            email_log = log
+            break
     
+    if not email_log:
+        return jsonify({'success': False, 'error': 'Email not found'})
+    
+    # Define status colors for UI display
     status_colors = {
-        'delivered': 'primary',
-        'opened': 'success',
-        'failed': 'danger',
-        'bounced': 'warning'
+        'SENT': 'info',
+        'DELIVERED': 'primary',
+        'OPENED': 'success',
+        'FAILED': 'danger',
+        'BOUNCED': 'warning'
     }
     
-    # Only include opened_at if status is 'opened'
-    opened_at = opened_time.strftime('%m/%d/%Y %H:%M') if status == 'opened' else None
+    # Format the timestamp for display
+    sent_at = email_log['timestamp'].strftime('%m/%d/%Y %H:%M')
     
-    # Only include bounce_reason if status is 'bounced'
-    bounce_reason = 'Invalid recipient address' if status == 'bounced' else None
+    # Format opened_at if the email was opened
+    opened_at = None
+    if email_log['status'] == 'OPENED':
+        # In a real implementation, we would have the actual opened timestamp
+        # For now, we'll use the timestamp + 1 hour as an estimate
+        opened_at = (email_log['timestamp'] + timedelta(hours=1)).strftime('%m/%d/%Y %H:%M')
     
-    # Only include click events if status is 'opened'
+    # Format click events if there were any clicks
     click_events = []
-    if status == 'opened':
-        click_count = random.randint(0, 2)
-        for i in range(click_count):
-            click_time = opened_time + timedelta(minutes=random.randint(5, 30))
+    if email_log['click_count'] > 0:
+        # In a real implementation, we would have actual click data
+        # For now, we'll generate some sample click events
+        for i in range(email_log['click_count']):
+            click_time = email_log['timestamp'] + timedelta(hours=1, minutes=(i+1)*15)
             click_events.append({
-                'url': f'https://example.com/link{i+1}',
+                'url': f'https://mobilize-app.org/link{i+1}',
                 'clicked_at': click_time.strftime('%m/%d/%Y %H:%M')
             })
     
-    # Sample HTML content
+    # Create a sample HTML content based on the email subject
+    # In a real implementation, we would retrieve the actual email content
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -1732,15 +1654,14 @@ def email_details():
     <body>
         <div class="container">
             <div class="header">
-                <h2>Sample Email {email_id}</h2>
+                <h2>{email_log['subject']}</h2>
             </div>
             <div class="content">
-                <p>Hello recipient{email_id}@example.com,</p>
-                <p>This is a sample email content for demonstration purposes. In a real application, this would be the actual content of the email that was sent.</p>
-                <p>The email contains information relevant to the recipient, such as account updates, notifications, or other important information.</p>
-                <p>Click <a href="https://example.com/link1">here</a> to view more details.</p>
-                <p>Or check out our <a href="https://example.com/link2">latest updates</a>.</p>
-                <p>Thank you,<br>The System Admin</p>
+                <p>Hello {email_log['recipients']},</p>
+                <p>This is the content of the email that was sent. In a real implementation, we would show the actual email content.</p>
+                <p>The email was sent by {email_log['sender']} at {sent_at}.</p>
+                <p>Click <a href="https://mobilize-app.org/link1">here</a> to view more details.</p>
+                <p>Thank you,<br>Mobilize App Team</p>
             </div>
             <div class="footer">
                 <p>This email was sent from the Mobilize App. Please do not reply to this email.</p>
@@ -1751,23 +1672,21 @@ def email_details():
     </html>
     """
     
+    # Create the email data object
     email_data = {
         'id': email_id,
-        'subject': f'Sample Email {email_id}',
-        'sender': 'System Admin <system@example.com>',
-        'recipient': f'recipient{email_id}@example.com',
-        'sent_at': sent_time.strftime('%m/%d/%Y %H:%M'),
-        'delivered_at': delivered_time.strftime('%m/%d/%Y %H:%M') if status != 'failed' else None,
+        'subject': email_log['subject'],
+        'sender': email_log['sender'],
+        'recipient': email_log['recipients'],
+        'sent_at': sent_at,
+        'delivered_at': (email_log['timestamp'] + timedelta(minutes=2)).strftime('%m/%d/%Y %H:%M') if email_log['status'] not in ['FAILED', 'BOUNCED'] else None,
         'opened_at': opened_at,
-        'status': status,
-        'status_color': status_colors[status],
-        'bounce_reason': bounce_reason,
+        'status': email_log['status'],
+        'status_color': status_colors.get(email_log['status'], 'secondary'),
+        'bounce_reason': email_log['bounce_reason'],
         'click_events': click_events,
-        'html_content': html_content.replace('"', '\\"').replace('\n', '')
+        'html_content': html_content.replace('"', '\"').replace('\n', '')
     }
-    
-    # Reset the random seed
-    random.seed()
     
     return jsonify({
         'success': True,
@@ -1785,141 +1704,228 @@ def resend_email():
     if not email_id:
         return jsonify({'success': False, 'error': 'Email ID is required'})
     
-    # In a real app, we would actually resend the email
-    # For demo purposes, just return success
-    time.sleep(1)  # Simulate processing time
+    # Get the original email details from logs
+    from app.utils.log_utils import get_email_logs
+    all_logs = get_email_logs(max_entries=1000, days=90)
     
-    return jsonify({
-        'success': True,
-        'message': f'Email {email_id} resent successfully'
-    }) 
+    # Find the email with the matching ID
+    email_log = None
+    for log in all_logs:
+        if log['id'] == email_id:
+            email_log = log
+            break
+    
+    if not email_log:
+        return jsonify({'success': False, 'error': 'Original email not found'})
+    
+    try:
+        # Get the current user for sending the email
+        user_id = current_user.id
+        
+        # Initialize the Gmail service
+        from app.services.gmail_service import GmailService
+        gmail_service = GmailService(user_id)
+        
+        # Send the email using the original details
+        sent_message = gmail_service.send_email(
+            to=email_log['recipients'],
+            subject=f"RESEND: {email_log['subject']}",
+            body=f"This is a resend of an email originally sent on {email_log['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}\n\nOriginal content would appear here."
+        )
+        
+        # Return success response
+        return jsonify({
+            'success': True,
+            'message': f'Email {email_id} resent successfully',
+            'new_email_id': sent_message.get('id')
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to resend email: {str(e)}'
+        }) 
 
 @admin_bp.route('/logs/database')
 @login_required
 @admin_required
 def database_logs():
     """Display database logs and analytics."""
-    # Get mock database operation stats
-    stats = {
-        'total_operations': 12487,
-        'successful_operations': 12350,
-        'failed_operations': 137,
-        'avg_response_time': 28
-    }
+    # Get filter parameters from request
+    operation_filter = request.args.get('operation')
+    table_filter = request.args.get('table')
+    status_filter = request.args.get('status')
+    search_term = request.args.get('search')
+    days = int(request.args.get('days', 30))
     
-    # Summary data for cards
-    summary = {
-        'total_queries': 12487,
-        'avg_query_time': 28,
-        'slow_queries': 42,
-        'error_rate': 1.1
-    }
+    # Get real database logs from the log file
+    from app.utils.log_utils import get_database_logs
+    from app.utils.db_utils import get_all_tables, get_table_stats
     
-    # Mock chart data for database activity
-    chart_data = {
-        'labels': [(datetime.now() - timedelta(hours=i)).strftime('%H:%M') for i in range(24, 0, -1)],
-        'select': [random.randint(50, 200) for _ in range(24)],
-        'insert': [random.randint(10, 50) for _ in range(24)],
-        'update': [random.randint(5, 30) for _ in range(24)],
-        'delete': [random.randint(1, 10) for _ in range(24)]
-    }
+    # Get logs data
+    logs_data = get_database_logs(
+        max_entries=100,
+        operation_filter=operation_filter,
+        table_filter=table_filter,
+        status_filter=status_filter,
+        search_term=search_term,
+        days=days
+    )
     
-    # Mock operation types distribution
-    operation_types = [65, 15, 12, 3, 5]  # SELECT, INSERT, UPDATE, DELETE, OTHER
-    
-    # Mock database logs
+    # Process logs for display
     logs = []
-    operations = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE INDEX', 'ALTER TABLE']
-    operation_weights = [0.65, 0.15, 0.12, 0.03, 0.03, 0.02]
-    tables = ['users', 'contacts', 'churches', 'people', 'messages', 'tasks', 'notes', 'pipelines']
-    statuses = ['SUCCESS', 'FAILED', 'SLOW']
-    status_weights = [0.95, 0.03, 0.02]
     status_colors = {
         'SUCCESS': 'success',
         'FAILED': 'danger',
         'SLOW': 'warning'
     }
     
-    # Generate mock log entries
-    for i in range(1, 50):
-        timestamp = datetime.now() - timedelta(minutes=random.randint(1, 1440))  # Last 24 hours
-        operation = random.choices(operations, weights=operation_weights, k=1)[0]
-        table = random.choice(tables)
-        status = random.choices(statuses, weights=status_weights, k=1)[0]
-        duration = random.randint(5, 500) if status != 'SLOW' else random.randint(1000, 5000)
-        
+    # Get all table names for filter dropdown
+    all_tables = get_all_tables()
+    tables = [{'name': table} for table in all_tables]
+    
+    # Get database name from configuration
+    db_uri = current_app.config['SQLALCHEMY_DATABASE_URI']
+    db_name = db_uri.split('/')[-1] if '/' in db_uri else 'mobilize_app'
+    databases = [db_name]
+    
+    # Calculate stats from logs
+    total_operations = len(logs_data)
+    successful_operations = sum(1 for log in logs_data if log['status'] == 'SUCCESS')
+    failed_operations = sum(1 for log in logs_data if log['status'] == 'FAILED')
+    slow_operations = sum(1 for log in logs_data if log['status'] == 'SLOW')
+    
+    # Calculate average response time
+    if total_operations > 0:
+        avg_response_time = sum(log['duration'] for log in logs_data) // max(1, total_operations)
+    else:
+        avg_response_time = 0
+    
+    # Create stats dictionary
+    stats = {
+        'total_operations': total_operations,
+        'successful_operations': successful_operations,
+        'failed_operations': failed_operations,
+        'avg_response_time': avg_response_time
+    }
+    
+    # Create summary for the dashboard cards
+    error_rate = (failed_operations / total_operations * 100) if total_operations > 0 else 0
+    summary = {
+        'total_queries': total_operations,
+        'avg_query_time': avg_response_time,
+        'slow_queries': slow_operations,
+        'error_rate': round(error_rate, 1)
+    }
+    
+    # Calculate operation type distribution
+    operation_counts = {}
+    for log in logs_data:
+        op = log['operation']
+        operation_counts[op] = operation_counts.get(op, 0) + 1
+    
+    # Convert to percentages for the chart
+    operation_types = []
+    if total_operations > 0:
+        for op in ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'OTHER']:
+            if op == 'OTHER':
+                # Sum all operations that aren't the main 4
+                other_count = sum(operation_counts.get(o, 0) for o in operation_counts if o not in ['SELECT', 'INSERT', 'UPDATE', 'DELETE'])
+                operation_types.append(round(other_count / total_operations * 100))
+            else:
+                operation_types.append(round(operation_counts.get(op, 0) / total_operations * 100))
+    else:
+        operation_types = [0, 0, 0, 0, 0]  # Default if no data
+    
+    # Prepare chart data (last 24 hours)
+    last_24_hours = [(datetime.now() - timedelta(hours=i)) for i in range(23, -1, -1)]
+    
+    # Initialize counts for each hour
+    hourly_select = {hour: 0 for hour in last_24_hours}
+    hourly_insert = {hour: 0 for hour in last_24_hours}
+    hourly_update = {hour: 0 for hour in last_24_hours}
+    hourly_delete = {hour: 0 for hour in last_24_hours}
+    
+    # Count operations for each hour
+    for log in logs_data:
+        log_hour = log['timestamp'].replace(minute=0, second=0, microsecond=0)
+        if log_hour in hourly_select:  # Only count if within last 24 hours
+            if log['operation'] == 'SELECT':
+                hourly_select[log_hour] += 1
+            elif log['operation'] == 'INSERT':
+                hourly_insert[log_hour] += 1
+            elif log['operation'] == 'UPDATE':
+                hourly_update[log_hour] += 1
+            elif log['operation'] == 'DELETE':
+                hourly_delete[log_hour] += 1
+    
+    # Create chart data
+    chart_data = {
+        'labels': [hour.strftime('%H:%M') for hour in last_24_hours],
+        'select': [hourly_select[hour] for hour in last_24_hours],
+        'insert': [hourly_insert[hour] for hour in last_24_hours],
+        'update': [hourly_update[hour] for hour in last_24_hours],
+        'delete': [hourly_delete[hour] for hour in last_24_hours]
+    }
+    
+    # Format logs for display
+    for log in logs_data:
         logs.append({
-            'id': i,
-            'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            'operation': operation,
-            'table': table,
-            'user': random.choice(['admin@example.com', 'system', 'scheduler', 'api@example.com']),
-            'duration': duration,
-            'status': status,
-            'status_color': status_colors[status],
-            'records_affected': random.randint(1, 100) if operation != 'SELECT' else random.randint(1, 1000)
+            'id': log['id'],
+            'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
+            'operation': log['operation'],
+            'table': log['table'],
+            'user': log['user'],
+            'duration': log['duration'],
+            'status': log['status'],
+            'status_color': status_colors.get(log['status'], 'secondary'),
+            'records_affected': log['records_affected']
         })
     
-    # Sort logs by timestamp in descending order
-    logs.sort(key=lambda x: x['timestamp'], reverse=True)
+    # Calculate active tables statistics
+    table_stats = {}
+    for log in logs_data:
+        table_name = log['table']
+        if table_name not in table_stats:
+            table_stats[table_name] = {
+                'operations': 0,
+                'total_duration': 0,
+                'name': table_name
+            }
+        table_stats[table_name]['operations'] += 1
+        table_stats[table_name]['total_duration'] += log['duration']
     
-    # Generate mock active tables
+    # Calculate average duration and format active tables
     active_tables = []
-    for table in tables[:6]:  # Take the first 6 tables
+    for table_name, stats in table_stats.items():
+        avg_duration = stats['total_duration'] // max(1, stats['operations'])
+        activity_percentage = min(95, max(30, (stats['operations'] * 100) // max(1, total_operations)))
+        
         active_tables.append({
-            'name': table,
-            'operations': random.randint(100, 2000),
-            'avg_duration': random.randint(10, 100),
-            'activity_percentage': random.randint(30, 95)
+            'name': table_name,
+            'operations': stats['operations'],
+            'avg_duration': avg_duration,
+            'activity_percentage': activity_percentage
         })
     
     # Sort active tables by operations count in descending order
     active_tables.sort(key=lambda x: x['operations'], reverse=True)
+    active_tables = active_tables[:6]  # Limit to top 6 most active tables
     
-    # Generate mock slow queries
+    # Find slow queries (queries with duration > 1000ms)
     slow_queries = []
-    sql_templates = [
-        "SELECT * FROM {table} WHERE id IN (SELECT user_id FROM {related_table} WHERE created_at > '2023-01-01')",
-        "SELECT * FROM {table} LEFT JOIN {related_table} ON {table}.id = {related_table}.{table_singular}_id",
-        "SELECT COUNT(*) FROM {table} GROUP BY {column} HAVING COUNT(*) > 10",
-        "UPDATE {table} SET updated_at = NOW() WHERE {column} = {value}",
-        "INSERT INTO {table} ({columns}) VALUES ({values})"
-    ]
-    
-    for i in range(5):
-        table = random.choice(tables)
-        related_table = random.choice([t for t in tables if t != table])
-        table_singular = table[:-1] if table.endswith('s') else table
-        column = random.choice(['id', 'name', 'created_at', 'status', 'user_id'])
-        columns = ', '.join([column, 'created_at', 'updated_at'])
-        values = f"'{random.randint(1, 100)}', NOW(), NOW()"
-        
-        sql_template = random.choice(sql_templates)
-        sql = sql_template.format(
-            table=table, 
-            related_table=related_table,
-            table_singular=table_singular,
-            column=column,
-            columns=columns,
-            value=random.randint(1, 100),
-            values=values
-        )
-        
-        slow_queries.append({
-            'sql': sql,
-            'table': table,
-            'duration': random.randint(1000, 5000),
-            'timestamp': (datetime.now() - timedelta(minutes=random.randint(1, 1440))).strftime('%Y-%m-%d %H:%M:%S')
-        })
+    for log in logs_data:
+        if log['duration'] > 1000 and log['query']:
+            slow_queries.append({
+                'sql': log['query'],
+                'table': log['table'],
+                'duration': log['duration'],
+                'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+            })
     
     # Sort slow queries by duration in descending order
     slow_queries.sort(key=lambda x: x['duration'], reverse=True)
-    
-    # List of tables for filter dropdown
-    tables = [{'name': table} for table in tables]
-    
-    # Add databases for filter dropdown
-    databases = ['mobilize_app', 'mobilize_analytics', 'mobilize_reporting']
+    slow_queries = slow_queries[:5]  # Limit to top 5 slowest queries
     
     return render_template('admin/logs/database_logs.html', 
                           stats=stats, 
@@ -1939,125 +1945,132 @@ def database_logs_chart_data():
     """API endpoint to get database logs chart data based on period."""
     period = request.args.get('period', 'day')
     
-    # Generate different data based on the requested period
+    # Get database logs from the log file
+    from app.utils.log_utils import get_database_logs
+    
+    # Determine the time period for data retrieval
     if period == 'day':
-        labels = [(datetime.now() - timedelta(hours=i)).strftime('%H:%M') for i in range(24, 0, -1)]
-        select = [random.randint(50, 200) for _ in range(24)]
-        insert = [random.randint(10, 50) for _ in range(24)]
-        update = [random.randint(5, 30) for _ in range(24)]
-        delete = [random.randint(1, 10) for _ in range(24)]
+        days = 1
+        interval = 'hour'
+        date_format = '%H:%M'
+        intervals = 24
+        time_points = [(datetime.now() - timedelta(hours=i)) for i in range(intervals-1, -1, -1)]
     elif period == 'week':
-        labels = [(datetime.now() - timedelta(days=i)).strftime('%a') for i in range(7, 0, -1)]
-        select = [random.randint(500, 1500) for _ in range(7)]
-        insert = [random.randint(100, 300) for _ in range(7)]
-        update = [random.randint(50, 150) for _ in range(7)]
-        delete = [random.randint(10, 50) for _ in range(7)]
+        days = 7
+        interval = 'day'
+        date_format = '%a'
+        intervals = 7
+        time_points = [(datetime.now() - timedelta(days=i)) for i in range(intervals-1, -1, -1)]
     else:  # month
-        labels = [(datetime.now() - timedelta(days=i)).strftime('%d') for i in range(30, 0, -1)]
-        select = [random.randint(1000, 3000) for _ in range(30)]
-        insert = [random.randint(200, 600) for _ in range(30)]
-        update = [random.randint(100, 300) for _ in range(30)]
-        delete = [random.randint(20, 100) for _ in range(30)]
+        days = 30
+        interval = 'day'
+        date_format = '%d'
+        intervals = 30
+        time_points = [(datetime.now() - timedelta(days=i)) for i in range(intervals-1, -1, -1)]
+    
+    # Get logs for the specified period
+    logs = get_database_logs(max_entries=10000, days=days)
+    
+    # Initialize data arrays
+    labels = [point.strftime(date_format) for point in time_points]
+    select_data = [0] * intervals
+    insert_data = [0] * intervals
+    update_data = [0] * intervals
+    delete_data = [0] * intervals
+    
+    # Group logs by time period
+    for log in logs:
+        log_time = log['timestamp']
+        
+        # Find the corresponding time point index
+        for i, time_point in enumerate(time_points):
+            if interval == 'hour':
+                # For day view, compare hours
+                if log_time.year == time_point.year and log_time.month == time_point.month and log_time.day == time_point.day and log_time.hour == time_point.hour:
+                    if log['operation'] == 'SELECT':
+                        select_data[i] += 1
+                    elif log['operation'] == 'INSERT':
+                        insert_data[i] += 1
+                    elif log['operation'] == 'UPDATE':
+                        update_data[i] += 1
+                    elif log['operation'] == 'DELETE':
+                        delete_data[i] += 1
+                    break
+            else:
+                # For week/month view, compare days
+                if log_time.year == time_point.year and log_time.month == time_point.month and log_time.day == time_point.day:
+                    if log['operation'] == 'SELECT':
+                        select_data[i] += 1
+                    elif log['operation'] == 'INSERT':
+                        insert_data[i] += 1
+                    elif log['operation'] == 'UPDATE':
+                        update_data[i] += 1
+                    elif log['operation'] == 'DELETE':
+                        delete_data[i] += 1
+                    break
     
     return jsonify({
         'labels': labels,
-        'select': select,
-        'insert': insert,
-        'update': update,
-        'delete': delete
+        'select': select_data,
+        'insert': insert_data,
+        'update': update_data,
+        'delete': delete_data
     })
 
 @admin_bp.route('/api/logs/database/details')
 @login_required
 @admin_required
-def database_log_details():
-    """API endpoint to get detailed information about a specific database operation log."""
+def database_logs_details():
+    """API endpoint to get details of a specific database log entry."""
     log_id = request.args.get('id')
     
     if not log_id:
-        return jsonify({'success': False, 'error': 'Log ID is required'})
+        return jsonify({'error': 'Log ID is required'}), 400
     
-    # In a real app, we would fetch actual log data from the database
-    # Generate mock log details based on the ID
-    random.seed(int(log_id))  # Ensure consistent results for the same ID
+    # Get database logs from the log file
+    from app.utils.log_utils import get_database_logs
     
-    operations = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE INDEX', 'ALTER TABLE']
-    operation_weights = [0.65, 0.15, 0.12, 0.03, 0.03, 0.02]
-    tables = ['users', 'contacts', 'churches', 'people', 'messages', 'tasks', 'notes', 'pipelines']
-    statuses = ['SUCCESS', 'FAILED', 'SLOW']
-    status_weights = [0.95, 0.03, 0.02]
+    # Get all logs and find the one with matching ID
+    logs = get_database_logs(max_entries=10000)
+    log_details = None
+    
+    # Status color mapping
     status_colors = {
-        'SUCCESS': 'success',
-        'FAILED': 'danger',
-        'SLOW': 'warning'
+        'success': 'success',
+        'error': 'danger',
+        'warning': 'warning'
     }
     
-    timestamp = datetime.now() - timedelta(minutes=random.randint(1, 1440))
-    operation = random.choices(operations, weights=operation_weights, k=1)[0]
-    table = random.choice(tables)
-    user = random.choice(['admin@example.com', 'system', 'scheduler', 'api@example.com'])
-    status = random.choices(statuses, weights=status_weights, k=1)[0]
-    duration = random.randint(5, 500) if status != 'SLOW' else random.randint(1000, 5000)
-    records_affected = random.randint(1, 100) if operation != 'SELECT' else random.randint(1, 1000)
+    for log in logs:
+        if log.get('id') == log_id:
+            # Format the log data for display
+            log_details = {
+                'id': log['id'],
+                'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
+                'operation': log['operation'],
+                'table': log['table'],
+                'user': log['user'] if log['user'] else 'System',
+                'duration': log['duration'],
+                'status': log['status'],
+                'status_color': status_colors.get(log['status'].lower(), 'secondary'),
+                'records_affected': log['records_affected'],
+                'sql': log['query'] if log['query'] else 'N/A',
+                'error': None,  # We'll populate this if status is error
+                'execution_plan': None  # Could be populated in the future if we capture execution plans
+            }
+            
+            # If status is error, we might have error details in the query field
+            if log['status'].lower() == 'error' and log['query']:
+                log_details['error'] = log['query']
+            
+            break
     
-    # Generate SQL query based on operation
-    columns = ['id', 'name', 'email', 'created_at', 'updated_at']
-    
-    if operation == 'SELECT':
-        sql = f"SELECT * FROM {table} WHERE id > {random.randint(1, 100)} LIMIT {random.randint(10, 100)}"
-    elif operation == 'INSERT':
-        values = [f"'{random.randint(1, 1000)}'", "'Test'", "'test@example.com'", "NOW()", "NOW()"]
-        sql = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({', '.join(values)})"
-    elif operation == 'UPDATE':
-        sql = f"UPDATE {table} SET updated_at = NOW() WHERE id = {random.randint(1, 1000)}"
-    elif operation == 'DELETE':
-        sql = f"DELETE FROM {table} WHERE id = {random.randint(1, 1000)}"
-    elif operation == 'CREATE INDEX':
-        sql = f"CREATE INDEX idx_{table}_{columns[random.randint(0, len(columns)-1)]} ON {table} ({columns[random.randint(0, len(columns)-1)]})"
-    else:  # ALTER TABLE
-        sql = f"ALTER TABLE {table} ADD COLUMN new_column VARCHAR(255)"
-    
-    # Generate error message if status is FAILED
-    error = None
-    if status == 'FAILED':
-        error_messages = [
-            f"Error: column {random.choice(columns)} does not exist",
-            "Error: syntax error at or near '='",
-            "Error: relation does not exist",
-            "Error: duplicate key value violates unique constraint",
-            "Error: database is locked"
-        ]
-        error = random.choice(error_messages)
-    
-    # Generate execution plan for SELECT queries
-    execution_plan = None
-    if operation == 'SELECT':
-        execution_plan = f"""
-Seq Scan on {table}  (cost=0.00..{random.randint(10, 100)}.{random.randint(10, 99)} rows={records_affected} width={random.randint(20, 100)})
-  Filter: (id > {random.randint(1, 100)})
-"""
-    
-    # Reset random seed
-    random.seed()
-    
-    log_data = {
-        'id': log_id,
-        'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-        'operation': operation,
-        'table': table,
-        'user': user,
-        'duration': duration,
-        'status': status,
-        'status_color': status_colors[status],
-        'records_affected': records_affected,
-        'sql': sql,
-        'error': error,
-        'execution_plan': execution_plan
-    }
+    if not log_details:
+        return jsonify({'error': 'Log entry not found'}), 404
     
     return jsonify({
         'success': True,
-        'log': log_data
+        'log': log_details
     })
 
 @admin_bp.route('/roles_permissions')

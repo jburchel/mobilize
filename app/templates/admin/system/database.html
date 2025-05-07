@@ -144,7 +144,7 @@
             <tbody>
               {% for table in table_stats %}
               <tr>
-                <td>{{ table.name }}</td>
+                <td><a href="{{ url_for('admin.table_details', table_name=table.name) }}">{{ table.name }}</a></td>
                 <td>{{ table.records }}</td>
                 <td>{{ table.size }}</td>
                 <td>{{ table.last_updated }}</td>
@@ -154,17 +154,14 @@
                   </span>
                 </td>
                 <td>
-                  <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-outline-primary" 
-                            onclick="viewTableDetails('{{ table.name }}')">
-                      <i class="fas fa-eye"></i>
+                  <div class="btn-group" role="group" aria-label="Table actions">
+                    <a href="{{ url_for('admin.table_details', table_name=table.name) }}" class="btn btn-sm btn-outline-primary">
+                      <i class="fas fa-table"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="optimizeTable('{{ table.name }}')">
+                      <i class="fas fa-wrench"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-warning"
-                            onclick="optimizeTable('{{ table.name }}')">
-                      <i class="fas fa-bolt"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-info"
-                            onclick="exportTable('{{ table.name }}')">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="exportTable('{{ table.name }}')">
                       <i class="fas fa-download"></i>
                     </button>
                   </div>

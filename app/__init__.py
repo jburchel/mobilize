@@ -407,6 +407,16 @@ def create_app(test_config=None):
 
     # Register CLI commands
     register_commands(app)
+    
+    # Initialize database query logging
+    from app.utils.db_logger import init_app as init_db_logger
+    init_db_logger(app)
+    app.logger.info("Database query logging initialized")
+    
+    # Initialize activity logger middleware
+    from app.middleware.activity_logger import ActivityLoggerMiddleware
+    ActivityLoggerMiddleware(app)
+    app.logger.info("Activity logger middleware initialized")
 
     # Add stats to global context for sidebar badges
     @app.before_request

@@ -1,0 +1,227 @@
+{
+  "apiVersion": "serving.knative.dev/v1",
+  "kind": "Service",
+  "metadata": {
+    "annotations": {
+      "run.googleapis.com/build-enable-automatic-updates": "false",
+      "run.googleapis.com/build-id": "6c5ee4d2-2818-4181-9937-2b18b5f8d1b8",
+      "run.googleapis.com/build-image-uri": "us-central1-docker.pkg.dev/mobilize-crm/cloud-run-source-deploy/mobilize-crm",
+      "run.googleapis.com/build-name": "projects/1069318103780/locations/us-central1/builds/6c5ee4d2-2818-4181-9937-2b18b5f8d1b8",
+      "run.googleapis.com/build-source-location": "gs://run-sources-mobilize-crm-us-central1/services/mobilize-crm/1746132119.973277-242fccace7974a5088b65d9d519fe369.zip#1746132120552342",
+      "run.googleapis.com/client-name": "gcloud",
+      "run.googleapis.com/client-version": "519.0.0",
+      "run.googleapis.com/ingress": "all",
+      "run.googleapis.com/ingress-status": "all",
+      "run.googleapis.com/operation-id": "ef6161db-5a7a-48b8-8d8d-b3d85d827b33",
+      "run.googleapis.com/urls": "[\"https://mobilize-crm-1069318103780.us-central1.run.app\",\"https://mobilize-crm-x3exfzl3zq-uc.a.run.app\"]",
+      "serving.knative.dev/creator": "j.burchel@crossoverglobal.net",
+      "serving.knative.dev/lastModifier": "j.burchel@crossoverglobal.net"
+    },
+    "creationTimestamp": "2025-03-04T14:59:29.380882Z",
+    "generation": 219,
+    "labels": {
+      "cloud.googleapis.com/location": "us-central1",
+      "gcb-trigger-id": "0eb2a2dc-cbc5-4ad7-9d3a-0a965d8fa0bc",
+      "gcb-trigger-region": "global",
+      "managed-by": "gcp-cloud-build-deploy-cloud-run"
+    },
+    "name": "mobilize-crm",
+    "namespace": "1069318103780",
+    "resourceVersion": "AAY0GSJoBlY",
+    "selfLink": "/apis/serving.knative.dev/v1/namespaces/1069318103780/services/mobilize-crm",
+    "uid": "a711db08-55ec-465e-830a-e21c0853cec1"
+  },
+  "spec": {
+    "template": {
+      "metadata": {
+        "annotations": {
+          "autoscaling.knative.dev/maxScale": "10",
+          "autoscaling.knative.dev/minScale": "1",
+          "run.googleapis.com/client-name": "gcloud",
+          "run.googleapis.com/client-version": "519.0.0",
+          "run.googleapis.com/startup-cpu-boost": "false"
+        },
+        "labels": {
+          "client.knative.dev/nonce": "vemvwvcqgd",
+          "run.googleapis.com/startupProbeType": "Default"
+        }
+      },
+      "spec": {
+        "containerConcurrency": 80,
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "FLASK_APP",
+                "value": "app.py"
+              },
+              {
+                "name": "FLASK_ENV",
+                "value": "production"
+              },
+              {
+                "name": "LOG_LEVEL",
+                "value": "INFO"
+              },
+              {
+                "name": "LOG_TO_STDOUT",
+                "value": "True"
+              },
+              {
+                "name": "PREFERRED_URL_SCHEME",
+                "value": "https"
+              },
+              {
+                "name": "SKIP_DB_INIT",
+                "value": "True"
+              },
+              {
+                "name": "FIREBASE_PROJECT_ID",
+                "value": "mobilize-crm"
+              },
+              {
+                "name": "GOOGLE_CLOUD_PROJECT",
+                "value": "mobilize-crm"
+              },
+              {
+                "name": "DATABASE_URL",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "mobilize-db-url"
+                  }
+                }
+              },
+              {
+                "name": "SECRET_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "mobilize-flask-secret"
+                  }
+                }
+              },
+              {
+                "name": "FIREBASE_CREDENTIALS",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "firebase-credentials"
+                  }
+                }
+              },
+              {
+                "name": "DB_CONNECTION_STRING",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "mobilize-db-connection-string"
+                  }
+                }
+              },
+              {
+                "name": "GOOGLE_CLIENT_ID",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "mobilize-google-client-id"
+                  }
+                }
+              },
+              {
+                "name": "GOOGLE_CLIENT_SECRET",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "mobilize-google-client-secret"
+                  }
+                }
+              },
+              {
+                "name": "OAUTHLIB_INSECURE_TRANSPORT",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "mobilize-oauthlib-insecure-transport"
+                  }
+                }
+              },
+              {
+                "name": "BASE_URL",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "latest",
+                    "name": "mobilize-base-url"
+                  }
+                }
+              }
+            ],
+            "image": "us-central1-docker.pkg.dev/mobilize-crm/cloud-run-source-deploy/mobilize-crm@sha256:624f4af9c264f4cf0a79fd18cfad9f9b0a54925ecc2c61fd8c7858db8761b207",
+            "name": "mobilize-crm-1",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "http1"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            },
+            "startupProbe": {
+              "failureThreshold": 1,
+              "periodSeconds": 240,
+              "tcpSocket": {
+                "port": 8080
+              },
+              "timeoutSeconds": 240
+            }
+          }
+        ],
+        "serviceAccountName": "mobilize-crm-service-account@mobilize-crm.iam.gserviceaccount.com",
+        "timeoutSeconds": 300
+      }
+    },
+    "traffic": [
+      {
+        "latestRevision": true,
+        "percent": 100
+      }
+    ]
+  },
+  "status": {
+    "address": {
+      "url": "https://mobilize-crm-x3exfzl3zq-uc.a.run.app"
+    },
+    "conditions": [
+      {
+        "lastTransitionTime": "2025-05-01T20:46:56.333398Z",
+        "status": "True",
+        "type": "Ready"
+      },
+      {
+        "lastTransitionTime": "2025-05-01T20:46:53.947111Z",
+        "status": "True",
+        "type": "ConfigurationsReady"
+      },
+      {
+        "lastTransitionTime": "2025-05-01T20:46:56.305204Z",
+        "status": "True",
+        "type": "RoutesReady"
+      }
+    ],
+    "latestCreatedRevisionName": "mobilize-crm-00205-9zg",
+    "latestReadyRevisionName": "mobilize-crm-00205-9zg",
+    "observedGeneration": 219,
+    "traffic": [
+      {
+        "latestRevision": true,
+        "percent": 100,
+        "revisionName": "mobilize-crm-00205-9zg"
+      }
+    ],
+    "url": "https://mobilize-crm-x3exfzl3zq-uc.a.run.app"
+  }
+}

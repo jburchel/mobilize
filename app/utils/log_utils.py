@@ -1,11 +1,12 @@
 """Utility functions for handling system logs."""
 
 import os
-import re
-import random
 import datetime
-from flask import current_app
+import uuid
+import random
+import re
 from collections import defaultdict
+from flask import current_app
 
 # Define log levels and their priorities
 LOG_LEVELS = {
@@ -219,9 +220,11 @@ def get_activity_logs(max_entries=100, level_filter=None, search_term=None, days
         log_dir = get_log_directory()
         activity_log_path = os.path.join(log_dir, 'activity.log')
         
-        # If the activity log file doesn't exist, create it with some initial entries
+        # If the activity log file doesn't exist, create an empty file
         if not os.path.exists(activity_log_path):
-            create_sample_activity_logs(activity_log_path)
+            os.makedirs(os.path.dirname(activity_log_path), exist_ok=True)
+            with open(activity_log_path, 'w') as f:
+                pass
         
         # Read the activity log file
         activities = []
@@ -445,15 +448,494 @@ def log_activity(subsystem, operation, description, status='SUCCESS', impact='ME
         current_app.logger.error(f"Error logging activity: {str(e)}")
 
 
-def get_security_logs(max_entries=100):
-    """Get security logs."""
+def get_security_logs(max_entries=100, level_filter=None, search_term=None, days=30):
+    """Get security logs from the security log file.
+    
+    Args:
+        max_entries (int): Maximum number of log entries to return
+        level_filter (str): Filter logs by level (e.g., 'CRITICAL', 'WARNING', 'INFO')
+        search_term (str): Filter logs by search term
+        days (int): Number of days to look back for logs
+        
+    Returns:
+        list: List of security log entries
+    """
     try:
-        # In a real implementation, this would query a database table
-        # For now, we'll return an empty list as we'll implement this later
-        return []
+        log_dir = get_log_directory()
+        security_log_path = os.path.join(log_dir, 'security.log')
+        
+        # If the security log file doesn't exist, create it with some initial entries
+        if not os.path.exists(security_log_path):
+            create_sample_security_logs(security_log_path)
+        
+        # Read the security log file
+        security_logs = []
+        with open(security_log_path, 'r') as f:
+            for line in f:
+                try:
+                    # Parse the log entry
+                    # Format: timestamp|level|event_type|user|ip_address|description
+                    parts = line.strip().split('|')
+                    if len(parts) >= 6:
+                        timestamp_str = parts[0].strip()
+                        level = parts[1].strip()
+                        event_type = parts[2].strip()
+                        user = parts[3].strip()
+                        ip_address = parts[4].strip()
+                        description = parts[5].strip()
+                        
+                        # Parse timestamp
+                        timestamp = datetime.datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                        
+                        # Apply filters
+                        # Filter by days
+                        if (datetime.datetime.now() - timestamp).days > days:
+                            continue
+                            
+                        # Filter by level
+                        if level_filter and level != level_filter:
+                            continue
+                            
+                        # Filter by search term
+                        if search_term and search_term.lower() not in (
+                            description.lower() + 
+                            event_type.lower() + 
+                            user.lower() + 
+                            ip_address.lower()
+                        ):
+                            continue
+                        
+                        # Add the security log to the list
+                        security_logs.append({
+                            'id': f"{hash(timestamp_str + event_type + user) & 0xFFFFFFFF:08x}",  # Generate a consistent ID
+                            'timestamp': timestamp,
+                            'level': level,
+                            'event_type': event_type,
+                            'user': user,
+                            'ip_address': ip_address if ip_address != 'None' else None,
+                            'description': description
+                        })
+                except Exception as e:
+                    current_app.logger.error(f"Error parsing security log line: {str(e)}")
+                    continue
+        
+        # Sort security logs by timestamp in descending order
+        security_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        # Limit the number of entries
+        security_logs = security_logs[:max_entries]
+        
+        return security_logs
     except Exception as e:
         current_app.logger.error(f"Error getting security logs: {str(e)}")
         return []
+
+def create_sample_security_logs(log_path):
+    """Create sample security logs for demonstration purposes."""
+    try:
+        # Create the log directory if it doesn't exist
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        
+        # Define sample data
+        event_types = [
+            'LOGIN_FAILURE', 'PERMISSION_DENIED', 'DATA_ACCESS', 'ACCOUNT_LOCKED', 
+            'CONFIG_CHANGE', 'PASSWORD_CHANGE', 'PRIVILEGE_ESCALATION', 'SUSPICIOUS_ACTIVITY',
+            'BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'UNUSUAL_LOGIN_TIME', 'UNUSUAL_LOGIN_LOCATION'
+        ]
+        
+        levels = ['CRITICAL', 'WARNING', 'INFO']
+        level_weights = [0.2, 0.3, 0.5]  # Probabilities for each level
+        
+        users = [
+            'System Admin <admin@example.com>',
+            'John Doe <john.doe@example.com>',
+            'Jane Smith <jane.smith@example.com>',
+            'Pastor Williams <pastor@church.org>',
+            'Sarah Johnson <coordinator@ministry.com>',
+            'Anonymous'
+        ]
+        
+        # Generate 50 sample security logs
+        with open(log_path, 'w') as f:
+            for i in range(50):
+                # Random timestamp in the last 30 days
+                now = datetime.datetime.now()
+                days_ago = random.randint(0, 30)
+                hours_ago = random.randint(0, 23)
+                mins_ago = random.randint(0, 59)
+                timestamp = now - datetime.timedelta(days=days_ago, hours=hours_ago, minutes=mins_ago)
+                timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Random event type
+                event_type = random.choice(event_types)
+                
+                # Security level with weighted probability
+                level = random.choices(levels, weights=level_weights, k=1)[0]
+                
+                # Adjust level based on event type for more realism
+                if event_type in ['BRUTE_FORCE_ATTEMPT', 'SESSION_HIJACKING', 'PRIVILEGE_ESCALATION']:
+                    level = 'CRITICAL'
+                elif event_type in ['LOGIN_FAILURE', 'UNUSUAL_LOGIN_LOCATION', 'PERMISSION_DENIED']:
+                    level = random.choices(['CRITICAL', 'WARNING'], weights=[0.3, 0.7], k=1)[0]
+            
+                # Random user
+                user = random.choice(users)
+                
+                # Generate IP address
+                ip_address = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
+            
+                # Generate a description based on event type
+                if event_type == 'LOGIN_FAILURE':
+                    description = f"Failed login attempt for {user}"
+                    if random.random() > 0.7:
+                        description += " - Invalid password"
+                    elif random.random() > 0.5:
+                        description += " - Account not found"
+                    else:
+                        description += " - Account locked"
+            
+                elif event_type == 'PERMISSION_DENIED':
+                    resources = ['user data', 'admin settings', 'financial records', 'member database', 'settings page']
+                    description = f"Attempted unauthorized access to {random.choice(resources)}"
+            
+                elif event_type == 'DATA_ACCESS':
+                    description = "Unusual data access pattern detected"
+            
+                elif event_type == 'ACCOUNT_LOCKED':
+                    description = "Account locked after multiple failed login attempts"
+            
+                elif event_type == 'CONFIG_CHANGE':
+                    configs = ['security settings', 'user permissions', 'system configuration', 'email templates', 'payment gateway']
+                    description = f"Configuration change in {random.choice(configs)}"
+            
+                elif event_type == 'BRUTE_FORCE_ATTEMPT':
+                    description = "Possible brute force attack detected"
+            
+                elif event_type == 'UNUSUAL_LOGIN_LOCATION':
+                    countries = ['United States', 'China', 'Russia', 'Brazil', 'India', 'Nigeria', 'Netherlands']
+                    description = f"Login from unusual location: {random.choice(countries)}"
+            
+                else:
+                    description = f"{event_type.replace('_', ' ').title()} detected"
+                
+                # Write the log entry
+                log_entry = f"{timestamp_str}|{level}|{event_type}|{user}|{ip_address}|{description}"
+                f.write(log_entry + '\n')
+    except Exception as e:
+        current_app.logger.error(f"Error creating sample security logs: {str(e)}")
+
+def log_email_event(message_id, sender, recipients, subject, status, user=None, open_count=0, click_count=0, bounce_reason=None):
+    """Log an email event to the email log file.
+    
+    Args:
+        message_id (str): The Gmail message ID or other unique identifier
+        sender (str): The email sender
+        recipients (str or list): The email recipient(s)
+        subject (str): The email subject
+        status (str): The email status (e.g., 'SENT', 'DELIVERED', 'OPENED', 'CLICKED', 'BOUNCED', 'FAILED')
+        user (dict or str): User information who sent the email (dict with 'name' and 'email' keys, or string)
+        open_count (int): Number of times the email was opened
+        click_count (int): Number of times links in the email were clicked
+        bounce_reason (str): Reason for bounce if status is 'BOUNCED'
+    """
+    try:
+        log_dir = get_log_directory()
+        email_log_path = os.path.join(log_dir, 'email.log')
+        
+        # Create the log directory if it doesn't exist
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Format the timestamp
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Format the user information
+        if isinstance(user, dict) and 'name' in user and 'email' in user:
+            user_info = f"{user['name']} <{user['email']}>"
+        elif isinstance(user, dict) and 'name' in user:
+            user_info = user['name']
+        elif isinstance(user, str):
+            user_info = user
+        else:
+            user_info = 'System'
+        
+        # Format recipients if it's a list
+        if isinstance(recipients, list):
+            recipients_str = ', '.join(recipients)
+        else:
+            recipients_str = recipients
+        
+        # Format the log entry
+        log_entry = f"{timestamp}|{message_id}|{status}|{user_info}|{sender}|{recipients_str}|{subject}|{open_count}|{click_count}|{bounce_reason or 'None'}"
+        
+        # Write to the log file
+        with open(email_log_path, 'a') as f:
+            f.write(log_entry + '\n')
+    except Exception as e:
+        current_app.logger.error(f"Error logging email event: {str(e)}")
+
+def get_email_logs(max_entries=100, status_filter=None, search_term=None, days=30, sender=None, recipient=None):
+    """Get email logs from the email log file.
+    
+    Args:
+        max_entries (int): Maximum number of log entries to return
+        status_filter (str): Filter logs by status (e.g., 'SENT', 'OPENED', 'BOUNCED')
+        search_term (str): Filter logs by search term (searches in subject)
+        days (int): Number of days to look back for logs
+        sender (str): Filter logs by sender email
+        recipient (str): Filter logs by recipient email
+        
+    Returns:
+        list: List of email log entries
+    """
+    try:
+        log_dir = get_log_directory()
+        email_log_path = os.path.join(log_dir, 'email.log')
+        
+        # Check if log file exists
+        if not os.path.exists(email_log_path):
+            return []
+        
+        # Calculate the cutoff date for filtering by days
+        cutoff_date = datetime.datetime.now() - datetime.timedelta(days=days)
+        
+        # Read and parse the log file
+        email_logs = []
+        with open(email_log_path, 'r') as f:
+            for line in f:
+                try:
+                    # Parse the log entry
+                    parts = line.strip().split('|')
+                    if len(parts) < 10:  # Ensure we have all required fields
+                        continue
+                    
+                    timestamp_str, message_id, status, user, sender_email, recipients, subject, open_count, click_count, bounce_reason = parts
+                    
+                    # Parse timestamp
+                    timestamp = datetime.datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                    
+                    # Skip entries older than the cutoff date
+                    if timestamp < cutoff_date:
+                        continue
+                    
+                    # Apply filters
+                    if status_filter and status.upper() != status_filter.upper():
+                        continue
+                    
+                    if search_term and search_term.lower() not in subject.lower():
+                        continue
+                    
+                    if sender and sender.lower() not in sender_email.lower():
+                        continue
+                    
+                    if recipient and recipient.lower() not in recipients.lower():
+                        continue
+                    
+                    # Add the log entry to the list
+                    email_logs.append({
+                        'id': message_id,
+                        'timestamp': timestamp,
+                        'status': status,
+                        'user': user,
+                        'sender': sender_email,
+                        'recipients': recipients,
+                        'subject': subject,
+                        'open_count': int(open_count) if open_count.isdigit() else 0,
+                        'click_count': int(click_count) if click_count.isdigit() else 0,
+                        'bounce_reason': None if bounce_reason == 'None' else bounce_reason
+                    })
+                except Exception as e:
+                    current_app.logger.error(f"Error parsing email log line: {str(e)}")
+                    continue
+        
+        # Sort email logs by timestamp in descending order
+        email_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        # Limit the number of entries
+        email_logs = email_logs[:max_entries]
+        
+        return email_logs
+    except Exception as e:
+        current_app.logger.error(f"Error getting email logs: {str(e)}")
+        return []
+
+
+def log_database_event(operation, table, status, duration, user=None, records_affected=0, query=None):
+    """Log a database operation event to the database log file.
+    
+    Args:
+        operation (str): The database operation (e.g., 'SELECT', 'INSERT', 'UPDATE', 'DELETE')
+        table (str): The database table being operated on
+        status (str): The status of the operation (e.g., 'SUCCESS', 'FAILED', 'SLOW')
+        duration (int): The duration of the operation in milliseconds
+        user (dict or str): User information who performed the operation (dict with 'name' and 'email' keys, or string)
+        records_affected (int): Number of records affected by the operation
+        query (str): The SQL query that was executed (optional)
+    """
+    try:
+        log_dir = get_log_directory()
+        db_log_path = os.path.join(log_dir, 'database.log')
+        
+        # Create the log directory if it doesn't exist
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Generate a unique ID for the database operation
+        operation_id = str(uuid.uuid4())
+        
+        # Format timestamp
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Format user information
+        if isinstance(user, dict) and 'name' in user and 'email' in user:
+            user_info = f"{user['name']} <{user['email']}>"
+        elif isinstance(user, dict) and 'name' in user:
+            user_info = user['name']
+        elif isinstance(user, dict) and 'email' in user:
+            user_info = user['email']
+        elif isinstance(user, str):
+            user_info = user
+        else:
+            user_info = 'System'
+        
+        # Truncate query if it's too long
+        query_str = 'None'
+        if query:
+            # Limit query to 500 characters to prevent log file bloat
+            query_str = query[:500] + '...' if len(query) > 500 else query
+            # Replace any pipe characters that would break our log format
+            query_str = query_str.replace('|', '|')
+        
+        # Format the log entry
+        log_entry = f"{timestamp}|{operation_id}|{operation}|{table}|{status}|{user_info}|{duration}|{records_affected}|{query_str}"
+        
+        # Write to the log file
+        with open(db_log_path, 'a') as f:
+            f.write(log_entry + '\n')
+    except Exception as e:
+        current_app.logger.error(f"Error logging database event: {str(e)}")
+
+
+def get_database_logs(max_entries=100, operation_filter=None, table_filter=None, status_filter=None, search_term=None, days=30):
+    """Get database operation logs from the database log file.
+    
+    Args:
+        max_entries (int): Maximum number of log entries to return
+        operation_filter (str): Filter logs by operation type (e.g., 'SELECT', 'INSERT')
+        table_filter (str): Filter logs by table name
+        status_filter (str): Filter logs by status (e.g., 'SUCCESS', 'FAILED', 'SLOW')
+        search_term (str): Filter logs by search term (searches in query)
+        days (int): Number of days to look back for logs
+        
+    Returns:
+        list: List of database log entries
+    """
+    try:
+        log_dir = get_log_directory()
+        db_log_path = os.path.join(log_dir, 'database.log')
+        
+        # Check if log file exists
+        if not os.path.exists(db_log_path):
+            return []
+        
+        # Calculate the cutoff date for filtering by days
+        cutoff_date = datetime.datetime.now() - datetime.timedelta(days=days)
+        
+        # Read and parse the log file
+        db_logs = []
+        with open(db_log_path, 'r') as f:
+            for line in f:
+                try:
+                    # Parse the log entry
+                    parts = line.strip().split('|')
+                    if len(parts) < 9:  # Ensure we have all required fields
+                        continue
+                    
+                    timestamp_str, operation_id, operation, table, status, user, duration, records_affected, query = parts
+                    
+                    # Parse timestamp
+                    timestamp = datetime.datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                    
+                    # Skip entries older than the cutoff date
+                    if timestamp < cutoff_date:
+                        continue
+                    
+                    # Apply filters
+                    if operation_filter and operation.upper() != operation_filter.upper():
+                        continue
+                    
+                    if table_filter and table_filter.lower() != table.lower():
+                        continue
+                    
+                    if status_filter and status.upper() != status_filter.upper():
+                        continue
+                    
+                    if search_term and (query == 'None' or search_term.lower() not in query.lower()):
+                        continue
+                    
+                    # Add the log entry to the list
+                    db_logs.append({
+                        'id': operation_id,
+                        'timestamp': timestamp,
+                        'operation': operation,
+                        'table': table,
+                        'status': status,
+                        'user': user,
+                        'duration': int(duration) if duration.isdigit() else 0,
+                        'records_affected': int(records_affected) if records_affected.isdigit() else 0,
+                        'query': None if query == 'None' else query
+                    })
+                except Exception as e:
+                    current_app.logger.error(f"Error parsing database log line: {str(e)}")
+                    continue
+        
+        # Sort database logs by timestamp in descending order
+        db_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        # Limit the number of entries
+        db_logs = db_logs[:max_entries]
+        
+        return db_logs
+    except Exception as e:
+        current_app.logger.error(f"Error getting database logs: {str(e)}")
+        return []
+
+def log_security_event(level, event_type, description, user=None, ip_address=None):
+    """Log a security event to the security log file.
+    
+    Args:
+        level (str): The severity level (e.g., 'CRITICAL', 'WARNING', 'INFO')
+        event_type (str): The type of security event (e.g., 'LOGIN_FAILURE', 'PERMISSION_DENIED')
+        description (str): A description of the security event
+        user (dict or str): User information (dict with 'name' and 'email' keys, or string)
+        ip_address (str): The IP address associated with the event
+    """
+    try:
+        log_dir = get_log_directory()
+        security_log_path = os.path.join(log_dir, 'security.log')
+        
+        # Create the log directory if it doesn't exist
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Format the timestamp
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Format the user information
+        if isinstance(user, dict) and 'name' in user and 'email' in user:
+            user_info = f"{user['name']} <{user['email']}>"
+        elif isinstance(user, dict) and 'name' in user:
+            user_info = user['name']
+        elif isinstance(user, str):
+            user_info = user
+        else:
+            user_info = 'Anonymous'
+        
+        # Format the log entry
+        log_entry = f"{timestamp}|{level}|{event_type}|{user_info}|{ip_address or 'None'}|{description}"
+        
+        # Write to the log file
+        with open(security_log_path, 'a') as f:
+            f.write(log_entry + '\n')
+    except Exception as e:
+        current_app.logger.error(f"Error logging security event: {str(e)}")
 
 def log_system_event(level, message):
     """Log a system event."""

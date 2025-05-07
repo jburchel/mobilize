@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - DB_CONNECTION_STRING=postgresql://jimburchel@db:5432/mobilize
+      - SQLALCHEMY_DATABASE_URI=postgresql://jimburchel@db:5432/mobilize
+    command: >  
+      sh -c "python run_dev.py"
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - mobilize-network
+
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=mobilize
+    ports:
+      - "5432:5432"
+    networks:
+      - mobilize-network
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - mobilize-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  mobilize-network:
+    driver: bridge

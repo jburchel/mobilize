@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth Redirect URI Update Instructions</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #1a73e8;
+        }
+        .step {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-left: 4px solid #1a73e8;
+            background-color: #f8f9fa;
+        }
+        code {
+            background-color: #f1f3f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .important {
+            color: #d93025;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google OAuth Redirect URI Update Instructions</h1>
+    
+    <p>To fix the "Access blocked: Authorization Error" when signing in with Google, you need to update the authorized redirect URIs in the Google Cloud Console.</p>
+    
+    <div class="step">
+        <h3>Step 1: Access the Google Cloud Console</h3>
+        <p>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console Credentials Page</a></p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 2: Find Your OAuth Client</h3>
+        <p>Click on the OAuth 2.0 Client ID named "Mobilize CRM" or similar in the list of credentials.</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 3: Add the Correct Redirect URI</h3>
+        <p>In the "Authorized redirect URIs" section, add the following URI:</p>
+        <code>https://mobilize-crm.org/api/auth/google/callback</code><br>
+        <code>https://mobilize-crm-1069318103780.us-central1.run.app/api/auth/google/callback</code>
+        <p>Make sure to click the "ADD URI" button after pasting the URI.</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 4: Save Your Changes</h3>
+        <p>Click the "SAVE" button at the bottom of the page to save your changes.</p>
+    </div>
+    
+    <div class="step">
+        <h3>Step 5: Test the Sign-In Flow</h3>
+        <p>Go back to your application and try signing in with Google again.</p>
+        <p>The URL should be: <a href="https://mobilize-crm.org/api/auth/login-page" target="_blank" rel="noopener">https://mobilize-crm.org/api/auth/login-page</a></p>
+    </div>
+    
+    <p class="important">Note: It may take a few minutes for the changes to propagate through Google's systems.</p>
+</body>
+</html>

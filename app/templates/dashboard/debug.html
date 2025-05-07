@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Debug - Mobilize CRM{% endblock %}
+
+{% block page_title %}Dashboard Debug{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Pipeline Chart API Debug</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <button id="test-person-api" class="btn btn-primary">Test People Pipeline API</button>
+                        <button id="test-church-api" class="btn btn-success ms-2">Test Church Pipeline API</button>
+                    </div>
+                    <div class="mb-3">
+                        <h6>API Response:</h6>
+                        <pre id="api-response" class="bg-light p-3" style="max-height: 400px; overflow: auto;">Click a button to test the API</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Test People Pipeline API
+    document.getElementById('test-person-api').addEventListener('click', function() {
+        testApi('person');
+    });
+    
+    // Test Church Pipeline API
+    document.getElementById('test-church-api').addEventListener('click', function() {
+        testApi('church');
+    });
+    
+    function testApi(pipelineType) {
+        const responseElement = document.getElementById('api-response');
+        responseElement.textContent = 'Loading...';
+        
+        // Try different endpoints
+        const endpoints = [
+            `/dashboard/pipeline-chart-data?type=${pipelineType}`,
+            `/dashboard/api/chart-data/${pipelineType}`,
+            `/dashboard/debug/chart-data/${pipelineType}`
+        ];
+        
+        // Try each endpoint
+        tryEndpoint(endpoints, 0, responseElement, pipelineType);
+    }
+    
+    function tryEndpoint(endpoints, index, responseElement, pipelineType) {
+        if (index >= endpoints.length) {
+            responseElement.textContent = 'All endpoints failed';
+            return;
+        }
+        
+        const endpoint = endpoints[index];
+        responseElement.textContent = `Trying ${endpoint}...`;
+        
+        fetch(endpoint)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(text => {
+                try {
+                    // Try to parse as JSON
+                    const data = JSON.parse(text);
+                    responseElement.textContent = JSON.stringify(data, null, 2);
+                    
+                    // Check if the data has the expected structure
+                    if (data.stages) {
+                        responseElement.innerHTML += '\n\n<span class="text-success">✓ Data has stages array</span>';
+                    } else {
+                        responseElement.innerHTML += '\n\n<span class="text-danger">✗ Data is missing stages array</span>';
+                    }
+                    
+                    // Check pipeline_id
+                    if (data.pipeline_id) {
+                        responseElement.innerHTML += `\n<span class="text-success">✓ Pipeline ID: ${data.pipeline_id}</span>`;
+                    } else {
+                        responseElement.innerHTML += '\n<span class="text-danger">✗ Missing pipeline_id</span>';
+                    }
+                    
+                    // Check if stages have the required properties
+                    if (data.stages && data.stages.length > 0) {
+                        const firstStage = data.stages[0];
+                        const requiredProps = ['name', 'count', 'percentage', 'color'];
+                        const missingProps = requiredProps.filter(prop => !(prop in firstStage));
+                        
+                        if (missingProps.length === 0) {
+                            responseElement.innerHTML += '\n<span class="text-success">✓ Stages have all required properties</span>';
+                        } else {
+                            responseElement.innerHTML += `\n<span class="text-danger">✗ Stages missing properties: ${missingProps.join(', ')}</span>`;
+                        }
+                    }
+                } catch (e) {
+                    responseElement.textContent = `Error parsing JSON: ${e.message}\n\nRaw response:\n${text}`;
+                    
+                    // Try next endpoint
+                    setTimeout(() => {
+                        tryEndpoint(endpoints, index + 1, responseElement, pipelineType);
+                    }, 500);
+                }
+            })
+            .catch(error => {
+                responseElement.textContent = `Error fetching from ${endpoint}: ${error.message}`;
+                
+                // Try next endpoint
+                setTimeout(() => {
+                    tryEndpoint(endpoints, index + 1, responseElement, pipelineType);
+                }, 500);
+            });
+    }
+});
+</script>
+{% endblock %}
