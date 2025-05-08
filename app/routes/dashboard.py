@@ -188,6 +188,9 @@ def dashboard_stats_api():
 
 @dashboard_bp.route('/dashboard/api/chart-data/<pipeline_type>', methods=['GET'])
 @dashboard_bp.route('/dashboard/pipeline-chart-data', methods=['GET'])
+@dashboard_bp.route('/dashboard/debug/chart-data/<pipeline_type>', methods=['GET'])
+@dashboard_bp.route('/dashboard/fallback-chart-data/<pipeline_type>', methods=['GET'])
+@dashboard_bp.route('/dashboard/api/chart/<pipeline_type>', methods=['GET'])
 @login_required
 def pipeline_chart_data(pipeline_type=None):
     """API endpoint to get pipeline chart data."""
