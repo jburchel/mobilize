@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Person Chart Test</h1>
+    
+    <div id="person-chart-container" style="width: 400px; height: 400px;"></div>
+    
+    <script>
+        // Sample data matching what we get from the API
+        const personData = {
+            "pipeline_id": 3,
+            "pipeline_name": "Main Person Pipeline",
+            "pipeline_type": "person",
+            "total_contacts": 5,
+            "stages": [
+                {
+                    "id": 1,
+                    "name": "PROMOTION",
+                    "position": 1,
+                    "color": "#3498db",
+                    "contact_count": 5,
+                    "percentage": 100
+                },
+                {
+                    "id": 2,
+                    "name": "INFORMATION",
+                    "position": 2,
+                    "color": "#2ecc71",
+                    "contact_count": 0,
+                    "percentage": 0
+                },
+                {
+                    "id": 3,
+                    "name": "INVITATION",
+                    "position": 3,
+                    "color": "#f1c40f",
+                    "contact_count": 0,
+                    "percentage": 0
+                },
+                {
+                    "id": 4,
+                    "name": "CONFIRMATION",
+                    "position": 4,
+                    "color": "#e67e22",
+                    "contact_count": 0,
+                    "percentage": 0
+                },
+                {
+                    "id": 5,
+                    "name": "AUTOMATION",
+                    "position": 5,
+                    "color": "#1abc9c",
+                    "contact_count": 0,
+                    "percentage": 0
+                }
+            ]
+        };
+        
+        // Create a simple pie chart
+        function createSimplePieChart() {
+            const container = document.getElementById('person-chart-container');
+            container.innerHTML = '';
+            
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+            
+            const labels = personData.stages.map(stage => stage.name);
+            const data = personData.stages.map(stage => stage.contact_count);
+            const colors = personData.stages.map(stage => stage.color);
+            
+            // Filter out stages with zero contacts
+            const filteredLabels = [];
+            const filteredData = [];
+            const filteredColors = [];
+            
+            for (let i = 0; i < labels.length; i++) {
+                if (data[i] > 0) {
+                    filteredLabels.push(labels[i]);
+                    filteredData.push(data[i]);
+                    filteredColors.push(colors[i]);
+                }
+            }
+            
+            // If no data, add a placeholder
+            if (filteredData.length === 0) {
+                filteredLabels.push('No Data');
+                filteredData.push(1);
+                filteredColors.push('#cccccc');
+            }
+            
+            new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: filteredLabels,
+                    datasets: [{
+                        data: filteredData,
+                        backgroundColor: filteredColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        // Create the chart when page loads
+        window.addEventListener('DOMContentLoaded', createSimplePieChart);
+    </script>
+</body>
+</html>

@@ -2,12 +2,12 @@
 
 ## Dashboard Page
 
-- [x] Charts are not appearing
+- [x] Charts are now appearing correctly
 - [ ] Both View Pipeline buttons take considerable time to load the pages
 - [x] The People page link (sidebar) takes forever to load the page
-- [ ] The Churches page link (sidebar) takes forever to load
+- [x] The Churches page link (sidebar) takes forever to load
 - [x] The Tasks page link (sidebar) takes you to the same 'Internal server error'
-- [ ] The Communications page link (sidebar) same as above
+- [x] The Communications page link (sidebar) same as above
 
 ## Sidebar
 
@@ -56,5 +56,5 @@
 
 ## Admin Panel (Dashboard)
 
-- [ ] When you try to delete a user you get a lengthy error message
+- [x] When you try to delete a user you get a lengthy error message
 - [ ] System settings and Logs & Monitoring need to be hooked up (for a later iteration)

@@ -3,7 +3,6 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app.models.church import Church
 from app.models.person import Person
-from app.models.office import Office
 from app.models.pipeline import Pipeline, PipelineStage, PipelineContact
 from app.forms.church import ChurchForm
 from app.forms.import_form import ImportForm, FieldMappingForm
@@ -22,9 +21,11 @@ churches_bp = Blueprint('churches', __name__, template_folder='../templates/chur
 @office_required
 def index():
     """Show list of all churches with optimized loading."""
-    from sqlalchemy.orm import joinedload, contains_eager
+    from sqlalchemy.orm import joinedload
     from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
+    from sqlalchemy import func
     import time
+    from flask import current_app
     
     # Track performance
     start_time = time.time()
@@ -34,28 +35,46 @@ def index():
     page = request.args.get('page', 1, type=int)
     offset = (page - 1) * per_page
     
-    # Get the main pipeline for churches - use caching to avoid repeated lookups
-    main_pipeline = Pipeline.query.filter_by(
-        pipeline_type='church',
-        is_main_pipeline=True,
-        office_id=current_user.office_id if not current_user.is_super_admin() else None
-    ).first()
+    # Cache key for main pipeline - use request-level caching
+    cache_key = f"main_pipeline_church_{current_user.office_id if not current_user.is_super_admin() else 'all'}"
     
-    # Build the base query with eager loading and pagination
-    query = Church.query\
-        .options(
-            joinedload(Church.main_contact),  # Eager load main contact
-            joinedload(Church.owner)          # Eager load owner
-        )
+    # Try to get pipeline from cache first
+    if hasattr(current_app, 'request_cache') and cache_key in current_app.request_cache:
+        main_pipeline = current_app.request_cache[cache_key]
+    else:
+        # Get the main pipeline for churches with optimized query
+        main_pipeline = Pipeline.query.filter_by(
+            pipeline_type='church',
+            is_main_pipeline=True,
+            office_id=current_user.office_id if not current_user.is_super_admin() else None
+        ).first()
+        
+        # Store in request cache
+        if not hasattr(current_app, 'request_cache'):
+            current_app.request_cache = {}
+        current_app.request_cache[cache_key] = main_pipeline
     
-    # Apply office filter for non-super admins
+    # Build the base query with optimized eager loading
+    query = Church.query
+    
+    # Apply office filter for non-super admins - use index
     if not current_user.is_super_admin():
         query = query.filter_by(office_id=current_user.office_id)
     
-    # Get total count for pagination (use optimized count query)
-    total_count = query.count()
+    # Get total count for pagination using optimized count query
+    # Use a separate, simpler query just for counting to improve performance
+    count_query = db.session.query(func.count(Church.id))
+    if not current_user.is_super_admin():
+        count_query = count_query.filter(Church.office_id == current_user.office_id)
+    total_count = count_query.scalar()
     
-    # Apply pagination to the query
+    # Now add the eager loading options for the main query
+    query = query.options(
+        joinedload(Church.main_contact),  # Eager load main contact
+        joinedload(Church.owner)          # Eager load owner
+    )
+    
+    # Apply pagination to the query with ordering
     query = query.order_by(Church.name).limit(per_page).offset(offset)
     
     # Execute the query with pagination
@@ -63,38 +82,37 @@ def index():
     
     # Log query execution time
     query_time = time.time() - start_time
-    print(f"Churches query executed in {query_time:.2f} seconds")
+    current_app.logger.info(f"Churches query executed in {query_time:.2f} seconds")
     
-    # Only fetch pipeline data for the churches we're actually displaying
+    # Batch load pipeline data for the churches we're displaying
     if main_pipeline and churches:
         # Get church IDs for the current page
         church_ids = [church.id for church in churches]
         
-        # Get pipeline contacts only for the churches we're displaying
-        contacts = PipelineContact.query.filter(
+        # Optimize pipeline contacts query with a single query
+        pipeline_start = time.time()
+        
+        # Use a join to get both contacts and stages in a single query
+        pipeline_data = db.session.query(
+            PipelineContact.contact_id, 
+            PipelineStage.name
+        ).join(
+            PipelineStage, 
+            PipelineContact.current_stage_id == PipelineStage.id
+        ).filter(
             PipelineContact.pipeline_id == main_pipeline.id,
             PipelineContact.contact_id.in_(church_ids)
         ).all()
         
-        # Create lookup dictionaries
-        pipeline_contacts = {contact.contact_id: contact.current_stage_id for contact in contacts}
+        # Create a lookup dictionary for fast access
+        pipeline_stages = {contact_id: stage_name for contact_id, stage_name in pipeline_data}
         
-        # Get only the stage IDs we need
-        stage_ids = [pc.current_stage_id for pc in contacts if pc.current_stage_id is not None]
-        
-        # Get pipeline stages only if we have stage IDs
-        if stage_ids:
-            stages = PipelineStage.query.filter(PipelineStage.id.in_(stage_ids)).all()
-            pipeline_stages = {stage.id: stage.name for stage in stages}
+        # Attach pipeline stage names to churches - O(n) operation
+        for church in churches:
+            church.cached_pipeline_stage = pipeline_stages.get(church.id)
             
-            # Attach pipeline stage names to churches
-            for church in churches:
-                stage_id = pipeline_contacts.get(church.id)
-                church.cached_pipeline_stage = pipeline_stages.get(stage_id) if stage_id else None
-        else:
-            # No stages found, set all to None
-            for church in churches:
-                church.cached_pipeline_stage = None
+        pipeline_time = time.time() - pipeline_start
+        current_app.logger.info(f"Pipeline data loaded in {pipeline_time:.2f} seconds")
     
     # Calculate pagination info
     total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
@@ -785,7 +803,7 @@ def search():
                 query = query.join(PipelineContact, Church.id == PipelineContact.contact_id) \
                            .join(PipelineStage, PipelineContact.current_stage_id == PipelineStage.id) \
                            .join(Pipeline, Pipeline.id == PipelineContact.pipeline_id) \
-                           .filter(Pipeline.is_main_pipeline == True) \
+                .filter(Pipeline.is_main_pipeline) \
                            .filter(PipelineStage.name == stage)
                 pipeline_match = True
                 break

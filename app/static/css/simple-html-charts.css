@@ -1,0 +1,121 @@
+/* Simple HTML/CSS Charts for Mobilize Dashboard */
+
+/* Chart containers */
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Pie chart styles */
+.html-pie-chart {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background-color: #f8f9fc;
+  margin: 20px auto;
+  overflow: hidden;
+}
+
+.pie-segment {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  transition: transform 0.3s ease;
+}
+
+/* Bar chart styles */
+.html-bar-chart {
+  width: 100%;
+  max-width: 400px;
+  margin: 20px auto;
+}
+
+.bar-container {
+  margin-bottom: 15px;
+}
+
+.bar-label {
+  font-size: 14px;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.bar {
+  height: 25px;
+  background-color: #f8f9fc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.percentage-label {
+  font-size: 12px;
+  margin-top: 3px;
+  text-align: right;
+}
+
+/* Legend styles */
+.html-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 15px;
+  max-width: 400px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin: 5px 10px;
+}
+
+.color-box {
+  width: 15px;
+  height: 15px;
+  margin-right: 5px;
+  border-radius: 3px;
+}
+
+.legend-label {
+  font-size: 12px;
+}
+
+/* Loading and error states */
+.chart-loading, .chart-error, .chart-empty {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  width: 100%;
+  text-align: center;
+  color: #858796;
+}
+
+.chart-loading {
+  flex-direction: column;
+}
+
+.chart-loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #4e73df;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

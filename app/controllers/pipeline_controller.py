@@ -295,66 +295,50 @@ def view(pipeline_id):
             if missing_contacts:
                 current_app.logger.info(f"First 5 pipeline contacts DB records: {missing_contacts[:5]}")
 
-        # Get available contacts to populate the Add Contact dropdown based on user role - OPTIMIZED VERSION
+        # Get available contacts to populate the Add Contact dropdown based on user role - FURTHER OPTIMIZED VERSION
         start_time = datetime.now()
         current_app.logger.info(f"Starting available contacts query at {start_time}")
         
-        people = []
-        churches = []
+        # We'll load contacts lazily only when the user clicks 'Add Contact'
+        # This significantly improves initial page load time
         
-        # Get IDs of contacts already in this pipeline - use a more efficient query
-        existing_contact_ids = db.session.query(PipelineContact.contact_id)\
-                                       .filter(PipelineContact.pipeline_id == pipeline_id)\
-                                       .all()
-        existing_contact_ids = [p[0] for p in existing_contact_ids]
+        # Instead of loading all available contacts on page load, we'll defer this to an AJAX request
+        # when the user actually clicks the 'Add Contact' button
+        # This is a major performance optimization for the initial page load
         
-        # Only fetch dropdown contacts if we have a reasonable number of existing contacts
-        # This prevents performance issues with large exclusion lists
-        max_exclusion_list = 1000  # Set a reasonable limit
+        # Just get the counts for UI display
+        people_count = 0
+        churches_count = 0
         
-        # For people pipeline type
+        # Only do lightweight count queries for UI display
         if pipeline.pipeline_type in ['person', 'people', 'both']:
-            people_query = Person.query
-            
-            # Apply exclusion for existing contacts - only if the list is not too large
-            if existing_contact_ids and len(existing_contact_ids) < max_exclusion_list:
-                people_query = people_query.filter(~Person.id.in_(existing_contact_ids))
+            people_count_query = db.session.query(db.func.count(Person.id))
             
             # Apply filters based on user role
             if not current_user.is_super_admin():
-                # Add office filter for non-super admins
-                people_query = people_query.filter(Person.office_id == current_user.office_id)
-                
-                # Regular users see only their assigned people
+                people_count_query = people_count_query.filter(Person.office_id == current_user.office_id)
                 if current_user.role != 'office_admin':
-                    people_query = people_query.filter(Person.assigned_to_id == current_user.id)
+                    people_count_query = people_count_query.filter(Person.assigned_to_id == current_user.id)
             
-            # Limit the number of results to improve performance
-            people = people_query.limit(100).all()
-
-        # For church pipeline type
+            people_count = people_count_query.scalar() or 0
+            
+        # For church pipeline type - just get the count
         if pipeline.pipeline_type in ['church', 'both']:
-            church_query = Church.query
-            
-            # Apply exclusion for existing contacts - only if the list is not too large
-            if existing_contact_ids and len(existing_contact_ids) < max_exclusion_list:
-                church_query = church_query.filter(~Church.id.in_(existing_contact_ids))
+            church_count_query = db.session.query(db.func.count(Church.id))
             
             # Apply filters based on user role
             if not current_user.is_super_admin():
-                # Add office filter for non-super admins
-                church_query = church_query.filter(Church.office_id == current_user.office_id)
-                
-                # Regular users see only their assigned churches
+                church_count_query = church_count_query.filter(Church.office_id == current_user.office_id)
                 if current_user.role != 'office_admin':
-                    church_query = church_query.filter(Church.assigned_to_id == current_user.id)
+                    church_count_query = church_count_query.filter(Church.assigned_to_id == current_user.id)
             
-            # Limit the number of results to improve performance
-            churches = church_query.limit(100).all()
+            churches_count = church_count_query.scalar() or 0
+            
+        current_app.logger.info(f"Available contacts count query: {people_count} people, {churches_count} churches")
         
         query_time = datetime.now() - start_time
         current_app.logger.info(f"Available contacts query completed in {query_time.total_seconds():.2f} seconds")
-        current_app.logger.info(f"Found {len(people)} available people and {len(churches)} available churches for dropdown")
+        current_app.logger.info(f"Found {people_count} available people and {churches_count} available churches for dropdown")
             
         # Calculate total time for the view function
         total_time = datetime.now() - start_time
@@ -365,8 +349,8 @@ def view(pipeline_id):
                             pipeline=pipeline,
                             stages=stages,
                             contacts_by_stage=contacts_by_stage,
-                            people=people,
-                            churches=churches)
+                            people_count=people_count,
+                            churches_count=churches_count)
     except Exception as e:
         current_app.logger.error(f"Error viewing pipeline: {str(e)}")
         import traceback
@@ -829,31 +813,141 @@ def history(pipeline_id):
                               history_items=history_items,
                               page_title=f"Pipeline History - {pipeline.name}")
 
-@pipeline_bp.route('/api/pipeline/<int:pipeline_id>/contacts')
+@pipeline_bp.route('/api/pipeline-contacts/<int:pipeline_id>')
 @login_required
 def api_pipeline_contacts(pipeline_id):
     """API endpoint to get all contacts in a pipeline with their stages."""
     pipeline = Pipeline.query.get_or_404(pipeline_id)
     
+    # Check if user has permission to view this pipeline
+    if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
+        return jsonify({
+            'error': 'You do not have permission to view this pipeline'
+        }), 403
+    
     pipeline_contacts = PipelineContact.query.filter_by(pipeline_id=pipeline_id).all()
     
+    # Format the response
     result = []
     for pc in pipeline_contacts:
-        contact = Contact.query.get(pc.contact_id)
-        if contact:
-            stage = PipelineStage.query.get(pc.current_stage_id)
-            result.append({
-                'pipeline_contact_id': pc.id,
-                'contact_id': contact.id,
-                'contact_name': f"{contact.first_name} {contact.last_name}",
-                'stage_id': pc.current_stage_id,
-                'stage_name': stage.name if stage else 'Unknown',
-                'days_in_stage': (datetime.utcnow() - pc.last_updated).days,
-                'entered_at': pc.entered_at.isoformat() if pc.entered_at else None,
-                'last_updated': pc.last_updated.isoformat() if pc.last_updated else None
-            })
+        contact = pc.contact
+        stage = pc.current_stage
+        
+        result.append({
+            'id': pc.id,
+            'contact_id': pc.contact_id,
+            'contact_name': contact.get_name() if hasattr(contact, 'get_name') else 'Unknown',
+            'stage_id': stage.id if stage else None,
+            'stage_name': stage.name if stage else 'None'
+        })
     
     return jsonify(result)
+
+@pipeline_bp.route('/api/available-contacts/<int:pipeline_id>')
+@login_required
+def api_available_contacts(pipeline_id):
+    """API endpoint to get available contacts for a pipeline.
+    This is called via AJAX when the user clicks 'Add Contact' to improve initial page load time."""
+    try:
+        # Start timing
+        start_time = datetime.now()
+        
+        # Get the pipeline
+        pipeline = Pipeline.query.get_or_404(pipeline_id)
+        
+        # Check if user has permission to view this pipeline
+        if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
+            return jsonify({
+                'error': 'You do not have permission to view this pipeline'
+            }), 403
+        
+        # Get IDs of contacts already in this pipeline - use a more efficient query
+        existing_contact_ids = db.session.query(PipelineContact.contact_id)\
+                                       .filter(PipelineContact.pipeline_id == pipeline_id)\
+                                       .all()
+        existing_contact_ids = [p[0] for p in existing_contact_ids]
+        
+        # Only fetch dropdown contacts if we have a reasonable number of existing contacts
+        # This prevents performance issues with large exclusion lists
+        max_exclusion_list = 1000  # Set a reasonable limit
+        
+        people = []
+        churches = []
+        
+        # For people pipeline type
+        if pipeline.pipeline_type in ['person', 'people', 'both']:
+            people_query = Person.query
+            
+            # Apply exclusion for existing contacts - only if the list is not too large
+            if existing_contact_ids and len(existing_contact_ids) < max_exclusion_list:
+                people_query = people_query.filter(~Person.id.in_(existing_contact_ids))
+            
+            # Apply filters based on user role
+            if not current_user.is_super_admin():
+                # Add office filter for non-super admins
+                people_query = people_query.filter(Person.office_id == current_user.office_id)
+                
+                # Regular users see only their assigned people
+                if current_user.role != 'office_admin':
+                    people_query = people_query.filter(Person.assigned_to_id == current_user.id)
+            
+            # Limit the number of results to improve performance
+            people = people_query.limit(100).all()
+            
+            # Format people for JSON response
+            people_json = [{
+                'id': person.id,
+                'name': f"{person.first_name} {person.last_name}",
+                'type': 'person'
+            } for person in people]
+
+        # For church pipeline type
+        if pipeline.pipeline_type in ['church', 'both']:
+            church_query = Church.query
+            
+            # Apply exclusion for existing contacts - only if the list is not too large
+            if existing_contact_ids and len(existing_contact_ids) < max_exclusion_list:
+                church_query = church_query.filter(~Church.id.in_(existing_contact_ids))
+            
+            # Apply filters based on user role
+            if not current_user.is_super_admin():
+                # Add office filter for non-super admins
+                church_query = church_query.filter(Church.office_id == current_user.office_id)
+                
+                # Regular users see only their assigned churches
+                if current_user.role != 'office_admin':
+                    church_query = church_query.filter(Church.assigned_to_id == current_user.id)
+            
+            # Limit the number of results to improve performance
+            churches = church_query.limit(100).all()
+            
+            # Format churches for JSON response
+            churches_json = [{
+                'id': church.id,
+                'name': church.name,
+                'type': 'church'
+            } for church in churches]
+        
+        # Calculate query time
+        query_time = datetime.now() - start_time
+        current_app.logger.info(f"Available contacts API query completed in {query_time.total_seconds():.2f} seconds")
+        
+        # Return the formatted response
+        return jsonify({
+            'people': people_json if 'people_json' in locals() else [],
+            'churches': churches_json if 'churches_json' in locals() else [],
+            'pipeline_type': pipeline.pipeline_type
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in available contacts API: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({
+            'error': f"Error loading available contacts: {str(e)}"
+        }), 500
+
+# This endpoint was replaced by /api/pipeline-contacts/<int:pipeline_id>
 
 @pipeline_bp.route('/<int:pipeline_id>/delete', methods=['POST'])
 @login_required

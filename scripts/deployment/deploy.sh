@@ -45,7 +45,9 @@ ENV_VARS="FLASK_APP=app,FLASK_ENV=production,PREFERRED_URL_SCHEME=https"
 # Secrets to update
 # Format: SECRET_ENV_VAR=SECRET_NAME:VERSION
 # Using the actual secret names from the Google Cloud project
-SECRETS="DB_CONNECTION_STRING=mobilize-db-connection-string:latest,GOOGLE_CLIENT_ID=mobilize-google-client-id:latest,GOOGLE_CLIENT_SECRET=mobilize-google-client-secret:latest,BASE_URL=BASE_URL:latest"
+SECRETS="GOOGLE_CLIENT_ID=mobilize-google-client-id:latest,GOOGLE_CLIENT_SECRET=mobilize-google-client-secret:latest,BASE_URL=BASE_URL:latest"
+
+# Temporarily removed DB_CONNECTION_STRING due to type mismatch errors
 
 # Function to restart the service
 restart_service() {

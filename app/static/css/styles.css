@@ -745,6 +745,11 @@ h1, h2, h3, h4, h5, h6 {
     color: #0f5132;
 }
 
+.priority-urgent {
+    background-color: #dc3545;
+    color: #fff;
+}
+
 /* Add these brand color utility classes after the existing utility classes */
 
 /* Brand utility classes */
