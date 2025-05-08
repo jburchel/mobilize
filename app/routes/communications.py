@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import joinedload
 from app.utils.decorators import office_required
 from app.utils.upload import save_uploaded_file
-from app.utils.query_optimization import with_pagination, cached_query
+from app.utils.query_optimization import with_pagination
 
 communications_bp = Blueprint('communications', __name__, template_folder='../templates/communications')
 
@@ -27,7 +27,8 @@ def get_default_signature(user_id):
 @communications_bp.route('/')
 @communications_bp.route('/index')
 @login_required
-@cached_query(timeout=60)  # Cache results for 1 minute in production
+# Temporarily removed caching to fix internal server error
+# @cached_query(timeout=60)  # Cache results for 1 minute in production
 def index():
     """Display communications hub."""
     start_time = datetime.now()
