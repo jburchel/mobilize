@@ -203,8 +203,8 @@
                                     <td>{{ task.title }}</td>
                                     <td>{{ task.due_date.strftime('%Y-%m-%d') }}</td>
                                     <td>
-                                        <span class="priority-badge priority-{{ task.priority.value }}">
-                                            {{ task.priority }}
+                                        <span class="priority-badge priority-{{ task.priority.value.lower() }}">
+                                            {{ task.priority.value.capitalize() }}
                                         </span>
                                     </td>
                                     <td>
@@ -345,7 +345,7 @@ function fetchPipelineChartData(chartType) {
     }
 
     // Make API request
-    const endpoint = `/dashboard/api/chart-data/${chartType}`;
+    const endpoint = `/api/simple-chart-data/${chartType}`;
     logMessage(`Requesting data from ${endpoint}`);
     
     fetch(endpoint)
@@ -439,6 +439,9 @@ function renderChart(chartType, data) {
         logMessage(`Chart container not found: ${containerId}`);
         return;
     }
+    
+    // Debug logging
+    console.log(`Rendering ${chartType} chart with data:`, data);
     
     // Clear existing chart if any
     if (chartType === 'person' && peopleChart) {

@@ -338,8 +338,9 @@ def debug_pipeline_data():
         current_app.logger.error(f"Error in debug pipeline data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
-def pipeline_chart_data(pipeline_type=None):
+# Commented out to avoid route conflict
+# @dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
+def pipeline_chart_data_legacy(pipeline_type=None):
     """API endpoint to get pipeline chart data (legacy).
     This endpoint has been temporarily disabled.
     """
@@ -507,10 +508,18 @@ def pipeline_chart_data(pipeline_type=None):
         current_app.logger.info(f"User office_id: {office_id}, is_super_admin: {is_super_admin}")
         
         # Find the appropriate pipeline
-        pipeline_query = Pipeline.query.filter(
-            Pipeline.is_main_pipeline == True,
-            Pipeline.pipeline_type == pipeline_type
-        )
+        if pipeline_type == 'person':
+            # For person type, check both 'person' and 'people' types
+            pipeline_query = Pipeline.query.filter(
+                Pipeline.is_main_pipeline == True,
+                or_(Pipeline.pipeline_type == 'person', Pipeline.pipeline_type == 'people')
+            )
+        else:
+            # For church type
+            pipeline_query = Pipeline.query.filter(
+                Pipeline.is_main_pipeline == True,
+                Pipeline.pipeline_type == pipeline_type
+            )
         
         # Filter by office unless super admin
         if not is_super_admin:
@@ -531,7 +540,7 @@ def pipeline_chart_data(pipeline_type=None):
         total_contacts = 0
         
         # Get all stages for this pipeline
-        stages = PipelineStage.query.filter_by(pipeline_id=pipeline.id).order_by(PipelineStage.position).all()
+        stages = PipelineStage.query.filter_by(pipeline_id=pipeline.id).order_by(PipelineStage.order).all()
         
         if not stages:
             current_app.logger.warning(f"No stages found for pipeline {pipeline.id}")
@@ -546,23 +555,23 @@ def pipeline_chart_data(pipeline_type=None):
             try:
                 if pipeline_type == 'person':
                     # Count people in this stage
-                    count = Person.query.join(
-                        Person.contact
-                    ).filter(
-                        Person.pipeline_stage_id == stage.id
+                    count = PipelineContact.query.filter(
+                        PipelineContact.current_stage_id == stage.id,
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.contact_type == 'person'
                     ).count()
                 else:
                     # Count churches in this stage
-                    count = Church.query.join(
-                        Church.contact
-                    ).filter(
-                        Church.pipeline_stage_id == stage.id
+                    count = PipelineContact.query.filter(
+                        PipelineContact.current_stage_id == stage.id,
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.contact_type == 'church'
                     ).count()
                     
                 stages_data.append({
                     'id': stage.id,
                     'name': stage.name,
-                    'position': stage.position,
+                    'position': stage.order,
                     'color': stage.color or get_default_color(stage.name),
                     'contact_count': count
                 })
