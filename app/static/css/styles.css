@@ -1009,6 +1009,31 @@ html, body {
     left: 0;
 }
 
+/* Logo styling */
+.logo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+.logo-img {
+    transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .logo-container {
+    padding: 0.5rem 0;
+}
+
+.sidebar.collapsed .logo-img {
+    height: 30px !important;
+    margin-bottom: 0;
+}
+
+.sidebar.collapsed .logo-container .text-white {
+    display: none;
+}
+
 /* Sidebar structure for bottom utilities */
 .sidebar-content {
     height: calc(100vh - 80px); /* Subtract logo height */
