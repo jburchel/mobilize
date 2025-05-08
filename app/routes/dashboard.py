@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, current_app, url_for, red
 from flask_login import login_required, current_user
 from sqlalchemy import or_, and_, desc, func, text
 from app.extensions import db, cache
-from app.models.pipeline import Pipeline, PipelineStage
+from app.models.pipeline import Pipeline, PipelineStage, PipelineContact
 from app.models.task import Task
 from app.models.communication import Communication
 from app.models.church import Church
@@ -20,6 +20,95 @@ dashboard_bp = Blueprint('dashboard', __name__)
 def debug():
     """Render the dashboard debug page."""
     return render_template('dashboard/debug.html')
+
+@dashboard_bp.route('/api/debug/pipelines')
+@login_required
+@office_required
+def debug_pipelines():
+    """Debug endpoint to check pipeline data."""
+    try:
+        # Get main pipelines
+        main_pipelines = Pipeline.query.filter_by(is_main_pipeline=True).all()
+        
+        result = []
+        for pipeline in main_pipelines:
+            pipeline_data = {
+                'id': pipeline.id,
+                'name': pipeline.name,
+                'type': pipeline.pipeline_type,
+                'stages': []
+            }
+            
+            # Get stages for this pipeline
+            stages = PipelineStage.query.filter_by(pipeline_id=pipeline.id).order_by(PipelineStage.order).all()
+            for stage in stages:
+                # Count contacts in this stage
+                if pipeline.pipeline_type in ['person', 'people']:
+                    count = db.session.query(PipelineContact).join(
+                        Person, Person.id == PipelineContact.contact_id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.current_stage_id == stage.id
+                    ).count()
+                    
+                    # Also get the actual people
+                    people = db.session.query(Person).join(
+                        PipelineContact, Person.id == PipelineContact.contact_id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.current_stage_id == stage.id
+                    ).all()
+                    
+                    people_list = [{'id': p.id, 'name': f"{p.first_name} {p.last_name}"} for p in people]
+                else:
+                    count = db.session.query(PipelineContact).join(
+                        Church, Church.id == PipelineContact.contact_id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.current_stage_id == stage.id
+                    ).count()
+                    
+                    # Also get the actual churches
+                    churches = db.session.query(Church).join(
+                        PipelineContact, Church.id == PipelineContact.contact_id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.current_stage_id == stage.id
+                    ).all()
+                    
+                    people_list = [{'id': c.id, 'name': c.name} for c in churches]
+                
+                pipeline_data['stages'].append({
+                    'id': stage.id,
+                    'name': stage.name,
+                    'order': stage.order,
+                    'color': stage.color,
+                    'count': count,
+                    'contacts': people_list
+                })
+                
+            result.append(pipeline_data)
+            
+        # Also get all people and churches
+        all_people = Person.query.count()
+        all_churches = Church.query.count()
+        
+        # Get all pipeline contacts
+        all_pipeline_contacts = PipelineContact.query.count()
+        
+        # Add summary info
+        result.append({
+            'summary': {
+                'total_people': all_people,
+                'total_churches': all_churches,
+                'total_pipeline_contacts': all_pipeline_contacts
+            }
+        })
+            
+        return jsonify(result)
+    except Exception as e:
+        current_app.logger.error(f"Error in debug_pipelines: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @dashboard_bp.route('/')
 @login_required
@@ -249,15 +338,39 @@ def debug_pipeline_data():
         current_app.logger.error(f"Error in debug pipeline data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-
 @dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
-@login_required
-@office_required
 def pipeline_chart_data(pipeline_type=None):
-    """API endpoint to get pipeline chart data."""
+    """API endpoint to get pipeline chart data (legacy).
+    This endpoint has been temporarily disabled.
+    """
+    # Return a message indicating the endpoint is disabled
+    return jsonify({
+        'error': 'Charts disabled',
+        'message': 'Chart functionality has been temporarily disabled'
+    }), 503  # Service Unavailable
+
+@dashboard_bp.route('/api/simple-chart-data/<pipeline_type>', methods=['GET'])
+def simple_pipeline_chart_data(pipeline_type=None):
+    """API endpoint to get simplified pipeline chart data.
+    This endpoint requires authentication and will return a 401 if not authenticated.
+    """
+    # Check if user is authenticated
+    if not current_user.is_authenticated:
+        return jsonify({
+            'error': 'Authentication required',
+            'message': 'You must be logged in to access this endpoint'
+        }), 401
+        
+    # Check if user has an office
+    if not current_user.office_id:
+        return jsonify({
+            'error': 'Office required',
+            'message': 'You must be assigned to an office to access this endpoint'
+        }), 403
+    
     try:
         # Log request details for debugging
-        current_app.logger.info(f"Chart data requested for pipeline type: {pipeline_type}")
+        current_app.logger.info(f"Simple chart data requested for pipeline type: {pipeline_type}")
         
         # Validate pipeline type
         if pipeline_type not in ['person', 'church']:
@@ -269,8 +382,6 @@ def pipeline_chart_data(pipeline_type=None):
         # Get user's office
         office_id = current_user.office_id
         is_super_admin = current_user.role == 'super_admin'
-        
-        current_app.logger.info(f"User office_id: {office_id}, is_super_admin: {is_super_admin}")
         
         # Find the appropriate pipeline
         if pipeline_type == 'person':
@@ -298,8 +409,6 @@ def pipeline_chart_data(pipeline_type=None):
                 'error': f"No {pipeline_type} pipeline found for your office"
             }), 404
             
-        current_app.logger.info(f"Found pipeline: {pipeline.id} - {pipeline.name}")
-            
         # Get pipeline stages with counts
         stages_data = []
         total_contacts = 0
@@ -313,26 +422,33 @@ def pipeline_chart_data(pipeline_type=None):
                 'error': f"No stages found for {pipeline_type} pipeline"
             }), 404
             
-        current_app.logger.info(f"Found {len(stages)} stages for pipeline {pipeline.id}")
-        
         # For each stage, get the count of contacts
         for stage in stages:
             try:
                 if pipeline_type == 'person':
-                    # Count people in this stage
-                    count = Person.query.filter(
-                        Person.pipeline_stage_id == stage.id
+                    # Count people in this stage using the PipelineContact table
+                    count = db.session.query(PipelineContact).join(
+                        Person, Person.id == PipelineContact.contact_id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.current_stage_id == stage.id
                     ).count()
                 else:
-                    # Count churches in this stage
-                    count = Church.query.filter(
-                        Church.pipeline_stage_id == stage.id
+                    # Count churches in this stage using the PipelineContact table
+                    count = db.session.query(PipelineContact).join(
+                        Church, Church.id == PipelineContact.contact_id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline.id,
+                        PipelineContact.current_stage_id == stage.id
                     ).count()
+                
+                # Log the count for debugging
+                current_app.logger.info(f"Stage {stage.name} has {count} contacts")
                     
                 stages_data.append({
                     'id': stage.id,
                     'name': stage.name,
-                    'position': stage.order,  # Use order instead of position
+                    'position': stage.order,
                     'color': stage.color or get_default_color(stage.name),
                     'contact_count': count
                 })
@@ -358,15 +474,15 @@ def pipeline_chart_data(pipeline_type=None):
             'stages': stages_data
         }
         
-        current_app.logger.info(f"Successfully generated chart data for {pipeline_type} pipeline")
+        current_app.logger.info(f"Successfully generated simple chart data for {pipeline_type} pipeline with {total_contacts} total contacts")
         return jsonify(response_data)
-        
+            
     except Exception as e:
-        current_app.logger.error(f"Error in pipeline_chart_data: {str(e)}")
+        current_app.logger.error(f"Error generating simple chart data: {str(e)}")
         return jsonify({
-            'error': f"An error occurred: {str(e)}"
+            'error': 'Internal server error',
+            'message': str(e)
         }), 500
-
 
 @dashboard_bp.route('/dashboard/debug/chart-data/<chart_type>')
 @dashboard_bp.route('/dashboard/fallback-chart-data/<chart_type>')

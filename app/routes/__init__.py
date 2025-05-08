@@ -19,7 +19,7 @@ from app.routes.reports import reports_bp
 from app.routes.emails import emails_bp
 from app.onboarding.routes import onboarding_bp
 
-test_bp = Blueprint('test', __name__)
+test_bp = Blueprint('test_route', __name__)
 
 def admin_required(f):
     @wraps(f)
@@ -35,7 +35,6 @@ def test():
 
 # List of blueprints to register with the app
 blueprints = [
-    test_bp,
     admin_bp,
     dashboard_bp,
     people_bp,

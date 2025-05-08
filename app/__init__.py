@@ -1,27 +1,26 @@
 import os
 import logging
 import datetime
-from flask import Flask, jsonify, render_template, request, g, current_app, session
-from flask_migrate import Migrate
+import sys  # noqa: F401
+import time  # noqa: F401
+# Flask imports - these are used throughout the application
+from flask import Flask, Blueprint, g, jsonify, request, current_app, render_template, session  # noqa: F401
 from flask_cors import CORS
-from flask_login import LoginManager, current_user
-from flask_jwt_extended import JWTManager
-from flask_wtf.csrf import generate_csrf, CSRFProtect
-from dotenv import load_dotenv, find_dotenv  # Keep dotenv import
-
-from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig # Keep from development
-from app.config.logging_config import setup_logging
+from flask_migrate import Migrate  # noqa: F401
+from flask_login import LoginManager, current_user  # noqa: F401
+from flask_jwt_extended import JWTManager  # noqa: F401
+from flask_wtf.csrf import CSRFProtect, generate_csrf  # noqa: F401
+from flask_limiter import Limiter  # noqa: F401
+from flask_limiter.util import get_remote_address  # noqa: F401
+from flask_talisman import Talisman  # noqa: F401
+from dotenv import load_dotenv, find_dotenv
+# Configuration imports
+from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig  # noqa: F401
+from app.config.logging_config import setup_logging  # noqa: F401
+from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache
 from app.auth.firebase import init_firebase
-from app.extensions import db, migrate, cors, login_manager, jwt, csrf, Base, limiter, talisman, configure_cache
 from app.auth.routes import auth_bp
-from app.routes import blueprints  # Import the list of blueprints
-from app.models.user import User
-from app.models.contact import Contact
-from app.models.person import Person
-from app.models.church import Church
-from app.models.office import Office
-from app.models.task import Task
-from app.models.communication import Communication
+from app.routes import blueprints
 from app.models.relationships import setup_relationships
 from app.tasks.scheduler import init_scheduler
 from app.utils.filters import register_filters, register_template_functions
@@ -160,7 +159,8 @@ def create_app(test_config=None):
             engine2 = create_engine(url2)
             with engine2.connect() as conn:
                 result = conn.execute(text("SELECT 1"))
-                row = result.fetchone()
+                # Fetch result to confirm connection works, but we don't need the value
+                _ = result.fetchone()
                 results.append({"method": "postgres_user", "status": "success", "username": username2})
         except Exception as e:
             results.append({"method": "postgres_user", "status": "error", "username": username2, "error": str(e)})
@@ -206,7 +206,8 @@ def create_app(test_config=None):
         db_url = os.environ.get('DATABASE_URL', 'not-set')
         db_conn = os.environ.get('DB_CONNECTION_STRING', 'not-set')
         def mask_password(url):
-            if not url or url == 'not-set': return url
+            if not url or url == 'not-set':
+                return url
             if '@' in url and ':' in url.split('@')[0]:
                 parts = url.split('@')
                 user_parts = parts[0].split(':')
@@ -232,7 +233,10 @@ def create_app(test_config=None):
     # --- End Health Check/Debug Endpoints ---
 
     # Enable CORS for the application
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={
+        r"/api/*": {"origins": "*"},
+        r"/dashboard/*": {"origins": "*"}
+    })
 
     # Log the database connection string (with sensitive parts masked)
     db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -278,7 +282,9 @@ def create_app(test_config=None):
             app.logger.info("Attempting to create database tables...")
             with app.app_context():
                 try:
-                    from app.models import User, Contact, Person, Church, Office, Task, Communication, EmailSignature, GoogleToken, Role, Permission # etc
+                    # Import all models needed for db.create_all() to work properly
+                    # These imports are used by SQLAlchemy to discover models for table creation
+                    from app.models import User, Contact, Person, Church, Office, Task, Communication, EmailSignature, GoogleToken, Role, Permission # noqa
                     db.create_all()
                     app.logger.info("Database tables checked/created successfully.")
                 except Exception as e:
@@ -315,7 +321,7 @@ def create_app(test_config=None):
     init_firebase(app)
     init_scheduler(app)
 
-    # Register Blueprints
+    # Register all blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(auth_bp, url_prefix='/auth', name='auth_web')
     from app.routes.api.v1 import api_bp
