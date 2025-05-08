@@ -426,6 +426,18 @@ def simple_pipeline_chart_data(pipeline_type=None):
         # For each stage, get the count of contacts
         for stage in stages:
             try:
+                # Add detailed logging for debugging
+                current_app.logger.info(f"Processing stage {stage.id}: {stage.name} for pipeline {pipeline.id}")
+                
+                # Get all pipeline contacts for this pipeline and stage
+                pipeline_contacts = db.session.query(PipelineContact).filter(
+                    PipelineContact.pipeline_id == pipeline.id,
+                    PipelineContact.current_stage_id == stage.id
+                ).all()
+                
+                current_app.logger.info(f"Found {len(pipeline_contacts)} total contacts in stage {stage.name}")
+                
+                # Filter by contact type
                 if pipeline_type == 'person':
                     # Count people in this stage using the PipelineContact table
                     count = db.session.query(PipelineContact).join(
@@ -434,6 +446,18 @@ def simple_pipeline_chart_data(pipeline_type=None):
                         PipelineContact.pipeline_id == pipeline.id,
                         PipelineContact.current_stage_id == stage.id
                     ).count()
+                    
+                    # Extra debug info
+                    if count > 0:
+                        sample_contacts = db.session.query(PipelineContact, Person).join(
+                            Person, Person.id == PipelineContact.contact_id
+                        ).filter(
+                            PipelineContact.pipeline_id == pipeline.id,
+                            PipelineContact.current_stage_id == stage.id
+                        ).limit(3).all()
+                        
+                        for pc, person in sample_contacts:
+                            current_app.logger.info(f"Sample person in {stage.name}: ID={person.id}, Name={getattr(person, 'first_name', 'Unknown')} {getattr(person, 'last_name', 'Unknown')}")
                 else:
                     # Count churches in this stage using the PipelineContact table
                     count = db.session.query(PipelineContact).join(
@@ -442,9 +466,21 @@ def simple_pipeline_chart_data(pipeline_type=None):
                         PipelineContact.pipeline_id == pipeline.id,
                         PipelineContact.current_stage_id == stage.id
                     ).count()
+                    
+                    # Extra debug info
+                    if count > 0:
+                        sample_contacts = db.session.query(PipelineContact, Church).join(
+                            Church, Church.id == PipelineContact.contact_id
+                        ).filter(
+                            PipelineContact.pipeline_id == pipeline.id,
+                            PipelineContact.current_stage_id == stage.id
+                        ).limit(3).all()
+                        
+                        for pc, church in sample_contacts:
+                            current_app.logger.info(f"Sample church in {stage.name}: ID={church.id}, Name={getattr(church, 'name', 'Unknown')}")
                 
                 # Log the count for debugging
-                current_app.logger.info(f"Stage {stage.name} has {count} contacts")
+                current_app.logger.info(f"Stage {stage.name} has {count} {pipeline_type} contacts after filtering")
                     
                 stages_data.append({
                     'id': stage.id,
@@ -553,20 +589,26 @@ def pipeline_chart_data(pipeline_type=None):
         # For each stage, get the count of contacts
         for stage in stages:
             try:
+                # Get the count of contacts in this stage using a join with the Contact model
+                # This is more reliable than using contact_type which might not be set correctly
+                from app.models import Contact
+                
+                # Base query for contacts in this stage
+                base_query = db.session.query(PipelineContact).join(
+                    Contact, PipelineContact.contact_id == Contact.id
+                ).filter(
+                    PipelineContact.current_stage_id == stage.id,
+                    PipelineContact.pipeline_id == pipeline.id
+                )
+                
                 if pipeline_type == 'person':
-                    # Count people in this stage
-                    count = PipelineContact.query.filter(
-                        PipelineContact.current_stage_id == stage.id,
-                        PipelineContact.pipeline_id == pipeline.id,
-                        PipelineContact.contact_type == 'person'
-                    ).count()
+                    # Count people in this stage - filter by Contact.type
+                    count = base_query.filter(Contact.type == 'person').count()
+                    current_app.logger.info(f"Stage {stage.name} has {count} people")
                 else:
-                    # Count churches in this stage
-                    count = PipelineContact.query.filter(
-                        PipelineContact.current_stage_id == stage.id,
-                        PipelineContact.pipeline_id == pipeline.id,
-                        PipelineContact.contact_type == 'church'
-                    ).count()
+                    # Count churches in this stage - filter by Contact.type
+                    count = base_query.filter(Contact.type == 'church').count()
+                    current_app.logger.info(f"Stage {stage.name} has {count} churches")
                     
                 stages_data.append({
                     'id': stage.id,
