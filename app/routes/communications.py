@@ -5,15 +5,12 @@ from app.models.person import Person
 from app.models.church import Church
 from app.models.email_template import EmailTemplate
 from app.models.email_signature import EmailSignature
-from app.extensions import db, cache
+from app.extensions import db
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import text
 from sqlalchemy.orm import joinedload
-import json
 from app.utils.decorators import office_required
 from app.utils.upload import save_uploaded_file
-from app.utils.time import format_date
-from app.utils.query_optimization import optimize_query, with_pagination, cached_query
+from app.utils.query_optimization import with_pagination, cached_query
 
 communications_bp = Blueprint('communications', __name__, template_folder='../templates/communications')
 
@@ -221,17 +218,14 @@ def compose():
                     
                     # Get recipient email for calendar invitation
                     recipient_email = None
-                    recipient_name = None
                     if person_id:
                         person = Person.query.get(person_id)
                         recipient_email = person.email
-                        recipient_name = f"{person.first_name} {person.last_name}"
                     elif church_id:
                         church = Church.query.get(church_id)
                         # Find the primary contact's email or use the first contact found
                         if church.primary_contact:
                             recipient_email = church.primary_contact.email
-                            recipient_name = church.name
                     
                     # Construct datetime from date and time inputs
                     if meeting_date and meeting_time:
@@ -510,200 +504,148 @@ def add():
 @login_required
 def templates():
     """Manage email templates."""
-    # Ensure email_templates table exists
+    # Use the EmailTemplate model instead of raw SQL
     try:
-        create_table_sql = text("""
-            CREATE TABLE IF NOT EXISTS email_templates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                subject TEXT NOT NULL,
-                content TEXT NOT NULL,
-                category TEXT,
-                created_by INTEGER,
-                office_id INTEGER,
-                created_at TIMESTAMP,
-                updated_at TIMESTAMP
-            )
-        """)
-        with db.engine.connect() as conn:
-            conn.execute(create_table_sql)
-            conn.commit()
-        current_app.logger.info("Checked for email_templates table existence")
-    except Exception as e:
-        current_app.logger.error(f"Error ensuring email_templates table: {str(e)}")
-    
-    if request.method == 'POST':
-        # Handle template save/update
+        # Check if the model exists and is properly defined
+        current_app.logger.info("Using EmailTemplate model for templates management")
+        
+        if request.method == 'POST':
+            # Handle template save/update
+            try:
+                data = request.form
+                template_id = data.get('template_id')
+                
+                if template_id and template_id.strip():  # Update existing template
+                    # Check if template exists using the model
+                    template = EmailTemplate.query.get(template_id)
+                    
+                    if not template:
+                        flash('Template not found.', 'error')
+                        return redirect(url_for('communications.templates'))
+                    
+                    # Check permission (only owner or admin can edit)
+                    if template.created_by != current_user.id and current_user.role not in ['admin', 'super_admin']:
+                        flash('You do not have permission to edit this template.', 'error')
+                        return redirect(url_for('communications.templates'))
+                    
+                    # Update template using the model
+                    template.name = data.get('name')
+                    template.subject = data.get('subject')
+                    template.content = data.get('content')
+                    template.category = data.get('category')
+                    template.updated_at = datetime.now(timezone.utc)
+                    
+                    db.session.commit()
+                else:  # Create new template
+                    # Create new template using the model
+                    new_template = EmailTemplate(
+                        name=data.get('name'),
+                        subject=data.get('subject'),
+                        content=data.get('content'),
+                        category=data.get('category'),
+                        created_by=current_user.id,
+                        office_id=current_user.office_id,
+                        created_at=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc)
+                    )
+                    
+                    db.session.add(new_template)
+                    db.session.commit()
+                
+                flash('Template saved successfully!', 'success')
+                return redirect(url_for('communications.templates'))
+                
+            except Exception as e:
+                current_app.logger.error(f"Error saving template: {str(e)}")
+                flash(f'Error saving template: {str(e)}', 'error')
+                return redirect(url_for('communications.templates'))
+        
+        # For GET requests, fetch templates from the database using the model
         try:
-            data = request.form
-            template_id = data.get('template_id')
+            # Get filter parameters
+            category = request.args.get('category')
+            search = request.args.get('search')
             
-            if template_id and template_id.strip():  # Update existing template
-                # Check if template exists
-                with db.engine.connect() as conn:
-                    result = conn.execute(
-                        text("SELECT * FROM email_templates WHERE id = :id"),
-                        {"id": template_id}
+            # Build query using SQLAlchemy
+            query = EmailTemplate.query
+            
+            # Apply filters
+            if category:
+                query = query.filter(EmailTemplate.category == category)
+            
+            if search:
+                search_term = f"%{search}%"
+                query = query.filter(
+                    db.or_(
+                        EmailTemplate.name.ilike(search_term),
+                        EmailTemplate.subject.ilike(search_term),
+                        EmailTemplate.content.ilike(search_term)
                     )
-                    template_row = result.fetchone()
-                    # Convert to dict for easier access
-                    template = dict(zip(result.keys(), template_row)) if template_row else None
-                
-                if not template:
-                    flash('Template not found.', 'error')
-                    return redirect(url_for('communications.templates'))
-                
-                # Check permission (only owner or admin can edit)
-                if template['created_by'] != current_user.id and current_user.role not in ['admin', 'super_admin']:
-                    flash('You do not have permission to edit this template.', 'error')
-                    return redirect(url_for('communications.templates'))
-                
-                # Update template
-                update_sql = text("""
-                    UPDATE email_templates 
-                    SET name = :name, subject = :subject, content = :content, 
-                        category = :category, updated_at = :updated_at
-                    WHERE id = :id
-                """)
-                
-                with db.engine.connect() as conn:
-                    conn.execute(update_sql,
-                        {
-                            "name": data.get('name'),
-                            "subject": data.get('subject'),
-                            "content": data.get('content'),
-                            "category": data.get('category'),
-                            "updated_at": datetime.now(timezone.utc),
-                            "id": template_id
-                        }
-                    )
-                    conn.commit()
-            else:  # Create new template
-                # Insert new template
-                insert_sql = text("""
-                    INSERT INTO email_templates 
-                    (name, subject, content, category, created_by, office_id, created_at, updated_at)
-                    VALUES (:name, :subject, :content, :category, :created_by, :office_id, :created_at, :updated_at)
-                """)
-                
-                with db.engine.connect() as conn:
-                    conn.execute(insert_sql,
-                        {
-                            "name": data.get('name'),
-                            "subject": data.get('subject'),
-                            "content": data.get('content'),
-                            "category": data.get('category'),
-                            "created_by": current_user.id,
-                            "office_id": current_user.office_id,
-                            "created_at": datetime.now(timezone.utc),
-                            "updated_at": datetime.now(timezone.utc)
-                        }
-                    )
-                    conn.commit()
-                
-            flash('Template saved successfully!', 'success')
-            return redirect(url_for('communications.templates'))
+                )
+            
+            # Filter by office unless super admin
+            if current_user.role != 'super_admin':
+                query = query.filter(EmailTemplate.office_id == current_user.office_id)
+            
+            # Order by most recently updated first
+            query = query.order_by(EmailTemplate.updated_at.desc())
+            
+            # Execute query
+            templates_raw = query.all()
+            
+            # Process templates for display
+            templates = []
+            for template in templates_raw:
+                template_dict = {
+                    'id': template.id,
+                    'name': template.name,
+                    'subject': template.subject,
+                    'content': template.content,
+                    'category': template.category,
+                    'created_by': template.created_by,
+                    'office_id': template.office_id,
+                    'created_at': template.created_at,
+                    'updated_at': template.updated_at,
+                    'content_preview': template.content[:100] + '...' if len(template.content) > 100 else template.content
+                }
+                templates.append(template_dict)
+            
+            current_app.logger.info(f"Retrieved {len(templates)} email templates")
             
         except Exception as e:
-            current_app.logger.error(f"Error saving template: {str(e)}")
-            flash(f'Error saving template: {str(e)}', 'error')
-            return redirect(url_for('communications.templates'))
+            current_app.logger.error(f"Error fetching templates: {str(e)}")
+            templates = []
+            flash('Error loading templates. Please try again later.', 'error')
+        
+        return render_template('communications/templates.html', 
+                              templates=templates,
+                              page_title="Email Templates")
     
-    # For GET requests, fetch templates from the database
-    try:
-        # Get filter parameters
-        category = request.args.get('category')
-        search = request.args.get('search')
-        
-        # Build query
-        query = "SELECT * FROM email_templates WHERE 1=1"
-        params = {}
-        
-        # Apply filters
-        if category:
-            query += " AND category = :category"
-            params["category"] = category
-        
-        if search:
-            query += " AND (name LIKE :search OR subject LIKE :search OR content LIKE :search)"
-            search_term = f"%{search}%"
-            params["search"] = search_term
-        
-        # Filter by office unless super admin
-        if current_user.role != 'super_admin':
-            query += " AND office_id = :office_id"
-            params["office_id"] = current_user.office_id
-        
-        # Order by most recently updated first
-        query += " ORDER BY updated_at DESC"
-        
-        # Execute query
-        with db.engine.connect() as conn:
-            result = conn.execute(text(query), params)
-            templates_raw = result.fetchall()
-        
-        # Convert to list of dicts
-        templates = []
-        for row in templates_raw:
-            # Convert each row to a dict using column names as keys
-            keys = result.keys()
-            template = dict(zip(keys, row))
-            
-            # Format dates
-            if 'created_at' in template and template['created_at']:
-                try:
-                    # Convert string to datetime if needed
-                    if isinstance(template['created_at'], str):
-                        template['created_at'] = datetime.fromisoformat(template['created_at'].replace('Z', '+00:00'))
-                except (ValueError, AttributeError):
-                    pass
-            
-            # Store the full content in a data attribute for client-side access
-            if 'content' in template and template['content']:
-                template['content_preview'] = template['content'][:100] + '...' if len(template['content']) > 100 else template['content']
-            
-            templates.append(template)
-        
-        current_app.logger.info(f"Retrieved {len(templates)} email templates")
-        
     except Exception as e:
-        current_app.logger.error(f"Error fetching templates: {str(e)}")
-        templates = []
-        flash('Error loading templates. Please try again later.', 'error')
-    
-    return render_template('communications/templates.html', 
-                          templates=templates,
-                          page_title="Email Templates")
+        current_app.logger.error(f"Error in templates route: {str(e)}")
+        flash(f'An error occurred: {str(e)}', 'error')
+        return render_template('error.html', error=str(e))
 
 @communications_bp.route('/templates/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_template(id):
     """Delete an email template."""
     try:
-        # Check if template exists
-        select_sql = text("SELECT * FROM email_templates WHERE id = :id")
-        
-        with db.engine.connect() as conn:
-            result = conn.execute(select_sql, {"id": id})
-            template_row = result.fetchone()
-            # Convert to dict for easier access
-            template = dict(zip(result.keys(), template_row)) if template_row else None
+        # Check if template exists using the model
+        template = EmailTemplate.query.get(id)
         
         if not template:
             flash('Template not found.', 'error')
             return redirect(url_for('communications.templates'))
         
         # Check permission (only owner or admin can delete)
-        if template['created_by'] != current_user.id and current_user.role not in ['admin', 'super_admin']:
+        if template.created_by != current_user.id and current_user.role not in ['admin', 'super_admin']:
             flash('You do not have permission to delete this template.', 'error')
             return redirect(url_for('communications.templates'))
         
-        # Delete template
-        delete_sql = text("DELETE FROM email_templates WHERE id = :id")
-        
-        with db.engine.connect() as conn:
-            conn.execute(delete_sql, {"id": id})
-            conn.commit()
+        # Delete template using the model
+        db.session.delete(template)
+        db.session.commit()
         
         flash('Template deleted successfully!', 'success')
     except Exception as e:
@@ -717,40 +659,30 @@ def delete_template(id):
 def get_template(id):
     """Get a specific email template by ID for editing or viewing."""
     try:
-        # Query for the template
-        select_sql = text("SELECT * FROM email_templates WHERE id = :id")
+        # Query for the template using the model
+        template = EmailTemplate.query.get(id)
         
-        with db.engine.connect() as conn:
-            result = conn.execute(select_sql, {"id": id})
-            template_row = result.fetchone()
-            
-            if not template_row:
-                return jsonify({'success': False, 'message': 'Template not found'}), 404
-            
-            # Convert to dict
-            keys = result.keys()
-            template = dict(zip(keys, template_row))
-            
-            # Check permission
-            if template['office_id'] != current_user.office_id and current_user.role not in ['super_admin', 'admin']:
-                return jsonify({'success': False, 'message': 'You do not have permission to view this template'}), 403
-            
-            # Format dates
-            if 'created_at' in template and template['created_at']:
-                try:
-                    if isinstance(template['created_at'], str):
-                        template['created_at'] = datetime.fromisoformat(template['created_at'].replace('Z', '+00:00')).isoformat()
-                except (ValueError, AttributeError):
-                    pass
-            
-            if 'updated_at' in template and template['updated_at']:
-                try:
-                    if isinstance(template['updated_at'], str):
-                        template['updated_at'] = datetime.fromisoformat(template['updated_at'].replace('Z', '+00:00')).isoformat()
-                except (ValueError, AttributeError):
-                    pass
-            
-            return jsonify({'success': True, 'template': template})
+        if not template:
+            return jsonify({'success': False, 'message': 'Template not found'}), 404
+        
+        # Check permission
+        if template.office_id != current_user.office_id and current_user.role not in ['super_admin', 'admin']:
+            return jsonify({'success': False, 'message': 'You do not have permission to view this template'}), 403
+        
+        # Convert to dict for JSON response
+        template_dict = {
+            'id': template.id,
+            'name': template.name,
+            'subject': template.subject,
+            'content': template.content,
+            'category': template.category,
+            'created_by': template.created_by,
+            'office_id': template.office_id,
+            'created_at': template.created_at.isoformat() if template.created_at else None,
+            'updated_at': template.updated_at.isoformat() if template.updated_at else None
+        }
+        
+        return jsonify({'success': True, 'template': template_dict})
     
     except Exception as e:
         current_app.logger.error(f"Error fetching template: {str(e)}")
