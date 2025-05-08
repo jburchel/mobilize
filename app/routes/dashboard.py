@@ -484,6 +484,120 @@ def simple_pipeline_chart_data(pipeline_type=None):
             'message': str(e)
         }), 500
 
+@dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
+@login_required
+@office_required
+def pipeline_chart_data(pipeline_type=None):
+    """API endpoint to get pipeline chart data."""
+    try:
+        # Log request details for debugging
+        current_app.logger.info(f"Chart data requested for pipeline type: {pipeline_type}")
+        
+        # Validate pipeline type
+        if pipeline_type not in ['person', 'church']:
+            current_app.logger.warning(f"Invalid pipeline type requested: {pipeline_type}")
+            return jsonify({
+                'error': f"Invalid pipeline type: {pipeline_type}"
+            }), 400
+            
+        # Get user's office
+        office_id = current_user.office_id
+        is_super_admin = current_user.role == 'super_admin'
+        
+        current_app.logger.info(f"User office_id: {office_id}, is_super_admin: {is_super_admin}")
+        
+        # Find the appropriate pipeline
+        pipeline_query = Pipeline.query.filter(
+            Pipeline.is_main_pipeline == True,
+            Pipeline.pipeline_type == pipeline_type
+        )
+        
+        # Filter by office unless super admin
+        if not is_super_admin:
+            pipeline_query = pipeline_query.filter(Pipeline.office_id == office_id)
+            
+        pipeline = pipeline_query.first()
+        
+        if not pipeline:
+            current_app.logger.warning(f"No {pipeline_type} pipeline found for office {office_id}")
+            return jsonify({
+                'error': f"No {pipeline_type} pipeline found for your office"
+            }), 404
+            
+        current_app.logger.info(f"Found pipeline: {pipeline.id} - {pipeline.name}")
+            
+        # Get pipeline stages with counts
+        stages_data = []
+        total_contacts = 0
+        
+        # Get all stages for this pipeline
+        stages = PipelineStage.query.filter_by(pipeline_id=pipeline.id).order_by(PipelineStage.position).all()
+        
+        if not stages:
+            current_app.logger.warning(f"No stages found for pipeline {pipeline.id}")
+            return jsonify({
+                'error': f"No stages found for {pipeline_type} pipeline"
+            }), 404
+            
+        current_app.logger.info(f"Found {len(stages)} stages for pipeline {pipeline.id}")
+        
+        # For each stage, get the count of contacts
+        for stage in stages:
+            try:
+                if pipeline_type == 'person':
+                    # Count people in this stage
+                    count = Person.query.join(
+                        Person.contact
+                    ).filter(
+                        Person.pipeline_stage_id == stage.id
+                    ).count()
+                else:
+                    # Count churches in this stage
+                    count = Church.query.join(
+                        Church.contact
+                    ).filter(
+                        Church.pipeline_stage_id == stage.id
+                    ).count()
+                    
+                stages_data.append({
+                    'id': stage.id,
+                    'name': stage.name,
+                    'position': stage.position,
+                    'color': stage.color or get_default_color(stage.name),
+                    'contact_count': count
+                })
+                
+                total_contacts += count
+            except Exception as stage_error:
+                current_app.logger.error(f"Error processing stage {stage.id}: {str(stage_error)}")
+                # Continue with other stages even if one fails
+            
+        # Calculate percentages
+        for stage in stages_data:
+            if total_contacts > 0:
+                stage['percentage'] = round((stage['contact_count'] / total_contacts) * 100)
+            else:
+                stage['percentage'] = 0
+                
+        # Return the data
+        response_data = {
+            'pipeline_id': pipeline.id,
+            'pipeline_name': pipeline.name,
+            'pipeline_type': pipeline_type,
+            'total_contacts': total_contacts,
+            'stages': stages_data
+        }
+        
+        current_app.logger.info(f"Successfully generated chart data for {pipeline_type} pipeline")
+        return jsonify(response_data)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in pipeline_chart_data: {str(e)}")
+        return jsonify({
+            'error': f"An error occurred: {str(e)}"
+        }), 500
+
+
 @dashboard_bp.route('/dashboard/debug/chart-data/<chart_type>')
 @dashboard_bp.route('/dashboard/fallback-chart-data/<chart_type>')
 @login_required
