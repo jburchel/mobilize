@@ -563,7 +563,10 @@ def delete_user(user_id):
         flash(f'User {user.email} has been deleted successfully.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error deleting user: {str(e)}', 'danger')
+        # Log the full error for debugging
+        current_app.logger.error(f'Error deleting user {user_id}: {str(e)}')
+        # Show a user-friendly message
+        flash('An error occurred while deleting the user. This may be due to database constraints or related records. Please contact support if the issue persists.', 'danger')
     
     return redirect(url_for('admin.users'))
 
