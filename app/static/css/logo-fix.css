@@ -1,0 +1,20 @@
+/* Logo fixes */
+.logo-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Override for collapsed state */
+.sidebar.collapsed .logo-img {
+    height: 30px !important;
+    margin-right: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Hide text in collapsed state */
+.sidebar.collapsed .logo-text {
+    display: none !important;
+}

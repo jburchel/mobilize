@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}">
     <!-- Pipeline Badge CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}">
+    <!-- Logo Fix CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/logo-fix.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -28,9 +30,9 @@
             <div id="sidebar-wrapper" class="col-auto px-0 sidebar-wrapper">
                 <div id="sidebar" class="collapse d-lg-block sidebar">
                     <div class="position-sticky">
-                        <div class="logo-container d-flex align-items-center justify-content-center py-2">
-                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Mobilize CRM Logo" class="logo-img me-2" style="height: 30px; width: auto;">
-                            <div class="text-white">Mobilize CRM</div>
+                        <div class="logo-container py-2" style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Mobilize CRM Logo" class="logo-img" style="height: 30px; width: auto; margin-right: 10px; display: inline-block !important;">
+                            <span class="logo-text text-white">Mobilize CRM</span>
                         </div>
                         <!-- Single column nav structure -->
                         <div class="sidebar-content d-flex flex-column h-100">
