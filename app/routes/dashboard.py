@@ -186,223 +186,8 @@ def dashboard_stats_api():
         return jsonify({"error": str(e)}), 500
 
 
-@dashboard_bp.route('/dashboard/api/chart-data/<pipeline_type>', methods=['GET'])
-@dashboard_bp.route('/dashboard/pipeline-chart-data', methods=['GET'])
-@dashboard_bp.route('/dashboard/debug/chart-data/<pipeline_type>', methods=['GET'])
-@dashboard_bp.route('/dashboard/fallback-chart-data/<pipeline_type>', methods=['GET'])
-@dashboard_bp.route('/dashboard/api/chart/<pipeline_type>', methods=['GET'])
-@login_required
-def pipeline_chart_data(pipeline_type=None):
-    """API endpoint to get pipeline chart data."""
-    # If pipeline_type is None, get it from the query parameter
-    if pipeline_type is None:
-        pipeline_type = request.args.get('type')
-        current_app.logger.info(f"Pipeline chart data requested with query param type={pipeline_type} by user {current_user.id}")
-    else:
-        current_app.logger.info(f"Pipeline chart data requested for path param type: {pipeline_type} by user {current_user.id}")
-    try:
-        # Get a fresh user object to avoid DetachedInstanceError
-        try:
-            # Try to get the user ID from session first
-            user_id = session.get('_user_id')
-            if not user_id:
-                # Fall back to current_user
-                user_id = current_user.get_id()
-                
-            # Get a fresh user object
-            fresh_user = User.query.get(user_id)
-            if not fresh_user:
-                return jsonify({"error": "User not found"}), 401
-                
-            # Get the office ID from the fresh user
-            office_id = fresh_user.office_id
-            is_super_admin = fresh_user.role == 'super_admin'
-        except Exception as e:
-            current_app.logger.error(f"Error getting user in pipeline chart data: {str(e)}")
-            return jsonify({"error": "Authentication error"}), 401
-        
-        # Validate pipeline type
-        if pipeline_type not in ['person', 'church']:
-            return jsonify({"error": f"Invalid pipeline type: {pipeline_type}"}), 400
-        
-        # Get statistics for totals
-        stats = get_dashboard_stats()
-        
-        # Choose the right query and parameters based on pipeline type and user role
-        if pipeline_type == 'person':
-            # Find the main people pipeline
-            current_app.logger.info("Looking for main people pipeline")
-            main_pipeline = db.session.execute(
-                text("SELECT id, name FROM pipelines WHERE pipeline_type IN ('person', 'people') AND is_main_pipeline = TRUE LIMIT 1")
-            ).fetchone()
-            
-            if not main_pipeline:
-                current_app.logger.warning("No main people pipeline found, looking for any people pipeline")
-                main_pipeline = db.session.execute(
-                    text("SELECT id, name FROM pipelines WHERE pipeline_type IN ('person', 'people') LIMIT 1")
-                ).fetchone()
-                
-            if not main_pipeline:
-                current_app.logger.error("No people pipeline found")
-                return jsonify({
-                    "error": "No people pipeline found",
-                    "pipeline_id": None,
-                    "pipeline_name": "People Pipeline",
-                    "stages": [],
-                    "total_contacts": 0
-                })
-                
-            pipeline_id = main_pipeline[0]
-            pipeline_name = main_pipeline[1] or "People Pipeline"
-            current_app.logger.info(f"Found people pipeline: {pipeline_id} - {pipeline_name}")
-            
-            # Query pipeline stages
-            query = """
-            SELECT 
-                ps.id as stage_id,
-                ps.name as stage_name,
-                ps.color as stage_color,
-                COUNT(pc.id) as count
-            FROM pipeline_stages ps
-            LEFT JOIN pipeline_contacts pc ON ps.id = pc.current_stage_id
-            WHERE ps.pipeline_id = :pipeline_id
-            GROUP BY ps.id, ps.name, ps.color
-            ORDER BY ps.order
-            """
-            
-            # Get the main pipeline name
-            total_contacts = stats.get('people_count', 0)
-            params = {"pipeline_id": pipeline_id}
-            
-        else:  # church type
-            # Find the main church pipeline
-            current_app.logger.info("Looking for main church pipeline")
-            main_pipeline = db.session.execute(
-                text("SELECT id, name FROM pipelines WHERE pipeline_type = 'church' AND is_main_pipeline = TRUE LIMIT 1")
-            ).fetchone()
-            
-            if not main_pipeline:
-                current_app.logger.warning("No main church pipeline found, looking for any church pipeline")
-                main_pipeline = db.session.execute(
-                    text("SELECT id, name FROM pipelines WHERE pipeline_type = 'church' LIMIT 1")
-                ).fetchone()
-                
-            if not main_pipeline:
-                current_app.logger.error("No church pipeline found")
-                return jsonify({
-                    "error": "No church pipeline found",
-                    "pipeline_id": None,
-                    "pipeline_name": "Church Pipeline",
-                    "stages": [],
-                    "total_contacts": 0
-                })
-                
-            pipeline_id = main_pipeline[0]
-            pipeline_name = main_pipeline[1] or "Church Pipeline"
-            current_app.logger.info(f"Found church pipeline: {pipeline_id} - {pipeline_name}")
-            
-            # Query pipeline stages
-            query = """
-            SELECT 
-                ps.id as stage_id,
-                ps.name as stage_name,
-                ps.color as stage_color,
-                COUNT(pc.id) as count
-            FROM pipeline_stages ps
-            LEFT JOIN pipeline_contacts pc ON ps.id = pc.current_stage_id
-            WHERE ps.pipeline_id = :pipeline_id
-            GROUP BY ps.id, ps.name, ps.color
-            ORDER BY ps.order
-            """
-            
-            # Get the main pipeline name
-            total_contacts = stats.get('church_count', 0)
-            params = {"pipeline_id": pipeline_id}
-        
-        # Execute the query
-        connection = db.engine.connect()
-        try:
-            result = connection.execute(text(query), params)
-            results = result.fetchall()
-        finally:
-            connection.close()
-        
-        # Process the results
-        stages = []
-        stage_total = 0
-        
-        # Calculate total for percentage
-        for row in results:
-            stage_total += row.count if row.count else 0
-        
-        if not results:
-            current_app.logger.warning(f"No results found for {pipeline_type} pipeline stages")
-            return jsonify({
-                "pipeline_id": pipeline_id,
-                "pipeline_name": pipeline_name,
-                "stages": [],
-                "total_contacts": total_contacts
-            })
-        
-        current_app.logger.info(f"Found {len(results)} stages for {pipeline_type} pipeline with {stage_total} total contacts")
-        
-        for row in results:
-            stage_name = row.stage_name or 'Unknown'
-            count = row.count or 0
-            
-            # Calculate percentage
-            percentage = 0
-            if stage_total > 0:
-                percentage = round((count / stage_total) * 100, 1)
-            
-            # Get color from the database or use a default
-            color = row.stage_color or get_default_color(stage_name)
-            
-            # Add stage to the list
-            stages.append({
-                'id': len(stages) + 1,  # Generate sequential ID
-                'name': stage_name,
-                'count': count,
-                'percentage': percentage,
-                'color': color
-            })
-        
-        # Define stage order for sorting
-        stage_order = {
-            'NEW': 1,
-            'CONTACT': 2,
-            'CONNECT': 3,
-            'COMMITTED': 4,
-            'COACHING': 5,
-            'MULTIPLYING': 6
-        }
-        
-        # Sort stages by defined order
-        stages.sort(key=lambda x: stage_order.get(x['name'].upper(), 999))
-        
-        response_data = {
-            "pipeline_id": pipeline_id,  # Use actual pipeline ID
-            "pipeline_name": pipeline_name,
-            "stages": stages,
-            "total_contacts": total_contacts
-        }
-        
-        # Log the response data for debugging
-        current_app.logger.info(f"Returning {len(stages)} stages for {pipeline_type} pipeline. Total contacts: {total_contacts}")
-        
-        return jsonify(response_data)
-    
-    except Exception as e:
-        current_app.logger.error(f"Error getting pipeline chart data: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "error": str(e),
-            "pipeline_id": None,
-            "pipeline_name": f"Error loading {pipeline_type} pipeline",
-            "stages": [],
-            "total_contacts": 0
-        }), 500
+# Old chart data endpoints have been removed to avoid route conflicts
+# All chart data requests now use the new endpoint at /api/chart-data/<pipeline_type>
 
 
 @dashboard_bp.route('/dashboard/debug/pipeline-data')
@@ -463,6 +248,120 @@ def debug_pipeline_data():
     except Exception as e:
         current_app.logger.error(f"Error in debug pipeline data: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
+@login_required
+@office_required
+def pipeline_chart_data(pipeline_type=None):
+    """API endpoint to get pipeline chart data."""
+    try:
+        # Log request details for debugging
+        current_app.logger.info(f"Chart data requested for pipeline type: {pipeline_type}")
+        
+        # Validate pipeline type
+        if pipeline_type not in ['person', 'church']:
+            current_app.logger.warning(f"Invalid pipeline type requested: {pipeline_type}")
+            return jsonify({
+                'error': f"Invalid pipeline type: {pipeline_type}"
+            }), 400
+            
+        # Get user's office
+        office_id = current_user.office_id
+        is_super_admin = current_user.role == 'super_admin'
+        
+        current_app.logger.info(f"User office_id: {office_id}, is_super_admin: {is_super_admin}")
+        
+        # Find the appropriate pipeline
+        pipeline_query = Pipeline.query.filter(
+            Pipeline.is_main_pipeline == True,
+            Pipeline.pipeline_type == pipeline_type
+        )
+        
+        # Filter by office unless super admin
+        if not is_super_admin:
+            pipeline_query = pipeline_query.filter(Pipeline.office_id == office_id)
+            
+        pipeline = pipeline_query.first()
+        
+        if not pipeline:
+            current_app.logger.warning(f"No {pipeline_type} pipeline found for office {office_id}")
+            return jsonify({
+                'error': f"No {pipeline_type} pipeline found for your office"
+            }), 404
+            
+        current_app.logger.info(f"Found pipeline: {pipeline.id} - {pipeline.name}")
+            
+        # Get pipeline stages with counts
+        stages_data = []
+        total_contacts = 0
+        
+        # Get all stages for this pipeline
+        stages = PipelineStage.query.filter_by(pipeline_id=pipeline.id).order_by(PipelineStage.position).all()
+        
+        if not stages:
+            current_app.logger.warning(f"No stages found for pipeline {pipeline.id}")
+            return jsonify({
+                'error': f"No stages found for {pipeline_type} pipeline"
+            }), 404
+            
+        current_app.logger.info(f"Found {len(stages)} stages for pipeline {pipeline.id}")
+        
+        # For each stage, get the count of contacts
+        for stage in stages:
+            try:
+                if pipeline_type == 'person':
+                    # Count people in this stage
+                    count = Person.query.join(
+                        Person.contact
+                    ).filter(
+                        Person.pipeline_stage_id == stage.id
+                    ).count()
+                else:
+                    # Count churches in this stage
+                    count = Church.query.join(
+                        Church.contact
+                    ).filter(
+                        Church.pipeline_stage_id == stage.id
+                    ).count()
+                    
+                stages_data.append({
+                    'id': stage.id,
+                    'name': stage.name,
+                    'position': stage.position,
+                    'color': stage.color or get_default_color(stage.name),
+                    'contact_count': count
+                })
+                
+                total_contacts += count
+            except Exception as stage_error:
+                current_app.logger.error(f"Error processing stage {stage.id}: {str(stage_error)}")
+                # Continue with other stages even if one fails
+            
+        # Calculate percentages
+        for stage in stages_data:
+            if total_contacts > 0:
+                stage['percentage'] = round((stage['contact_count'] / total_contacts) * 100)
+            else:
+                stage['percentage'] = 0
+                
+        # Return the data
+        response_data = {
+            'pipeline_id': pipeline.id,
+            'pipeline_name': pipeline.name,
+            'pipeline_type': pipeline_type,
+            'total_contacts': total_contacts,
+            'stages': stages_data
+        }
+        
+        current_app.logger.info(f"Successfully generated chart data for {pipeline_type} pipeline")
+        return jsonify(response_data)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in pipeline_chart_data: {str(e)}")
+        return jsonify({
+            'error': f"An error occurred: {str(e)}"
+        }), 500
 
 
 @dashboard_bp.route('/dashboard/debug/chart-data/<chart_type>')
