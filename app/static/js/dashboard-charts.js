@@ -17,7 +17,7 @@ function fetchAndCreateDashboardCharts() {
   document.querySelectorAll('.alert-danger').forEach(el => el.style.display = 'none');
   
   // Fetch people pipeline data
-  fetch('/api/simple-chart-data/person')
+  fetch('/api/chart-data/person')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -46,7 +46,7 @@ function fetchAndCreateDashboardCharts() {
     });
   
   // Fetch church pipeline data
-  fetch('/api/simple-chart-data/church')
+  fetch('/api/chart-data/church')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -305,7 +305,7 @@ function setupChartTypeButtons() {
       document.getElementById(`${pipelineType}-chart-loading`).style.display = 'flex';
       
       // Fetch fresh data from API
-      fetch(`/api/simple-chart-data/${pipelineType === 'person' ? 'person' : 'church'}`)
+      fetch(`/api/chart-data/${pipelineType === 'person' ? 'person' : 'church'}`)
         .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -351,7 +351,7 @@ function setupRefreshButtons() {
       document.getElementById(`${pipelineType}-chart-loading`).style.display = 'flex';
       
       // Fetch fresh data from API
-      fetch(`/api/simple-chart-data/${pipelineType === 'person' ? 'person' : 'church'}`)
+      fetch(`/api/chart-data/${pipelineType === 'person' ? 'person' : 'church'}`)
         .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
