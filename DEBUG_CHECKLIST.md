@@ -12,7 +12,7 @@
 ## Sidebar
 
 - [x] It is not collapsable
-- [ ] There is no logo
+- [x] There is no logo
 
 ## Header (at the top of the page)
 
