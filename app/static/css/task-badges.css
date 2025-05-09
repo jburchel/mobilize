@@ -1,0 +1,49 @@
+/* Task Badge Styles */
+
+/* Consistent styling for all task status and priority badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 0.25rem !important; /* Force consistent border radius */
+}
+
+/* Status badge colors */
+.badge.bg-warning {
+  color: #212529;
+}
+
+.badge.bg-info {
+  color: #fff;
+}
+
+.badge.bg-success {
+  color: #fff;
+}
+
+.badge.bg-danger {
+  color: #fff;
+}
+
+.badge.bg-secondary {
+  color: #fff;
+}
+
+/* Specific styling for tasks table */
+#tasks-table .badge {
+  min-width: 80px;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Ensure consistent spacing */
+#tasks-table td {
+  vertical-align: middle;
+}

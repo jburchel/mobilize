@@ -62,16 +62,15 @@ def register_cache_invalidation(app):
 
 # Cache invalidation functions
 def invalidate_people_cache():
-    """Invalidate all people-related caches."""
-    cache.delete('people_list')
-    cache.delete_many('person_*')
-    cache.delete_many('people_search_*')
-    logger.info("People cache invalidated")
+    """Invalidate all people-related cache entries."""
+    logger.info("Invalidating people cache")
+    cache.delete_many('people_*')
 
 
 def invalidate_churches_cache():
-    """Invalidate all church-related caches."""
-    cache.delete('churches_list')
+    """Invalidate all churches-related cache entries."""
+    logger.info("Invalidating churches cache")
+    cache.delete_many('churches_*')
     cache.delete_many('church_*')
     cache.delete_many('churches_search_*')
     logger.info("Churches cache invalidated")
@@ -87,14 +86,15 @@ def invalidate_pipeline_cache():
 
 # People caching functions
 def get_cached_people(office_id=None, page=1, per_page=20, search_query=None):
-    """Get cached list of people with pagination and optional filtering."""
+    """Get a cached list of people with pagination."""
+    from flask import current_app
+    
+    # Skip caching in development
+    if current_app.config.get('ENV') == 'development' and not current_app.config.get('FORCE_CACHING'):
+        return _get_people_data(office_id, page, per_page, search_query)
+    
     # Create a cache key based on parameters
-    cache_key = f"people_list_{office_id}_{page}_{per_page}"
-    if search_query:
-        # Include search in cache key but hash it to avoid invalid characters
-        import hashlib
-        search_hash = hashlib.md5(search_query.encode()).hexdigest()
-        cache_key = f"people_search_{search_hash}_{office_id}_{page}_{per_page}"
+    cache_key = f"people_list_{office_id}_{page}_{per_page}_{search_query}"
     
     # Try to get from cache first
     cached_data = cache.get(cache_key)
@@ -102,9 +102,24 @@ def get_cached_people(office_id=None, page=1, per_page=20, search_query=None):
         logger.info(f"Cache hit for {cache_key}")
         return cached_data
     
+    # If not in cache, fetch from database
     logger.info(f"Cache miss for {cache_key}, fetching from database")
     start_time = time.time()
+    result = _get_people_data(office_id, page, per_page, search_query)
     
+    # Cache the result, but handle serialization errors
+    try:
+        cache.set(cache_key, result, timeout=MEDIUM_TIMEOUT)
+        logger.info(f"Cached {len(result.get('people', []))} people in {time.time() - start_time:.2f}s")
+    except Exception as e:
+        logger.error(f"Failed to cache people data: {str(e)}")
+        # Continue without caching
+    
+    return result
+
+
+def _get_people_data(office_id=None, page=1, per_page=20, search_query=None):
+    """Get list of people with pagination and optional filtering."""
     # Create base query
     query = Person.query
     
@@ -172,15 +187,25 @@ def get_cached_people(office_id=None, page=1, per_page=20, search_query=None):
         'total': pagination.total
     }
     
-    # Cache the result
-    cache.set(cache_key, result, timeout=MEDIUM_TIMEOUT)
+    # Cache the result, but handle serialization errors
+    try:
+        cache.set(cache_key, result, timeout=MEDIUM_TIMEOUT)
+        logger.info(f"Cached {len(result.get('people', []))} people in {time.time() - start_time:.2f}s")
+    except Exception as e:
+        logger.error(f"Failed to cache people data: {str(e)}")
+        # Continue without caching
     
-    logger.info(f"Cached {len(people)} people in {time.time() - start_time:.2f}s")
     return result
 
 
 def get_cached_person(person_id):
     """Get a cached person by ID with related data."""
+    from flask import current_app
+    
+    # Skip caching in development
+    if current_app.config.get('ENV') == 'development' and not current_app.config.get('FORCE_CACHING'):
+        return _get_person_data(person_id)
+        
     cache_key = f"person_{person_id}"
     
     # Try to get from cache first
@@ -192,6 +217,21 @@ def get_cached_person(person_id):
     logger.info(f"Cache miss for {cache_key}, fetching from database")
     start_time = time.time()
     
+    result = _get_person_data(person_id)
+    
+    # Cache the result, but handle serialization errors
+    try:
+        cache.set(cache_key, result, timeout=MEDIUM_TIMEOUT)
+        logger.info(f"Cached person data in {time.time() - start_time:.2f}s")
+    except Exception as e:
+        logger.error(f"Failed to cache person data: {str(e)}")
+        # Continue without caching
+    
+    return result
+
+
+def _get_person_data(person_id):
+    """Get a person by ID with related data."""
     # Get person with related data
     person = Person.query.get(person_id)
     if not person:

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app.models.church import Church
@@ -11,8 +11,10 @@ from datetime import datetime
 import os
 import pandas as pd
 import uuid
+import time
 from sqlalchemy import or_
 from app.utils.decorators import office_required
+from app.utils.church_caching import get_cached_churches
 
 churches_bp = Blueprint('churches', __name__, template_folder='../templates/churches')
 
@@ -42,9 +44,14 @@ def index():
     total_time = time.time() - start_time
     current_app.logger.info(f"Churches index page loaded in {total_time:.2f} seconds")
     
-    return render_template('churches/list.html', 
+    # Calculate total pages for pagination
+    total_pages = result['pagination'].pages
+    
+    return render_template('churches/index.html', 
                           churches=result['churches'],
                           pagination=result['pagination'],
+                          page=page,  # Pass the current page number
+                          total_pages=total_pages,  # Pass the total pages
                           page_title="Churches Management",
                           load_time=total_time)
 
