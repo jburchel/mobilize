@@ -216,5 +216,24 @@
     <!-- Global Email Modal Container for AJAX-loaded modals -->
     <div id="global-email-modal-container"></div>
     <script src="{{ url_for('static', filename='js/email-modal.js') }}"></script>
+
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle-btn');
+
+            // Check for saved state in localStorage
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                sidebar.classList.add('collapse');
+            }
+
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('collapse');
+                // Save state to localStorage
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapse'));
+            });
+        });
+    </script>
 </body>
-</html> 
+</html>
