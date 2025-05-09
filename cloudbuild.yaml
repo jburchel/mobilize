@@ -66,6 +66,8 @@ steps:
 substitutions:
   _REGION: us-central1
   _FIREBASE_PROJECT_ID: mobilize-crm
+  # Ensure these default values are available for manual triggers
+  _SERVICE_NAME: mobilize-crm
 
 # Images to store in Container Registry
 images:
