@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload
 from app.utils.decorators import office_required
 from app.utils.upload import save_uploaded_file
 from app.utils.query_optimization import with_pagination
+import traceback
 
 communications_bp = Blueprint('communications', __name__, template_folder='../templates/communications')
 
@@ -32,6 +33,9 @@ def get_default_signature(user_id):
 def index():
     """Display communications hub."""
     start_time = datetime.now()
+    
+    # Log the start of the request processing
+    current_app.logger.info(f"Processing Communications page request: page={request.args.get('page', 1, type=int)}, per_page={request.args.get('per_page', 50, type=int)}")
     
     # Get filter parameters
     person_id = request.args.get('person_id')
@@ -65,18 +69,23 @@ def index():
     # Apply filters
     if person_id:
         query = query.filter(Communication.person_id == person_id)
+        current_app.logger.info(f"Applied person filter: {person_id}")
     if church_id:
         query = query.filter(Communication.church_id == church_id)
+        current_app.logger.info(f"Applied church filter: {church_id}")
     if comm_type:
         query = query.filter(Communication.type == comm_type)
+        current_app.logger.info(f"Applied type filter: {comm_type}")
     if direction:
         query = query.filter(Communication.direction == direction)
+        current_app.logger.info(f"Applied direction filter: {direction}")
     
     # Apply date range filter if provided
     if start_date:
         try:
             start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             query = query.filter(Communication.date_sent >= start_date_obj)
+            current_app.logger.info(f"Applied start date filter: {start_date}")
         except ValueError:
             current_app.logger.error(f"Invalid start_date format: {start_date}")
     
@@ -85,6 +94,7 @@ def index():
             # Set end_date to end of day
             end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
             query = query.filter(Communication.date_sent <= end_date_obj)
+            current_app.logger.info(f"Applied end date filter: {end_date}")
         except ValueError:
             current_app.logger.error(f"Invalid end_date format: {end_date}")
     
@@ -94,10 +104,12 @@ def index():
     
     # Order by date sent descending
     query = query.order_by(Communication.date_sent.desc())
-    
+    current_app.logger.info(f"Final query constructed with {query.count()} results before pagination")
+
     # Apply pagination to avoid loading too many records at once
     try:
         communications, pagination = with_pagination(query, page=page, per_page=per_page)
+        current_app.logger.info(f"Paginated results: {len(communications)} items on page {page}")
     except Exception as e:
         current_app.logger.error(f"Error in pagination for communications: {str(e)}")
         import traceback
