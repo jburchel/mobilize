@@ -926,4 +926,80 @@ table.dataTable {
     margin-right: 0;
     text-align: center;
     width: 100%;
-} 
+}
+
+/* Sidebar */
+.sidebar {
+    background-color: #343a40;
+    height: 100vh;
+    overflow-y: auto;
+    padding-top: 20px;
+    transition: all 0.3s ease;
+    width: 250px; /* Explicitly set expanded width */
+}
+
+.sidebar.collapsed {
+    width: 80px; /* Reduced width when collapsed */
+}
+
+.logo-container {
+    margin-bottom: 20px;
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-img {
+    max-height: 40px;
+    display: inline-block !important;
+}
+
+.sidebar.collapsed .logo-img {
+    display: inline-block !important;
+}
+
+.sidebar.collapsed .nav-text {
+    display: none; /* Hide text when collapsed */
+}
+
+.sidebar.collapsed .nav-link i {
+    margin-right: 0; /* Remove margin when collapsed */
+}
+
+/* Ensure logo visibility in both states */
+@media (min-width: 992px) {
+    .sidebar.collapsed .logo-container {
+        justify-content: center; /* Center the logo when collapsed */
+        flex-direction: row; /* Keep logo and text side by side */
+    }
+    .sidebar.collapsed .logo-container .text-white {
+        display: none; /* Hide text when collapsed */
+    }
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 10px 15px;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-toggle {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 10px;
+}
+
+/* Main content */
+.main-content {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+}

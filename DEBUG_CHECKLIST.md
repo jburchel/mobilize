@@ -12,7 +12,7 @@
 ## Sidebar
 
 - [x] It is not collapsable
-- [x] There is no logo
+- [ ] There is no logo
 
 ## Header (at the top of the page)
 
@@ -58,3 +58,11 @@
 
 - [x] When you try to delete a user you get a lengthy error message
 - [ ] System settings and Logs & Monitoring need to be hooked up (for a later iteration)
+
+## Tasks Page
+
+- [ ] Delete button doesn't work (in Actions column)
+- [ ] Status and Priority columns show 'Taskstatus.pending' and 'Taskpriority.low' instead of the actual status and priority as a color-coded pill
+- [ ] Filters not working
+- [ ] Search not working
+- [ ] Complete button not working (in Actions column)

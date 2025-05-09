@@ -36,34 +36,29 @@ def create():
 def view(pipeline_id):
     """View a pipeline with all its stages and contacts."""
     try:
-        # Additional debugging to troubleshoot church pipeline issue
-        current_app.logger.info(f"[PIPELINE DEBUG] Direct view request for pipeline_id: {pipeline_id}")
-        
-        pipeline = Pipeline.query.get_or_404(pipeline_id)
-        
-        # Enhanced debug logging to troubleshoot church pipeline issue
-        current_app.logger.info(f"[PIPELINE DEBUG] View request for pipeline_id: {pipeline_id}")
-        current_app.logger.info(f"[PIPELINE DEBUG] Pipeline details: name={pipeline.name}, type={pipeline.pipeline_type}, id={pipeline.id}")
-        
-        # Verify database connection
-        db_path = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        if 'sqlite' in db_path:
-            current_app.logger.info(f"Using database: {db_path}")
-        
-        # Add debug info
-        contact_count = db.session.execute(
-            db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
-            {"pipeline_id": pipeline_id}
-        ).scalar() or 0
-        current_app.logger.info(f"View pipeline {pipeline_id}, name={pipeline.name}, type={pipeline.pipeline_type}, SQL count: {contact_count}")
+        # Use request-level caching for pipeline data
+        cache_key = f"pipeline_{pipeline_id}"
+        if hasattr(current_app, 'request_cache') and cache_key in current_app.request_cache:
+            pipeline = current_app.request_cache[cache_key]
+        else:
+            # Use get_or_404 with eager loading to reduce queries
+            from sqlalchemy.orm import joinedload
+            pipeline = Pipeline.query.options(
+                joinedload(Pipeline.stages)  # Eager load stages
+            ).get_or_404(pipeline_id)
+            
+            # Store in request cache
+            if not hasattr(current_app, 'request_cache'):
+                current_app.request_cache = {}
+            current_app.request_cache[cache_key] = pipeline
         
         # Check if user has permission to view this pipeline
         if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
             flash('You do not have permission to view this pipeline', 'danger')
             return redirect(url_for('pipeline.index'))
         
-        # Call the controller function
-        return pipeline_view(pipeline_id)
+        # Call the controller function with a flag to use optimized queries
+        return pipeline_view(pipeline_id, use_optimized_queries=True)
     except Exception as e:
         current_app.logger.error(f"Error viewing pipeline: {str(e)}")
         return redirect(url_for('pipeline.index'))

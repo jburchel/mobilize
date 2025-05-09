@@ -125,26 +125,28 @@ def create():
 
 @pipeline_bp.route('/<int:pipeline_id>')
 @login_required
-def view(pipeline_id):
+def view(pipeline_id, use_optimized_queries=False):
     """View a pipeline with all its stages and contacts."""
+    import time
+    start_time = time.time()
+    
     try:
-        pipeline = Pipeline.query.get_or_404(pipeline_id)
-        
-        # Enhanced debug logging to troubleshoot church pipeline issue
-        current_app.logger.info(f"[PIPELINE DEBUG] View request for pipeline_id: {pipeline_id}")
-        current_app.logger.info(f"[PIPELINE DEBUG] Pipeline details: name={pipeline.name}, type={pipeline.pipeline_type}, id={pipeline.id}")
-        
-        # Verify database connection
-        db_path = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        if 'sqlite' in db_path:
-            current_app.logger.info(f"Using database: {db_path}")
-        
-        # Add debug info
-        contact_count = db.session.execute(
-            db.text("SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"),
-            {"pipeline_id": pipeline_id}
-        ).scalar() or 0
-        current_app.logger.info(f"View pipeline {pipeline_id}, name={pipeline.name}, type={pipeline.pipeline_type}, SQL count: {contact_count}")
+        # Use request-level caching for pipeline data
+        cache_key = f"pipeline_{pipeline_id}"
+        if hasattr(current_app, 'request_cache') and cache_key in current_app.request_cache:
+            pipeline = current_app.request_cache[cache_key]
+            current_app.logger.info(f"Using cached pipeline data for {pipeline_id}")
+        else:
+            # Use get_or_404 with eager loading to reduce queries
+            from sqlalchemy.orm import joinedload
+            pipeline = Pipeline.query.options(
+                joinedload(Pipeline.stages)  # Eager load stages
+            ).get_or_404(pipeline_id)
+            
+            # Store in request cache
+            if not hasattr(current_app, 'request_cache'):
+                current_app.request_cache = {}
+            current_app.request_cache[cache_key] = pipeline
         
         # Check if user has permission to view this pipeline
         if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
@@ -211,151 +213,161 @@ def view(pipeline_id):
             
             # Success message
             flash(f'Contact added to pipeline in {first_stage.name} stage', 'success')
+        
+        # Get stages - use the eager loaded stages if available
+        if hasattr(pipeline, 'stages') and pipeline.stages:
+            stages = sorted(pipeline.stages, key=lambda s: s.order)
+        else:
+            # Fallback to database query if needed
+            stages = PipelineStage.query.filter_by(pipeline_id=pipeline_id).order_by(PipelineStage.order).all()
+        
+        # Get pipeline contacts with optimized query
+        contact_query_time = time.time()
+        
+        # Use optimized query approach based on flag
+        if use_optimized_queries:
+            # Use a direct SQL query for maximum performance
+            # This is much faster than the ORM for this specific use case
+            from sqlalchemy import text
             
-        # Get stages with their contacts
-        stages = pipeline.get_active_stages()
-        
-        # Get pipeline contacts based on user role - OPTIMIZED VERSION
-        start_time = datetime.now()
-        current_app.logger.info(f"Starting pipeline contacts query at {start_time}")
-        
-        # Base query for pipeline contacts
-        pipeline_contacts_query = db.session.query(PipelineContact).filter(
-            PipelineContact.pipeline_id == pipeline_id
-        )
-        
-        # Apply filters based on user role
-        if not current_user.is_super_admin():
-            if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'people':
-                # For person pipelines, join with Person model
-                pipeline_contacts_query = db.session.query(PipelineContact).join(
-                    Person, PipelineContact.contact_id == Person.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Person.office_id == current_user.office_id
-                )
-                
-                # If not office admin, filter by assigned_to_id
-                if current_user.role != 'office_admin':
-                    pipeline_contacts_query = pipeline_contacts_query.filter(
-                        Person.assigned_to_id == current_user.id
-                    )
-            
-            elif pipeline.pipeline_type == 'church':
-                # For church pipelines, join with Church model
-                pipeline_contacts_query = db.session.query(PipelineContact).join(
-                    Church, PipelineContact.contact_id == Church.id
-                ).filter(
-                    PipelineContact.pipeline_id == pipeline_id,
-                    Church.office_id == current_user.office_id
-                )
-                
-                # If not office admin, filter by assigned_to_id
-                if current_user.role != 'office_admin':
-                    pipeline_contacts_query = pipeline_contacts_query.filter(
-                        Church.assigned_to_id == current_user.id
-                    )
-        
-        # Execute the query with eager loading of related objects
-        pipeline_contacts = pipeline_contacts_query.options(
-            selectinload(PipelineContact.contact),
-            selectinload(PipelineContact.current_stage)
-        ).all()
-        
-        query_time = datetime.now() - start_time
-        current_app.logger.info(f"Pipeline contacts query completed in {query_time.total_seconds():.2f} seconds")
-        current_app.logger.info(f"Found {len(pipeline_contacts)} contacts for pipeline {pipeline_id}")
-        
-        # Organize contacts by stage
-        contacts_by_stage = {stage.id: [] for stage in stages}
-        for pc in pipeline_contacts:
-            if pc.current_stage_id in contacts_by_stage:
-                contacts_by_stage[pc.current_stage_id].append(pc)
-        
-        # Log contact counts for debugging
-        for stage_id, contacts in contacts_by_stage.items():
-            stage = next((s for s in stages if s.id == stage_id), None)
-            stage_name = stage.name if stage else "Unknown"
-            current_app.logger.info(f"Stage {stage_id} ({stage_name}) has {len(contacts)} contacts")
-        
-        # Debug contact entries
-        if contact_count > 0 and len(pipeline_contacts) < contact_count:
-            current_app.logger.warning(f"Pipeline {pipeline_id} has {contact_count} contacts in DB but only {len(pipeline_contacts)} were loaded for display")
-            
-            # Check if some contacts weren't loaded correctly
-            missing_contacts = db.session.execute(
-                db.text("""
-                SELECT pc.id, pc.contact_id, pc.current_stage_id
-                FROM pipeline_contacts pc 
+            sql_query = """
+                SELECT pc.id, pc.contact_id, pc.current_stage_id, pc.entered_at, pc.last_updated,
+                       c.type as contact_type, c.name as contact_name,
+                       CASE c.type 
+                           WHEN 'person' THEN p.first_name || ' ' || p.last_name
+                           WHEN 'church' THEN ch.name
+                           ELSE c.name
+                       END as display_name
+                FROM pipeline_contacts pc
+                JOIN contacts c ON pc.contact_id = c.id
+                LEFT JOIN people p ON c.id = p.id AND c.type = 'person'
+                LEFT JOIN churches ch ON c.id = ch.id AND c.type = 'church'
                 WHERE pc.pipeline_id = :pipeline_id
-                """), 
-                {"pipeline_id": pipeline_id}
-            ).fetchall()
+            """
             
-            if missing_contacts:
-                current_app.logger.info(f"First 5 pipeline contacts DB records: {missing_contacts[:5]}")
-
-        # Get available contacts to populate the Add Contact dropdown based on user role - FURTHER OPTIMIZED VERSION
-        start_time = datetime.now()
-        current_app.logger.info(f"Starting available contacts query at {start_time}")
-        
-        # We'll load contacts lazily only when the user clicks 'Add Contact'
-        # This significantly improves initial page load time
-        
-        # Instead of loading all available contacts on page load, we'll defer this to an AJAX request
-        # when the user actually clicks the 'Add Contact' button
-        # This is a major performance optimization for the initial page load
-        
-        # Just get the counts for UI display
-        people_count = 0
-        churches_count = 0
-        
-        # Only do lightweight count queries for UI display
-        if pipeline.pipeline_type in ['person', 'people', 'both']:
-            people_count_query = db.session.query(db.func.count(Person.id))
+            # Add user role filters if needed
+            if not current_user.is_super_admin():
+                if pipeline.pipeline_type in ['person', 'people']:
+                    sql_query += " AND p.office_id = :office_id"
+                    if current_user.role != 'office_admin':
+                        sql_query += " AND p.assigned_to_id = :user_id"
+                elif pipeline.pipeline_type == 'church':
+                    sql_query += " AND ch.office_id = :office_id"
+                    if current_user.role != 'office_admin':
+                        sql_query += " AND ch.assigned_to_id = :user_id"
+            
+            # Prepare parameters
+            params = {"pipeline_id": pipeline_id}
+            if not current_user.is_super_admin():
+                params["office_id"] = current_user.office_id
+                if current_user.role != 'office_admin':
+                    params["user_id"] = current_user.id
+            
+            # Execute the query
+            result = db.session.execute(text(sql_query), params)
+            
+            # Get total count for debugging
+            sql_count = "SELECT COUNT(*) FROM pipeline_contacts WHERE pipeline_id = :pipeline_id"
+            total_contacts = db.session.execute(text(sql_count), {"pipeline_id": pipeline_id}).scalar() or 0
+            
+            # Organize contacts by stage
+            contacts_by_stage = {stage.id: [] for stage in stages}
+            
+            # Process the results
+            for row in result:
+                # Create a lightweight contact object with just the needed attributes
+                contact = {
+                    'id': row.id,
+                    'contact_id': row.contact_id,
+                    'current_stage_id': row.current_stage_id,
+                    'entered_at': row.entered_at,
+                    'last_updated': row.last_updated,
+                    'contact_type': row.contact_type,
+                    'display_name': row.display_name
+                }
+                
+                # Add to the appropriate stage
+                if row.current_stage_id in contacts_by_stage:
+                    contacts_by_stage[row.current_stage_id].append(contact)
+            
+            # Log performance metrics
+            current_app.logger.info(f"Optimized SQL query loaded {sum(len(contacts) for contacts in contacts_by_stage.values())} of {total_contacts} contacts in {time.time() - contact_query_time:.2f}s")
+        else:
+            # Fallback to standard ORM query if optimization is disabled
+            # Base query for pipeline contacts
+            pipeline_contacts_query = db.session.query(PipelineContact).filter(
+                PipelineContact.pipeline_id == pipeline_id
+            )
             
             # Apply filters based on user role
             if not current_user.is_super_admin():
-                people_count_query = people_count_query.filter(Person.office_id == current_user.office_id)
-                if current_user.role != 'office_admin':
-                    people_count_query = people_count_query.filter(Person.assigned_to_id == current_user.id)
+                if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'people':
+                    # For person pipelines, join with Person model
+                    pipeline_contacts_query = db.session.query(PipelineContact).join(
+                        Person, PipelineContact.contact_id == Person.id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline_id,
+                        Person.office_id == current_user.office_id
+                    )
+                    
+                    # If not office admin, filter by assigned_to_id
+                    if current_user.role != 'office_admin':
+                        pipeline_contacts_query = pipeline_contacts_query.filter(
+                            Person.assigned_to_id == current_user.id
+                        )
+                
+                elif pipeline.pipeline_type == 'church':
+                    # For church pipelines, join with Church model
+                    pipeline_contacts_query = db.session.query(PipelineContact).join(
+                        Church, PipelineContact.contact_id == Church.id
+                    ).filter(
+                        PipelineContact.pipeline_id == pipeline_id,
+                        Church.office_id == current_user.office_id
+                    )
+                    
+                    # If not office admin, filter by assigned_to_id
+                    if current_user.role != 'office_admin':
+                        pipeline_contacts_query = pipeline_contacts_query.filter(
+                            Church.assigned_to_id == current_user.id
+                        )
             
-            people_count = people_count_query.scalar() or 0
+            # Execute the query with eager loading of related objects
+            pipeline_contacts = pipeline_contacts_query.options(
+                selectinload(PipelineContact.contact),
+                selectinload(PipelineContact.current_stage)
+            ).all()
             
-        # For church pipeline type - just get the count
-        if pipeline.pipeline_type in ['church', 'both']:
-            church_count_query = db.session.query(db.func.count(Church.id))
+            # Organize contacts by stage
+            contacts_by_stage = {stage.id: [] for stage in stages}
+            for pc in pipeline_contacts:
+                if pc.current_stage_id in contacts_by_stage:
+                    contacts_by_stage[pc.current_stage_id].append(pc)
             
-            # Apply filters based on user role
-            if not current_user.is_super_admin():
-                church_count_query = church_count_query.filter(Church.office_id == current_user.office_id)
-                if current_user.role != 'office_admin':
-                    church_count_query = church_count_query.filter(Church.assigned_to_id == current_user.id)
-            
-            churches_count = church_count_query.scalar() or 0
-            
-        current_app.logger.info(f"Available contacts count query: {people_count} people, {churches_count} churches")
+            # Log performance metrics
+            current_app.logger.info(f"Standard ORM query loaded {len(pipeline_contacts)} contacts in {time.time() - contact_query_time:.2f}s")
         
-        query_time = datetime.now() - start_time
-        current_app.logger.info(f"Available contacts query completed in {query_time.total_seconds():.2f} seconds")
-        current_app.logger.info(f"Found {people_count} available people and {churches_count} available churches for dropdown")
-            
-        # Calculate total time for the view function
-        total_time = datetime.now() - start_time
-        current_app.logger.info(f"Total pipeline view function execution time: {total_time.total_seconds():.2f} seconds")
+        # Don't load available contacts on initial page load - use AJAX instead
+        people = []
+        churches = []
         
-        # Render the template with the data
-        return render_template('pipeline/view.html',
-                            pipeline=pipeline,
-                            stages=stages,
-                            contacts_by_stage=contacts_by_stage,
-                            people_count=people_count,
-                            churches_count=churches_count)
+        # Render the template with optimized data
+        render_start = time.time()
+        response = render_template('pipeline/view.html',
+                             pipeline=pipeline,
+                             stages=stages,
+                             contacts_by_stage=contacts_by_stage,
+                             people=people,
+                             churches=churches,
+                             use_ajax_loading=True)
+        
+        # Log total processing time
+        current_app.logger.info(f"Rendered pipeline view in {time.time() - render_start:.2f}s")
+        current_app.logger.info(f"Total pipeline view processing time: {time.time() - start_time:.2f}s")
+        
+        return response
     except Exception as e:
         current_app.logger.error(f"Error viewing pipeline: {str(e)}")
-        import traceback
-        current_app.logger.error(traceback.format_exc())
-        flash(f"Error loading pipeline: {str(e)}", "danger")
+        flash(f"Error viewing pipeline: {str(e)}", 'danger')
         return redirect(url_for('pipeline.index'))
 
 @pipeline_bp.route('/<int:pipeline_id>/edit', methods=['GET', 'POST'])

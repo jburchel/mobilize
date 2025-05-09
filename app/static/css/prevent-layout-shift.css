@@ -1,41 +1,6 @@
-/* Prevent layout shifts during page navigation */
+/* Minimal approach to prevent layout shifts during page navigation */
 
-/* Reserve space for the main content area */
-main.container-fluid {
-    min-height: 80vh; /* Reserve vertical space */
-}
-
-/* Ensure the sidebar has a fixed width to prevent horizontal shifts */
-#sidebar-wrapper {
-    width: 250px !important;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    will-change: transform, opacity;
-}
-
-/* Prevent header jumps */
-header.dashboard-header {
-    height: 60px;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
-/* Prevent jumps from loading fonts */
-html {
-    font-display: optional;
-}
-
-/* Prevent jumps from loading images */
-img {
-    aspect-ratio: attr(width) / attr(height);
-}
-
-/* Prevent jumps in card layouts */
-.card {
-    contain: layout;
-}
-
-/* Ensure content doesn't shift when scrollbar appears */
+/* Ensure scrollbar is always visible to prevent width changes */
 html {
     overflow-y: scroll;
 }
@@ -43,5 +8,47 @@ html {
 /* Prevent content jumps when modal dialogs appear */
 body.modal-open {
     padding-right: 0 !important;
-    overflow-y: scroll !important;
+}
+
+/* Stabilize the sidebar width */
+#sidebar-wrapper {
+    width: 250px !important;
+}
+
+/* Ensure header has consistent height */
+header.dashboard-header {
+    min-height: 60px;
+}
+
+/* Fix for main content area - this is the key fix for the jumping issue */
+.content-wrapper {
+    min-height: calc(100vh - 60px); /* Subtract header height */
+}
+
+/* Prevent main content from shifting during page transitions */
+main.container-fluid {
+    padding-top: 20px; /* Consistent top padding */
+    min-height: 500px; /* Minimum height to prevent collapsing */
+}
+
+/* Ensure images don't cause layout shifts */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Ensure cards don't cause layout shifts */
+.card {
+    height: auto;
+}
+
+/* Ensure badges don't cause layout shifts */
+.badge {
+    min-width: 18px;
+    display: inline-block;
+}
+
+/* Prevent flash of unstyled content */
+body {
+    visibility: visible !important;
 }
