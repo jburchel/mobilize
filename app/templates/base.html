@@ -38,6 +38,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <!-- Logo Fix CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/logo-fix.css') }}">
+    <!-- Task Badges CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/task-badges.css') }}">
+    <!-- Production Fixes CSS - ensure consistent styling across environments -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/production-fixes.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -246,10 +250,12 @@
             // Check for saved state in localStorage
             if (localStorage.getItem('sidebarCollapsed') === 'true') {
                 sidebar.classList.add('collapsed');
+                document.body.classList.add('sidebar-collapsed');
             }
 
             sidebarToggle.addEventListener('click', function() {
                 sidebar.classList.toggle('collapsed');
+                document.body.classList.toggle('sidebar-collapsed');
                 // Save state to localStorage
                 localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
             });

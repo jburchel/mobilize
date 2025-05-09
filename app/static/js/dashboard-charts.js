@@ -1,14 +1,39 @@
 // Dashboard Charts - Real-time data implementation
 
-// Wait for DOM content to be loaded
+// Make global stats available to the charts
+window.gStats = window.gStats || {};
+
+// Expose stats from Flask to JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, initializing dashboard charts');
-  // Initialize charts if containers exist
-  if (document.getElementById('people-chart-container') || document.getElementById('church-chart-container')) {
-    initializeDashboardCharts();
-  } else {
-    console.log('No chart containers found, skipping initialization');
-  }
+    // Try to get stats from data attributes if available
+    const statsContainer = document.getElementById('stats-container');
+    if (statsContainer) {
+        window.gStats = {
+            people_count: statsContainer.getAttribute('data-people-count') || 0,
+            church_count: statsContainer.getAttribute('data-church-count') || 0,
+            pending_tasks: statsContainer.getAttribute('data-pending-tasks') || 0,
+            recent_communications: statsContainer.getAttribute('data-recent-communications') || 0
+        };
+        console.log('Loaded stats from data attributes:', window.gStats);
+    } else {
+        console.log('No stats container found, using default values');
+    }
+    
+    // Initialize button event handlers
+    initRefreshButtons();
+    
+    // Load chart data
+    fetchPipelineData('people');
+    fetchPipelineData('church');
+    
+    console.log('DOM loaded, initializing dashboard charts');
+    // Initialize charts if containers exist
+    if (document.getElementById('people-chart-container') || document.getElementById('church-chart-container')) {
+        initializeDashboardCharts();
+        updateBadgeTotals(); // Update badge totals on page load
+    } else {
+        console.log('No chart containers found, skipping initialization');
+    }
 });
 
 // Global chart objects
@@ -73,6 +98,11 @@ function fetchPipelineData(pipelineType) {
     .then(data => {
       console.log(`${pipelineType} pipeline data:`, data);
       createChart(pipelineType, data);
+      
+      // Update badge totals when data is received
+      if (data.total_contacts) {
+        updateBadgeTotal(pipelineType, data.total_contacts);
+      }
       
       // Update the View Pipeline button with the correct pipeline ID
       if (data.pipeline_id) {
@@ -206,12 +236,21 @@ function hideLoading(pipelineType) {
 
 // Set up chart type buttons - simplified to always use pie charts
 function setupChartTypeButtons() {
-  // Hide chart type buttons since we're only using pie charts
+  // Remove chart type buttons since we're only using pie charts
   document.querySelectorAll('.chart-type-btn').forEach(button => {
-    button.style.display = 'none';
+    if (button && button.parentNode) {
+      button.parentNode.removeChild(button);
+    }
   });
   
-  console.log('Chart type buttons hidden, using pie charts only');
+  // Also remove any chart type button containers
+  document.querySelectorAll('.chart-type-container').forEach(container => {
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+  });
+  
+  console.log('Chart type buttons removed, using pie charts only');
 }
 
 // Set up refresh buttons
@@ -236,4 +275,67 @@ function getDefaultColor(stageName) {
   if (name.includes('automation')) return '#1abc9c'; // Teal
   
   return '#95a5a6'; // Gray default
+}
+
+// Update badge totals from the global stats object
+function updateBadgeTotals() {
+  console.log('Updating badge totals from global stats');
+  
+  // Try to get stats from the global context
+  if (window.gStats) {
+    console.log('Found global stats:', window.gStats);
+    if (window.gStats.people_count) {
+      updateBadgeTotal('people', window.gStats.people_count);
+    }
+    if (window.gStats.church_count) {
+      updateBadgeTotal('church', window.gStats.church_count);
+    }
+  } else {
+    // Fallback to getting stats from the DOM if available
+    console.log('No global stats found, checking DOM for stats');
+    const peopleValue = document.querySelector('.kpi-card-title:contains("Total People")');
+    if (peopleValue) {
+      const count = peopleValue.closest('.kpi-card').querySelector('.kpi-card-value').textContent.trim();
+      updateBadgeTotal('people', count);
+    }
+    
+    const churchValue = document.querySelector('.kpi-card-title:contains("Total Churches")');
+    if (churchValue) {
+      const count = churchValue.closest('.kpi-card').querySelector('.kpi-card-value').textContent.trim();
+      updateBadgeTotal('church', count);
+    }
+  }
+}
+
+// Update a specific badge total
+function updateBadgeTotal(type, count) {
+  console.log(`Updating ${type} badge total to ${count}`);
+  const badgeId = `${type === 'people' ? 'people' : 'church'}-badge-total`;
+  const badge = document.getElementById(badgeId);
+  
+  if (!badge) {
+    // Create badge if it doesn't exist
+    const cardFooter = document.querySelector(`#${type}-chart-container`).closest('.card').querySelector('.card-footer');
+    if (cardFooter) {
+      const badgeContainer = cardFooter.querySelector('.d-flex');
+      if (badgeContainer) {
+        const badgeSpan = document.createElement('span');
+        badgeSpan.id = badgeId;
+        badgeSpan.className = 'badge bg-secondary badge-total';
+        badgeSpan.textContent = `Total: ${count} ${type === 'people' ? 'People' : 'Churches'}`;
+        
+        // Insert at beginning of container
+        if (badgeContainer.firstChild) {
+          badgeContainer.insertBefore(badgeSpan, badgeContainer.firstChild);
+        } else {
+          badgeContainer.appendChild(badgeSpan);
+        }
+        console.log(`Created new badge for ${type}`);
+      }
+    }
+  } else {
+    // Update existing badge
+    badge.textContent = `Total: ${count} ${type === 'people' ? 'People' : 'Churches'}`;
+    console.log(`Updated existing badge for ${type}`);
+  }
 }

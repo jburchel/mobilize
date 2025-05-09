@@ -1,0 +1,151 @@
+/* Production-specific fixes to ensure consistent styling */
+
+/* Fix sidebar gradient */
+.sidebar {
+    background: linear-gradient(to bottom, var(--primary-blue), var(--primary-green)) !important;
+    width: 250px !important;
+    z-index: 1030 !important;
+    position: fixed !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+}
+
+/* Fix sidebar collapsed state */
+.sidebar.collapsed {
+    width: 80px !important;
+}
+
+/* Ensure logo visibility */
+.logo-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.5rem 1rem !important;
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    margin-bottom: 1rem !important;
+}
+
+.logo-img {
+    display: inline-block !important;
+    height: 40px !important;
+    margin-right: 10px !important;
+}
+
+.sidebar.collapsed .logo-img {
+    height: 30px !important;
+    margin-right: 0 !important;
+}
+
+/* Fix KPI cards styling */
+.kpi-card {
+    display: flex !important;
+    background-color: #fff !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    overflow: hidden !important;
+    height: 100% !important;
+}
+
+.kpi-card-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 80px !important;
+    font-size: 2rem !important;
+    color: #fff !important;
+}
+
+.kpi-card-content {
+    flex: 1 !important;
+    padding: 1rem !important;
+}
+
+.kpi-card-title {
+    font-size: 0.875rem !important;
+    color: #6c757d !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.kpi-card-value {
+    font-size: 1.5rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.25rem !important;
+}
+
+/* Fix chart cards */
+.card-border-primary-blue {
+    border-left: 4px solid var(--primary-blue) !important;
+}
+
+.card-border-primary-green {
+    border-left: 4px solid var(--primary-green) !important;
+}
+
+/* Force chart visibility */
+#people-chart-container, #church-chart-container {
+    height: 300px !important;
+    width: 100% !important;
+    position: relative !important;
+    display: block !important;
+}
+
+/* Fix badge totals */
+.badge-total {
+    display: inline-block !important;
+    padding: 0.35em 0.65em !important;
+    font-size: 0.75em !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    vertical-align: baseline !important;
+    border-radius: 0.25rem !important;
+    background-color: #6c757d !important;
+    color: white !important;
+}
+
+/* Fix header styling */
+.header {
+    background-color: #fff !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    height: var(--header-height, 60px) !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 1rem !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1020 !important;
+}
+
+/* Fix nav links */
+.nav-link {
+    display: flex !important;
+    align-items: center !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: all 0.2s !important;
+    padding: 0.5rem 1rem !important;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Fix nav text in collapsed state */
+.sidebar.collapsed .nav-text {
+    display: none !important;
+}
+
+/* Fix main content area */
+.main-content {
+    margin-left: var(--sidebar-width, 250px) !important;
+    width: calc(100% - var(--sidebar-width, 250px)) !important;
+    transition: margin-left 0.3s ease, width 0.3s ease !important;
+}
+
+@media (max-width: 991.98px) {
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
