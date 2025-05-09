@@ -198,5 +198,5 @@ class User(UserMixin, Base):
             return len(self.owned_tasks)
         elif record_type == 'people':
             # Count people records where this user is the owner (using user_id field)
-            return db.session.query(func.count(Person.id)).filter(Person.user_id == str(self.id)).scalar() or 0
+            return db.session.query(func.count(Person.id)).filter(Person.user_id == self.id).scalar() or 0
         return 0 
