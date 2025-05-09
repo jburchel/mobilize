@@ -1,0 +1,47 @@
+/* Prevent layout shifts during page navigation */
+
+/* Reserve space for the main content area */
+main.container-fluid {
+    min-height: 80vh; /* Reserve vertical space */
+}
+
+/* Ensure the sidebar has a fixed width to prevent horizontal shifts */
+#sidebar-wrapper {
+    width: 250px !important;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    will-change: transform, opacity;
+}
+
+/* Prevent header jumps */
+header.dashboard-header {
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Prevent jumps from loading fonts */
+html {
+    font-display: optional;
+}
+
+/* Prevent jumps from loading images */
+img {
+    aspect-ratio: attr(width) / attr(height);
+}
+
+/* Prevent jumps in card layouts */
+.card {
+    contain: layout;
+}
+
+/* Ensure content doesn't shift when scrollbar appears */
+html {
+    overflow-y: scroll;
+}
+
+/* Prevent content jumps when modal dialogs appear */
+body.modal-open {
+    padding-right: 0 !important;
+    overflow-y: scroll !important;
+}
