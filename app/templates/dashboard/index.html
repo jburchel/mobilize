@@ -91,11 +91,11 @@
                     <div id="people-chart-container" style="height: 300px; width: 100%; position: relative;">
                         <!-- Chart will be rendered here -->
                     </div>
-                    <div id="people-chart-loading" class="chart-loading-indicator" style="display: flex; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); justify-content: center; align-items: center;">
+                    <div id="people-chart-loading" class="chart-loading" style="display: flex; justify-content: center; align-items: center;">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="ms-2">Loading chart data...</div>
+                        <span class="ms-2">Loading chart data...</span>
                     </div>
                     <div id="people-chart-error" class="alert alert-danger mt-3" style="display: none;"></div>
                     <div id="people-chart-empty" class="alert alert-info mt-3" style="display: none;">No data available for People Pipeline</div>
@@ -130,11 +130,11 @@
                     <div id="church-chart-container" style="height: 300px; width: 100%; position: relative;">
                         <!-- Chart will be rendered here -->
                     </div>
-                    <div id="church-chart-loading" class="chart-loading-indicator" style="display: flex; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); justify-content: center; align-items: center;">
+                    <div id="church-chart-loading" class="chart-loading" style="display: flex; justify-content: center; align-items: center;">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="ms-2">Loading chart data...</div>
+                        <span class="ms-2">Loading chart data...</span>
                     </div>
                     <div id="church-chart-error" class="alert alert-danger mt-3" style="display: none;"></div>
                     <div id="church-chart-empty" class="alert alert-info mt-3" style="display: none;">No data available for Church Pipeline</div>
@@ -447,15 +447,55 @@ function renderChart(chartType, data) {
     const counts = data.stages.map(stage => stage.contact_count || 0);
     const colors = data.stages.map(stage => stage.color || getDefaultColor(stage.name));
     
-    // Create chart
-    const ctx = canvas.getContext('2d');
-    const chartConfig = createChartConfig('pie', labels, counts, colors);
+    // Create a simple pie chart
+    const chartData = {
+        labels: labels,
+        datasets: [{
+            data: counts,
+            backgroundColor: colors,
+            borderWidth: 1
+        }]
+    };
+    
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 12
+                    }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.raw || 0;
+                        const total = counts.reduce((sum, count) => sum + count, 0);
+                        const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                        return `${label}: ${value} (${percentage}%)`;
+                    }
+                }
+            }
+        }
+    };
     
     // Create and store chart instance
     if (chartType === 'person') {
-        peopleChart = new Chart(ctx, chartConfig);
+        peopleChart = new Chart(canvas, {
+            type: 'pie',
+            data: chartData,
+            options: chartOptions
+        });
     } else {
-        churchChart = new Chart(ctx, chartConfig);
+        churchChart = new Chart(canvas, {
+            type: 'pie',
+            data: chartData,
+            options: chartOptions
+        });
     }
     
     logMessage(`Rendered pie chart for ${chartType} pipeline`);
@@ -477,95 +517,7 @@ function getDefaultColor(stageName) {
     return '#95a5a6'; // Gray
 }
 
-// Function to create chart configuration
-function createChartConfig(chartStyle, labels, counts, colors) {
-    // Common options for both chart types
-    const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        const label = context.label || '';
-                        const value = context.raw || 0;
-                        const total = counts.reduce((sum, count) => sum + count, 0);
-                        const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                        return `${label}: ${value} (${percentage}%)`;
-                    }
-                },
-                titleFont: { size: 14 },
-                bodyFont: { size: 14 }
-            }
-        }
-    };
-    
-    // Configure chart based on type
-    if (chartStyle === 'pie') {
-        return {
-            type: 'pie',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: counts,
-                    backgroundColor: colors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                ...commonOptions,
-                plugins: {
-                    ...commonOptions.plugins,
-                    legend: {
-                        position: 'right',
-                        labels: {
-                            boxWidth: 15,
-                            padding: 15,
-                            font: { size: 13 }
-                        }
-                    }
-                }
-            }
-        };
-    } else {
-        // Bar chart
-        return {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Count',
-                    data: counts,
-                    backgroundColor: colors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                ...commonOptions,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0, // No decimal places for integer counts
-                            font: { size: 12 }
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            font: { size: 12 }
-                        }
-                    }
-                },
-                plugins: {
-                    ...commonOptions.plugins,
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        };
-    }
-}
+// Function removed - using inline chart configuration instead
 
 // Function to test the pipeline API
 function testPipelineApi(chartType) {
@@ -620,32 +572,6 @@ function testPipelineApi(chartType) {
         });
 }
 
-// Initialize chart type buttons
-function initChartTypeButtons() {
-    // Add event listeners to chart type buttons
-    document.querySelectorAll('.chart-type-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const chartType = this.getAttribute('data-pipeline');
-            const newChartStyle = this.getAttribute('data-chart-type');
-            
-            // Update active state for all buttons in this group
-            const buttonGroup = this.closest('.btn-group');
-            if (buttonGroup) {
-                buttonGroup.querySelectorAll('.chart-type-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                this.classList.add('active');
-            }
-            
-            // Save preference to localStorage
-            localStorage.setItem(`${chartType}-chart-style`, newChartStyle);
-            
-            // Refresh the chart with new style
-            fetchPipelineChartData(chartType);
-        });
-    });
-}
-
 // Initialize refresh buttons
 function initRefreshButtons() {
     document.querySelectorAll('.refresh-chart-btn').forEach(button => {
@@ -656,26 +582,7 @@ function initRefreshButtons() {
     });
 }
 
-// Apply saved chart style preferences
-function applySavedChartStyles() {
-    ['person', 'church'].forEach(chartType => {
-        const savedStyle = localStorage.getItem(`${chartType}-chart-style`);
-        if (savedStyle) {
-            const buttonSelector = `#${chartType}-chart-type-buttons .chart-type-btn[data-chart-type="${savedStyle}"]`;
-            const button = document.querySelector(buttonSelector);
-            if (button) {
-                // Update active state for all buttons in this group
-                const buttonGroup = button.closest('.btn-group');
-                if (buttonGroup) {
-                    buttonGroup.querySelectorAll('.chart-type-btn').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-                    button.classList.add('active');
-                }
-            }
-        }
-    });
-}
+// Chart style preferences removed - only using pie charts now
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
