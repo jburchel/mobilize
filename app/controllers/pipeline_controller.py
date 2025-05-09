@@ -1043,16 +1043,22 @@ def update_pipeline():
 @login_required
 def move_contact_api(contact_id):
     """API endpoint to move a contact to a new stage"""
+    current_app.logger.info(f"[PIPELINE_DEBUG] Starting move_contact_api for contact_id={contact_id}")
     try:
         # Get the contact
         pipeline_contact = PipelineContact.query.get_or_404(contact_id)
+        current_app.logger.info(f"[PIPELINE_DEBUG] Found pipeline_contact id={pipeline_contact.id}, current_stage_id={pipeline_contact.current_stage_id}")
         
         # Check if user has permission to edit this pipeline
         pipeline = Pipeline.query.get(pipeline_contact.pipeline_id)
         if not pipeline:
+            current_app.logger.error(f"[PIPELINE_DEBUG] Pipeline not found for pipeline_id={pipeline_contact.pipeline_id}")
             return jsonify({'success': False, 'message': 'Pipeline not found'})
             
+        current_app.logger.info(f"[PIPELINE_DEBUG] Found pipeline id={pipeline.id}, name={pipeline.name}, office_id={pipeline.office_id}")
+            
         if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
+            current_app.logger.error(f"[PIPELINE_DEBUG] Permission denied. User office_id={current_user.office_id}, pipeline office_id={pipeline.office_id}")
             return jsonify({'success': False, 'message': 'Permission denied'})
         
         # Get form data
@@ -1060,42 +1066,67 @@ def move_contact_api(contact_id):
         if not data:
             data = request.form
             
-        current_app.logger.debug(f"Move contact data: {data}")
+        current_app.logger.info(f"[PIPELINE_DEBUG] Move contact data: {data}")
         
         # Get the new stage ID
         new_stage_id = data.get('stage_id')
         if not new_stage_id:
+            current_app.logger.error(f"[PIPELINE_DEBUG] No stage ID provided in request data")
             return jsonify({'success': False, 'message': 'No stage ID provided'})
             
         # Convert stage_id to int if needed
         try:
             new_stage_id = int(new_stage_id)
-        except (ValueError, TypeError):
+            current_app.logger.info(f"[PIPELINE_DEBUG] Converted stage_id to int: {new_stage_id}")
+        except (ValueError, TypeError) as e:
+            current_app.logger.error(f"[PIPELINE_DEBUG] Invalid stage ID format: {new_stage_id}, error: {str(e)}")
             return jsonify({'success': False, 'message': 'Invalid stage ID'})
         
         # Get the stage
         new_stage = PipelineStage.query.get(new_stage_id)
         if not new_stage:
+            current_app.logger.error(f"[PIPELINE_DEBUG] Stage not found for stage_id={new_stage_id}")
             return jsonify({'success': False, 'message': 'Stage not found'})
+            
+        current_app.logger.info(f"[PIPELINE_DEBUG] Found new stage id={new_stage.id}, name={new_stage.name}, pipeline_id={new_stage.pipeline_id}")
             
         # Verify stage belongs to this pipeline
         if new_stage.pipeline_id != pipeline_contact.pipeline_id:
+            current_app.logger.error(f"[PIPELINE_DEBUG] Stage not in this pipeline. Stage pipeline_id={new_stage.pipeline_id}, contact pipeline_id={pipeline_contact.pipeline_id}")
             return jsonify({'success': False, 'message': 'Stage not in this pipeline'})
         
         # Get notes if provided
         notes = data.get('notes', '')
+        current_app.logger.info(f"[PIPELINE_DEBUG] Notes: {notes}")
         
         # Get the old stage
         old_stage = PipelineStage.query.get(pipeline_contact.current_stage_id)
+        if old_stage:
+            current_app.logger.info(f"[PIPELINE_DEBUG] Found old stage id={old_stage.id}, name={old_stage.name}")
+        else:
+            current_app.logger.warning(f"[PIPELINE_DEBUG] Old stage not found for stage_id={pipeline_contact.current_stage_id}")
         
         # If no change in stage, just return success
         if old_stage and old_stage.id == new_stage.id:
+            current_app.logger.info(f"[PIPELINE_DEBUG] Contact already in this stage. No change needed.")
             return jsonify({'success': True, 'message': 'Contact already in this stage'})
         
-        current_app.logger.debug(f"Moving contact {contact_id} from stage {old_stage.id if old_stage else 'None'} to {new_stage.id}")
+        current_app.logger.info(f"[PIPELINE_DEBUG] Moving contact {contact_id} from stage {old_stage.id if old_stage else 'None'} to {new_stage.id}")
+        
+        # Verify database connection is active
+        try:
+            db.session.execute(db.text("SELECT 1"))
+            current_app.logger.info(f"[PIPELINE_DEBUG] Database connection verified")
+        except Exception as db_error:
+            current_app.logger.error(f"[PIPELINE_DEBUG] Database connection error: {str(db_error)}")
+            return jsonify({
+                'success': False,
+                'message': f'Database connection error: {str(db_error)}'
+            })
         
         # Move the contact to the new stage using the model method
         try:
+            current_app.logger.info(f"[PIPELINE_DEBUG] Calling move_to_stage with stage_id={new_stage_id}, user_id={current_user.id}")
             success = pipeline_contact.move_to_stage(
                 stage_id=new_stage_id,
                 user_id=current_user.id,
@@ -1103,24 +1134,41 @@ def move_contact_api(contact_id):
             )
             
             if success:
-                return jsonify({
-                    'success': True,
-                    'message': 'Contact moved successfully'
-                })
+                # Verify the change was actually made
+                db.session.refresh(pipeline_contact)
+                current_app.logger.info(f"[PIPELINE_DEBUG] After move: contact stage_id={pipeline_contact.current_stage_id}, expected={new_stage_id}")
+                
+                if pipeline_contact.current_stage_id == new_stage_id:
+                    current_app.logger.info(f"[PIPELINE_DEBUG] Move successful and verified")
+                    return jsonify({
+                        'success': True,
+                        'message': 'Contact moved successfully'
+                    })
+                else:
+                    current_app.logger.error(f"[PIPELINE_DEBUG] Move reported success but verification failed. Current stage={pipeline_contact.current_stage_id}, expected={new_stage_id}")
+                    return jsonify({
+                        'success': False,
+                        'message': 'Move verification failed'
+                    })
             else:
+                current_app.logger.error(f"[PIPELINE_DEBUG] move_to_stage returned False")
                 return jsonify({
                     'success': False,
                     'message': 'Failed to move contact'
                 })
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error in move_to_stage: {str(e)}")
+            current_app.logger.error(f"[PIPELINE_DEBUG] Error in move_to_stage: {str(e)}")
+            import traceback
+            current_app.logger.error(f"[PIPELINE_DEBUG] Traceback: {traceback.format_exc()}")
             return jsonify({
                 'success': False,
                 'message': f'Error: {str(e)}'
             })
     except Exception as e:
-        current_app.logger.error(f"Error moving contact {contact_id}: {str(e)}")
+        current_app.logger.error(f"[PIPELINE_DEBUG] Error moving contact {contact_id}: {str(e)}")
+        import traceback
+        current_app.logger.error(f"[PIPELINE_DEBUG] Traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'

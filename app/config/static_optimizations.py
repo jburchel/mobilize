@@ -46,6 +46,9 @@ def precompress_static_files(app):
         '.css', '.js', '.html', '.xml', '.json', '.svg', '.txt', '.map'
     ]
     
+    # Ensure all component CSS files are included
+    app.logger.info("Ensuring all component CSS files are compressed")
+    
     # Compress files
     for root, _, files in os.walk(static_folder):
         for filename in files:

@@ -168,11 +168,16 @@ class PipelineContact(db.Model):
         
     def move_to_stage(self, stage_id, user_id=None, notes=None):
         """Move contact to a new stage and create history record."""
+        from flask import current_app
+        current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Starting move_to_stage for contact_id={self.id}, from stage_id={self.current_stage_id} to stage_id={stage_id}")
+        
         try:
             previous_stage_id = self.current_stage_id
+            current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Previous stage_id={previous_stage_id}")
             
             # Create history record
             if previous_stage_id != stage_id:
+                current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Creating history record for pipeline_contact_id={self.id}")
                 history_entry = PipelineStageHistory(
                     pipeline_contact_id=self.id,
                     from_stage_id=previous_stage_id,
@@ -182,19 +187,49 @@ class PipelineContact(db.Model):
                     created_at=datetime.now()
                 )
                 db.session.add(history_entry)
+                
                 # Commit the history record first
-                db.session.commit()
+                try:
+                    current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Committing history record")
+                    db.session.commit()
+                    current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] History record committed successfully")
+                except Exception as history_error:
+                    current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Error committing history record: {str(history_error)}")
+                    db.session.rollback()
+                    raise history_error
+            else:
+                current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] No stage change (previous={previous_stage_id}, new={stage_id}), skipping history record")
             
             # Update current stage
+            current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Updating current_stage_id from {self.current_stage_id} to {stage_id}")
             self.current_stage_id = stage_id
             self.last_updated = datetime.now()
-            db.session.commit()
             
+            try:
+                current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Committing stage update")
+                db.session.commit()
+                current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Stage update committed successfully")
+                
+                # Verify the change was actually committed
+                db.session.refresh(self)
+                current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] After refresh: current_stage_id={self.current_stage_id}, expected={stage_id}")
+                
+                if self.current_stage_id != stage_id:
+                    current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Stage update verification failed! current_stage_id={self.current_stage_id}, expected={stage_id}")
+                    return False
+            except Exception as update_error:
+                current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Error committing stage update: {str(update_error)}")
+                db.session.rollback()
+                raise update_error
+            
+            current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] move_to_stage completed successfully")
             return True
-        except Exception:
+        except Exception as e:
             db.session.rollback()
             import traceback
-            traceback.print_exc()
+            error_traceback = traceback.format_exc()
+            current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Error in move_to_stage: {str(e)}")
+            current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Traceback: {error_traceback}")
             return False
     
     def to_dict(self):

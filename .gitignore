@@ -63,6 +63,11 @@ coverage.xml
 instance/
 .webassets-cache
 
+# Compressed static files
+app/static/.compressed
+*.br
+*.gz
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
