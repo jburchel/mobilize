@@ -35,6 +35,7 @@ from app.cli import register_commands
 from app.config.performance_optimizations import optimize_flask_app
 from app.config.static_optimizations import optimize_static_files
 from app.config.database_optimizations import optimize_database_queries
+from app.config.frontend_optimizations import optimize_frontend_performance
 
 # Load environment variables from .env.development first
 load_dotenv(find_dotenv(".env.development"), override=True) # Keep from main, ensure override=True
@@ -391,6 +392,7 @@ def create_app(test_config=None):
     optimize_flask_app(app)
     optimize_static_files(app)
     optimize_database_queries(app)
+    optimize_frontend_performance(app)  # Apply frontend optimizations
     
     # Setup pipelines and migrate contacts (Keep logic from development)
     with app.app_context():
@@ -439,10 +441,16 @@ def create_app(test_config=None):
             return
             
         if current_user.is_authenticated:
+            # Get counts with logging for debugging
+            people_count = current_user.count_owned_records('people')
+            comms_count = current_user.count_owned_records('communications')
+            app.logger.info(f'User ID: {current_user.id}, People count: {people_count}, Communications count: {comms_count}')
+            
             g.stats = {
                 'pending_tasks': current_user.count_owned_records('tasks'),
                 'church_count': current_user.count_owned_records('churches'),
-                'people_count': current_user.count_owned_records('people')
+                'people_count': people_count,
+                'recent_communications': comms_count
             }
         else:
             g.stats = None
