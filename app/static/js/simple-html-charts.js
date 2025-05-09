@@ -149,6 +149,11 @@ function createHtmlBarChart(containerId, data) {
   }
   
   // Create the bars
+  const barChart = document.createElement('div');
+  barChart.className = 'bar-chart';
+  chartContainer.appendChild(barChart);
+
+  data.stages.forEach((stage, index) => {
     const bar = document.createElement('div');
     bar.className = 'bar';
     // Ensure minimum height for visibility
@@ -327,55 +332,15 @@ function createSampleCharts() {
 }
 
 // Initialize charts
-async function initializeCharts() {
-  try {
-    // First try to load data from API
-    const peopleData = await fetchPipelineData('person');
-    if (peopleData) {
-      createHtmlPieChart('person-chart-container', peopleData);
-    }
-    
-    // Load church pipeline data and create chart
-    const churchData = await fetchPipelineData('church');
-    if (churchData) {
-      createHtmlPieChart('church-chart-container', churchData);
-    }
-  } catch (error) {
-    // Silently fall back to sample data if anything fails
-    // No need to call createSampleCharts() here since it's already called on page load
-  }
+function initializeCharts() {
+  // Create pie charts by default
+  createHtmlPieChart('people-chart-container', samplePeopleData);
+  createHtmlPieChart('church-chart-container', sampleChurchData);
 }
 
 // Handle chart type button clicks
 function setupChartTypeButtons() {
-  document.querySelectorAll('.chart-type-btn').forEach(button => {
-    button.addEventListener('click', async function() {
-      const pipelineType = this.dataset.pipeline;
-      const chartType = this.dataset.chartType;
-      
-      // Update active button
-      document.querySelectorAll(`[data-pipeline="${pipelineType}"].chart-type-btn`).forEach(btn => {
-        btn.classList.remove('active');
-      });
-      this.classList.add('active');
-      
-      // Get data
-      const data = await fetchPipelineData(pipelineType);
-      if (!data) {
-        // Show empty message if no data
-        const emptyElement = document.getElementById(`${pipelineType}-chart-empty`);
-        if (emptyElement) emptyElement.style.display = 'block';
-        return;
-      }
-      
-      // Create chart based on type
-      if (chartType === 'pie') {
-        createHtmlPieChart(`${pipelineType}-chart-container`, data);
-      } else if (chartType === 'bar') {
-        createHtmlBarChart(`${pipelineType}-chart-container`, data);
-      }
-    });
-  });
+  // Functionality removed as we're defaulting to pie charts
 }
 
 // Handle refresh button clicks
