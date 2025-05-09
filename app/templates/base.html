@@ -235,5 +235,28 @@
             });
         });
     </script>
+
+    <script>
+        // Ensure logo is visible
+        document.addEventListener('DOMContentLoaded', function() {
+            const logo = document.querySelector('.logo-container');
+            const sidebar = document.getElementById('sidebar');
+
+            // Check if sidebar is collapsed
+            if (sidebar.classList.contains('collapse')) {
+                logo.style.display = 'flex';
+            }
+
+            // Add event listener to sidebar toggle button
+            const sidebarToggle = document.getElementById('sidebar-toggle-btn');
+            sidebarToggle.addEventListener('click', function() {
+                if (sidebar.classList.contains('collapse')) {
+                    logo.style.display = 'flex';
+                } else {
+                    logo.style.display = 'none';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
