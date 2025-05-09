@@ -440,8 +440,8 @@ def create_app(test_config=None):
             
         if current_user.is_authenticated:
             g.stats = {
-                'tasks_count': current_user.count_owned_records('tasks'),
-                'churches_count': current_user.count_owned_records('churches'),
+                'pending_tasks': current_user.count_owned_records('tasks'),
+                'church_count': current_user.count_owned_records('churches'),
                 'people_count': current_user.count_owned_records('people')
             }
         else:
