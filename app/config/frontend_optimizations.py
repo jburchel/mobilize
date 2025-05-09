@@ -1,6 +1,6 @@
 """Frontend performance optimizations for the Flask application."""
 
-from flask import current_app, request
+from flask import request  # current_app removed as unused
 import os
 
 def optimize_frontend_performance(app):
@@ -9,6 +9,10 @@ def optimize_frontend_performance(app):
     This function configures various optimizations for frontend assets
     to improve application loading and rendering speed.
     """
+    # Temporarily disable all optimizations for fresh deployment
+    app.logger.info("Frontend optimizations DISABLED for fresh deployment")
+    return
+    
     # Only apply optimizations in production
     is_production = app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production'
     if not is_production:

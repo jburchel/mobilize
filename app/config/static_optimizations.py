@@ -12,6 +12,10 @@ def optimize_static_files(app):
     This function sets up compression and caching for static files
     to improve load times in production.
     """
+    # Temporarily disable all optimizations for fresh deployment
+    app.logger.info("Static file optimizations DISABLED for fresh deployment")
+    return
+    
     # Only apply in production
     # Check environment in a way compatible with newer Flask versions
     is_production = app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production'

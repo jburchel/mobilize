@@ -41,7 +41,25 @@
     <!-- Task Badges CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/task-badges.css') }}">
     <!-- Production Fixes CSS - ensure consistent styling across environments -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/production-fixes.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/production-fixes.css') }}?v={{ now.timestamp() }}">
+    
+    <!-- Force reload all CSS for fresh deployment -->
+    {% if config.get('FRESH_DEPLOYMENT', False) %}
+    <script>
+        // Force reload of all stylesheets by adding timestamp parameter
+        document.addEventListener('DOMContentLoaded', function() {
+            const stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+            const timestamp = new Date().getTime();
+            stylesheets.forEach(function(stylesheet) {
+                if (stylesheet.href.indexOf('?') === -1) {
+                    stylesheet.href = stylesheet.href + '?v=' + timestamp;
+                }
+            });
+            console.log('Forced reload of ' + stylesheets.length + ' stylesheets for fresh deployment');
+        });
+    </script>
+    {% endif %}
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>

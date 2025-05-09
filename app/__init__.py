@@ -67,6 +67,10 @@ def access_secrets():
 def create_app(test_config=None):
     """Create and configure the Flask application"""
     app = Flask(__name__, instance_relative_config=True)
+    
+    # Flag for fresh deployment - bypassing optimizations
+    app.config['FRESH_DEPLOYMENT'] = True
+    app.logger.info("Running in FRESH_DEPLOYMENT mode - using development settings in production")
 
     # Load configuration (Keep logic from development)
     env = os.getenv('FLASK_ENV', 'development')
