@@ -106,7 +106,7 @@
                             <span class="badge bg-secondary fs-6 p-2" id="people-total-count">Total: {{ stats.people_count }} People</span>
                         </div>
                         <div>
-                            <a id="people-view-pipeline" href="/pipeline/people" class="btn btn-sm btn-primary me-2">
+                            <a id="people-view-pipeline" href="/pipeline/person-pipeline" class="btn btn-sm btn-primary me-2">
                                 <i class="fas fa-eye"></i> View Pipeline
                             </a>
                         </div>
@@ -145,7 +145,7 @@
                             <span class="badge bg-secondary fs-6 p-2" id="church-total-count">Total: {{ stats.church_count }} Churches</span>
                         </div>
                         <div>
-                            <a id="church-view-pipeline" href="/pipeline/church" class="btn btn-sm btn-primary me-2">
+                            <a id="church-view-pipeline" href="/pipeline/church-pipeline" class="btn btn-sm btn-primary me-2">
                                 <i class="fas fa-eye"></i> View Pipeline
                             </a>
                         </div>
@@ -406,7 +406,14 @@ function updateTotalCount(chartType, count) {
 function updatePipelineLink(chartType, pipelineId) {
     const linkElement = document.getElementById(`${chartType}-view-pipeline`);
     if (linkElement && pipelineId) {
-        linkElement.href = `/pipeline/${pipelineId}`;
+        // Use the correct URL format based on chart type
+        if (chartType === 'person') {
+            linkElement.href = `/pipeline/person-pipeline`;
+        } else if (chartType === 'church') {
+            linkElement.href = `/pipeline/church-pipeline`;
+        } else {
+            linkElement.href = `/pipeline/${pipelineId}`;
+        }
     }
 }
 
