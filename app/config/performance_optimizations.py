@@ -1,6 +1,6 @@
 """Performance optimizations for the Flask application in production."""
 
-from flask import current_app, request
+from flask import request
 import time
 import os
 import psutil  # May need to be added to requirements.txt
@@ -17,7 +17,7 @@ def optimize_flask_app(app):
     if not is_production:
         return
     
-    current_app.logger.info("Applying Flask performance optimizations for production")
+    app.logger.info("Applying Flask performance optimizations for production")
     
     # Disable debug mode in production
     app.config['DEBUG'] = False
@@ -37,7 +37,7 @@ def optimize_flask_app(app):
     # Register performance monitoring middleware
     register_performance_middleware(app)
     
-    current_app.logger.info("Flask performance optimizations applied successfully")
+    app.logger.info("Flask performance optimizations applied successfully")
 
 def optimize_for_cloud_run(app):
     """Apply optimizations specific to Cloud Run environment."""
@@ -105,13 +105,13 @@ def register_performance_middleware(app):
         
         # Log slow requests (more than 500ms)
         if duration > 0.5:
-            current_app.logger.warning(
+            app.logger.warning(
                 f"SLOW REQUEST: {request.method} {request.path} took {duration:.2f}s"
             )
             
             # For very slow requests, log more details
             if duration > 2.0:
-                current_app.logger.error(
+                app.logger.error(
                     f"VERY SLOW REQUEST: {request.method} {request.path} {request.args} took {duration:.2f}s"
                 )
         
