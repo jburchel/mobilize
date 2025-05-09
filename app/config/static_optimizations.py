@@ -1,6 +1,6 @@
 """Static file optimizations for production environment."""
 
-from flask import current_app, send_from_directory
+from flask import send_from_directory
 import os
 import gzip
 import brotli
@@ -18,7 +18,7 @@ def optimize_static_files(app):
     if not is_production:
         return
     
-    current_app.logger.info("Applying static file optimizations for production")
+    app.logger.info("Applying static file optimizations for production")
     
     # Set long cache expiration for static files
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # 1 year in seconds
@@ -29,7 +29,7 @@ def optimize_static_files(app):
     # Override the static file serving function to use compressed files when available
     override_static_serving(app)
     
-    current_app.logger.info("Static file optimizations applied successfully")
+    app.logger.info("Static file optimizations applied successfully")
 
 def precompress_static_files(app):
     """Pre-compress static files to gzip and brotli formats."""
@@ -39,7 +39,7 @@ def precompress_static_files(app):
     if os.path.exists(os.path.join(static_folder, '.compressed')):
         return
     
-    current_app.logger.info("Pre-compressing static files...")
+    app.logger.info("Pre-compressing static files...")
     
     # File types to compress
     compressible_types = [
@@ -71,13 +71,13 @@ def precompress_static_files(app):
                     with open(f"{file_path}.br", 'wb') as f_out:
                         f_out.write(compressed)
             except Exception as e:
-                current_app.logger.error(f"Error compressing {file_path}: {str(e)}")
+                app.logger.error(f"Error compressing {file_path}: {str(e)}")
     
     # Create marker file to indicate compression is done
     with open(os.path.join(static_folder, '.compressed'), 'w') as f:
         f.write('1')
     
-    current_app.logger.info("Static file compression complete")
+    app.logger.info("Static file compression complete")
 
 def override_static_serving(app):
     """Override Flask's static file serving to use compressed versions when available."""
