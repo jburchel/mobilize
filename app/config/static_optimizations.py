@@ -46,8 +46,13 @@ def precompress_static_files(app):
         '.css', '.js', '.html', '.xml', '.json', '.svg', '.txt', '.map'
     ]
     
-    # Ensure all component CSS files are included
-    app.logger.info("Ensuring all component CSS files are compressed")
+    # Skip compression in development to avoid issues
+    if app.config.get('ENV') == 'development' or app.config.get('FLASK_ENV') == 'development':
+        app.logger.info("Skipping compression in development environment")
+        return
+        
+    app.logger.info("Compressing static files for production")
+
     
     # Compress files
     for root, _, files in os.walk(static_folder):

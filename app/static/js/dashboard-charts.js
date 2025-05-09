@@ -51,7 +51,18 @@ function fetchPipelineData(pipelineType) {
   const endpoint = `/api/simple-chart-data/${pipelineType === 'people' ? 'person' : pipelineType}`;
   console.log(`Fetching ${pipelineType} pipeline data from ${endpoint}`);
   
-  fetch(endpoint)
+  // Add timestamp to prevent caching
+  const timestamp = new Date().getTime();
+  const url = `${endpoint}?_=${timestamp}`;
+  
+  fetch(url, {
+    method: 'GET',
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
+    credentials: 'same-origin'
+  })
     .then(response => {
       console.log(`${pipelineType} pipeline response:`, response.status);
       if (!response.ok) {
@@ -67,8 +78,9 @@ function fetchPipelineData(pipelineType) {
       if (data.pipeline_id) {
         const viewButton = document.getElementById(`${pipelineType}-view-pipeline`);
         if (viewButton) {
-          viewButton.href = `/pipeline/${data.pipeline_id}`;
-          console.log(`Updated ${pipelineType} pipeline button to link to ID: ${data.pipeline_id}`);
+          // Use direct route instead of pipeline ID
+          viewButton.href = `/pipeline/${pipelineType === 'people' ? 'person' : pipelineType}-pipeline`;
+          console.log(`Updated ${pipelineType} pipeline button to use direct route`);
         }
       }
     })
@@ -96,9 +108,9 @@ function createChart(pipelineType, data) {
     return;
   }
   
-  // Get chart type (pie or doughnut)
-  const chartTypeBtn = document.querySelector(`[data-pipeline="${pipelineType}"].chart-type-btn.active`);
-  const chartType = chartTypeBtn && chartTypeBtn.dataset.chartType === 'doughnut' ? 'doughnut' : 'pie';
+  // Always use pie chart for simplicity
+  const chartType = 'pie';
+  console.log(`Using ${chartType} chart for ${pipelineType}`);
   
   // Clear the container
   container.innerHTML = '';
@@ -192,26 +204,14 @@ function hideLoading(pipelineType) {
   }
 }
 
-// Set up chart type buttons
+// Set up chart type buttons - simplified to always use pie charts
 function setupChartTypeButtons() {
+  // Hide chart type buttons since we're only using pie charts
   document.querySelectorAll('.chart-type-btn').forEach(button => {
-    button.addEventListener('click', function() {
-      const pipelineType = this.dataset.pipeline;
-      const chartType = this.dataset.chartType;
-      
-      // Update active state
-      document.querySelectorAll(`[data-pipeline="${pipelineType}"].chart-type-btn`).forEach(btn => {
-        btn.classList.remove('active');
-      });
-      this.classList.add('active');
-      
-      // Save preference to localStorage
-      localStorage.setItem(`${pipelineType}-chart-style`, chartType);
-      
-      // Refresh the chart
-      fetchPipelineData(pipelineType);
-    });
+    button.style.display = 'none';
   });
+  
+  console.log('Chart type buttons hidden, using pie charts only');
 }
 
 // Set up refresh buttons

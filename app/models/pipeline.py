@@ -169,11 +169,36 @@ class PipelineContact(db.Model):
     def move_to_stage(self, stage_id, user_id=None, notes=None):
         """Move contact to a new stage and create history record."""
         from flask import current_app
-        current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Starting move_to_stage for contact_id={self.id}, from stage_id={self.current_stage_id} to stage_id={stage_id}")
+        import inspect
+        import os
+        import psycopg2
+        
+        # Get caller information for better debugging
+        frame = inspect.currentframe().f_back
+        caller_info = f"{os.path.basename(frame.f_code.co_filename)}:{frame.f_lineno}"
+        
+        current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Starting move_to_stage for contact_id={self.id}, from stage_id={self.current_stage_id} to stage_id={stage_id} | Called from {caller_info}")
+        
+        # Check database connection status
+        try:
+            connection_status = db.session.connection().connection.status
+            current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] DB Connection status: {connection_status}")
+        except Exception as conn_error:
+            current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Unable to check DB connection status: {str(conn_error)}")
         
         try:
             previous_stage_id = self.current_stage_id
             current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Previous stage_id={previous_stage_id}")
+            
+            # Verify the pipeline contact exists in the database
+            try:
+                db_check = db.session.query(PipelineContact).filter(PipelineContact.id == self.id).first()
+                if db_check is None:
+                    current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Pipeline contact with id={self.id} not found in database!")
+                else:
+                    current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Pipeline contact verified in database: id={db_check.id}, current_stage_id={db_check.current_stage_id}")
+            except Exception as check_error:
+                current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Error verifying pipeline contact: {str(check_error)}")
             
             # Create history record
             if previous_stage_id != stage_id:
@@ -192,7 +217,7 @@ class PipelineContact(db.Model):
                 try:
                     current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Committing history record")
                     db.session.commit()
-                    current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] History record committed successfully")
+                    current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] History record committed successfully with id={history_entry.id}")
                 except Exception as history_error:
                     current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Error committing history record: {str(history_error)}")
                     db.session.rollback()
@@ -205,14 +230,22 @@ class PipelineContact(db.Model):
             self.current_stage_id = stage_id
             self.last_updated = datetime.now()
             
+            # Mark object as modified to ensure it gets committed
+            db.session.add(self)
+            
             try:
                 current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Committing stage update")
                 db.session.commit()
                 current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Stage update committed successfully")
                 
                 # Verify the change was actually committed
+                db.session.expire(self)
                 db.session.refresh(self)
                 current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] After refresh: current_stage_id={self.current_stage_id}, expected={stage_id}")
+                
+                # Double-check with a fresh query
+                fresh_check = db.session.query(PipelineContact).filter(PipelineContact.id == self.id).first()
+                current_app.logger.info(f"[PIPELINE_MODEL_DEBUG] Fresh DB check: id={fresh_check.id}, current_stage_id={fresh_check.current_stage_id}")
                 
                 if self.current_stage_id != stage_id:
                     current_app.logger.error(f"[PIPELINE_MODEL_DEBUG] Stage update verification failed! current_stage_id={self.current_stage_id}, expected={stage_id}")
