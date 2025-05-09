@@ -25,10 +25,19 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <!-- Badge fix CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}">
-    <!-- Single combined CSS file for components -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <!-- Component CSS Files -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/content.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/data-visualization.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/form-elements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/motion.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navigation.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/theme-toggle.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/typography.css') }}">
     <!-- Logo Fix CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/logo-fix.css') }}">
+    <!-- Sidebar Gradient Fix CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-fix.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
