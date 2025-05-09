@@ -324,8 +324,8 @@
                             {% for comm in communications %}
                                 <div class="timeline-item">
                                     <div class="timeline-marker bg-{{ comm.type.lower() }}"></div>
-                                    <div class="timeline-content">
-                                        <h6 class="mb-1">{{ comm.type }}</h6>
+                                    <div class="timeline-content comm-clickable" data-comm-id="{{ comm.id }}" onclick="viewCommunication({{ comm.id }})">
+                                        <h6 class="mb-1">{{ comm.type }} <i class="bi bi-box-arrow-up-right text-muted small"></i></h6>
                                         <p class="mb-1">{{ comm.notes }}</p>
                                         <small class="text-muted">
                                             {{ comm.date.strftime('%Y-%m-%d %H:%M') }}
@@ -578,7 +578,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
+    // Add hover effect to clickable communications
+    const commItems = document.querySelectorAll('.comm-clickable');
+    commItems.forEach(item => {
+        item.style.cursor = 'pointer';
+        item.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f0f0f0';
+        });
+        item.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '#f8f9fa';
+        });
+    });
+    
     // No custom form submission handling - let the forms submit normally
 });
+
+// Function to view communication details
+window.viewCommunication = function(commId) {
+    // Navigate to the communication view page
+    window.location.href = `/communications/view/${commId}`;
+};
 </script>
 {% endblock %}
