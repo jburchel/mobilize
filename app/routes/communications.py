@@ -10,7 +10,6 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import joinedload
 from app.utils.decorators import office_required
 from app.utils.upload import save_uploaded_file
-from app.utils.query_optimization import with_pagination
 import traceback
 
 communications_bp = Blueprint('communications', __name__, template_folder='../templates/communications')
@@ -108,13 +107,27 @@ def index():
 
     # Apply pagination to avoid loading too many records at once
     try:
-        communications, pagination = with_pagination(query, page=page, per_page=per_page)
+        # Get total count first with a simpler query to avoid timeout
+        from sqlalchemy import func
+        total_count = db.session.query(func.count(Communication.id)).filter(query.whereclause).scalar()
+        current_app.logger.info(f"Total communications count: {total_count}")
+        
+        # Apply pagination with the count we already have
+        communications = query.limit(per_page).offset((page - 1) * per_page).all()
+        
+        # Create pagination object manually
+        from flask_sqlalchemy import Pagination
+        pagination = Pagination(query, page, per_page, total_count, communications)
+        
         current_app.logger.info(f"Paginated results: {len(communications)} items on page {page}")
     except Exception as e:
         current_app.logger.error(f"Error in pagination for communications: {str(e)}")
-        import traceback
         current_app.logger.error(traceback.format_exc())
-        return jsonify({'error': 'An error occurred while loading communications. Please try again later.'}), 500
+        # Return a rendered error template instead of JSON for better user experience
+        return render_template('error.html', 
+                             error_title="Communications Error",
+                             error_message="An error occurred while loading communications. Please try again later.",
+                             error_details=str(e) if current_app.debug else None)
     
     # Calculate performance metrics
     query_time = (datetime.now() - start_time).total_seconds() * 1000  # Convert to milliseconds

@@ -75,6 +75,12 @@ def create_app(test_config=None):
     # Check if we're running in Cloud Run
     is_cloud_run = os.environ.get('K_SERVICE') is not None
     
+    # Force production environment when running in Cloud Run
+    if is_cloud_run:
+        os.environ['FLASK_ENV'] = 'production'
+        app.config['ENV'] = 'production'
+        app.logger.info("Running in Cloud Run - forcing production environment")
+    
     # Ensure DB_CONNECTION_STRING is properly set in environment variables
     if is_cloud_run and os.environ.get('DB_CONNECTION_STRING'):
         # Make sure DATABASE_URL is set for SQLAlchemy
