@@ -99,27 +99,40 @@ def index():
     try:
         communications, pagination = with_pagination(query, page=page, per_page=per_page)
     except Exception as e:
-        current_app.logger.error(f"Error fetching communications: {str(e)}")
-        communications = []
-        pagination = {
-            'page': 1,
-            'per_page': per_page,
-            'total': 0,
-            'pages': 0,
-            'has_next': False,
-            'has_prev': False
-        }
-        flash('Error loading communications. Please try again later.', 'error')
+        current_app.logger.error(f"Error in pagination for communications: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({'error': 'An error occurred while loading communications. Please try again later.'}), 500
     
-    # Log performance metrics
-    elapsed_time = (datetime.now() - start_time).total_seconds()
-    if elapsed_time > 0.5:  # Log if it took more than 500ms
-        current_app.logger.warning(f"Communications index took {elapsed_time:.2f}s to load")
+    # Calculate performance metrics
+    query_time = (datetime.now() - start_time).total_seconds() * 1000  # Convert to milliseconds
     
+    # Get related data for dropdowns in a single query each
+    people = Person.query.filter_by(office_id=current_user.office_id).order_by(Person.first_name).all() if not person_id else []
+    churches = Church.query.filter_by(office_id=current_user.office_id).order_by(Church.name).all() if not church_id else []
+    
+    # Get distinct communication types from the database
+    comm_types = db.session.query(Communication.type).distinct().all()
+    comm_types = [t[0] for t in comm_types if t[0]]
+    
+    # Log performance if it exceeds thresholds
+    if query_time > 1000:  # Log if query takes longer than 1 second
+        current_app.logger.warning(f"Slow communications query: {query_time:.2f}ms for user {current_user.id}")
+    
+    # Render template with all necessary data
     return render_template('communications/index.html', 
-                          communications=communications,
-                          pagination=pagination,
-                          page_title="Communications Hub")
+                         communications=communications,
+                         pagination=pagination,
+                         query_time=query_time,
+                         person_id=person_id,
+                         church_id=church_id,
+                         comm_type=comm_type,
+                         direction=direction,
+                         start_date=start_date,
+                         end_date=end_date,
+                         people=people,
+                         churches=churches,
+                         comm_types=comm_types)
 
 @communications_bp.route('/compose', methods=['GET', 'POST'])
 @login_required
@@ -131,7 +144,7 @@ def compose():
             recipient_type = request.form.get('recipient_type')
             person_id = request.form.get('person_id') if recipient_type == 'person' else None
             church_id = request.form.get('church_id') if recipient_type == 'church' else None
-            comm_type = request.form.get('type', 'email')
+            comm_type = request.form.get('type')
             subject = request.form.get('subject')
             message = request.form.get('message')
             
