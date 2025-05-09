@@ -21,116 +21,32 @@ churches_bp = Blueprint('churches', __name__, template_folder='../templates/chur
 @office_required
 def index():
     """Show list of all churches with optimized loading."""
-    from sqlalchemy.orm import joinedload
-    from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
-    from sqlalchemy import func
     import time
     from flask import current_app
     
     # Track performance
     start_time = time.time()
     
-    # Limit the number of churches to improve performance
+    # Get pagination parameters
     per_page = 50  # Show only 50 churches at a time
     page = request.args.get('page', 1, type=int)
-    offset = (page - 1) * per_page
+    search_query = request.args.get('q', '')
     
-    # Cache key for main pipeline - use request-level caching
-    cache_key = f"main_pipeline_church_{current_user.office_id if not current_user.is_super_admin() else 'all'}"
+    # Get office ID for filtering (None for super admins)
+    office_id = None if current_user.is_super_admin() else current_user.office_id
     
-    # Try to get pipeline from cache first
-    if hasattr(current_app, 'request_cache') and cache_key in current_app.request_cache:
-        main_pipeline = current_app.request_cache[cache_key]
-    else:
-        # Get the main pipeline for churches with optimized query
-        main_pipeline = Pipeline.query.filter_by(
-            pipeline_type='church',
-            is_main_pipeline=True,
-            office_id=current_user.office_id if not current_user.is_super_admin() else None
-        ).first()
-        
-        # Store in request cache
-        if not hasattr(current_app, 'request_cache'):
-            current_app.request_cache = {}
-        current_app.request_cache[cache_key] = main_pipeline
-    
-    # Build the base query with optimized eager loading
-    query = Church.query
-    
-    # Apply office filter for non-super admins - use index
-    if not current_user.is_super_admin():
-        query = query.filter_by(office_id=current_user.office_id)
-    
-    # Get total count for pagination using optimized count query
-    # Use a separate, simpler query just for counting to improve performance
-    count_query = db.session.query(func.count(Church.id))
-    if not current_user.is_super_admin():
-        count_query = count_query.filter(Church.office_id == current_user.office_id)
-    total_count = count_query.scalar()
-    
-    # Now add the eager loading options for the main query
-    query = query.options(
-        joinedload(Church.main_contact),  # Eager load main contact
-        joinedload(Church.owner)          # Eager load owner
-    )
-    
-    # Apply pagination to the query with ordering
-    query = query.order_by(Church.name).limit(per_page).offset(offset)
-    
-    # Execute the query with pagination
-    churches = query.all()
-    
-    # Log query execution time
-    query_time = time.time() - start_time
-    current_app.logger.info(f"Churches query executed in {query_time:.2f} seconds")
-    
-    # Batch load pipeline data for the churches we're displaying
-    if main_pipeline and churches:
-        # Get church IDs for the current page
-        church_ids = [church.id for church in churches]
-        
-        # Optimize pipeline contacts query with a single query
-        pipeline_start = time.time()
-        
-        # Use a join to get both contacts and stages in a single query
-        pipeline_data = db.session.query(
-            PipelineContact.contact_id, 
-            PipelineStage.name
-        ).join(
-            PipelineStage, 
-            PipelineContact.current_stage_id == PipelineStage.id
-        ).filter(
-            PipelineContact.pipeline_id == main_pipeline.id,
-            PipelineContact.contact_id.in_(church_ids)
-        ).all()
-        
-        # Create a lookup dictionary for fast access
-        pipeline_stages = {contact_id: stage_name for contact_id, stage_name in pipeline_data}
-        
-        # Attach pipeline stage names to churches - O(n) operation
-        for church in churches:
-            church.cached_pipeline_stage = pipeline_stages.get(church.id)
-            
-        pipeline_time = time.time() - pipeline_start
-        current_app.logger.info(f"Pipeline data loaded in {pipeline_time:.2f} seconds")
-    
-    # Calculate pagination info
-    total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
-    has_next = page < total_pages
-    has_prev = page > 1
+    # Get cached churches data
+    result = get_cached_churches(office_id=office_id, page=page, per_page=per_page, search_query=search_query)
     
     # Log total execution time
     total_time = time.time() - start_time
-    print(f"Total churches page load time: {total_time:.2f} seconds")
+    current_app.logger.info(f"Churches index page loaded in {total_time:.2f} seconds")
     
-    return render_template('churches/index.html', 
-                           churches=churches,
-                           page=page,
-                           per_page=per_page,
-                           total_count=total_count,
-                           total_pages=total_pages,
-                           has_next=has_next,
-                           has_prev=has_prev)
+    return render_template('churches/list.html', 
+                          churches=result['churches'],
+                          pagination=result['pagination'],
+                          page_title="Churches Management",
+                          load_time=total_time)
 
 @churches_bp.route('/new', methods=['GET', 'POST'])
 @login_required
@@ -254,40 +170,38 @@ def create():
 @office_required
 def show(id):
     """Show a specific church."""
-    church = Church.query.get_or_404(id)
+    from app.utils.caching import get_cached_church
+    import time
+    from flask import current_app
     
-    # Check access permissions (allow super admins to view all)
+    # Track performance
+    start_time = time.time()
+    
+    # Get cached church data
+    result = get_cached_church(id)
+    if not result:
+        flash('Church not found', 'danger')
+        return redirect(url_for('churches.index'))
+    
+    church = result['church']
+    
+    # Check if user has access to this church
     if not current_user.is_super_admin() and church.office_id != current_user.office_id:
         flash('You do not have permission to view this church', 'danger')
         return redirect(url_for('churches.index'))
     
-    # Get the contact person if specified
-    contact_person = None
-    if church.main_contact_id:
-        contact_person = Person.query.get(church.main_contact_id)
-    
-    # Get people associated with this church
-    church.people = Person.query.filter_by(church_id=church.id).all()
-    
-    # Get all people for the add member modal
-    if current_user.is_super_admin():
-        people = Person.query.order_by(Person.first_name, Person.last_name).all()
-    else:
-        people = Person.query.filter_by(office_id=current_user.office_id).order_by(Person.first_name, Person.last_name).all()
-    
-    # Get church roles for the modal
-    from app.models.constants import CHURCH_ROLE_CHOICES
-    
-    # Get communications for this church
-    from app.models.communication import Communication
-    communications = Communication.query.filter_by(church_id=church.id).order_by(Communication.date.desc()).all()
+    # Log total execution time
+    total_time = time.time() - start_time
+    current_app.logger.info(f"Church detail page for ID {id} loaded in {total_time:.2f} seconds")
     
     return render_template('churches/detail.html', 
-                          church=church, 
-                          contact_person=contact_person,
-                          people=people,
-                          church_roles=CHURCH_ROLE_CHOICES,
-                          communications=communications)
+                          church=church,
+                          members=result['members'],
+                          communications=result['communications'],
+                          tasks=result['tasks'],
+                          pipeline_info=result['pipeline_info'],
+                          page_title=church.name,
+                          load_time=total_time)
 
 @churches_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required

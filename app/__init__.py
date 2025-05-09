@@ -434,6 +434,11 @@ def create_app(test_config=None):
     init_db_logger(app)
     app.logger.info("Database query logging initialized")
     
+    # Initialize caching for improved performance
+    from app.utils.caching import init_app as init_caching
+    init_caching(app)
+    app.logger.info("Performance caching initialized")
+    
     # Initialize activity logger middleware
     from app.middleware.activity_logger import ActivityLoggerMiddleware
     ActivityLoggerMiddleware(app)
