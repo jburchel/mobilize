@@ -43,6 +43,16 @@
         background: #f8f9fa;
         padding: 15px;
         border-radius: 4px;
+        position: relative;
+    }
+    
+    .comm-clickable {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    
+    .comm-clickable:hover {
+        background-color: #e9ecef;
     }
 </style>
 {% endblock %}
@@ -519,12 +529,13 @@
                             {% for comm in communications %}
                                 <div class="timeline-item">
                                     <div class="timeline-marker bg-{{ comm.type.lower() }}"></div>
-                                    <div class="timeline-content">
-                                        <h6 class="mb-1">{{ comm.type }}</h6>
+                                    <div class="timeline-content comm-clickable" data-comm-id="{{ comm.id }}">
+                                        <h6 class="mb-1">{{ comm.type }} <i class="bi bi-box-arrow-up-right text-muted small"></i></h6>
                                         <p class="mb-1">{{ comm.notes }}</p>
                                         <small class="text-muted">
                                             {{ comm.date.strftime('%Y-%m-%d %H:%M') }}
                                         </small>
+                                        <a href="{{ url_for('communications.view', id=comm.id) }}" class="stretched-link"></a>
                                     </div>
                                 </div>
                             {% endfor %}

@@ -278,11 +278,16 @@ def show(id):
     # Get church roles for the modal
     from app.models.constants import CHURCH_ROLE_CHOICES
     
+    # Get communications for this church
+    from app.models.communication import Communication
+    communications = Communication.query.filter_by(church_id=church.id).order_by(Communication.date.desc()).all()
+    
     return render_template('churches/detail.html', 
                           church=church, 
                           contact_person=contact_person,
                           people=people,
-                          church_roles=CHURCH_ROLE_CHOICES)
+                          church_roles=CHURCH_ROLE_CHOICES,
+                          communications=communications)
 
 @churches_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required

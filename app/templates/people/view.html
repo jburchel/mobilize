@@ -324,13 +324,14 @@
                             {% for comm in communications %}
                                 <div class="timeline-item">
                                     <div class="timeline-marker bg-{{ comm.type.lower() }}"></div>
-                                    <div class="timeline-content comm-clickable" data-comm-id="{{ comm.id }}" onclick="viewCommunication({{ comm.id }})">
+                                    <div class="timeline-content comm-clickable" data-comm-id="{{ comm.id }}">
                                         <h6 class="mb-1">{{ comm.type }} <i class="bi bi-box-arrow-up-right text-muted small"></i></h6>
                                         <!-- Debug info: Communication ID: {{ comm.id }} -->
                                         <p class="mb-1">{{ comm.notes }}</p>
                                         <small class="text-muted">
                                             {{ comm.date.strftime('%Y-%m-%d %H:%M') }}
                                         </small>
+                                        <a href="{{ url_for('communications.view', id=comm.id) }}" class="stretched-link"></a>
                                     </div>
                                 </div>
                             {% endfor %}
@@ -597,6 +598,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // Function to view communication details
 window.viewCommunication = function(commId) {
     console.log('Opening communication:', commId);
+    if (!commId) {
+        console.error('Communication ID is missing');
+        return;
+    }
     // Navigate to the communication view page
     window.location.href = `/communications/view/${commId}`;
 };
