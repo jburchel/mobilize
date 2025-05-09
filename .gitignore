@@ -68,6 +68,11 @@ app/static/.compressed
 *.br
 *.gz
 
+# Debug files
+*_fix.py
+debug_*.py
+*.bak
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

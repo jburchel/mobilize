@@ -7,7 +7,7 @@
 - [x] The People page link (sidebar) takes forever to load the page
 - [x] The Churches page link (sidebar) takes forever to load
 - [x] The Tasks page link (sidebar) takes you to the same 'Internal server error'
-- [x] The Communications page link (sidebar) same as above
+- [ ] The Communications page link (sidebar) same as above
 
 ## Sidebar
 
