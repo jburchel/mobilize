@@ -28,7 +28,7 @@
         <div class="row g-0">
             <!-- Sidebar Navigation -->
             <div id="sidebar-wrapper" class="col-auto px-0 sidebar-wrapper">
-                <div id="sidebar" class="collapse d-lg-block sidebar">
+                <div id="sidebarMenu" class="collapse d-lg-block sidebar">
                     <div class="position-sticky">
                         <div class="logo-container py-2" style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
                             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Mobilize CRM Logo" class="logo-img" style="height: 30px; width: auto; margin-right: 10px; display: inline-block !important;">
@@ -140,7 +140,7 @@
 
                             <!-- Sidebar Toggle Button -->
                             <div class="sidebar-toggle-container mt-2">
-                                <button id="sidebar-toggle-btn" class="sidebar-toggle w-100" aria-label="Toggle sidebar">
+                                <button id="sidebarToggle" class="sidebar-toggle w-100" aria-label="Toggle sidebar">
                                     <i class="fas fa-bars"></i>
                                 </button>
                             </div>
@@ -153,7 +153,7 @@
             <div id="main-content" class="col ps-md-2 pt-2 pe-0">
                 <header class="d-flex justify-content-between align-items-center py-2 mb-3 border-bottom header-container px-3">
                     <div class="d-flex align-items-center">
-                        <button class="btn btn-link text-white" id="header-sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#sidebar">
+                        <button class="btn btn-link text-white" id="header-sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#sidebarMenu">
                             <i class="fas fa-bars"></i>
                         </button>
                         <h1 class="h2 mb-0 page-title text-white">{% block page_title %}Dashboard{% endblock %}</h1>
@@ -220,18 +220,18 @@
     <script>
         // Sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle-btn');
+            const sidebar = document.getElementById('sidebarMenu');
+            const sidebarToggle = document.getElementById('sidebarToggle');
 
             // Check for saved state in localStorage
             if (localStorage.getItem('sidebarCollapsed') === 'true') {
-                sidebar.classList.add('collapse');
+                sidebar.classList.add('collapsed');
             }
 
             sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('collapse');
+                sidebar.classList.toggle('collapsed');
                 // Save state to localStorage
-                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapse'));
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
             });
         });
     </script>
@@ -240,7 +240,7 @@
         // Ensure logo is visible
         document.addEventListener('DOMContentLoaded', function() {
             const logo = document.querySelector('.logo-container');
-            const sidebar = document.getElementById('sidebar');
+            const sidebar = document.getElementById('sidebarMenu');
 
             // Check if sidebar is collapsed
             if (sidebar.classList.contains('collapse')) {
@@ -248,7 +248,7 @@
             }
 
             // Add event listener to sidebar toggle button
-            const sidebarToggle = document.getElementById('sidebar-toggle-btn');
+            const sidebarToggle = document.getElementById('sidebarToggle');
             sidebarToggle.addEventListener('click', function() {
                 if (sidebar.classList.contains('collapse')) {
                     logo.style.display = 'flex';
