@@ -51,10 +51,6 @@ def precompress_static_files(app):
         app.logger.info("Skipping compression in development environment")
         return
         
-    # Create marker file to indicate compression is done
-    with open(os.path.join(static_folder, '.compressed'), 'w') as f:
-        f.write('1')
-        
     app.logger.info("Compressing static files for production")
 
     
