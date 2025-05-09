@@ -51,6 +51,11 @@ def precompress_static_files(app):
         app.logger.info("Skipping compression in development environment")
         return
         
+    # Ensure component CSS files are properly handled
+    components_dir = os.path.join(static_folder, 'css', 'components')
+    if os.path.exists(components_dir):
+        app.logger.info(f"Found component CSS directory: {components_dir}")
+        
     app.logger.info("Compressing static files for production")
 
     
@@ -64,8 +69,17 @@ def precompress_static_files(app):
                 continue
                 
             # Skip if already compressed
-            if filename.endswith('.gz') or filename.endswith('.br'):
+            if os.path.exists(file_path + '.gz'):
                 continue
+                
+            # Skip if minified version exists
+            filename_without_ext, ext = os.path.splitext(filename)
+            if filename_without_ext.endswith('.min'):
+                continue
+                
+            # Ensure component CSS files are properly handled
+            if 'components' in file_path and ext == '.css':
+                app.logger.info(f"Processing component CSS file: {file_path}")
                 
             try:
                 # Create gzip version
