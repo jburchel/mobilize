@@ -405,13 +405,13 @@ function updateTotalCount(chartType, count) {
 // Function to update pipeline link
 function updatePipelineLink(chartType, pipelineId) {
     const linkElement = document.getElementById(`${chartType}-view-pipeline`);
-    if (linkElement && pipelineId) {
-        // Use the correct URL format based on chart type
+    if (linkElement) {
+        // Always use the correct URL format based on chart type, regardless of pipelineId
         if (chartType === 'person') {
             linkElement.href = `/pipeline/person-pipeline`;
         } else if (chartType === 'church') {
             linkElement.href = `/pipeline/church-pipeline`;
-        } else {
+        } else if (pipelineId) {
             linkElement.href = `/pipeline/${pipelineId}`;
         }
     }
@@ -597,6 +597,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize button event handlers
     initRefreshButtons();
+    
+    // Initialize pipeline links with default routes
+    updatePipelineLink('person');
+    updatePipelineLink('church');
     
     // Load chart data
     fetchPipelineChartData('person');
