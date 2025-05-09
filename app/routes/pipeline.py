@@ -636,6 +636,85 @@ def church_view():
 @login_required
 def church_pipeline_direct():
     """Directly render the church pipeline view without redirections."""
+    try:
+        # List all pipelines for debugging
+        all_pipelines = Pipeline.query.all()
+        current_app.logger.info(f"[CHURCH_DIRECT] All pipelines ({len(all_pipelines)})")
+        
+        # Look for a church pipeline
+        church_pipeline = None
+        for p in all_pipelines:
+            current_app.logger.info(f"[CHURCH_DIRECT] Pipeline: id={p.id}, name={p.name}, type={p.pipeline_type}")
+            if p.pipeline_type == 'church' or 'church' in p.name.lower():
+                church_pipeline = p
+                current_app.logger.info(f"[CHURCH_DIRECT] Found church pipeline: {p.id}")
+                break
+        
+        # If no church pipeline found, use the first pipeline
+        if not church_pipeline and all_pipelines:
+            church_pipeline = all_pipelines[0]
+            current_app.logger.info(f"[CHURCH_DIRECT] Using first pipeline: {church_pipeline.id}")
+        
+        if not church_pipeline:
+            flash('No pipelines available', 'warning')
+            return redirect(url_for('pipeline.index'))
+        
+        # Get the pipeline stages
+        stages = PipelineStage.query.filter_by(pipeline_id=church_pipeline.id).order_by(PipelineStage.order).all()
+        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(stages)} stages")
+        
+        # Import directly here to make sure it's available
+        from app.models.church import Church
+        
+        # Get all church contacts
+        church_contacts = Church.query.all()
+        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(church_contacts)} total churches in database")
+        
+        # Get church contacts in this pipeline
+        # Use direct SQL for reliability
+        pipeline_contacts = db.session.execute(
+            db.text("""
+                SELECT pc.* 
+                FROM pipeline_contacts pc
+                JOIN contacts c ON pc.contact_id = c.id
+                WHERE pc.pipeline_id = :pipeline_id
+                AND c.type = 'church'
+            """),
+            {"pipeline_id": church_pipeline.id}
+        ).fetchall()
+        
+        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(pipeline_contacts)} church contacts in pipeline")
+        
+        # Convert to PipelineContact objects
+        pc_objects = []
+        for row in pipeline_contacts:
+            pc = PipelineContact.query.get(row[0])
+            if pc:
+                pc_objects.append(pc)
+        
+        # Organize contacts by stage
+        contacts_by_stage = {stage.id: [] for stage in stages}
+        for pc in pc_objects:
+            if pc.current_stage_id in contacts_by_stage:
+                contacts_by_stage[pc.current_stage_id].append(pc)
+        
+        # Get available churches to add
+        existing_ids = [pc.contact_id for pc in pc_objects] 
+        available_churches = Church.query.filter(~Church.id.in_(existing_ids)).all()
+        
+        # Render the template directly with church data
+        return render_template('pipeline/view.html',
+                             pipeline=church_pipeline,
+                             stages=stages,
+                             contacts_by_stage=contacts_by_stage,
+                             people=[],
+                             churches=available_churches)
+    except Exception as e:
+        current_app.logger.error(f"[CHURCH_DIRECT] Error: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f"Error loading church pipeline: {str(e)}", "danger")
+        return redirect(url_for('pipeline.index'))
 
 @pipeline_bp.route('/person-pipeline')
 @login_required
@@ -719,87 +798,3 @@ def person_pipeline_direct():
         import traceback
         current_app.logger.error(traceback.format_exc())
         flash(f"Error loading person pipeline: {str(e)}", "danger")
-        return redirect(url_for('pipeline.index'))
-
-    try:
-        # List all pipelines for debugging
-        all_pipelines = Pipeline.query.all()
-        current_app.logger.info(f"[CHURCH_DIRECT] All pipelines ({len(all_pipelines)})")
-        
-        # Look for a church pipeline
-        church_pipeline = None
-        for p in all_pipelines:
-            current_app.logger.info(f"[CHURCH_DIRECT] Pipeline: id={p.id}, name={p.name}, type={p.pipeline_type}")
-            if p.pipeline_type == 'church' or 'church' in p.name.lower():
-                church_pipeline = p
-                current_app.logger.info(f"[CHURCH_DIRECT] Found church pipeline: {p.id}")
-                break
-        
-        # If no church pipeline found, use the first pipeline
-        if not church_pipeline and all_pipelines:
-            church_pipeline = all_pipelines[0]
-            current_app.logger.info(f"[CHURCH_DIRECT] Using first pipeline: {church_pipeline.id}")
-        
-        if not church_pipeline:
-            flash('No pipelines available', 'warning')
-            return redirect(url_for('pipeline.index'))
-        
-        # Get the pipeline stages
-        stages = PipelineStage.query.filter_by(pipeline_id=church_pipeline.id).order_by(PipelineStage.order).all()
-        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(stages)} stages")
-        
-        # Import directly here to make sure it's available
-        from app.models.church import Church
-        
-        # Get all church contacts
-        church_contacts = Church.query.all()
-        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(church_contacts)} total churches in database")
-        
-        # Get church contacts in this pipeline
-        # Use direct SQL for reliability
-        pipeline_contacts = db.session.execute(
-            db.text("""
-                SELECT pc.* 
-                FROM pipeline_contacts pc
-                JOIN contacts c ON pc.contact_id = c.id
-                WHERE pc.pipeline_id = :pipeline_id
-                AND c.type = 'church'
-            """),
-            {"pipeline_id": church_pipeline.id}
-        ).fetchall()
-        
-        current_app.logger.info(f"[CHURCH_DIRECT] Found {len(pipeline_contacts)} church contacts in pipeline")
-        
-        # Convert to PipelineContact objects
-        pc_objects = []
-        for row in pipeline_contacts:
-            pc = PipelineContact.query.get(row[0])
-            if pc:
-                pc_objects.append(pc)
-        
-        # Organize contacts by stage
-        contacts_by_stage = {stage.id: [] for stage in stages}
-        for pc in pc_objects:
-            if pc.current_stage_id in contacts_by_stage:
-                contacts_by_stage[pc.current_stage_id].append(pc)
-        
-        # Get available churches to add
-        existing_ids = [pc.contact_id for pc in pc_objects] 
-        available_churches = Church.query.filter(~Church.id.in_(existing_ids)).all()
-        
-        # Render the template directly with church data
-        return render_template('pipeline/view.html',
-                             pipeline=church_pipeline,
-                             stages=stages,
-                             contacts_by_stage=contacts_by_stage,
-                             people=[],
-                             churches=available_churches)
-    except Exception as e:
-        current_app.logger.error(f"[CHURCH_DIRECT] Error: {str(e)}")
-        import traceback
-        current_app.logger.error(traceback.format_exc())
-        flash(f"Error loading church pipeline: {str(e)}", "danger")
-        return redirect(url_for('pipeline.index'))
-
-# Import the pipeline_bp from the controller
-# All routes are defined in the controller 
