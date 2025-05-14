@@ -1,0 +1,98 @@
+{% block inline_fixes %}
+<style>
+    /* Immediate fixes for spacing and layout issues */
+    
+    /* Fix for logo in sidebar */
+    .logo-container {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 1rem !important;
+        background-color: rgba(0, 0, 0, 0.2) !important;
+        margin-bottom: 1rem !important;
+        min-height: 60px !important;
+    }
+    
+    .logo-img {
+        height: 40px !important;
+        max-width: 100% !important;
+        margin-right: 10px !important;
+        display: block !important;
+        object-fit: contain !important;
+    }
+    
+    /* Fix for spacing issues on all pages */
+    .container-fluid {
+        padding-top: 20px !important;
+    }
+    
+    .container-fluid > .row:first-child {
+        margin-top: 20px !important;
+    }
+    
+    /* Fix for action bars with buttons and search elements */
+    .card-body.d-flex.align-items-center {
+        padding: 1.25rem !important;
+        margin-top: 1rem !important;
+    }
+    
+    /* Fix for View Pipeline button */
+    .btn.btn-outline-primary {
+        background-color: #183963 !important;
+        color: white !important;
+        border-color: #183963 !important;
+    }
+    
+    .btn.btn-outline-primary:hover {
+        background-color: #132E4C !important;
+        border-color: #132E4C !important;
+    }
+    
+    /* Fix for jerky transitions */
+    html {
+        scroll-behavior: smooth !important;
+    }
+    
+    body {
+        transition: none !important;
+    }
+    
+    .main-content {
+        transition: opacity 0.3s ease !important;
+    }
+</style>
+
+<script>
+    // Fix for jerky page transitions
+    document.addEventListener('DOMContentLoaded', function() {
+        // Smooth page transitions
+        const links = document.querySelectorAll('a[href]:not([href^="#"]):not([target="_blank"])');
+        
+        links.forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                // Only for internal links
+                if (link.hostname === window.location.hostname) {
+                    // Don't apply transition for downloads or special links
+                    if (link.getAttribute('download') || link.classList.contains('no-transition')) {
+                        return;
+                    }
+                    
+                    e.preventDefault();
+                    
+                    // Freeze the current page state
+                    document.body.style.height = '100vh';
+                    document.body.style.overflow = 'hidden';
+                    
+                    // Smooth fade out
+                    document.querySelector('.main-content').style.opacity = '0.7';
+                    
+                    // Navigate after transition
+                    setTimeout(function() {
+                        window.location.href = link.href;
+                    }, 300);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

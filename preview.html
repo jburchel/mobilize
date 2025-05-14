@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobilize CRM Component Preview</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link rel="stylesheet" href="app/static/css/design-tokens.css">
+  <link rel="stylesheet" href="app/static/css/styles.css">
+  <link rel="stylesheet" href="app/static/css/components/typography.css">
+  <link rel="stylesheet" href="app/static/css/components/form-elements.css">
+  <link rel="stylesheet" href="app/static/css/components/data-visualization.css">
+  <link rel="stylesheet" href="app/static/css/components/navigation.css">
+  <link rel="stylesheet" href="app/static/css/components/content.css">
+  <link rel="stylesheet" href="app/static/css/components/motion.css">
+  <link rel="stylesheet" href="app/static/css/components/theme-toggle.css">
+  <link rel="stylesheet" href="app/static/css/components/pipeline-badges.css">
+  <link rel="stylesheet" href="app/static/css/sidebar-fix.css">
+  
+  <style>
+    :root {
+      --theme-transition-duration: 0.3s;
+      --sidebar-width: 250px;
+      --sidebar-collapsed-width: 70px;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      transition: background-color var(--theme-transition-duration), color var(--theme-transition-duration);
+    }
+    .preview-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--color-border, #e0e0e0);
+    }
+    .theme-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.5rem;
+      padding: 0.5rem;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-toggle:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+    .dark-theme .theme-toggle:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .component-section {
+      margin-bottom: 3rem;
+    }
+    .component-section h2 {
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-border, #e0e0e0);
+    }
+    .card-grid {
+      display: grid;
+      gap: 1rem;
+    }
+    .card-grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .card-grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .card-grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    @media (max-width: 1024px) {
+      .card-grid-4 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    @media (max-width: 768px) {
+      .card-grid-4, .card-grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 480px) {
+      .card-grid-4, .card-grid-3, .card-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    /* Preview navigation styling */
+    .preview-nav {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem 0;
+      margin-bottom: 2rem;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    .preview-nav a {
+      color: var(--color-text, #333);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius-md, 4px);
+      transition: background-color 0.2s;
+      font-weight: 500;
+    }
+    .preview-nav a:hover {
+      background-color: var(--color-gray-100, #f5f5f5);
+    }
+    .dark-theme .preview-nav a {
+      color: var(--color-gray-300, #ccc);
+    }
+    .dark-theme .preview-nav a:hover {
+      background-color: var(--color-gray-700, #333);
+    }
+    
+    /* Collapsible Sidebar Styles */
+    .sidebar {
+      width: var(--sidebar-width);
+      transition: width 0.3s ease;
+      background: linear-gradient(to bottom, var(--color-primary-blue, var(--sidebar-bg)), var(--color-primary-green, var(--primary-green)));
+    }
+    
+    .sidebar.collapsed {
+      width: var(--sidebar-collapsed-width);
+      background: linear-gradient(to bottom, var(--color-primary-blue, var(--sidebar-bg)), var(--color-primary-green, var(--primary-green)));
+    }
+    
+    .sidebar-toggle {
+      position: absolute;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      background-color: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      transition: background-color 0.2s ease;
+      z-index: 10;
+    }
+    
+    .sidebar-toggle:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .sidebar.collapsed .sidebar-toggle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+    }
+    
+    .sidebar.collapsed .nav-text,
+    .sidebar.collapsed .nav-badge,
+    .sidebar.collapsed .nav-section-title {
+      display: none;
+    }
+    
+    .sidebar.collapsed .nav-link {
+      justify-content: center;
+      padding: 0.75rem 0;
+    }
+    
+    .sidebar.collapsed .nav-icon {
+      margin-right: 0;
+    }
+    
+    .sidebar.collapsed .sidebar-logo img {
+      display: none;
+    }
+    
+    .sidebar-demo-container {
+      height: 400px; 
+      border: 1px solid #dee2e6; 
+      border-radius: 4px; 
+      overflow: hidden; 
+      display: flex;
+      position: relative;
+    }
+    
+    .sidebar-content {
+      flex: 1;
+      padding: 1rem;
+      background-color: var(--color-surface);
+      overflow: hidden;
+      transition: margin-left 0.3s ease;
+    }
+    
+    .sidebar.collapsed + .sidebar-content {
+      margin-left: var(--sidebar-collapsed-width);
+    }
+    
+    .sidebar + .sidebar-content {
+      margin-left: var(--sidebar-width);
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-container">
+    <div class="header">
+      <h1>Mobilize CRM Components</h1>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark/light mode">
+        <i class="fas fa-moon"></i>
+      </button>
+    </div>
+    
+    <nav class="preview-nav">
+      <a href="#navigation">Navigation</a>
+      <a href="#formElements">Form Elements</a>
+      <a href="#dataViz">Data Visualization</a>
+      <a href="#contentComponents">Content Components</a>
+      <a href="#cards">Cards</a>
+      <a href="#statCards">Stat Cards</a>
+      <a href="#tables">Tables</a>
+      <a href="#buttons">Buttons</a>
+    </nav>
+
+    <div class="container">
+      <!-- Navigation Components -->
+      <section id="navigation" class="section">
+        <h2 class="section-title">Navigation Components</h2>
+        
+        <h3>Sidebar</h3>
+        <div class="sidebar-demo-container">
+          <div class="sidebar" id="preview-sidebar">
+            <div class="sidebar-logo">
+              <img src="https://placehold.co/150x40/183963/FFFFFF?text=MOBILIZE" alt="Mobilize CRM Logo">
+              <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                <i class="fas fa-bars"></i>
+              </button>
+            </div>
+            <div class="sidebar-menu">
+              <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <div class="nav-item">
+                  <a href="#" class="nav-link active">
+                    <span class="nav-icon"><i class="fas fa-home"></i></span>
+                    <span class="nav-text">Dashboard</span>
+                  </a>
+                </div>
+                <div class="nav-item">
+                  <a href="#" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-user"></i></span>
+                    <span class="nav-text">People</span>
+                    <span class="nav-badge">42</span>
+                  </a>
+                </div>
+                <div class="nav-item">
+                  <a href="#" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-church"></i></span>
+                    <span class="nav-text">Churches</span>
+                  </a>
+                </div>
+              </div>
+              
+              <div class="nav-section">
+                <div class="nav-section-title">Communication</div>
+                <div class="nav-item">
+                  <a href="#" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-envelope"></i></span>
+                    <span class="nav-text">Emails</span>
+                  </a>
+                </div>
+                <div class="nav-item">
+                  <a href="#" class="nav-link">
+                    <span class="nav-icon"><i class="fas fa-tasks"></i></span>
+                    <span class="nav-text">Tasks</span>
+                    <span class="nav-badge">5</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="sidebar-content">
+            <h3>Main Content Area</h3>
+            <p>This is where your main content would appear. The sidebar can be collapsed using the toggle button.</p>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Breadcrumbs</h3>
+        <div class="breadcrumb-wrapper">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item"><a href="#">People</a></li>
+              <li class="breadcrumb-item active" aria-current="page">John Doe</li>
+            </ol>
+          </nav>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Tab Navigation</h3>
+        <div class="tab-navigation">
+          <div class="tab-item active">Overview</div>
+          <div class="tab-item">Contact Information</div>
+          <div class="tab-item">Communication History</div>
+          <div class="tab-item">Tasks <span class="tab-badge">3</span></div>
+          <div class="tab-item">Notes</div>
+        </div>
+      </section>
+
+      <!-- Form Elements -->
+      <section id="forms" class="section">
+        <h2 class="section-title">Form Elements</h2>
+        
+        <h3>Text Inputs</h3>
+        <div style="max-width: 500px;">
+          <div style="margin-bottom: 20px;">
+            <label for="standard-input" class="form-label">Standard Input</label>
+            <input type="text" id="standard-input" class="form-control" placeholder="Enter text">
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label for="required-input" class="form-label required">Required Input</label>
+            <input type="text" id="required-input" class="form-control" placeholder="This field is required" required>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label for="valid-input" class="form-label">Valid Input</label>
+            <input type="text" id="valid-input" class="form-control is-valid" value="Correct value">
+            <div class="valid-feedback">Looks good!</div>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label for="invalid-input" class="form-label">Invalid Input</label>
+            <input type="text" id="invalid-input" class="form-control is-invalid" value="Incorrect value">
+            <div class="invalid-feedback">Please provide a valid value.</div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Select Inputs</h3>
+        <div style="max-width: 500px;">
+          <div style="margin-bottom: 20px;">
+            <label for="standard-select" class="form-label">Standard Select</label>
+            <select id="standard-select" class="form-select">
+              <option selected>Choose an option</option>
+              <option value="1">Option 1</option>
+              <option value="2">Option 2</option>
+              <option value="3">Option 3</option>
+            </select>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Checkboxes & Radios</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+          <div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="checkbox1">
+              <label class="form-check-label" for="checkbox1">
+                Default checkbox
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="checkbox2" checked>
+              <label class="form-check-label" for="checkbox2">
+                Checked checkbox
+              </label>
+            </div>
+          </div>
+          
+          <div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="radioGroup1" id="radio1" checked>
+              <label class="form-check-label" for="radio1">
+                Default radio
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="radioGroup1" id="radio2">
+              <label class="form-check-label" for="radio2">
+                Second default radio
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Input Groups</h3>
+        <div style="max-width: 500px;">
+          <div style="margin-bottom: 20px;">
+            <label for="input-with-text" class="form-label">Input with Text Addon</label>
+            <div class="input-group">
+              <span class="input-group-text">@</span>
+              <input type="text" id="input-with-text" class="form-control" placeholder="Username">
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label for="input-with-button" class="form-label">Input with Button</label>
+            <div class="input-group">
+              <input type="text" id="input-with-button" class="form-control" placeholder="Search term">
+              <button class="btn btn-primary" type="button">Search</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Visualization -->
+      <section id="dataViz" class="component-section">
+        <h2>Data Visualization</h2>
+        
+        <h3>KPI Cards</h3>
+        <div class="card-grid card-grid-3">
+          <div class="kpi-card">
+            <div class="kpi-card-icon primary">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="kpi-card-content">
+              <div class="kpi-card-title">Total People</div>
+              <div class="kpi-card-value">1,456</div>
+              <div class="kpi-card-comparison positive">
+                <span class="kpi-card-comparison-icon">↑</span> 12% from last month
+              </div>
+            </div>
+          </div>
+          
+          <div class="kpi-card">
+            <div class="kpi-card-icon success">
+              <i class="fas fa-church"></i>
+            </div>
+            <div class="kpi-card-content">
+              <div class="kpi-card-title">Active Churches</div>
+              <div class="kpi-card-value">187</div>
+              <div class="kpi-card-comparison positive">
+                <span class="kpi-card-comparison-icon">↑</span> 5% from last month
+              </div>
+            </div>
+          </div>
+          
+          <div class="kpi-card">
+            <div class="kpi-card-icon info">
+              <i class="fas fa-tasks"></i>
+            </div>
+            <div class="kpi-card-content">
+              <div class="kpi-card-title">Total Tasks</div>
+              <div class="kpi-card-value">342</div>
+              <div class="kpi-card-comparison negative">
+                <span class="kpi-card-comparison-icon">↓</span> 3% from last month
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <h3>Chart Containers</h3>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Monthly People Growth</div>
+              <div class="chart-subtitle">New people added per month in 2023</div>
+            </div>
+            <div class="chart-icon primary">
+              <i class="fas fa-chart-line"></i>
+            </div>
+          </div>
+          <div class="chart-container">
+            <!-- Chart placeholder -->
+            <div style="width: 100%; height: 250px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ced4da;">
+              Chart Area - In a real app, a chart would be rendered here
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="chart-legend-item">
+              <span class="chart-legend-indicator chart-color-primary"></span>
+              North America
+            </div>
+            <div class="chart-legend-item">
+              <span class="chart-legend-indicator chart-color-secondary"></span>
+              Europe
+            </div>
+          </div>
+        </div>
+        
+        <h3>Progress Bars</h3>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Progress Tracking</h3>
+            <div class="card-icon primary">
+              <i class="fas fa-tasks"></i>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="margin-bottom: 20px;">
+              <div class="progress-label">
+                <span>Outreach Goal</span>
+                <span>65%</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar primary" style="width: 65%;" role="progressbar" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+              <div class="progress-label">
+                <span>Volunteer Recruitment</span>
+                <span>45%</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar success" style="width: 45%;" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+            </div>
+            
+            <div>
+              <div class="progress-label">
+                <span>Budget Utilization</span>
+                <span>78%</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar info" style="width: 78%;" role="progressbar" aria-valuenow="78" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Content Components -->
+      <section id="content" class="section">
+        <h2 class="section-title">Content Components</h2>
+        
+        <h3>Status Badges</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <span class="status-badge primary">New</span>
+          <span class="status-badge success">Active</span>
+          <span class="status-badge info">In Progress</span>
+          <span class="status-badge warning">Pending</span>
+          <span class="status-badge danger">Inactive</span>
+          <span class="status-badge secondary">Archived</span>
+        </div>
+        
+        <h3 style="margin-top: 30px;">With Icons</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <span class="status-badge primary"><i class="fas fa-plus-circle"></i> New</span>
+          <span class="status-badge success"><i class="fas fa-check-circle"></i> Active</span>
+          <span class="status-badge warning"><i class="fas fa-clock"></i> Pending</span>
+          <span class="status-badge danger"><i class="fas fa-exclamation-circle"></i> Inactive</span>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Skeleton Loaders</h3>
+        <div style="max-width: 500px;">
+          <div class="skeleton-loader skeleton-title"></div>
+          <div class="skeleton-loader" style="width: 80%;"></div>
+          <div class="skeleton-loader" style="width: 90%;"></div>
+          <div class="skeleton-loader" style="width: 75%;"></div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Empty States</h3>
+        <div class="card">
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="empty-state-title">No People Found</div>
+            <div class="empty-state-description">
+              There are no people matching your search criteria. Try adjusting your filters or add a new person.
+            </div>
+            <div class="empty-state-action">
+              <button class="btn btn-primary">Add New Person</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cards -->
+      <section id="cards" class="section">
+        <h2 class="section-title">Cards</h2>
+        
+        <h3>Basic Cards</h3>
+        <div class="component-grid">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Standard Card</div>
+            </div>
+            <div class="card-body">
+              <p>This is a basic card component with header and body.</p>
+            </div>
+            <div class="card-footer">
+              <button class="btn btn-primary">Action</button>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Card with Subtitle</div>
+              <div class="card-subtitle">Supporting information</div>
+            </div>
+            <div class="card-body">
+              <p>This card includes a subtitle for additional context.</p>
+            </div>
+          </div>
+          
+          <div class="card border-primary">
+            <div class="card-header">Primary Border</div>
+            <div class="card-body">
+              <p>Card with a primary border style.</p>
+            </div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Contact Cards</h3>
+        <div class="component-grid">
+          <div class="contact-card">
+            <div class="contact-card-avatar">
+              <div class="avatar">JD</div>
+            </div>
+            <div class="contact-card-info">
+              <div class="contact-card-name">John Doe</div>
+              <div class="contact-card-title">Lead Pastor</div>
+              <div class="contact-card-detail">
+                <i class="fas fa-envelope"></i> john.doe@example.com
+              </div>
+              <div class="contact-card-detail">
+                <i class="fas fa-phone"></i> (555) 123-4567
+              </div>
+            </div>
+            <div class="contact-card-actions">
+              <button class="btn btn-icon" aria-label="Edit contact">
+                <i class="fas fa-pencil-alt"></i>
+              </button>
+              <button class="btn btn-icon" aria-label="View contact details">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="contact-card">
+            <div class="contact-card-avatar">
+              <div class="avatar" style="background-color: var(--color-secondary);">SP</div>
+            </div>
+            <div class="contact-card-info">
+              <div class="contact-card-name">Sarah Parker</div>
+              <div class="contact-card-title">Worship Leader</div>
+              <div class="contact-card-detail">
+                <i class="fas fa-envelope"></i> sarah.p@example.com
+              </div>
+              <div class="contact-card-detail">
+                <i class="fas fa-phone"></i> (555) 987-6543
+              </div>
+            </div>
+            <div class="contact-card-actions">
+              <button class="btn btn-icon" aria-label="Edit contact">
+                <i class="fas fa-pencil-alt"></i>
+              </button>
+              <button class="btn btn-icon" aria-label="View contact details">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Stat Cards</h3>
+        <div class="component-grid">
+          <div class="stat-card">
+            <div class="stat-card-icon" style="background-color: #2a5183;">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-card-content">
+              <div class="stat-card-value">1,254</div>
+              <div class="stat-card-label">Total Contacts</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-card-icon" style="background-color: #39A949;">
+              <i class="fas fa-church"></i>
+            </div>
+            <div class="stat-card-content">
+              <div class="stat-card-value">82</div>
+              <div class="stat-card-label">Active Churches</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-card-icon" style="background-color: #dc3545;">
+              <i class="fas fa-tasks"></i>
+            </div>
+            <div class="stat-card-content">
+              <div class="stat-card-value">24</div>
+              <div class="stat-card-label">Open Tasks</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-card-icon" style="background-color: #ffc107;">
+              <i class="fas fa-envelope"></i>
+            </div>
+            <div class="stat-card-content">
+              <div class="stat-card-value">467</div>
+              <div class="stat-card-label">Emails Sent</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tables -->
+      <section id="tables" class="component-section">
+        <h2>Tables</h2>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">People Table</h3>
+          </div>
+          <div class="card-body">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background-color: var(--color-primary);">JD</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">John Doe</div>
+                        <div class="table-user-title">Volunteer</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>john.doe@example.com</td>
+                  <td>(555) 123-4567</td>
+                  <td><span class="badge badge-success">Active</span></td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn-icon btn-sm" aria-label="Edit"><i class="fas fa-edit"></i></button>
+                      <button class="btn-icon btn-sm" aria-label="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background-color: var(--color-info);">JS</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Jane Smith</div>
+                        <div class="table-user-title">Pastor</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>jane.smith@example.com</td>
+                  <td>(555) 987-6543</td>
+                  <td><span class="badge badge-warning">Pending</span></td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn-icon btn-sm" aria-label="Edit"><i class="fas fa-edit"></i></button>
+                      <button class="btn-icon btn-sm" aria-label="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="table-user">
+                      <div class="table-user-avatar" style="background-color: var(--color-secondary);">SP</div>
+                      <div class="table-user-info">
+                        <div class="table-user-name">Sarah Parker</div>
+                        <div class="table-user-title">Church Admin</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>sarah.parker@example.com</td>
+                  <td>(555) 456-7890</td>
+                  <td><span class="badge badge-primary">New</span></td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn-icon btn-sm" aria-label="Edit"><i class="fas fa-edit"></i></button>
+                      <button class="btn-icon btn-sm" aria-label="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Performance Optimization Section -->
+      <section id="performance" class="section">
+        <h2 class="section-title">Performance Optimization</h2>
+        
+        <h3>Lazy Loading Images</h3>
+        <p>Scroll down to see images load only when they enter the viewport.</p>
+        
+        <div style="height: 200px; overflow-y: scroll; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px;">
+          <div style="margin-bottom: 20px;">
+            <h4>Regular Image (Eager Loading)</h4>
+            <img src="https://placehold.co/600x200/183963/FFFFFF?text=Eager+Loaded+Image" alt="Eager loaded image" width="100%">
+          </div>
+          
+          <div style="margin-bottom: 20px; margin-top: 400px;">
+            <h4>Lazy Loaded Image</h4>
+            <div class="image-container">
+              <img class="lazy-image" data-src="https://placehold.co/600x200/2b5797/FFFFFF?text=Lazy+Loaded+Image" alt="Lazy loaded image" width="100%">
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 20px; margin-top: 400px;">
+            <h4>Lazy Loaded Image with Blur-Up Effect</h4>
+            <div class="image-container">
+              <img class="lazy-image blur-up" 
+                   data-src="https://placehold.co/600x200/5c2d91/FFFFFF?text=Blur+Up+Effect"
+                   src="https://placehold.co/60x20/5c2d91/FFFFFF?text=" 
+                   alt="Lazy loaded image with blur-up effect" width="100%">
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 20px; margin-top: 400px;">
+            <h4>Lazy Loaded Background Image</h4>
+            <div style="height: 200px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px;"
+                 data-background="https://placehold.co/600x200/c50f1f/FFFFFF?text=Background+Image">
+              This background will load when scrolled into view
+            </div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Responsive Images with srcset</h3>
+        <p>These images will load different sizes based on the viewport width.</p>
+        
+        <div class="image-container">
+          <img class="lazy-image" 
+               data-src="https://placehold.co/800x300/183963/FFFFFF?text=Default+Size" 
+               data-srcset="https://placehold.co/400x150/183963/FFFFFF?text=Small 400w, 
+                           https://placehold.co/800x300/183963/FFFFFF?text=Medium 800w, 
+                           https://placehold.co/1200x450/183963/FFFFFF?text=Large 1200w" 
+               data-sizes="(max-width: 400px) 400px, (max-width: 800px) 800px, 1200px"
+               alt="Responsive image with srcset" width="100%">
+        </div>
+        
+        <h3 style="margin-top: 30px;">Different Aspect Ratios</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+          <div>
+            <h4>16:9 Aspect Ratio (Default)</h4>
+            <div class="image-container">
+              <img class="lazy-image" data-src="https://placehold.co/600x338/183963/FFFFFF?text=16:9" alt="16:9 aspect ratio">
+            </div>
+          </div>
+          
+          <div>
+            <h4>4:3 Aspect Ratio</h4>
+            <div class="image-container aspect-4-3">
+              <img class="lazy-image" data-src="https://placehold.co/600x450/2b5797/FFFFFF?text=4:3" alt="4:3 aspect ratio">
+            </div>
+          </div>
+          
+          <div>
+            <h4>1:1 Aspect Ratio (Square)</h4>
+            <div class="image-container aspect-1-1">
+              <img class="lazy-image" data-src="https://placehold.co/600x600/5c2d91/FFFFFF?text=1:1" alt="1:1 aspect ratio">
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- UI Refinement Section -->
+      <section id="ui-refinement" class="section">
+        <h2 class="section-title">UI Refinement</h2>
+        
+        <h3>Enhanced Typography</h3>
+        <div style="max-width: 800px;">
+          <h1>Heading Level 1 with Gradient</h1>
+          <h2>Heading Level 2 with Underline</h2>
+          <h3>Heading Level 3 in Primary Color</h3>
+          <h4>Heading Level 4 Semi-Bold</h4>
+          <h5>HEADING LEVEL 5 UPPERCASE</h5>
+          <h6>HEADING LEVEL 6 SUBTLE</h6>
+          
+          <p class="lead">This is a lead paragraph that stands out with larger text. It's useful for introducing sections or highlighting important content within the page.</p>
+          
+          <p>This is a regular paragraph with <strong>strong emphasis</strong> and <em>italicized text</em>. The typography system uses the Inter font family for improved readability across devices and screen sizes.</p>
+          
+          <p>Here's a paragraph with different text styles: <span class="text-primary">primary color</span>, <span class="text-secondary">secondary color</span>, <span class="text-success">success color</span>, <span class="text-danger">danger color</span>, <span class="text-muted">muted text</span>, and <span class="text-uppercase">uppercase text</span>.</p>
+          
+          <p class="text-sm">This is smaller text that might be used for captions or notes.</p>
+          
+          <blockquote>
+            This is a blockquote that stands out visually from other content.
+            <footer>— Quote attribution</footer>
+          </blockquote>
+          
+          <p>You can also highlight text with <mark>marked content</mark> or include <code>code snippets</code>.</p>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Motion & Interactions</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+          <div>
+            <h4>Button Hover Effects</h4>
+            <button class="btn btn-primary ripple">Hover Me</button>
+            <button class="btn btn-primary ripple" style="margin-left: 10px;">Click Me</button>
+          </div>
+          
+          <div>
+            <h4>Card Hover Effects</h4>
+            <div class="card hover-lift" style="padding: 20px;">
+              <h5>Interactive Card</h5>
+              <p>Hover over this card to see it lift up with a shadow effect.</p>
+            </div>
+          </div>
+          
+          <div>
+            <h4>Loading Animations</h4>
+            <div style="margin-bottom: 10px;">
+              <div class="loading-bounce"></div>
+              <div class="loading-bounce"></div>
+              <div class="loading-bounce"></div>
+            </div>
+            <div>
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+          
+          <div>
+            <h4>Toggle Control</h4>
+            <div class="toggle-container">
+              <input type="checkbox" id="toggle-demo" class="toggle-input">
+              <label for="toggle-demo" class="toggle-slider"></label>
+            </div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Staggered Animations</h3>
+        <div>
+          <button id="animate-items" class="btn btn-primary">Animate Items</button>
+          <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
+            <div class="card stagger-item" style="padding: 15px;">Item 1</div>
+            <div class="card stagger-item" style="padding: 15px;">Item 2</div>
+            <div class="card stagger-item" style="padding: 15px;">Item 3</div>
+            <div class="card stagger-item" style="padding: 15px;">Item 4</div>
+            <div class="card stagger-item" style="padding: 15px;">Item 5</div>
+            <div class="card stagger-item" style="padding: 15px;">Item 6</div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Dark Mode Toggle</h3>
+        <div style="margin-bottom: 20px;">
+          <button class="theme-toggle">
+            <span class="theme-toggle-thumb"></span>
+            <span class="theme-toggle-track"></span>
+            <span class="theme-toggle-icon theme-toggle-icon-sun"><i class="fas fa-sun"></i></span>
+            <span class="theme-toggle-icon theme-toggle-icon-moon"><i class="fas fa-moon"></i></span>
+          </button>
+          <span style="margin-left: 10px;">Click to toggle dark/light mode</span>
+        </div>
+        
+        <div class="card" style="padding: 20px;">
+          <h4>Dark Mode Preview</h4>
+          <p>This card and all other components will change appearance when dark mode is toggled.</p>
+          <div style="margin-top: 15px;">
+            <button class="btn btn-primary">Primary Button</button>
+            <button class="btn btn-secondary" style="margin-left: 10px;">Secondary Button</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Buttons Section -->
+      <section id="buttons" class="component-section">
+        <h2>Buttons</h2>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Button Styles</h3>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+              <button class="btn btn-primary">Primary</button>
+              <button class="btn btn-secondary">Secondary</button>
+              <button class="btn btn-success">Success</button>
+              <button class="btn btn-danger">Danger</button>
+              <button class="btn btn-warning">Warning</button>
+              <button class="btn btn-info">Info</button>
+              <button class="btn btn-outline">Outline</button>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+              <button class="btn btn-primary btn-sm">Small</button>
+              <button class="btn btn-primary">Default</button>
+              <button class="btn btn-primary btn-lg">Large</button>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <button class="btn btn-icon" aria-label="Add"><i class="fas fa-plus"></i></button>
+              <button class="btn btn-icon btn-primary" aria-label="Edit"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-icon btn-success" aria-label="Check"><i class="fas fa-check"></i></button>
+              <button class="btn btn-icon btn-danger" aria-label="Delete"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // DOM elements
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      const themeIcon = themeToggleBtn.querySelector('i');
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const sidebar = document.getElementById('preview-sidebar');
+      
+      // Theme toggle functionality
+      themeToggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-theme');
+        if (document.body.classList.contains('dark-theme')) {
+          themeIcon.classList.remove('fa-moon');
+          themeIcon.classList.add('fa-sun');
+        } else {
+          themeIcon.classList.remove('fa-sun');
+          themeIcon.classList.add('fa-moon');
+        }
+      });
+      
+      // Sidebar toggle functionality
+      sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+      });
+      
+      // Smooth scrolling for navigation links
+      document.querySelectorAll('.preview-nav a').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+          e.preventDefault();
+          const targetId = this.getAttribute('href');
+          const targetElement = document.querySelector(targetId);
+          
+          if (targetElement) {
+            window.scrollTo({
+              top: targetElement.offsetTop - 20,
+              behavior: 'smooth'
+            });
+          }
+        });
+      });
+      
+      // Initialize tab navigation
+      document.querySelectorAll('.tab-item').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+        });
+      });
+      
+      // Initialize lazy loading for images
+      document.addEventListener('DOMContentLoaded', function() {
+        const lazyImages = [].slice.call(document.querySelectorAll('.lazy-image'));
+        const lazyBackgrounds = [].slice.call(document.querySelectorAll('[data-background]'));
+        
+        if ('IntersectionObserver' in window) {
+          const imageObserver = new IntersectionObserver(function(entries, observer) {
+            entries.forEach(function(entry) {
+              if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                  img.src = img.dataset.src;
+                  if (img.dataset.srcset) {
+                    img.srcset = img.dataset.srcset;
+                  }
+                  if (img.dataset.sizes) {
+                    img.sizes = img.dataset.sizes;
+                  }
+                  img.classList.add('loaded');
+                }
+                imageObserver.unobserve(img);
+              }
+            });
+          });
+          
+          lazyImages.forEach(function(img) {
+            imageObserver.observe(img);
+          });
+          
+          const bgObserver = new IntersectionObserver(function(entries, observer) {
+            entries.forEach(function(entry) {
+              if (entry.isIntersecting) {
+                const element = entry.target;
+                element.style.backgroundImage = `url(${element.dataset.background})`;
+                element.classList.add('loaded');
+                bgObserver.unobserve(element);
+              }
+            });
+          });
+          
+          lazyBackgrounds.forEach(function(element) {
+            bgObserver.observe(element);
+          });
+        } else {
+          // Fallback for browsers without IntersectionObserver support
+          lazyImages.forEach(function(img) {
+            img.src = img.dataset.src;
+            img.classList.add('loaded');
+          });
+          
+          lazyBackgrounds.forEach(function(element) {
+            element.style.backgroundImage = `url(${element.dataset.background})`;
+            element.classList.add('loaded');
+          });
+        }
+      });
+    </script>
+  </div>
+</body>
+</html> 

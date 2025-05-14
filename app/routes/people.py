@@ -1,12 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from app.models.person import Person
 from app.models.church import Church
+from app.models.communication import Communication
+from app.models.task import Task
 from app.models.pipeline import Pipeline, PipelineStage, PipelineContact
-# These imports are now handled in the caching module
-# from app.models.communication import Communication
-# from app.models.task import Task
 from app.forms.person import PersonForm
 from app.extensions import db
 from app.utils.decorators import office_required
@@ -22,31 +21,68 @@ people_bp = Blueprint('people', __name__, template_folder='../templates/people')
 @office_required
 def index():
     """Show list of all people with pagination and search functionality."""
-    from app.utils.caching import get_cached_people
-    import time
-    
-    start_time = time.time()
     page = request.args.get('page', 1, type=int)
     per_page = 20  # Number of records per page
     search_query = request.args.get('q', '')
     
-    # Get office ID for filtering (None for super admins)
-    office_id = None if current_user.is_super_admin() else current_user.office_id
+    # Create base query
+    query = Person.query
     
-    # Get cached people data
-    result = get_cached_people(office_id=office_id, page=page, per_page=per_page, search_query=search_query)
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        query = query.filter_by(office_id=current_user.office_id)
     
-    # Log performance metrics
-    load_time = time.time() - start_time
-    current_app.logger.info(f"People page loaded in {load_time:.2f}s")
+    # Apply search filter if provided
+    if search_query:
+        search_term = f'%{search_query}%'
+        query = query.filter(
+            or_(
+                Person.first_name.ilike(search_term),
+                Person.last_name.ilike(search_term),
+                Person.email.ilike(search_term),
+                Person.phone.ilike(search_term),
+                Person.people_pipeline.ilike(search_term)
+            )
+        )
+    
+    # Using pagination to limit the number of records fetched
+    pagination = query.order_by(Person.last_name, Person.first_name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    people = pagination.items
+    
+    # Get the main pipeline for proper pipeline stages
+    # Check for both 'person' and 'people' pipeline types since both are used
+    main_pipeline = Pipeline.query.filter(
+        Pipeline.is_main_pipeline,
+        Pipeline.pipeline_type.in_(['person', 'people'])
+    ).first()
+    
+    if main_pipeline:
+        # Get pipeline stages for all people in the current page
+        person_ids = [p.id for p in people]
+        pipeline_contacts = PipelineContact.query.filter(
+            PipelineContact.contact_id.in_(person_ids),
+            PipelineContact.pipeline_id == main_pipeline.id
+        ).all()
+        
+        # Create a mapping of person_id to pipeline stage
+        pipeline_stages = {}
+        for pc in pipeline_contacts:
+            if pc.current_stage:
+                pipeline_stages[pc.contact_id] = pc.current_stage.name
+        
+        # Attach pipeline stage to each person object
+        for person in people:
+            person.current_pipeline_stage = pipeline_stages.get(person.id, 'Not in Pipeline')
     
     # Pass data to template with pagination info
     return render_template('people/list.html', 
-                          people=result['people'],
-                          pagination=result['pagination'],
+                          people=people,
+                          pagination=pagination,
                           search_query=search_query,
-                          page_title="People Management",
-                          load_time=load_time)
+                          page_title="People Management")
 
 @people_bp.route('/new', methods=['GET', 'POST'])
 @login_required
@@ -167,35 +203,28 @@ def create():
 @office_required
 def show(id):
     """Show a specific person."""
-    from app.utils.caching import get_cached_person
-    import time
+    person = Person.query.get_or_404(id)
     
-    start_time = time.time()
-    
-    # Get cached person data
-    result = get_cached_person(id)
-    if not result:
-        flash('Person not found', 'danger')
-        return redirect(url_for('people.index'))
-    
-    person = result['person']
-    
-    # Check if user has access to this person
+    # Check permissions (allow super admins to view any person)
     if not current_user.is_super_admin() and person.office_id != current_user.office_id:
         flash('You do not have permission to view this person', 'danger')
         return redirect(url_for('people.index'))
     
-    # Log performance metrics
-    load_time = time.time() - start_time
-    current_app.logger.info(f"Person detail page for ID {id} loaded in {load_time:.2f}s")
+    # Get person's church if associated
+    church = None
+    if person.church_id:
+        church = Church.query.get(person.church_id)
+    
+    # Get communications and tasks for this person
+    communications = Communication.query.filter_by(person_id=person.id).order_by(Communication.date.desc()).all()
+    tasks = Task.query.filter_by(person_id=person.id).order_by(Task.due_date).all()
     
     return render_template('people/view.html', 
-                          person=person,
-                          communications=result['communications'],
-                          tasks=result['tasks'],
-                          pipeline_info=result['pipeline_info'],
-                          page_title=f"{person.first_name} {person.last_name}",
-                          load_time=load_time)
+                          person=person, 
+                          church=church,
+                          communications=communications,
+                          tasks=tasks,
+                          page_title=f"{person.first_name} {person.last_name}")
 
 @people_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required

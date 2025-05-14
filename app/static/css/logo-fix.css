@@ -1,4 +1,23 @@
 /* Logo fixes */
+.logo-container {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem !important; /* Increased padding for more space */
+    background-color: rgba(0, 0, 0, 0.2);
+    margin-bottom: 1rem;
+    flex-wrap: nowrap !important;
+    min-height: 60px; /* Ensure minimum height for logo container */
+}
+
+.logo-img {
+    height: 40px !important; /* Fixed height */
+    max-width: 100%; /* Ensure it doesn't overflow */
+    margin-right: 10px;
+    display: block !important;
+    object-fit: contain; /* Ensure the logo fits properly */
+}
+
 .logo-text {
     white-space: nowrap;
     overflow: hidden;
@@ -6,8 +25,13 @@
 }
 
 /* Override for collapsed state */
+.sidebar.collapsed .logo-container {
+    padding: 0.75rem 0.5rem !important; /* Adjusted padding for collapsed state */
+    justify-content: center;
+}
+
 .sidebar.collapsed .logo-img {
-    height: 30px !important;
+    height: 40px !important; /* Keep same height in collapsed state */
     margin-right: 0 !important;
     display: block !important;
     visibility: visible !important;

@@ -197,7 +197,6 @@ class User(UserMixin, Base):
         elif record_type == 'tasks':
             return len(self.owned_tasks)
         elif record_type == 'people':
-            # For now, count all people in the database since none have user_id set
-            # This will show the total count in the sidebar badge
-            return db.session.query(func.count(Person.id)).scalar() or 0
+            # Count people records where this user is the owner (using user_id field)
+            return db.session.query(func.count(Person.id)).filter(Person.user_id == self.id).scalar() or 0
         return 0 

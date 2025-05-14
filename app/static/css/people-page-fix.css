@@ -1,0 +1,87 @@
+/* EXTREME FIX for excessive vertical space in people page card */
+/* Target the specific DIV element that's causing the issue */
+div.card-body.d-flex.align-items-center {
+    padding: 0.5rem 1rem !important; /* Drastically reduce padding */
+    min-height: 0 !important; /* Prevent min-height from causing extra space */
+    height: 50px !important; /* Force a fixed height */
+    max-height: 50px !important; /* Force a maximum height */
+    overflow: visible !important; /* Make sure content is visible */
+    position: relative !important; /* For absolute positioning of children */
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+/* Additional selector for the people page */
+.people-page .card-body.d-flex.align-items-center {
+    padding: 0.5rem 1rem !important;
+    min-height: 0 !important;
+    height: 50px !important;
+    max-height: 50px !important;
+    overflow: visible !important;
+}
+
+/* Target the row containing the card */
+.row.mb-4 {
+    margin-bottom: 0.5rem !important;
+}
+
+/* Target the card directly - more browser compatible version */
+.card {
+    margin-bottom: 1rem !important;
+}
+
+/* Target the specific card in the people page */
+.row.mb-4 .card {
+    height: auto !important;
+    max-height: 50px !important;
+    overflow: hidden !important;
+}
+
+/* Ensure buttons are properly sized */
+.btn {
+    padding: 0.375rem 0.75rem !important;
+    line-height: 1.5 !important;
+    height: auto !important;
+}
+
+/* Ensure search input has proper height */
+.input-group {
+    height: auto !important;
+    margin-bottom: 0 !important;
+}
+
+/* Fix any flex alignment issues */
+.d-flex.align-items-center {
+    gap: 0.5rem !important; /* Reduce gap between flex items */
+}
+
+/* Fix for the specific DIV element mentioned in the screenshot */
+.card-body.d-flex.align-items-center .d-flex.gap-2.me-auto {
+    margin-right: 1rem !important; /* Add space between buttons and search */
+}
+
+/* Force all card bodies to have reasonable padding */
+.card-body {
+    padding: 0.75rem 1.25rem !important;
+}
+
+/* NUCLEAR OPTION: Directly inject inline style via CSS */
+.row.mb-4 .col-12 .card {
+    height: 50px !important;
+    max-height: 50px !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.row.mb-4 .col-12 .card .card-body {
+    height: 50px !important;
+    max-height: 50px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Fix any margins that might be causing extra space */
+.mb-4 {
+    margin-bottom: 0.5rem !important;
+}

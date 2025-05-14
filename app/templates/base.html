@@ -3,16 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <title>{% block title %}Mobilize CRM{% endblock %}</title>
-    
-    <!-- Preload critical resources to prevent layout shifts -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style">
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" as="style">
-    <link rel="preload" href="{{ url_for('static', filename='css/styles.css') }}" as="style">
-    
-    <!-- Anti Layout Shift CSS (high priority) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/prevent-layout-shift.css') }}">
     <!-- Design Tokens -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
     <!-- Modernized Components -->
@@ -25,41 +17,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <!-- Badge fix CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}">
-    <!-- Component CSS Files -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/content.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/data-visualization.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/form-elements.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/motion.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navigation.css') }}">
+    <!-- Pipeline Badge CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/theme-toggle.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/typography.css') }}">
-    <!-- For backward compatibility -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
-    <!-- Logo Fix CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/logo-fix.css') }}">
-    <!-- Task Badges CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/task-badges.css') }}">
-    <!-- Production Fixes CSS - ensure consistent styling across environments -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/production-fixes.css') }}?v={{ now.timestamp() }}">
-    
-    <!-- Force reload all CSS for fresh deployment -->
-    {% if config.get('FRESH_DEPLOYMENT', False) %}
-    <script>
-        // Force reload of all stylesheets by adding timestamp parameter
-        document.addEventListener('DOMContentLoaded', function() {
-            const stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
-            const timestamp = new Date().getTime();
-            stylesheets.forEach(function(stylesheet) {
-                if (stylesheet.href.indexOf('?') === -1) {
-                    stylesheet.href = stylesheet.href + '?v=' + timestamp;
-                }
-            });
-            console.log('Forced reload of ' + stylesheets.length + ' stylesheets for fresh deployment');
-        });
-    </script>
-    {% endif %}
-    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -67,11 +26,11 @@
         <div class="row g-0">
             <!-- Sidebar Navigation -->
             <div id="sidebar-wrapper" class="col-auto px-0 sidebar-wrapper">
-                <div id="sidebarMenu" class="collapse d-lg-block sidebar">
+                <div id="sidebar" class="collapse d-lg-block sidebar">
                     <div class="position-sticky">
-                        <div class="logo-container py-2" style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
-                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Mobilize CRM Logo" class="logo-img" style="height: 30px; width: auto; margin-right: 10px; display: inline-block !important;">
-                            <span class="logo-text text-white">Mobilize CRM</span>
+                        <div class="logo-container text-center py-2">
+                            <i class="fas fa-globe text-white" style="font-size: 2rem;"></i>
+                            <div class="text-white">Mobilize CRM</div>
                         </div>
                         <!-- Single column nav structure -->
                         <div class="sidebar-content d-flex flex-column h-100">
@@ -179,7 +138,7 @@
 
                             <!-- Sidebar Toggle Button -->
                             <div class="sidebar-toggle-container mt-2">
-                                <button id="sidebarToggle" class="sidebar-toggle w-100" aria-label="Toggle sidebar">
+                                <button id="sidebar-toggle-btn" class="sidebar-toggle w-100" aria-label="Toggle sidebar">
                                     <i class="fas fa-bars"></i>
                                 </button>
                             </div>
@@ -192,7 +151,7 @@
             <div id="main-content" class="col ps-md-2 pt-2 pe-0">
                 <header class="d-flex justify-content-between align-items-center py-2 mb-3 border-bottom header-container px-3">
                     <div class="d-flex align-items-center">
-                        <button class="btn btn-link text-white" id="header-sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#sidebarMenu">
+                        <button class="btn btn-link text-white" data-bs-toggle="collapse" data-bs-target="#sidebar">
                             <i class="fas fa-bars"></i>
                         </button>
                         <h1 class="h2 mb-0 page-title text-white">{% block page_title %}Dashboard{% endblock %}</h1>
@@ -245,9 +204,6 @@
         </div>
     </div>
 
-    <!-- Anti Layout Shift JavaScript (high priority) -->
-    <script src="{{ url_for('static', filename='js/prevent-layout-shift.js') }}" defer></script>
-    
     <!-- JavaScript Dependencies -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -258,49 +214,5 @@
     <!-- Global Email Modal Container for AJAX-loaded modals -->
     <div id="global-email-modal-container"></div>
     <script src="{{ url_for('static', filename='js/email-modal.js') }}"></script>
-
-    <script>
-        // Sidebar toggle functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebarMenu');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-
-            // Check for saved state in localStorage
-            if (localStorage.getItem('sidebarCollapsed') === 'true') {
-                sidebar.classList.add('collapsed');
-                document.body.classList.add('sidebar-collapsed');
-            }
-
-            sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('collapsed');
-                document.body.classList.toggle('sidebar-collapsed');
-                // Save state to localStorage
-                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-            });
-        });
-    </script>
-
-    <script>
-        // Ensure logo is visible
-        document.addEventListener('DOMContentLoaded', function() {
-            const logo = document.querySelector('.logo-container');
-            const sidebar = document.getElementById('sidebarMenu');
-
-            // Check if sidebar is collapsed
-            if (sidebar.classList.contains('collapse')) {
-                logo.style.display = 'flex';
-            }
-
-            // Add event listener to sidebar toggle button
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            sidebarToggle.addEventListener('click', function() {
-                if (sidebar.classList.contains('collapse')) {
-                    logo.style.display = 'flex';
-                } else {
-                    logo.style.display = 'none';
-                }
-            });
-        });
-    </script>
 </body>
-</html>
+</html> 

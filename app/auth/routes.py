@@ -304,10 +304,6 @@ def get_current_user():
 @auth_bp.route('/dev-login')
 def dev_login():
     """Development-only route for testing login functionality."""
-    # Block access in production environment
-    if os.environ.get('FLASK_ENV') == 'production':
-        current_app.logger.warning(f"Attempted access to dev login in production from IP: {request.remote_addr}")
-        return render_template('errors/403.html'), 403
     try:
         # Check if we're in production and test users are disabled
         if current_app.config.get('FLASK_ENV') == 'production' and current_app.config.get('DISABLE_TEST_USERS', False):
@@ -361,10 +357,6 @@ def dev_login():
 @auth_bp.route('/dev-login-standard')
 def dev_login_standard():
     """Development-only route for testing login with standard user."""
-    # Block access in production environment
-    if os.environ.get('FLASK_ENV') == 'production':
-        current_app.logger.warning(f"Attempted access to dev login standard in production from IP: {request.remote_addr}")
-        return render_template('errors/403.html'), 403
     # Find or create a standard user (j.smith)
     standard_user = User.query.filter_by(email='j.smith@test.com').first()
     if not standard_user:
@@ -401,10 +393,6 @@ def dev_login_standard():
 @auth_bp.route('/dev-login-office-admin')
 def dev_login_office_admin():
     """Development-only route for testing login with office admin user."""
-    # Block access in production environment
-    if os.environ.get('FLASK_ENV') == 'production':
-        current_app.logger.warning(f"Attempted access to dev login office admin in production from IP: {request.remote_addr}")
-        return render_template('errors/403.html'), 403
     # Find or create an office admin user
     admin_user = User.query.filter_by(email='admin@office.com').first()
     if not admin_user:

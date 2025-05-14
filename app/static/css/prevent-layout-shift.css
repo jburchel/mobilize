@@ -1,54 +1,168 @@
-/* Minimal approach to prevent layout shifts during page navigation */
+/* Enhanced approach to prevent layout shifts during page navigation */
 
 /* Ensure scrollbar is always visible to prevent width changes */
 html {
     overflow-y: scroll;
+    scroll-behavior: smooth; /* Smooth scrolling between anchor points */
+}
+
+/* Apply a more stable layout to the body */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 /* Prevent content jumps when modal dialogs appear */
 body.modal-open {
     padding-right: 0 !important;
+    overflow-y: hidden !important; /* Prevent double scrollbars */
 }
 
-/* Stabilize the sidebar width */
+/* Stabilize the sidebar width and height */
 #sidebar-wrapper {
     width: 250px !important;
+    min-height: 100vh !important;
+    height: 100% !important;
+    position: sticky;
+    top: 0;
+    transition: transform 0.3s ease; /* Smooth sidebar transitions */
+    will-change: transform; /* Optimize for animations */
+    overflow-y: auto; /* Allow scrolling within sidebar */
+}
+
+/* Ensure the sidebar content fills the entire height */
+.sidebar {
+    min-height: 100vh !important;
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Fix logo container display */
+.logo-container {
+    padding: 15px 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: sticky !important;
+    top: 0 !important;
+    background: linear-gradient(to right, var(--color-primary-blue, #0056b3), var(--color-primary-green, #28a745)) !important;
+    z-index: 10 !important;
+    width: 100% !important;
+}
+
+.logo-img {
+    height: 30px !important;
+    width: auto !important;
+    margin-right: 10px !important;
+    display: inline-block !important;
+}
+
+/* Make sure the sidebar content container takes full height */
+.sidebar-content {
+    min-height: 100vh !important;
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure utilities container is always visible */
+.utilities-container {
+    margin-top: auto;
+    padding-bottom: 20px;
 }
 
 /* Ensure header has consistent height */
 header.dashboard-header {
     min-height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    width: 100%;
 }
 
 /* Fix for main content area - this is the key fix for the jumping issue */
 .content-wrapper {
     min-height: calc(100vh - 60px); /* Subtract header height */
+    width: 100%;
+    flex: 1 0 auto; /* Allow content to grow but not shrink */
+    will-change: contents; /* Optimize for content changes */
+    contain: layout; /* Improve rendering performance */
 }
 
 /* Prevent main content from shifting during page transitions */
 main.container-fluid {
     padding-top: 20px; /* Consistent top padding */
     min-height: 500px; /* Minimum height to prevent collapsing */
+    width: 100%;
+    position: relative;
+}
+
+/* Ensure tables maintain consistent dimensions */
+.table-responsive {
+    min-height: 200px; /* Provide space for loading content */
+    position: relative;
 }
 
 /* Ensure images don't cause layout shifts */
 img {
     max-width: 100%;
     height: auto;
+    aspect-ratio: attr(width) / attr(height); /* Preserve aspect ratio */
 }
 
 /* Ensure cards don't cause layout shifts */
 .card {
     height: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-body {
+    flex: 1 0 auto; /* Allow card body to grow but not shrink */
 }
 
 /* Ensure badges don't cause layout shifts */
 .badge {
     min-width: 18px;
     display: inline-block;
+    vertical-align: middle;
 }
 
 /* Prevent flash of unstyled content */
+.no-fouc {
+    visibility: hidden;
+}
+
+/* Add page transition effect */
+.page-transition-wrapper {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0.8; }
+    to { opacity: 1; }
+}
+
+/* Optimize for content loading */
+.content-loading {
+    min-height: 200px;
+    position: relative;
+}
+
+/* Ensure consistent form element sizes */
+.form-control, .form-select {
+    height: calc(1.5em + 0.75rem + 2px);
+}
+
+/* Ensure consistent button sizes */
+.btn {
+    min-height: calc(1.5em + 0.75rem + 2px);
+}
 body {
     visibility: visible !important;
 }

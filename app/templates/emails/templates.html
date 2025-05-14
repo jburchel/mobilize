@@ -233,7 +233,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="delete-template-form" action="#" method="POST">
+                <form id="delete-template-form" action="{{ url_for('emails.delete_template', template_id=template.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this template?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-danger" id="confirm-delete-btn">Delete Template</button>
                 </form>

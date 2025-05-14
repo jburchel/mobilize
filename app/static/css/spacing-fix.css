@@ -1,0 +1,43 @@
+/* Direct fix for spacing issues */
+
+/* Fix for spacing on all pages */
+.container-fluid {
+    padding-top: 30px !important;
+}
+
+/* Add more space above the first row in any container */
+.container-fluid > .row:first-child {
+    margin-top: 30px !important;
+}
+
+/* Fix for action bars with buttons and search elements */
+.card-body.d-flex.align-items-center {
+    padding: 1.5rem !important;
+    margin-top: 0 !important;
+}
+
+/* Fix for card margins */
+.card {
+    margin-bottom: 20px !important;
+}
+
+/* Fix for row margins */
+.row {
+    margin-bottom: 20px !important;
+}
+
+/* Fix for specific pages */
+body.people-page .container-fluid,
+body.churches-page .container-fluid,
+body.person-detail-page .container-fluid,
+body.church-detail-page .container-fluid {
+    padding-top: 40px !important;
+}
+
+/* Fix for first card on specific pages */
+body.people-page .card:first-of-type,
+body.churches-page .card:first-of-type,
+body.person-detail-page .card:first-of-type,
+body.church-detail-page .card:first-of-type {
+    margin-top: 20px !important;
+}

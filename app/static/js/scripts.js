@@ -2,43 +2,6 @@
 
 // Handle sidebar toggle on mobile
 document.addEventListener('DOMContentLoaded', function() {
-    // Ensure Bootstrap is properly initialized for sidebar toggle
-    var sidebarElement = document.getElementById('sidebar');
-    if (sidebarElement) {
-        // Initialize Bootstrap collapse manually if needed
-        if (typeof bootstrap !== 'undefined' && typeof bootstrap.Collapse !== 'undefined') {
-            // Bootstrap is available, initialize collapse
-            var sidebarCollapse = new bootstrap.Collapse(sidebarElement, {
-                toggle: false
-            });
-        } else {
-            console.warn('Bootstrap not fully loaded, sidebar collapse may not work properly');
-        }
-    }
-    // Add event listener for the header sidebar toggle button
-    const headerSidebarToggle = document.getElementById('header-sidebar-toggle');
-    if (headerSidebarToggle) {
-        headerSidebarToggle.addEventListener('click', function(event) {
-            event.preventDefault();
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) {
-                // Try using Bootstrap's collapse if available
-                if (typeof bootstrap !== 'undefined' && typeof bootstrap.Collapse !== 'undefined') {
-                    const bsCollapse = bootstrap.Collapse.getInstance(sidebar);
-                    if (bsCollapse) {
-                        bsCollapse.toggle();
-                    } else {
-                        // Manually toggle if Bootstrap instance not available
-                        sidebar.classList.toggle('show');
-                    }
-                } else {
-                    // Fallback to manual toggle
-                    sidebar.classList.toggle('show');
-                }
-            }
-        });
-    }
-    
     // Auto-hide sidebar on mobile when clicking outside
     document.addEventListener('click', function(event) {
         const sidebar = document.getElementById('sidebar');
@@ -47,19 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.innerWidth < 992) { // Bootstrap's lg breakpoint
             if (!sidebar.contains(event.target) && !toggleButton.contains(event.target)) {
                 if (sidebar.classList.contains('show')) {
-                    // Try using Bootstrap's collapse if available
-                    if (typeof bootstrap !== 'undefined' && typeof bootstrap.Collapse !== 'undefined') {
-                        const bsCollapse = bootstrap.Collapse.getInstance(sidebar);
-                        if (bsCollapse) {
-                            bsCollapse.hide();
-                        } else {
-                            // Manually hide if Bootstrap instance not available
-                            sidebar.classList.remove('show');
-                        }
-                    } else {
-                        // Fallback to manual hide
-                        sidebar.classList.remove('show');
-                    }
+                    bootstrap.Collapse.getInstance(sidebar).hide();
                 }
             }
         }

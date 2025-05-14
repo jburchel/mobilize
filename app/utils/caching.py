@@ -238,10 +238,12 @@ def _get_person_data(person_id):
         return None
     
     # Get communications for this person
-    communications = person.communications.order_by(db.desc('date_sent')).limit(10).all()
+    from app.models.communication import Communication
+    communications = Communication.query.filter_by(person_id=person.id).order_by(db.desc(Communication.date_sent)).limit(10).all()
     
     # Get tasks for this person
-    tasks = person.tasks.order_by(db.desc('due_date')).limit(10).all()
+    from app.models.task import Task
+    tasks = Task.query.filter_by(person_id=person.id).order_by(db.desc(Task.due_date)).limit(10).all()
     
     # Get pipeline information
     pipeline_info = None
@@ -271,10 +273,9 @@ def _get_person_data(person_id):
         'pipeline_info': pipeline_info
     }
     
-    # Cache the result
-    cache.set(cache_key, result, timeout=MEDIUM_TIMEOUT)
+    # No need to cache here as it's already handled in get_cached_person
+    # The caching logic should only be in the wrapper function, not here
     
-    logger.info(f"Cached person {person_id} in {time.time() - start_time:.2f}s")
     return result
 
 
@@ -392,10 +393,12 @@ def get_cached_church(church_id):
         return None
     
     # Get communications for this church
-    communications = church.communications.order_by(db.desc('date_sent')).limit(10).all()
+    from app.models.communication import Communication
+    communications = Communication.query.filter_by(church_id=church.id).order_by(db.desc(Communication.date_sent)).limit(10).all()
     
     # Get tasks for this church
-    tasks = church.tasks.order_by(db.desc('due_date')).limit(10).all()
+    from app.models.task import Task
+    tasks = Task.query.filter_by(church_id=church.id).order_by(db.desc(Task.due_date)).limit(10).all()
     
     # Get members (people) for this church
     members = Person.query.filter_by(church_id=church_id).all()

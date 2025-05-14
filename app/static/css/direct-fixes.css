@@ -1,0 +1,65 @@
+/* Direct fixes for UI issues */
+
+/* Fix for spacing on People, Churches, Person Detail, and Church Detail pages */
+.container-fluid {
+    padding-top: 25px !important;
+}
+
+/* Add more space above the first row in any container */
+.container-fluid > .row:first-child {
+    margin-top: 25px !important;
+}
+
+/* Fix for action bars with buttons and search elements */
+.card-body.d-flex.align-items-center {
+    padding: 1.5rem !important;
+    margin-top: 1.5rem !important;
+}
+
+/* Fix for View Pipeline button on Pipeline Management page */
+.btn.btn-outline-primary {
+    background-color: #183963 !important;
+    color: white !important;
+    border-color: #183963 !important;
+}
+
+.btn.btn-outline-primary:hover {
+    background-color: #132E4C !important;
+    border-color: #132E4C !important;
+}
+
+/* Fix for jerky transitions */
+html {
+    scroll-behavior: smooth !important;
+}
+
+body {
+    transition: none !important;
+}
+
+/* Specific fixes for People page */
+body[data-page="people"] .container-fluid > .row:first-child {
+    margin-top: 30px !important;
+}
+
+/* Specific fixes for Churches page */
+body[data-page="churches"] .container-fluid > .row:first-child {
+    margin-top: 30px !important;
+}
+
+/* Specific fixes for Person Detail page */
+body[data-page="person-detail"] .container-fluid > .row:first-child {
+    margin-top: 30px !important;
+}
+
+/* Specific fixes for Church Detail page */
+body[data-page="church-detail"] .container-fluid > .row:first-child {
+    margin-top: 30px !important;
+}
+
+/* Specific fixes for Pipeline Management page */
+body[data-page="pipeline"] .btn.btn-outline-primary {
+    background-color: #183963 !important;
+    color: white !important;
+    border-color: #183963 !important;
+}

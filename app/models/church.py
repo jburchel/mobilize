@@ -11,19 +11,20 @@ from app.models.constants import (
 from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
 from app.models.person import Person
 
+from app.models.pipeline import PipelineContact
 class Church(Contact):
     """Model for representing a church in the system."""
     __tablename__ = 'churches'
     
     id: Mapped[int] = mapped_column(ForeignKey('contacts.id'), primary_key=True)
-    name: Mapped[Optional[str]] = mapped_column(String(200), index=True)
+    name: Mapped[Optional[str]] = mapped_column(String(200))
     location: Mapped[Optional[str]] = mapped_column(String(200))
-    main_contact_id: Mapped[Optional[int]] = mapped_column(ForeignKey('people.id'), index=True)
+    main_contact_id: Mapped[Optional[int]] = mapped_column(ForeignKey('people.id'))
     senior_pastor_name: Mapped[Optional[str]] = mapped_column(String(100))
     denomination: Mapped[Optional[str]] = mapped_column(String(100))
     weekly_attendance: Mapped[Optional[int]] = mapped_column(Integer)
     website: Mapped[Optional[str]] = mapped_column(String(200))
-    owner_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False, index=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
     
     # Fields migrated from old model
     virtuous: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -112,7 +113,7 @@ class Church(Contact):
 
     @property
     def main_pipeline_stage(self):
-        # Pipeline models already imported at the top of the file
+        from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
         main_pipeline = Pipeline.query.filter_by(pipeline_type="church", is_main_pipeline=True).first()
         if not main_pipeline:
             return None

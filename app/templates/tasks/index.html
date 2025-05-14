@@ -127,31 +127,27 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if task.status.value == 'pending' %}
+                                            {% if task.status == 'pending' %}
                                                 <span class="badge bg-warning">Pending</span>
-                                            {% elif task.status.value == 'in_progress' %}
+                                            {% elif task.status == 'in_progress' %}
                                                 <span class="badge bg-info">In Progress</span>
-                                            {% elif task.status.value == 'completed' %}
+                                            {% elif task.status == 'completed' %}
                                                 <span class="badge bg-success">Completed</span>
-                                            {% elif task.status.value == 'on_hold' %}
-                                                <span class="badge bg-secondary">On Hold</span>
-                                            {% elif task.status.value == 'cancelled' %}
-                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% elif task.status == 'overdue' %}
+                                                <span class="badge bg-danger">Overdue</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ task.status.name|replace('_', ' ')|capitalize }}</span>
+                                                <span class="badge bg-secondary">{{ task.status|capitalize }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if task.priority.value == 'high' %}
+                                            {% if task.priority == 'high' %}
                                                 <span class="badge bg-danger">High</span>
-                                            {% elif task.priority.value == 'medium' %}
+                                            {% elif task.priority == 'medium' %}
                                                 <span class="badge bg-warning">Medium</span>
-                                            {% elif task.priority.value == 'low' %}
+                                            {% elif task.priority == 'low' %}
                                                 <span class="badge bg-info">Low</span>
-                                            {% elif task.priority.value == 'urgent' %}
-                                                <span class="badge bg-danger">Urgent</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ task.priority.name|replace('_', ' ')|capitalize }}</span>
+                                                <span class="badge bg-secondary">{{ task.priority|capitalize }}</span>
                                             {% endif %}
                                         </td>
                                         <td>

@@ -149,3 +149,40 @@
         width: 100% !important;
     }
 }
+
+/* Fix for action bars with buttons and search elements positioning */
+.card-body.d-flex.align-items-center {
+    padding: 1.25rem !important;
+    margin-top: 1rem !important;
+}
+
+/* Fix for People, Churches, Person Detail, and Church Detail pages */
+.container-fluid .row.mb-4 {
+    margin-top: 1.5rem !important;
+}
+
+/* More aggressive fix for spacing issues */
+.container-fluid {
+    padding-top: 20px !important;
+}
+
+.container-fluid > .row:first-child {
+    margin-top: 20px !important;
+}
+
+/* Fix for Pipeline Management page */
+.container-fluid .row:first-of-type {
+    margin-top: 1rem !important;
+}
+
+/* Fix for View Pipeline button on Pipeline Management page */
+.btn.btn-outline-primary {
+    background-color: var(--primary-blue) !important;
+    color: white !important;
+    border-color: var(--primary-blue) !important;
+}
+
+.btn.btn-outline-primary:hover {
+    background-color: var(--primary-blue-dark) !important;
+    border-color: var(--primary-blue-dark) !important;
+}

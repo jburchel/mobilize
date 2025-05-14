@@ -338,9 +338,8 @@ def debug_pipeline_data():
         current_app.logger.error(f"Error in debug pipeline data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# Commented out to avoid route conflict
-# @dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
-def pipeline_chart_data_legacy(pipeline_type=None):
+@dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
+def pipeline_chart_data(pipeline_type=None):
     """API endpoint to get pipeline chart data (legacy).
     This endpoint has been temporarily disabled.
     """
@@ -426,18 +425,6 @@ def simple_pipeline_chart_data(pipeline_type=None):
         # For each stage, get the count of contacts
         for stage in stages:
             try:
-                # Add detailed logging for debugging
-                current_app.logger.info(f"Processing stage {stage.id}: {stage.name} for pipeline {pipeline.id}")
-                
-                # Get all pipeline contacts for this pipeline and stage
-                pipeline_contacts = db.session.query(PipelineContact).filter(
-                    PipelineContact.pipeline_id == pipeline.id,
-                    PipelineContact.current_stage_id == stage.id
-                ).all()
-                
-                current_app.logger.info(f"Found {len(pipeline_contacts)} total contacts in stage {stage.name}")
-                
-                # Filter by contact type
                 if pipeline_type == 'person':
                     # Count people in this stage using the PipelineContact table
                     count = db.session.query(PipelineContact).join(
@@ -446,18 +433,6 @@ def simple_pipeline_chart_data(pipeline_type=None):
                         PipelineContact.pipeline_id == pipeline.id,
                         PipelineContact.current_stage_id == stage.id
                     ).count()
-                    
-                    # Extra debug info
-                    if count > 0:
-                        sample_contacts = db.session.query(PipelineContact, Person).join(
-                            Person, Person.id == PipelineContact.contact_id
-                        ).filter(
-                            PipelineContact.pipeline_id == pipeline.id,
-                            PipelineContact.current_stage_id == stage.id
-                        ).limit(3).all()
-                        
-                        for pc, person in sample_contacts:
-                            current_app.logger.info(f"Sample person in {stage.name}: ID={person.id}, Name={getattr(person, 'first_name', 'Unknown')} {getattr(person, 'last_name', 'Unknown')}")
                 else:
                     # Count churches in this stage using the PipelineContact table
                     count = db.session.query(PipelineContact).join(
@@ -466,21 +441,9 @@ def simple_pipeline_chart_data(pipeline_type=None):
                         PipelineContact.pipeline_id == pipeline.id,
                         PipelineContact.current_stage_id == stage.id
                     ).count()
-                    
-                    # Extra debug info
-                    if count > 0:
-                        sample_contacts = db.session.query(PipelineContact, Church).join(
-                            Church, Church.id == PipelineContact.contact_id
-                        ).filter(
-                            PipelineContact.pipeline_id == pipeline.id,
-                            PipelineContact.current_stage_id == stage.id
-                        ).limit(3).all()
-                        
-                        for pc, church in sample_contacts:
-                            current_app.logger.info(f"Sample church in {stage.name}: ID={church.id}, Name={getattr(church, 'name', 'Unknown')}")
                 
                 # Log the count for debugging
-                current_app.logger.info(f"Stage {stage.name} has {count} {pipeline_type} contacts after filtering")
+                current_app.logger.info(f"Stage {stage.name} has {count} contacts")
                     
                 stages_data.append({
                     'id': stage.id,
@@ -520,134 +483,6 @@ def simple_pipeline_chart_data(pipeline_type=None):
             'error': 'Internal server error',
             'message': str(e)
         }), 500
-
-@dashboard_bp.route('/api/chart-data/<pipeline_type>', methods=['GET'])
-@login_required
-@office_required
-def pipeline_chart_data(pipeline_type=None):
-    """API endpoint to get pipeline chart data."""
-    try:
-        # Log request details for debugging
-        current_app.logger.info(f"Chart data requested for pipeline type: {pipeline_type}")
-        
-        # Validate pipeline type
-        if pipeline_type not in ['person', 'church']:
-            current_app.logger.warning(f"Invalid pipeline type requested: {pipeline_type}")
-            return jsonify({
-                'error': f"Invalid pipeline type: {pipeline_type}"
-            }), 400
-            
-        # Get user's office
-        office_id = current_user.office_id
-        is_super_admin = current_user.role == 'super_admin'
-        
-        current_app.logger.info(f"User office_id: {office_id}, is_super_admin: {is_super_admin}")
-        
-        # Find the appropriate pipeline
-        if pipeline_type == 'person':
-            # For person type, check both 'person' and 'people' types
-            pipeline_query = Pipeline.query.filter(
-                Pipeline.is_main_pipeline == True,
-                or_(Pipeline.pipeline_type == 'person', Pipeline.pipeline_type == 'people')
-            )
-        else:
-            # For church type
-            pipeline_query = Pipeline.query.filter(
-                Pipeline.is_main_pipeline == True,
-                Pipeline.pipeline_type == pipeline_type
-            )
-        
-        # Filter by office unless super admin
-        if not is_super_admin:
-            pipeline_query = pipeline_query.filter(Pipeline.office_id == office_id)
-            
-        pipeline = pipeline_query.first()
-        
-        if not pipeline:
-            current_app.logger.warning(f"No {pipeline_type} pipeline found for office {office_id}")
-            return jsonify({
-                'error': f"No {pipeline_type} pipeline found for your office"
-            }), 404
-            
-        current_app.logger.info(f"Found pipeline: {pipeline.id} - {pipeline.name}")
-            
-        # Get pipeline stages with counts
-        stages_data = []
-        total_contacts = 0
-        
-        # Get all stages for this pipeline
-        stages = PipelineStage.query.filter_by(pipeline_id=pipeline.id).order_by(PipelineStage.order).all()
-        
-        if not stages:
-            current_app.logger.warning(f"No stages found for pipeline {pipeline.id}")
-            return jsonify({
-                'error': f"No stages found for {pipeline_type} pipeline"
-            }), 404
-            
-        current_app.logger.info(f"Found {len(stages)} stages for pipeline {pipeline.id}")
-        
-        # For each stage, get the count of contacts
-        for stage in stages:
-            try:
-                # Get the count of contacts in this stage using a join with the Contact model
-                # This is more reliable than using contact_type which might not be set correctly
-                from app.models import Contact
-                
-                # Base query for contacts in this stage
-                base_query = db.session.query(PipelineContact).join(
-                    Contact, PipelineContact.contact_id == Contact.id
-                ).filter(
-                    PipelineContact.current_stage_id == stage.id,
-                    PipelineContact.pipeline_id == pipeline.id
-                )
-                
-                if pipeline_type == 'person':
-                    # Count people in this stage - filter by Contact.type
-                    count = base_query.filter(Contact.type == 'person').count()
-                    current_app.logger.info(f"Stage {stage.name} has {count} people")
-                else:
-                    # Count churches in this stage - filter by Contact.type
-                    count = base_query.filter(Contact.type == 'church').count()
-                    current_app.logger.info(f"Stage {stage.name} has {count} churches")
-                    
-                stages_data.append({
-                    'id': stage.id,
-                    'name': stage.name,
-                    'position': stage.order,
-                    'color': stage.color or get_default_color(stage.name),
-                    'contact_count': count
-                })
-                
-                total_contacts += count
-            except Exception as stage_error:
-                current_app.logger.error(f"Error processing stage {stage.id}: {str(stage_error)}")
-                # Continue with other stages even if one fails
-            
-        # Calculate percentages
-        for stage in stages_data:
-            if total_contacts > 0:
-                stage['percentage'] = round((stage['contact_count'] / total_contacts) * 100)
-            else:
-                stage['percentage'] = 0
-                
-        # Return the data
-        response_data = {
-            'pipeline_id': pipeline.id,
-            'pipeline_name': pipeline.name,
-            'pipeline_type': pipeline_type,
-            'total_contacts': total_contacts,
-            'stages': stages_data
-        }
-        
-        current_app.logger.info(f"Successfully generated chart data for {pipeline_type} pipeline")
-        return jsonify(response_data)
-        
-    except Exception as e:
-        current_app.logger.error(f"Error in pipeline_chart_data: {str(e)}")
-        return jsonify({
-            'error': f"An error occurred: {str(e)}"
-        }), 500
-
 
 @dashboard_bp.route('/dashboard/debug/chart-data/<chart_type>')
 @dashboard_bp.route('/dashboard/fallback-chart-data/<chart_type>')

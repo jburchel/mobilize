@@ -1,6 +1,6 @@
 """Static file optimizations for production environment."""
 
-from flask import send_from_directory
+from flask import current_app, send_from_directory
 import os
 import gzip
 import brotli
@@ -12,17 +12,13 @@ def optimize_static_files(app):
     This function sets up compression and caching for static files
     to improve load times in production.
     """
-    # Temporarily disable all optimizations for fresh deployment
-    app.logger.info("Static file optimizations DISABLED for fresh deployment")
-    return
-    
     # Only apply in production
     # Check environment in a way compatible with newer Flask versions
     is_production = app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production'
     if not is_production:
         return
     
-    app.logger.info("Applying static file optimizations for production")
+    current_app.logger.info("Applying static file optimizations for production")
     
     # Set long cache expiration for static files
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # 1 year in seconds
@@ -33,7 +29,7 @@ def optimize_static_files(app):
     # Override the static file serving function to use compressed files when available
     override_static_serving(app)
     
-    app.logger.info("Static file optimizations applied successfully")
+    current_app.logger.info("Static file optimizations applied successfully")
 
 def precompress_static_files(app):
     """Pre-compress static files to gzip and brotli formats."""
@@ -43,25 +39,12 @@ def precompress_static_files(app):
     if os.path.exists(os.path.join(static_folder, '.compressed')):
         return
     
-    app.logger.info("Pre-compressing static files...")
+    current_app.logger.info("Pre-compressing static files...")
     
     # File types to compress
     compressible_types = [
         '.css', '.js', '.html', '.xml', '.json', '.svg', '.txt', '.map'
     ]
-    
-    # Skip compression in development to avoid issues
-    if app.config.get('ENV') == 'development' or app.config.get('FLASK_ENV') == 'development':
-        app.logger.info("Skipping compression in development environment")
-        return
-        
-    # Ensure component CSS files are properly handled
-    components_dir = os.path.join(static_folder, 'css', 'components')
-    if os.path.exists(components_dir):
-        app.logger.info(f"Found component CSS directory: {components_dir}")
-        
-    app.logger.info("Compressing static files for production")
-
     
     # Compress files
     for root, _, files in os.walk(static_folder):
@@ -73,17 +56,8 @@ def precompress_static_files(app):
                 continue
                 
             # Skip if already compressed
-            if os.path.exists(file_path + '.gz'):
+            if filename.endswith('.gz') or filename.endswith('.br'):
                 continue
-                
-            # Skip if minified version exists
-            filename_without_ext, ext = os.path.splitext(filename)
-            if filename_without_ext.endswith('.min'):
-                continue
-                
-            # Ensure component CSS files are properly handled
-            if 'components' in file_path and ext == '.css':
-                app.logger.info(f"Processing component CSS file: {file_path}")
                 
             try:
                 # Create gzip version
@@ -97,13 +71,13 @@ def precompress_static_files(app):
                     with open(f"{file_path}.br", 'wb') as f_out:
                         f_out.write(compressed)
             except Exception as e:
-                app.logger.error(f"Error compressing {file_path}: {str(e)}")
+                current_app.logger.error(f"Error compressing {file_path}: {str(e)}")
     
     # Create marker file to indicate compression is done
     with open(os.path.join(static_folder, '.compressed'), 'w') as f:
         f.write('1')
     
-    app.logger.info("Static file compression complete")
+    current_app.logger.info("Static file compression complete")
 
 def override_static_serving(app):
     """Override Flask's static file serving to use compressed versions when available."""

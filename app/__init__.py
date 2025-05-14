@@ -35,7 +35,6 @@ from app.cli import register_commands
 from app.config.performance_optimizations import optimize_flask_app
 from app.config.static_optimizations import optimize_static_files
 from app.config.database_optimizations import optimize_database_queries
-from app.config.frontend_optimizations import optimize_frontend_performance
 
 # Load environment variables from .env.development first
 load_dotenv(find_dotenv(".env.development"), override=True) # Keep from main, ensure override=True
@@ -67,10 +66,6 @@ def access_secrets():
 def create_app(test_config=None):
     """Create and configure the Flask application"""
     app = Flask(__name__, instance_relative_config=True)
-    
-    # Flag for fresh deployment - bypassing optimizations
-    app.config['FRESH_DEPLOYMENT'] = True
-    app.logger.info("Running in FRESH_DEPLOYMENT mode - using development settings in production")
 
     # Load configuration (Keep logic from development)
     env = os.getenv('FLASK_ENV', 'development')
@@ -78,12 +73,6 @@ def create_app(test_config=None):
     
     # Check if we're running in Cloud Run
     is_cloud_run = os.environ.get('K_SERVICE') is not None
-    
-    # Force production environment when running in Cloud Run
-    if is_cloud_run:
-        os.environ['FLASK_ENV'] = 'production'
-        app.config['ENV'] = 'production'
-        app.logger.info("Running in Cloud Run - forcing production environment")
     
     # Ensure DB_CONNECTION_STRING is properly set in environment variables
     if is_cloud_run and os.environ.get('DB_CONNECTION_STRING'):
@@ -402,7 +391,6 @@ def create_app(test_config=None):
     optimize_flask_app(app)
     optimize_static_files(app)
     optimize_database_queries(app)
-    optimize_frontend_performance(app)  # Apply frontend optimizations
     
     # Setup pipelines and migrate contacts (Keep logic from development)
     with app.app_context():
@@ -438,11 +426,6 @@ def create_app(test_config=None):
     init_db_logger(app)
     app.logger.info("Database query logging initialized")
     
-    # Initialize caching for improved performance
-    from app.utils.caching import init_app as init_caching
-    init_caching(app)
-    app.logger.info("Performance caching initialized")
-    
     # Initialize activity logger middleware
     from app.middleware.activity_logger import ActivityLoggerMiddleware
     ActivityLoggerMiddleware(app)
@@ -456,16 +439,10 @@ def create_app(test_config=None):
             return
             
         if current_user.is_authenticated:
-            # Get counts with logging for debugging
-            people_count = current_user.count_owned_records('people')
-            comms_count = current_user.count_owned_records('communications')
-            app.logger.info(f'User ID: {current_user.id}, People count: {people_count}, Communications count: {comms_count}')
-            
             g.stats = {
-                'pending_tasks': current_user.count_owned_records('tasks'),
-                'church_count': current_user.count_owned_records('churches'),
-                'people_count': people_count,
-                'recent_communications': comms_count
+                'tasks_count': current_user.count_owned_records('tasks'),
+                'churches_count': current_user.count_owned_records('churches'),
+                'people_count': current_user.count_owned_records('people')
             }
         else:
             g.stats = None

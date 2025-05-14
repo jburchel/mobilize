@@ -27,6 +27,10 @@
 - [ ] The delete icon for a person in the same table takes the user to the Internal server error page
 - [ ] Some people don't open up when you click them (give Internal server error)... some do open up
 
+## People Detail Page
+
+- [ ] When you click on either of the actions under Tasks on the detial page nothing happens
+
 ## Pipeline Management Page
 
 - [ ] When you click on the View Pipeline button it takes you to the right page, but all people (and churches) are showing up under Promotion
@@ -53,6 +57,7 @@
 ## Settings Page
 
 - [x] Seems to be working as expected
+- [ ] When I clicekd on Change Password and completed the form it took me to the Internal server error page
 
 ## Admin Panel (Dashboard)
 
