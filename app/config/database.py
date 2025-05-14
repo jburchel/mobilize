@@ -12,7 +12,7 @@ ROOT_DIR = Path(__file__).parent.parent.parent
 def init_db(app):
     """Initialize database configuration."""
     if app.config['ENV'] == 'production':
-        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB_CONNECTION_STRING')
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
         
         # Log the database connection for debugging
         app.logger.info(f"Using production database: {app.config['SQLALCHEMY_DATABASE_URI'].split('@')[1] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else 'DB URI present'}")
