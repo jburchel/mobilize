@@ -1,0 +1,32 @@
+# Ignore Git and version control files
+.git
+.gitignore
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore virtual environment
+venv/
+env/
+.env
+
+# Ignore local development files
+*.log
+.DS_Store
+
+# Ignore deployment archives
+deploy-package/
+simulated_production/
+archive/
+
+# Ignore test files
+tests/
+
+# Do NOT ignore any app files
+!app/
+!app/**
+
+# Do NOT ignore ngrok_fix.py specifically
+!app/auth/ngrok_fix.py

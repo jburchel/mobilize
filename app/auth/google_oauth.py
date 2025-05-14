@@ -1,4 +1,4 @@
-from flask import current_app, url_for, session, redirect, request
+from flask import current_app, url_for, session, request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
@@ -6,7 +6,6 @@ from googleapiclient.discovery import build
 import os
 import json
 from datetime import datetime, timezone, timedelta
-from app.auth.ngrok_fix import get_oauth_redirect_uri
 
 # OAuth 2.0 scopes for various Google services we'll use
 SCOPES = [
@@ -22,6 +21,40 @@ SCOPES = [
     'https://www.googleapis.com/auth/contacts.readonly',
     'https://www.googleapis.com/auth/contacts.other.readonly'
 ]
+
+def get_oauth_redirect_uri():
+    """
+    Get the OAuth redirect URI, handling various environments properly.
+    
+    This function handles redirect URIs for different environments:
+    - Cloud Run
+    - Custom domains
+    - Local development
+    """
+    # Get the host from the request headers
+    host = request.headers.get('Host', '')
+    scheme = request.headers.get('X-Forwarded-Proto', 'https')
+    
+    # Log the host and scheme for debugging
+    current_app.logger.info(f"OAuth Redirect - Host: {host}, Scheme: {scheme}")
+    
+    # Check if we're running on Cloud Run
+    if 'run.app' in host:
+        redirect_uri = f"https://{host}/api/auth/google/callback"
+        current_app.logger.info(f"Using Cloud Run redirect URI: {redirect_uri}")
+        return redirect_uri
+    
+    # For production with custom domain or local development, use the BASE_URL from environment variables
+    base_url = os.environ.get('BASE_URL') or current_app.config.get('BASE_URL')
+    if base_url:
+        redirect_uri = f"{base_url}/api/auth/google/callback"
+        current_app.logger.info(f"Using BASE_URL redirect URI: {redirect_uri}")
+        return redirect_uri
+    
+    # Fallback to Flask's url_for
+    redirect_uri = url_for('auth.oauth2callback', _external=True)
+    current_app.logger.info(f"Using fallback redirect URI: {redirect_uri}")
+    return redirect_uri
 
 def create_oauth_flow():
     """Create a Google OAuth2 flow instance."""
@@ -96,7 +129,6 @@ def store_credentials(credentials, user_id=None):
     from app.config.database import db
     from app.models.google_token import GoogleToken
     from flask_login import current_user
-    import json
     
     # Use provided user_id or fall back to current_user.id
     user_id = user_id or current_user.id
@@ -181,7 +213,6 @@ def get_google_credentials(user_id):
     """Retrieve and refresh Google OAuth credentials if necessary."""
     from app.models.google_token import GoogleToken
     from app.config.database import db
-    import json
     
     token = GoogleToken.query.filter_by(user_id=user_id).first()
     if not token:
@@ -192,8 +223,9 @@ def get_google_credentials(user_id):
     if token.scopes:
         try:
             token_scopes = json.loads(token.scopes)
-        except:
+        except Exception as e:
             # If JSON loading fails, use default scopes
+            current_app.logger.warning(f"Failed to parse token scopes: {str(e)}")
             pass
 
     credentials = Credentials(
