@@ -31,7 +31,7 @@
                         <div class="logo-container text-center py-2">
                             <i class="fas fa-globe text-white" style="font-size: 2rem;"></i>
                             <div class="text-white">Mobilize CRM</div>
-                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Crossover Global Logo" class="crossover-logo ml-2" style="height: 30px; margin-left: 10px;">
+                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Crossover Global Logo" class="crossover-logo" style="height: 40px; margin-left: 10px; max-width: 100%;">
                         </div>
                         <!-- Single column nav structure -->
                         <div class="sidebar-content d-flex flex-column h-100">
@@ -139,7 +139,7 @@
 
                             <!-- Sidebar Toggle Button -->
                             <div class="sidebar-toggle-container mt-2">
-                                <button id="sidebar-toggle-btn" class="sidebar-toggle w-100" aria-label="Toggle sidebar">
+                                <button id="sidebarToggle" class="sidebar-toggle w-100" aria-label="Toggle sidebar">
                                     <i class="fas fa-bars"></i>
                                 </button>
                             </div>
@@ -152,7 +152,7 @@
             <div id="main-content" class="col ps-md-2 pt-2 pe-0">
                 <header class="d-flex justify-content-between align-items-center py-2 mb-3 border-bottom header-container px-3">
                     <div class="d-flex align-items-center">
-                        <button class="btn btn-link text-white" data-bs-toggle="collapse" data-bs-target="#sidebar">
+                        <button id="hamburgerToggle" class="btn btn-link text-white" style="font-size: 1.5rem; margin-right: 10px;">
                             <i class="fas fa-bars"></i>
                         </button>
                         <h1 class="h2 mb-0 page-title text-white">{% block page_title %}Dashboard{% endblock %}</h1>
@@ -161,7 +161,7 @@
                     <div class="dropdown text-end">
                         <a href="#" class="d-block link-light text-decoration-none dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             {% if current_user.profile_image %}
-                            <img src="{{ current_user.profile_image }}" alt="Profile" width="40" height="40" class="rounded-circle" onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/default-profile.svg') }}'; this.style.border='2px solid #fff';">
+                            <img src="{{ current_user.profile_image }}" alt="Profile" width="40" height="40" class="rounded-circle" style="border: 2px solid #fff; object-fit: cover;">
                             {% else %}
                             <i class="fas fa-user-circle text-white" style="font-size: 1.8rem;"></i>
                             {% endif %}
@@ -218,14 +218,36 @@
 <!-- Sidebar Toggle Script -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded - initializing sidebar toggle');
+    
     // Get sidebar elements
     const sidebarWrapper = document.getElementById('sidebar-wrapper');
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('main-content');
-    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    const sidebarToggleBtn = document.getElementById('sidebarToggle');
+    const hamburgerToggle = document.getElementById('hamburgerToggle');
+    
+    function toggleSidebar(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        console.log('Toggling sidebar');
+        sidebarWrapper.classList.toggle('collapsed');
+        sidebar.classList.toggle('collapsed');
+        mainContent.classList.toggle('sidebar-collapsed');
+        
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        console.log('Sidebar is now:', isCollapsed ? 'collapsed' : 'expanded');
+        
+        // Save state to localStorage
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    }
     
     // Check if sidebar state is saved in localStorage
     const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    console.log('Initial sidebar state:', sidebarCollapsed ? 'collapsed' : 'expanded');
     
     // Apply initial state
     if (sidebarCollapsed) {
@@ -234,15 +256,16 @@ document.addEventListener('DOMContentLoaded', function() {
         mainContent.classList.add('sidebar-collapsed');
     }
     
-    // Toggle sidebar on button click
-    sidebarToggleBtn.addEventListener('click', function() {
-        sidebarWrapper.classList.toggle('collapsed');
-        sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('sidebar-collapsed');
-        
-        // Save state to localStorage
-        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
-    });
+    // Add event listeners to both toggle buttons
+    if (sidebarToggleBtn) {
+        sidebarToggleBtn.addEventListener('click', toggleSidebar);
+    }
+    
+    if (hamburgerToggle) {
+        hamburgerToggle.addEventListener('click', toggleSidebar);
+    }
+    
+    console.log('Sidebar toggle initialization complete');
 });
 </script>
 </body>

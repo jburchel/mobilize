@@ -221,16 +221,18 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Sidebar Toggle Button */
 .sidebar-toggle {
-    background-color: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.8);
-    padding: 0.25rem;
-    font-size: 1rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 0.5rem;
+    font-size: 1.25rem;
     transition: all 0.3s;
     border-radius: 0.25rem;
     width: 100%;
     text-align: center;
     cursor: pointer;
+    display: block;
+    margin-bottom: 10px;
 }
 
 .sidebar-toggle:hover {
@@ -350,17 +352,20 @@ h1, h2, h3, h4, h5, h6 {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    font-size: 0.75rem;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    font-size: 0.85rem;
     font-weight: 600;
     line-height: 1;
     text-align: center;
     white-space: nowrap;
     vertical-align: middle;
-    border-radius: 10px;
+    border-radius: 12px;
     margin-left: auto;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: white !important;
 }
 
 /* Profile */
