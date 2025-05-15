@@ -93,10 +93,10 @@ def create_app(test_config=None):
             app.config.from_object(test_config)
     elif env == 'production':
         app.config.from_object(ProductionConfig)
-        # Prioritize DB_CONNECTION_STRING for Cloud Run
-        db_uri = os.environ.get('DB_CONNECTION_STRING')
+        # Use DATABASE_URL for production
+        db_uri = secrets.get('DATABASE_URL', os.environ.get('DATABASE_URL'))
         if not db_uri:
-            db_uri = secrets.get('DATABASE_URL', os.environ.get('DATABASE_URL'))
+            app.logger.error("CRITICAL: DATABASE_URL is not set for production environment!")
         
         app.config.update(
             SECRET_KEY=secrets.get('SECRET_KEY', app.config.get('SECRET_KEY')),
@@ -115,9 +115,9 @@ def create_app(test_config=None):
     # Ensure required environment variables are present, falling back to config if necessary
     # Example: Database URI
     if not app.config.get('SQLALCHEMY_DATABASE_URI'):
-         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', os.environ.get('DB_CONNECTION_STRING'))
+         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
          if not app.config['SQLALCHEMY_DATABASE_URI']:
-             app.logger.error("CRITICAL: SQLALCHEMY_DATABASE_URI is not set!")
+             app.logger.error("CRITICAL: DATABASE_URL is not set!")
     
     # Print database connection info for debugging
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
@@ -136,55 +136,24 @@ def create_app(test_config=None):
             'message': 'Basic health check passed'
         }), 200
 
-    @app.route('/api/direct-db-test', methods=['GET'])
-    def direct_db_test():
-        from sqlalchemy import create_engine, text
-        import urllib.parse
-        results = []
-        # Method 1: Standard pooler with postgres.reference username
+    @app.route('/api/db-test', methods=['GET'])
+    def db_test():
         try:
-            username1 = "postgres.fwnitauuyzxnsvgsbrzr"
-            password1 = "Fruitin2025" # Consider putting this in secrets/env
-            host1 = "aws-0-us-east-1.pooler.supabase.com"
-            url1 = f"postgresql://{username1}:{urllib.parse.quote_plus(password1)}@{host1}:5432/postgres?sslmode=require"
-            engine1 = create_engine(url1)
-            with engine1.connect() as conn:
-                result = conn.execute(text("SELECT 1"))
-                row = result.fetchone()
-                results.append({"method": "standard_pooler", "status": "success", "username": username1})
+            from sqlalchemy import text
+            result = db.session.execute(text('SELECT 1')).fetchone()
+            return jsonify({
+                'status': 'success',
+                'message': 'Database connection successful',
+                'result': result[0] if result else None,
+                'database_url': app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set').split('@')[1] if '@' in app.config.get('SQLALCHEMY_DATABASE_URI', '') else 'Masked'
+            })
         except Exception as e:
-            results.append({"method": "standard_pooler", "status": "error", "username": username1, "error": str(e)})
-        # Method 2: Try with just 'postgres' username
-        try:
-            username2 = "postgres"
-            password2 = "Fruitin2025" # Consider putting this in secrets/env
-            host2 = "aws-0-us-east-1.pooler.supabase.com"
-            url2 = f"postgresql://{username2}:{urllib.parse.quote_plus(password2)}@{host2}:5432/postgres?sslmode=require"
-            engine2 = create_engine(url2)
-            with engine2.connect() as conn:
-                result = conn.execute(text("SELECT 1"))
-                # Fetch result to confirm connection works, but we don't need the value
-                _ = result.fetchone()
-                results.append({"method": "postgres_user", "status": "success", "username": username2})
-        except Exception as e:
-            results.append({"method": "postgres_user", "status": "error", "username": username2, "error": str(e)})
-        # Method 3: Try direct connection format
-        try:
-            username3 = "postgres"
-            password3 = "Fruitin2025" # Consider putting this in secrets/env
-            host3 = "db.fwnitauuyzxnsvgsbrzr.supabase.co"
-            url3 = f"postgresql://{username3}:{urllib.parse.quote_plus(password3)}@{host3}:5432/postgres?sslmode=require"
-            engine3 = create_engine(url3)
-            with engine3.connect() as conn:
-                result = conn.execute(text("SELECT 1"))
-                row = result.fetchone()
-                results.append({"method": "direct_connection", "status": "success", "username": username3})
-        except Exception as e:
-            results.append({"method": "direct_connection", "status": "error", "username": username3, "error": str(e)})
-        return jsonify({
-            "results": results,
-            "message": "Tried multiple connection methods"
-        })
+            app.logger.error(f"Database connection test failed: {str(e)}")
+            return jsonify({
+                'status': 'error',
+                'message': 'Database connection failed',
+                'error': str(e)
+            }), 500
 
     @app.route('/api/health-check', methods=['GET'])
     def api_health_check():
