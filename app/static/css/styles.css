@@ -285,6 +285,28 @@ h1, h2, h3, h4, h5, h6 {
     text-align: center;
 }
 
+/* Direct badge styling to ensure visibility */
+.sidebar-badge, .nav-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 22px !important;
+    height: 22px !important;
+    padding: 0 6px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    border-radius: 11px !important;
+    margin-left: auto !important;
+    float: right !important;
+    position: relative !important;
+    z-index: 5 !important;
+    color: white !important;
+}
+
 .sidebar.collapsed .nav-link i,
 .sidebar.collapsed .nav-link svg {
     margin-right: 0;

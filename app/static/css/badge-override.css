@@ -1,0 +1,42 @@
+/* Direct badge override for all pages */
+.nav-badge, .sidebar-badge, 
+.badge.nav-badge, .badge.sidebar-badge,
+.badge.rounded-pill,
+.nav-item .nav-link .badge, 
+.nav-item .nav-link .nav-badge, 
+.nav-item .nav-link .sidebar-badge {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-width: 22px !important;
+    height: 22px !important;
+    padding: 0 6px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    border-radius: 11px !important;
+    margin-left: auto !important;
+    float: right !important;
+    color: white !important;
+    position: relative !important;
+    z-index: 5 !important;
+    pointer-events: auto !important;
+}
+
+/* Ensure badges are visible on all pages */
+.sidebar .nav-item .nav-link .badge,
+.sidebar .nav-item .nav-link .nav-badge,
+.sidebar .nav-item .nav-link .sidebar-badge {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Fix for collapsed sidebar */
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .sidebar-badge {
+    display: none !important;
+}
