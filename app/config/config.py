@@ -19,8 +19,8 @@ class Config:
     BASE_URL = os.getenv('BASE_URL', 'http://localhost:8000')
     
     # Database
-    # Use the same PostgreSQL database for both development and production
-    SQLALCHEMY_DATABASE_URI = os.getenv('DB_CONNECTION_STRING')
+    # Use the DATABASE_URL environment variable for the database connection
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     # Configure SQLAlchemy for PostgreSQL
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_size': 10,

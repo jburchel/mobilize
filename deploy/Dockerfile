@@ -36,11 +36,17 @@ ENV PREFERRED_URL_SCHEME=https
 # Expose port for Cloud Run
 EXPOSE 8080
 
+# Copy database configuration update script
+COPY deploy/scripts/update_db_config.py /app/update_db_config.py
+RUN chmod +x /app/update_db_config.py
+
 # Create startup script
 RUN echo '#!/bin/bash\n\
 echo "Starting Mobilize CRM application..."\n\
 echo "Python version: $(python --version)"\n\
 echo "Current directory: $(pwd)"\n\
+echo "Running database configuration update script..."\n\
+python /app/update_db_config.py\n\
 echo "Starting application with gunicorn..."\n\
 exec gunicorn --bind :8080 --workers 3 --threads 8 --timeout 300 --access-logfile - --error-logfile - wsgi:app\n' > /app/startup.sh \
     && chmod +x /app/startup.sh
