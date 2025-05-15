@@ -166,7 +166,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: var(--spacing-sm, 1rem);
     background-color: transparent;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
     position: relative;
@@ -192,11 +192,27 @@ h1, h2, h3, h4, h5, h6 {
     padding: var(--spacing-sm, 1rem);
     justify-content: center;
     height: 60px;
+    flex-direction: column;
 }
 
-.sidebar.collapsed .logo-container i.bi-globe,
 .sidebar.collapsed .logo-container .text-white {
     display: none;
+}
+
+.sidebar.collapsed .logo-container i.fas.fa-globe {
+    display: block;
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.crossover-logo {
+    transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .crossover-logo {
+    height: 25px !important;
+    margin-top: 5px;
+    margin-left: 0 !important;
 }
 
 .logo-container i.bi-globe {
@@ -324,8 +340,27 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Hide the badge when collapsed */
-.sidebar.collapsed .nav-badge {
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .sidebar-badge {
     display: none !important;
+}
+
+/* Ensure badges are visible and properly sized on all pages */
+.nav-badge, .sidebar-badge {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    border-radius: 10px;
+    margin-left: auto;
 }
 
 /* Profile */

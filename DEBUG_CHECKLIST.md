@@ -12,11 +12,11 @@
 ## Sidebar
 
 - [x] It is not collapsable
-- [ ] There is no logo
+- [x] There is no logo
 
 ## Header (at the top of the page)
 
-- [ ] The login dropdown does not show my picture
+- [x] The login dropdown does not show my picture
 
 ## People Page
 

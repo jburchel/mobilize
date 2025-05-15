@@ -31,6 +31,7 @@
                         <div class="logo-container text-center py-2">
                             <i class="fas fa-globe text-white" style="font-size: 2rem;"></i>
                             <div class="text-white">Mobilize CRM</div>
+                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Crossover Global Logo" class="crossover-logo ml-2" style="height: 30px; margin-left: 10px;">
                         </div>
                         <!-- Single column nav structure -->
                         <div class="sidebar-content d-flex flex-column h-100">
@@ -160,7 +161,7 @@
                     <div class="dropdown text-end">
                         <a href="#" class="d-block link-light text-decoration-none dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             {% if current_user.profile_image %}
-                            <img src="{{ current_user.profile_image }}" alt="Profile" width="40" height="40" class="rounded-circle">
+                            <img src="{{ current_user.profile_image }}" alt="Profile" width="40" height="40" class="rounded-circle" onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/default-profile.svg') }}'; this.style.border='2px solid #fff';">
                             {% else %}
                             <i class="fas fa-user-circle text-white" style="font-size: 1.8rem;"></i>
                             {% endif %}
@@ -214,5 +215,35 @@
     <!-- Global Email Modal Container for AJAX-loaded modals -->
     <div id="global-email-modal-container"></div>
     <script src="{{ url_for('static', filename='js/email-modal.js') }}"></script>
+<!-- Sidebar Toggle Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get sidebar elements
+    const sidebarWrapper = document.getElementById('sidebar-wrapper');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('main-content');
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    
+    // Check if sidebar state is saved in localStorage
+    const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    
+    // Apply initial state
+    if (sidebarCollapsed) {
+        sidebarWrapper.classList.add('collapsed');
+        sidebar.classList.add('collapsed');
+        mainContent.classList.add('sidebar-collapsed');
+    }
+    
+    // Toggle sidebar on button click
+    sidebarToggleBtn.addEventListener('click', function() {
+        sidebarWrapper.classList.toggle('collapsed');
+        sidebar.classList.toggle('collapsed');
+        mainContent.classList.toggle('sidebar-collapsed');
+        
+        // Save state to localStorage
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    });
+});
+</script>
 </body>
 </html> 
