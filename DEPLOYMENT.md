@@ -14,11 +14,13 @@ We use a manual deployment process with the `fix_deploy.sh` script located in th
 2. Commit your changes to the repository
 3. Push your changes to the main branch
 4. Run the deployment script:
+
    ```bash
    ./deploy/scripts/fix_deploy.sh
    ```
+
 5. Wait for the deployment to complete (this may take a few minutes)
-6. Verify the deployment by checking the application at https://mobilize-crm.org
+6. Verify the deployment by checking the application at [https://mobilize-crm.org](https://mobilize-crm.org)
 
 ## Checking Logs
 
@@ -44,7 +46,9 @@ The deployment configuration is set up to use the following environment variable
 - `GOOGLE_CLIENT_ID`: Secret containing the Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET`: Secret containing the Google OAuth client secret
 
+
 Environment variables:
+
 - `FLASK_APP`: Set to `app.py`
 - `FLASK_ENV`: Set to `production`
 - `LOG_LEVEL`: Set to `INFO`
