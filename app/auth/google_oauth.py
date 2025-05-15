@@ -47,6 +47,9 @@ def get_oauth_redirect_uri():
     # For production with custom domain or local development, use the BASE_URL from environment variables
     base_url = os.environ.get('BASE_URL') or current_app.config.get('BASE_URL')
     if base_url:
+        # Ensure HTTPS for production
+        if os.environ.get('FLASK_ENV') == 'production' and not base_url.startswith('https://'):
+            base_url = base_url.replace('http://', 'https://')
         redirect_uri = f"{base_url}/api/auth/google/callback"
         current_app.logger.info(f"Using BASE_URL redirect URI: {redirect_uri}")
         return redirect_uri
@@ -58,6 +61,13 @@ def get_oauth_redirect_uri():
 
 def create_oauth_flow():
     """Create a Google OAuth2 flow instance."""
+    # Ensure HTTPS is required in production
+    if os.environ.get('FLASK_ENV') == 'production':
+        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
+    else:
+        # Allow HTTP in development
+        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+        
     # Get the proper redirect URI that works with ngrok
     redirect_uri = get_oauth_redirect_uri()
     
