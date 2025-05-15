@@ -17,7 +17,11 @@ import os
 from urllib.parse import urlencode
 from sqlalchemy import text
 
+# Main auth blueprint for web routes
 auth_bp = Blueprint('auth_web', __name__)
+
+# API auth blueprint for API routes
+auth_api_bp = Blueprint('auth_api', __name__)
 
 # Google OAuth2 scopes (updated 2024-05-07 15:45)
 GOOGLE_SCOPES = [
@@ -48,7 +52,7 @@ def get_google_user_info(credentials):
         current_app.logger.error(f'Error getting Google user info: {str(e)}')
         return None
 
-@auth_bp.route('/verify-token', methods=['POST'])
+@auth_api_bp.route('/verify-token', methods=['POST'])
 def verify_token():
     """Verify Firebase ID token and return user info."""
     try:
@@ -289,7 +293,7 @@ def oauth2callback():
         flash(f"Authentication error: {str(e)}", 'danger')
         return redirect(url_for('auth_web.login'))
 
-@auth_bp.route('/me', methods=['GET'])
+@auth_api_bp.route('/me', methods=['GET'])
 @login_required
 def get_current_user():
     """Get current user information."""
@@ -490,7 +494,7 @@ def reauth_google():
         flash(f'Error during Google reauthorization: {str(e)}', 'error')
         return redirect(url_for('dashboard.index'))
 
-@auth_bp.route('/health-check')
+@auth_api_bp.route('/health-check')
 def health_check():
     """Simple endpoint to check application health without DB access. Updated 2024-05-07."""
     try:

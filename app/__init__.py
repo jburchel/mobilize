@@ -19,7 +19,7 @@ from app.config.config import Config, TestingConfig, ProductionConfig, Developme
 from app.config.logging_config import setup_logging  # noqa: F401
 from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache
 from app.auth.firebase import init_firebase
-from app.auth.routes import auth_bp
+from app.auth.routes import auth_bp, auth_api_bp
 from app.routes import blueprints
 from app.models.relationships import setup_relationships
 from app.tasks.scheduler import init_scheduler
@@ -302,8 +302,9 @@ def create_app(test_config=None):
     init_scheduler(app)
 
     # Register all blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    # Register auth blueprints with their respective URL prefixes
     app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(auth_api_bp, url_prefix='/api/auth')
     from app.routes.api.v1 import api_bp
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
