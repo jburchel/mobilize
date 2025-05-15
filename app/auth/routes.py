@@ -17,12 +17,7 @@ import os
 from urllib.parse import urlencode
 from sqlalchemy import text
 
-# Main auth blueprint for web routes
-# Use a different name for the blueprint to avoid conflicts
-auth_bp = Blueprint('auth_web_routes', __name__)
-
-# API auth blueprint for API routes
-auth_api_bp = Blueprint('auth_api', __name__)
+auth_bp = Blueprint('auth', __name__)
 
 # Google OAuth2 scopes (updated 2024-05-07 15:45)
 GOOGLE_SCOPES = [
@@ -53,7 +48,7 @@ def get_google_user_info(credentials):
         current_app.logger.error(f'Error getting Google user info: {str(e)}')
         return None
 
-@auth_api_bp.route('/verify-token', methods=['POST'])
+@auth_bp.route('/verify-token', methods=['POST'])
 def verify_token():
     """Verify Firebase ID token and return user info."""
     try:
@@ -126,7 +121,7 @@ def login():
     """Handle user login via API or redirect GET to login page."""
     if request.method == 'GET':
         # Redirect GET requests to the actual login page route
-        return redirect(url_for('auth_web_routes.login_page'))
+        return redirect(url_for('auth.login_page'))
 
     # For POST requests, process login data (API)
     data = request.get_json()
@@ -177,7 +172,7 @@ def logout():
     
     # For UI requests (GET), redirect to login page
     flash('You have been logged out successfully.', 'success')
-    return redirect(url_for('auth_web_routes.login'))
+    return redirect(url_for('auth.login'))
 
 @auth_bp.route('/google/auth')
 @auth_bp.route('/google/authorize')
@@ -195,14 +190,14 @@ def oauth2callback():
         error_description = request.args.get('error_description', 'Unknown error')
         current_app.logger.error(f"Google OAuth error: {error} - {error_description}")
         flash(f'Google authentication error: {error_description}', 'danger')
-        return redirect(url_for('auth_web_routes.login'))
+        return redirect(url_for('auth.login'))
     
     try:
         # Get the authorization code from the request
         code = request.args.get('code')
         if not code:
             flash('No authorization code received from Google', 'danger')
-            return redirect(url_for('auth_web_routes.login'))
+            return redirect(url_for('auth.login'))
             
         # Create OAuth flow
         flow = create_oauth_flow()
@@ -222,7 +217,7 @@ def oauth2callback():
         if not state or request.args.get('state') != state:
             current_app.logger.error("State mismatch in OAuth callback")
             flash('Invalid authentication state. Please try again.', 'danger')
-            return redirect(url_for('auth_web_routes.login'))
+            return redirect(url_for('auth.login'))
         
         # Process authorization response - add skip_scope_check=True to prevent scope errors
         flow.fetch_token(authorization_response=callback_url, include_granted_scopes=True, skip_scope_check=True)
@@ -235,7 +230,7 @@ def oauth2callback():
         
         if not user_info:
             flash('Failed to get user info from Google', 'danger')
-            return redirect(url_for('auth_web_routes.login'))
+            return redirect(url_for('auth.login'))
         
         # Validate email domain for Crossover Global only in production
         email = user_info.get('email', '')
@@ -246,7 +241,7 @@ def oauth2callback():
         
         if not email.endswith('@crossoverglobal.net') and not is_dev_mode:
             flash('Access is restricted to Crossover Global staff members with @crossoverglobal.net email addresses.', 'danger')
-            return redirect(url_for('auth_web_routes.login'))
+            return redirect(url_for('auth.login'))
         
         # Log email being used
         current_app.logger.info(f"Login attempt with email: {email}")
@@ -292,9 +287,9 @@ def oauth2callback():
     except Exception as e:
         current_app.logger.error(f"Error in OAuth callback: {str(e)}")
         flash(f"Authentication error: {str(e)}", 'danger')
-        return redirect(url_for('auth_web_routes.login'))
+        return redirect(url_for('auth.login'))
 
-@auth_api_bp.route('/me', methods=['GET'])
+@auth_bp.route('/me', methods=['GET'])
 @login_required
 def get_current_user():
     """Get current user information."""
@@ -314,7 +309,7 @@ def dev_login():
         if current_app.config.get('FLASK_ENV') == 'production' and current_app.config.get('DISABLE_TEST_USERS', False):
             current_app.logger.warning("Dev login attempted in production with test users disabled")
             flash("Dev login is disabled in production", "danger")
-            return redirect(url_for('auth_web_routes.login'))
+            return redirect(url_for('auth.login'))
             
         # Log diagnostic information
         current_app.logger.info("Dev login attempt - checking database connection")
@@ -489,13 +484,13 @@ def reauth_google():
             flash('No existing Google authorization found', 'warning')
         
         # Redirect to Google OAuth
-        return redirect(url_for('auth_web_routes.google_auth'))
+        return redirect(url_for('auth.google_auth'))
     except Exception as e:
         current_app.logger.error(f"Error during Google reauth: {str(e)}")
         flash(f'Error during Google reauthorization: {str(e)}', 'error')
         return redirect(url_for('dashboard.index'))
 
-@auth_api_bp.route('/health-check')
+@auth_bp.route('/health-check')
 def health_check():
     """Simple endpoint to check application health without DB access. Updated 2024-05-07."""
     try:
