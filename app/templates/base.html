@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}">
     <!-- Direct badge override CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-override.css') }}">
+    <!-- Direct badge fix CSS (highest priority) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/direct-badge-fix.css') }}">
     <!-- Pipeline Badge CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}">
     {% block extra_css %}{% endblock %}
@@ -141,9 +143,9 @@
 
                             <!-- Sidebar Toggle Button -->
                             <div class="sidebar-toggle-container mt-2 mb-3">
-                                <button id="sidebarCollapseBtn" class="sidebar-toggle w-100 btn btn-outline-light" aria-label="Toggle sidebar" style="padding: 10px; font-size: 1.2rem; border: 1px solid rgba(255,255,255,0.5);">
-                                    <i class="fas fa-angle-double-left"></i>
-                                    <span class="ms-2 toggle-text">Collapse</span>
+                                <button onclick="toggleSidebar()" class="sidebar-toggle w-100 btn btn-outline-light" aria-label="Toggle sidebar" style="padding: 10px; font-size: 1.2rem; border: 1px solid rgba(255,255,255,0.5);">
+                                    <i class="fas fa-angle-double-left" id="toggleIcon"></i>
+                                    <span class="ms-2 toggle-text" id="toggleText">Collapse</span>
                                 </button>
                             </div>
                         </div>
@@ -220,82 +222,65 @@
     <script src="{{ url_for('static', filename='js/email-modal.js') }}"></script>
 <!-- Sidebar Toggle Script -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded - initializing sidebar toggle');
-    
-    // Get sidebar elements
+// Simple global function to toggle sidebar
+function toggleSidebar() {
+    console.log('Toggle sidebar called');
     const sidebarWrapper = document.getElementById('sidebar-wrapper');
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('main-content');
-    const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
-    const hamburgerToggle = document.getElementById('hamburgerToggle');
+    const toggleIcon = document.getElementById('toggleIcon');
+    const toggleText = document.getElementById('toggleText');
     
-    function toggleSidebar(e) {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        console.log('Toggling sidebar');
-        sidebarWrapper.classList.toggle('collapsed');
-        sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('sidebar-collapsed');
-        
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        console.log('Sidebar is now:', isCollapsed ? 'collapsed' : 'expanded');
-        
-        // Update toggle button text and icon
-        if (sidebarCollapseBtn) {
-            const toggleIcon = sidebarCollapseBtn.querySelector('i');
-            const toggleText = sidebarCollapseBtn.querySelector('.toggle-text');
-            
-            if (isCollapsed) {
-                toggleIcon.className = 'fas fa-angle-double-right';
-                if (toggleText) toggleText.textContent = 'Expand';
-            } else {
-                toggleIcon.className = 'fas fa-angle-double-left';
-                if (toggleText) toggleText.textContent = 'Collapse';
-            }
-        }
-        
-        // Save state to localStorage
-        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    if (!sidebarWrapper || !sidebar || !mainContent) {
+        console.error('Missing required sidebar elements');
+        return;
     }
     
-    // Check if sidebar state is saved in localStorage
-    const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-    console.log('Initial sidebar state:', sidebarCollapsed ? 'collapsed' : 'expanded');
+    const isCollapsed = sidebar.classList.contains('collapsed');
     
-    // Apply initial state
-    if (sidebarCollapsed) {
+    if (isCollapsed) {
+        // Expand sidebar
+        sidebarWrapper.classList.remove('collapsed');
+        sidebar.classList.remove('collapsed');
+        mainContent.classList.remove('sidebar-collapsed');
+        if (toggleIcon) toggleIcon.className = 'fas fa-angle-double-left';
+        if (toggleText) toggleText.textContent = 'Collapse';
+    } else {
+        // Collapse sidebar
         sidebarWrapper.classList.add('collapsed');
         sidebar.classList.add('collapsed');
         mainContent.classList.add('sidebar-collapsed');
+        if (toggleIcon) toggleIcon.className = 'fas fa-angle-double-right';
+        if (toggleText) toggleText.textContent = 'Expand';
+    }
+    
+    // Save state to localStorage
+    localStorage.setItem('sidebarCollapsed', !isCollapsed);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial state based on localStorage
+    const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (sidebarCollapsed) {
+        const sidebarWrapper = document.getElementById('sidebar-wrapper');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const toggleIcon = document.getElementById('toggleIcon');
+        const toggleText = document.getElementById('toggleText');
         
-        // Update toggle button for collapsed state
-        if (sidebarCollapseBtn) {
-            const toggleIcon = sidebarCollapseBtn.querySelector('i');
-            const toggleText = sidebarCollapseBtn.querySelector('.toggle-text');
-            
-            if (toggleIcon) toggleIcon.className = 'fas fa-angle-double-right';
-            if (toggleText) toggleText.textContent = 'Expand';
-        }
+        if (sidebarWrapper) sidebarWrapper.classList.add('collapsed');
+        if (sidebar) sidebar.classList.add('collapsed');
+        if (mainContent) mainContent.classList.add('sidebar-collapsed');
+        if (toggleIcon) toggleIcon.className = 'fas fa-angle-double-right';
+        if (toggleText) toggleText.textContent = 'Expand';
     }
     
-    // Add event listeners to toggle buttons
-    if (sidebarCollapseBtn) {
-        sidebarCollapseBtn.addEventListener('click', toggleSidebar);
-        console.log('Added event listener to sidebar collapse button');
-    } else {
-        console.error('Sidebar collapse button not found');
-    }
-    
+    // Add click handler to hamburger toggle if it exists
+    const hamburgerToggle = document.getElementById('hamburgerToggle');
     if (hamburgerToggle) {
         hamburgerToggle.addEventListener('click', toggleSidebar);
-        console.log('Added event listener to hamburger toggle button');
     }
-    
-    console.log('Sidebar toggle initialization complete');
 });
 </script>
 </body>

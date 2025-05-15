@@ -1,0 +1,68 @@
+/* Direct badge fix with highest specificity */
+.sidebar .nav-item .nav-link .badge.nav-badge,
+.sidebar .nav-item .nav-link .badge.sidebar-badge,
+.sidebar .nav-item .nav-link .nav-badge,
+.sidebar .nav-item .nav-link .sidebar-badge,
+.nav-item .nav-link .badge.rounded-pill,
+.nav-item .nav-link .badge,
+.badge.nav-badge,
+.badge.sidebar-badge,
+.badge.rounded-pill,
+.badge.bg-primary,
+.badge.bg-success,
+.badge.bg-warning,
+.badge.bg-info,
+.badge.float-end {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-width: 22px !important;
+    height: 22px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 14px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    /* Removed vertical-align as it doesn't apply to block elements */
+    border-radius: 11px !important;
+    margin-left: 5px !important;
+    float: right !important;
+    color: white !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+
+/* Ensure badge content is visible */
+.badge.nav-badge:empty,
+.badge.sidebar-badge:empty,
+.badge.rounded-pill:empty {
+    display: none !important;
+}
+
+/* Specific colors */
+.badge.bg-primary, .badge.bg-primary-blue {
+    background-color: #183963 !important;
+}
+
+.badge.bg-success, .badge.bg-primary-green {
+    background-color: #39A949 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.badge.bg-info {
+    background-color: #0dcaf0 !important;
+}
+
+/* Force badges to be visible on all pages */
+.sidebar:not(.collapsed) .nav-item .nav-link .badge,
+.sidebar:not(.collapsed) .nav-item .nav-link .nav-badge,
+.sidebar:not(.collapsed) .nav-item .nav-link .sidebar-badge {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
