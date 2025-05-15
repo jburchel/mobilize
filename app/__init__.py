@@ -36,8 +36,14 @@ from app.config.performance_optimizations import optimize_flask_app
 from app.config.static_optimizations import optimize_static_files
 from app.config.database_optimizations import optimize_database_queries
 
-# Load environment variables from .env.development first
-load_dotenv(find_dotenv(".env.development"), override=True) # Keep from main, ensure override=True
+# Load environment variables based on the current environment
+env = os.environ.get('FLASK_ENV', 'development')
+if env == 'production':
+    load_dotenv(find_dotenv(".env.production"), override=True)
+    logging.info("Loaded production environment variables from .env.production")
+else:
+    load_dotenv(find_dotenv(".env.development"), override=True)
+    logging.info("Loaded development environment variables from .env.development")
 
 # Function to access secrets (kept from development branch logic)
 def access_secrets():
