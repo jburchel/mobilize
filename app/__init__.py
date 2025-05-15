@@ -74,12 +74,16 @@ def create_app(test_config=None):
     # Check if we're running in Cloud Run
     is_cloud_run = os.environ.get('K_SERVICE') is not None
     
-    # Ensure DB_CONNECTION_STRING is properly set in environment variables
-    if is_cloud_run and os.environ.get('DB_CONNECTION_STRING'):
-        # Make sure DATABASE_URL is set for SQLAlchemy
-        if not os.environ.get('DATABASE_URL'):
-            os.environ['DATABASE_URL'] = os.environ.get('DB_CONNECTION_STRING')
-            app.logger.info('Set DATABASE_URL from DB_CONNECTION_STRING for Cloud Run')
+    # Log database connection information for debugging
+    if is_cloud_run:
+        app.logger.info("Running in Cloud Run environment")
+        if os.environ.get('DATABASE_URL'):
+            # Mask password for logging
+            db_url = os.environ.get('DATABASE_URL', '')
+            masked_url = db_url.replace('://', '://****:****@') if '://' in db_url else db_url
+            app.logger.info(f"DATABASE_URL is set to: {masked_url}")
+        else:
+            app.logger.warning("DATABASE_URL is not set in Cloud Run environment")
 
     if test_config:
         if isinstance(test_config, dict):
