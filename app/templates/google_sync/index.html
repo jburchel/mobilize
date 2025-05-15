@@ -35,9 +35,9 @@
                 </div>
                 <div class="card-footer">
                     {% if has_valid_token %}
-                    <a href="{{ url_for('auth.revoke_google') }}" class="btn btn-sm btn-outline-danger">Disconnect</a>
+                    <a href="{{ url_for('auth_web_routes.revoke_google') }}" class="btn btn-sm btn-outline-danger">Disconnect</a>
                     {% else %}
-                    <a href="{{ url_for('auth.google_auth') }}" class="btn btn-sm btn-primary">Connect Google Account</a>
+                    <a href="{{ url_for('auth_web_routes.google_auth') }}" class="btn btn-sm btn-primary">Connect Google Account</a>
                     {% endif %}
                 </div>
             </div>
