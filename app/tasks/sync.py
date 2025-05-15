@@ -51,7 +51,7 @@ def sync_all_users():
     try:
         users = User.query.filter_by(is_active=True).all()
         for user in users:
-            if user.google_token:
+            if user.google_refresh_token:
                 sync_user_gmail.delay(user.id)
                 sync_user_calendar.delay(user.id)
                 sync_user_contacts.delay(user.id)
