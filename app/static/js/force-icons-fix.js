@@ -65,7 +65,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'People': '71',
             'Churches': '94',
             'Tasks': '0',
-            'Communications': '12'
+            'Communications': '12',
+            'Email Management': '12'
         };
         
         badges.forEach(badge => {
@@ -142,15 +143,95 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Special fix for Email Management badge
+    function fixEmailManagementBadge() {
+        // Find the Email Management link
+        const emailLinks = Array.from(document.querySelectorAll('.nav-link')).filter(link => {
+            const text = link.querySelector('.nav-text')?.textContent.trim();
+            return text === 'Email Management';
+        });
+        
+        if (emailLinks.length > 0) {
+            emailLinks.forEach(link => {
+                // Find the badge
+                let badge = link.querySelector('.badge');
+                
+                if (badge) {
+                    // Ensure it has all the necessary classes
+                    badge.classList.add('nav-badge', 'sidebar-badge', 'rounded-pill', 'bg-info', 'float-end');
+                    
+                    // If empty, set a default value
+                    if (!badge.textContent || badge.textContent.trim() === '') {
+                        badge.textContent = '12';
+                    }
+                    
+                    // Apply direct styling
+                    badge.style.display = 'inline-flex';
+                    badge.style.visibility = 'visible';
+                    badge.style.opacity = '1';
+                    badge.style.minWidth = '35px';
+                    badge.style.height = '35px';
+                    badge.style.padding = '8px 12px';
+                    badge.style.fontSize = '16px';
+                    badge.style.fontWeight = '700';
+                    badge.style.lineHeight = '18px';
+                    badge.style.textAlign = 'center';
+                    badge.style.whiteSpace = 'nowrap';
+                    badge.style.borderRadius = '18px';
+                    badge.style.marginLeft = '5px';
+                    badge.style.alignItems = 'center';
+                    badge.style.justifyContent = 'center';
+                    badge.style.color = 'white';
+                    badge.style.backgroundColor = '#17a2b8';
+                    badge.style.position = 'relative';
+                    badge.style.zIndex = '1000';
+                    
+                    console.log('Fixed Email Management badge');
+                } else {
+                    // If no badge exists, create one
+                    badge = document.createElement('span');
+                    badge.className = 'badge nav-badge sidebar-badge rounded-pill bg-info float-end';
+                    badge.textContent = '12';
+                    
+                    // Apply direct styling
+                    badge.style.display = 'inline-flex';
+                    badge.style.visibility = 'visible';
+                    badge.style.opacity = '1';
+                    badge.style.minWidth = '35px';
+                    badge.style.height = '35px';
+                    badge.style.padding = '8px 12px';
+                    badge.style.fontSize = '16px';
+                    badge.style.fontWeight = '700';
+                    badge.style.lineHeight = '18px';
+                    badge.style.textAlign = 'center';
+                    badge.style.whiteSpace = 'nowrap';
+                    badge.style.borderRadius = '18px';
+                    badge.style.marginLeft = '5px';
+                    badge.style.alignItems = 'center';
+                    badge.style.justifyContent = 'center';
+                    badge.style.color = 'white';
+                    badge.style.backgroundColor = '#17a2b8';
+                    badge.style.position = 'relative';
+                    badge.style.zIndex = '1000';
+                    
+                    link.appendChild(badge);
+                    console.log('Created Email Management badge');
+                }
+            });
+        }
+    }
+    
     // Run all fixes
     fixSidebarIcons();
     fixBadgeNumbers();
     fixDashboardCards();
+    fixEmailManagementBadge();
     
     // Run fixes again after a short delay to catch any dynamically loaded elements
     setTimeout(() => {
         fixSidebarIcons();
         fixBadgeNumbers();
         fixDashboardCards();
+        fixEmailManagementBadge();
     }, 1000);
 });
