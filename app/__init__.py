@@ -65,6 +65,7 @@ def access_secrets():
 
 def create_app(test_config=None):
     """Create and configure the Flask application"""
+    
     app = Flask(__name__, instance_relative_config=True)
 
     # Load configuration (Keep logic from development)
@@ -93,8 +94,8 @@ def create_app(test_config=None):
             app.config.from_object(test_config)
     elif env == 'production':
         app.config.from_object(ProductionConfig)
-        # Use DATABASE_URL for production
-        db_uri = secrets.get('DATABASE_URL', os.environ.get('DATABASE_URL'))
+        # Always use DATABASE_URL directly from environment variables for production
+        db_uri = os.environ.get('DATABASE_URL')
         if not db_uri:
             app.logger.error("CRITICAL: DATABASE_URL is not set for production environment!")
         
@@ -114,10 +115,10 @@ def create_app(test_config=None):
 
     # Ensure required environment variables are present, falling back to config if necessary
     # Example: Database URI
-    if not app.config.get('SQLALCHEMY_DATABASE_URI'):
-         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
-         if not app.config['SQLALCHEMY_DATABASE_URI']:
-             app.logger.error("CRITICAL: DATABASE_URL is not set!")
+    # Always use DATABASE_URL directly from environment variables for production
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+    if not app.config['SQLALCHEMY_DATABASE_URI']:
+        app.logger.error("CRITICAL: DATABASE_URL is not set!")
     
     # Print database connection info for debugging
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
