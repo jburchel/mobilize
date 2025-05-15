@@ -32,10 +32,9 @@
             <div id="sidebar-wrapper" class="col-auto px-0 sidebar-wrapper">
                 <div id="sidebar" class="collapse d-lg-block sidebar">
                     <div class="position-sticky">
-                        <div class="logo-container text-center py-2">
-                            <i class="fas fa-globe text-white" style="font-size: 2rem;"></i>
-                            <div class="text-white">Mobilize CRM</div>
-                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Crossover Global Logo" class="crossover-logo" style="height: 40px; margin-left: 10px; max-width: 100%;">
+                        <div class="logo-container d-flex align-items-center py-2 px-3">
+                            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Crossover Global Logo" class="crossover-logo me-2" style="height: 40px; max-width: 100%;">
+                            <div class="text-white logo-text">Mobilize CRM</div>
                         </div>
                         <!-- Single column nav structure -->
                         <div class="sidebar-content d-flex flex-column h-100">
@@ -143,9 +142,8 @@
 
                             <!-- Sidebar Toggle Button -->
                             <div class="sidebar-toggle-container mt-2 mb-3">
-                                <button id="sidebar-toggle-btn" class="sidebar-toggle w-100 btn btn-outline-light" aria-label="Toggle sidebar" style="padding: 10px; font-size: 1.2rem; border: 1px solid rgba(255,255,255,0.5);">
-                                    <i class="fas fa-angle-double-left"></i>
-                                    <span class="ms-2 toggle-text">Collapse</span>
+                                <button id="sidebar-toggle-btn" class="sidebar-toggle btn btn-outline-light" aria-label="Toggle sidebar" style="padding: 10px; font-size: 1.2rem; border: 1px solid rgba(255,255,255,0.5); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-angle-double-left toggle-icon"></i>
                                 </button>
                             </div>
                         </div>

@@ -32,22 +32,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (mainContent) mainContent.classList.toggle('sidebar-collapsed');
             if (sidebarWrapper) sidebarWrapper.classList.toggle('collapsed');
             
-            // Update icon and text
-            const icon = newToggleBtn.querySelector('i');
-            const text = newToggleBtn.querySelector('.toggle-text');
+            // Update icon only
+            const icon = newToggleBtn.querySelector('.toggle-icon');
             
             if (sidebar && sidebar.classList.contains('collapsed')) {
                 if (icon) {
                     icon.classList.remove('fa-angle-double-left');
                     icon.classList.add('fa-angle-double-right');
                 }
-                if (text) text.textContent = 'Expand';
             } else {
                 if (icon) {
                     icon.classList.remove('fa-angle-double-right');
                     icon.classList.add('fa-angle-double-left');
                 }
-                if (text) text.textContent = 'Collapse';
             }
             
             // Save state to localStorage
@@ -68,16 +65,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mainContent) mainContent.classList.add('sidebar-collapsed');
         if (sidebarWrapper) sidebarWrapper.classList.add('collapsed');
         
-        // Set correct icon and text for collapsed state
+        // Set correct icon for collapsed state
         if (sidebarToggleBtn) {
-            const icon = sidebarToggleBtn.querySelector('i');
-            const text = sidebarToggleBtn.querySelector('.toggle-text');
+            const icon = sidebarToggleBtn.querySelector('.toggle-icon');
             
             if (icon) {
                 icon.classList.remove('fa-angle-double-left');
                 icon.classList.add('fa-angle-double-right');
             }
-            if (text) text.textContent = 'Expand';
         }
     }
 });

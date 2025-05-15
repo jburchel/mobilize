@@ -358,7 +358,7 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
 }
 
-/* Hide text in nav items when collapsed */
+/* Hide text in nav items when collapsed but keep icons visible */
 .sidebar.collapsed .nav-text {
     display: none;
 }
@@ -367,6 +367,30 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar.collapsed .nav-badge,
 .sidebar.collapsed .sidebar-badge {
     display: none !important;
+}
+
+/* Center icons when sidebar is collapsed */
+.sidebar.collapsed .nav-link {
+    text-align: center;
+    padding: 0.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+/* Make icons larger and remove margin when collapsed */
+.sidebar.collapsed .nav-link i {
+    font-size: 1.5rem;
+    margin-right: 0 !important;
+}
+
+/* Hide logo text when collapsed */
+.sidebar.collapsed .logo-text {
+    display: none;
+}
+
+/* Center logo when collapsed */
+.sidebar.collapsed .logo-container {
+    justify-content: center;
 }
 
 /* Ensure badges are visible and properly sized on all pages */

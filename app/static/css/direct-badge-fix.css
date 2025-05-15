@@ -1,8 +1,8 @@
 /* Direct badge fix with highest specificity */
-.sidebar .nav-item .nav-link .badge.nav-badge,
-.sidebar .nav-item .nav-link .badge.sidebar-badge,
-.sidebar .nav-item .nav-link .nav-badge,
-.sidebar .nav-item .nav-link .sidebar-badge,
+.sidebar .nav-item .nav-link .badge.bg-primary,
+.nav-item .nav-link .badge.bg-success,
+.nav-item .nav-link .badge.bg-warning,
+.nav-item .nav-link .badge.bg-info,
 .nav-item .nav-link .badge.rounded-pill,
 .nav-item .nav-link .badge,
 .badge.nav-badge,
@@ -34,7 +34,7 @@
     justify-content: center !important;
     color: white !important;
     position: relative !important;
-    z-index: 5 !important;
+    z-index: 1000 !important;
 }
 
 /* Ensure badge content is visible */
