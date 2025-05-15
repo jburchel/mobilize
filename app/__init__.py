@@ -303,7 +303,7 @@ def create_app(test_config=None):
 
     # Register all blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(auth_bp, url_prefix='/auth', name='auth_web')
+    app.register_blueprint(auth_bp, url_prefix='/auth')
     from app.routes.api.v1 import api_bp
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
