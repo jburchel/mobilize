@@ -113,27 +113,50 @@
         position: absolute;
         z-index: 1000;
     }
+    /* Drag and drop styling */
     .contact-item.sortable-ghost {
         opacity: 0.4;
         background-color: #e9ecef;
+        border: 2px dashed #0d6efd;
     }
+    
     .contact-item.sortable-chosen {
         box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        cursor: grabbing;
+        cursor: grabbing !important;
         z-index: 1000;
         transform: scale(1.02);
         background-color: #f8f9fa;
     }
+    
+    .drag-handle:hover {
+        background-color: #0b5ed7;
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,0.3);
+    }
+    
+    .drag-handle:active {
+        cursor: grabbing !important;
+        background-color: #084298;
+    }
+    
     .being-dragged {
-        opacity: 0.8;
-        transform: scale(1.05);
+        opacity: 0.9;
+        transform: rotate(1deg);
         z-index: 1000;
     }
+    
     .drop-target {
-        background-color: rgba(0, 123, 255, 0.1);
-        border: 2px dashed #007bff;
+        background-color: rgba(13, 110, 253, 0.1);
+        border: 2px dashed #0d6efd;
     }
-    /* Drag handle removed - entire card is now draggable */
+    
+    /* Cursor styles during dragging */
+    body.dragging-active {
+        cursor: grabbing !important;
+    }
+    
+    body.dragging-active * {
+        cursor: grabbing !important;
+    }
 </style>
 {% endblock %}
 
@@ -186,12 +209,12 @@
                         <li class="list-group-item contact-item pipeline-contact" 
                             id="contact-{{ contact.id }}" 
                             data-id="{{ contact.id }}"
-                            style="position: relative; min-height: 100px; padding: 0; display: table; width: 100%; border-collapse: separate;">
+                            style="position: relative; min-height: 80px; padding: 0; display: table; width: 100%; border-collapse: separate;">
                             
                             <!-- Using table layout for reliable columns -->
                             <div style="display: table-row; width: 100%;">
                                 <!-- Left side - Drag handle (first column) -->
-                                <div class="drag-handle" style="display: table-cell; width: 40px; background-color: #0d6efd; color: white; vertical-align: middle; text-align: center;">
+                                <div class="drag-handle" style="display: table-cell; width: 40px; background-color: #0d6efd; color: white; vertical-align: middle; text-align: center; cursor: grab; transition: all 0.2s ease;">
                                     <i class="fas fa-grip-vertical" style="font-size: 18px;"></i>
                                     <div style="font-size: 11px; margin-top: 3px;">Drag</div>
                                 </div>
@@ -242,12 +265,12 @@
                                     <!-- Contact info stacked in second column -->
                                     <div style="margin-right: 30px;">
                                         <!-- Type badge at top -->
-                                        <div style="margin-bottom: 8px;">
+                                        <div style="margin-bottom: 5px;">
                                             {% if contact.contact %}
                                                 {% if contact.contact.contact_type == 'person' %}
-                                                    <span class="badge bg-primary">PERSON</span>
+                                                    <span class="badge bg-primary" style="font-size: 10px; padding: 3px 6px;">PERSON</span>
                                                 {% elif contact.contact.contact_type == 'church' %}
-                                                    <span class="badge bg-success">CHURCH</span>
+                                                    <span class="badge bg-success" style="font-size: 10px; padding: 3px 6px;">CHURCH</span>
                                                 {% endif %}
                                             {% endif %}
                                         </div>
@@ -443,31 +466,73 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Pipeline view loaded - Initializing Sortable.js drag-and-drop');
     
+    // Debug log for setup
+    const stageLists = document.querySelectorAll('.pipeline-stage');
+    console.log(`Found ${stageLists.length} sortable containers`);
+    
+    // Add CSRF token to all pages
+    const meta = document.createElement('meta');
+    meta.name = 'csrf-token';
+    meta.content = '{{ csrf_token }}';
+    document.head.appendChild(meta);
+    
     // Initialize sortable on each pipeline stage list
-    document.querySelectorAll('.pipeline-stage-list').forEach(list => {
-        const stageId = list.closest('.pipeline-stage').dataset.stageId;
+    stageLists.forEach(list => {
+        const stageId = list.dataset.stageId;
+        console.log(`Initializing Sortable for stage ${stageId} with selector #stage-${stageId}`);
         
-        // Create Sortable instance for each list
-        const sortable = new Sortable(list, {
+        // Get the correct list element with contacts
+        const listElement = document.getElementById(`stage-${stageId}`);
+        if (!listElement) {
+            console.error(`List element for stage ${stageId} not found`);
+            return;
+        }
+        
+        // Create Sortable instance for the correct list
+        const sortable = new Sortable(listElement, {
+            group: 'pipeline',  // Set a group name to allow dragging between lists
             animation: 150,
             ghostClass: 'sortable-ghost',  // Class name for the drop placeholder
             chosenClass: 'sortable-chosen',  // Class name for the chosen item
             dragClass: 'sortable-drag',  // Class name for the dragging item
             handle: '.drag-handle',  // Restricts sort start click/touch to the specified element
+            forceFallback: true,  // Force fallback for better mobile support
+            fallbackTolerance: 3,  // Tolerance in pixels
+            direction: 'vertical',
+            swapThreshold: 0.5,
+            dragoverBubble: false,
+            onStart: function(evt) {
+                console.log('Drag started', evt.item.id);
+                document.body.classList.add('dragging-active');
+                evt.item.classList.add('being-dragged');
+            },
             onEnd: function(evt) {
+                console.log('Drag ended', evt.item.id);
+                document.body.classList.remove('dragging-active');
+                evt.item.classList.remove('being-dragged');
+                
                 const contactId = evt.item.dataset.id;
-                const newStageId = evt.to.closest('.pipeline-stage').dataset.stageId;
-                const oldStageId = evt.from.closest('.pipeline-stage').dataset.stageId;
+                const newStageId = evt.to.dataset.stageId;
+                const oldStageId = evt.from.dataset.stageId;
+                
+                console.log(`Contact: ${contactId}, Old stage: ${oldStageId}, New stage: ${newStageId}`);
                 
                 if (newStageId !== oldStageId) {
                     console.log(`Moving contact ${contactId} from stage ${oldStageId} to stage ${newStageId}`);
+                    
+                    // Get the CSRF token from the meta tag
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    if (!csrfToken) {
+                        console.error('CSRF token not found');
+                        return;
+                    }
                     
                     // Send AJAX request to update contact stage
                     fetch(`/pipeline/move-contact/${contactId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': document.querySelector('meta[name=\'csrf-token\']').getAttribute('content')
+                            'X-CSRFToken': csrfToken
                         },
                         body: `stage_id=${newStageId}`
                     })
@@ -479,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                     .then(data => {
                         console.log('Contact moved successfully:', data);
-                        // Optional: update counts or other UI elements
+                        // Update stage counts
                         updateStageCounts();
                     })
                     .catch(error => {
@@ -492,6 +557,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+        
+        console.log(`Sortable initialized for stage ${stageId}`);
     });
     
     // Function to update stage counts
