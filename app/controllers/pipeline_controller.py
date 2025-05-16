@@ -964,6 +964,14 @@ def update_pipeline():
 @pipeline_bp.route('/move-contact/<int:contact_id>', methods=['POST'])
 @login_required
 def move_contact_api(contact_id):
+    # Log the request to help with debugging
+    current_app.logger.debug(f"move_contact_api called with contact_id: {contact_id}")
+    current_app.logger.debug(f"Request method: {request.method}")
+    current_app.logger.debug(f"Request content type: {request.content_type}")
+    current_app.logger.debug(f"Request data: {request.get_data()}")
+    current_app.logger.debug(f"Request form: {request.form}")
+    current_app.logger.debug(f"Request JSON: {request.get_json(silent=True)}")
+    
     """API endpoint to move a contact to a new stage"""
     try:
         # Get the contact

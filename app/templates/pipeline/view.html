@@ -439,7 +439,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         csrfToken = csrfElement.value;
                     }
                     
-                    // Send AJAX request to move contact
+                    // Debug logging
+                    console.log('Moving contact via drag and drop');
+                    console.log('Contact ID:', contactId);
+                    console.log('From stage:', oldStageId);
+                    console.log('To stage:', newStageId);
+                    
+                    // Send AJAX request to move contact - use pipeline_contact_id as the parameter name
                     fetch(`/pipeline/move-contact/${contactId}`, {
                         method: 'POST',
                         headers: {
@@ -620,6 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentStage = $(this).data('current-stage');
         
         $('#moveContactName').text(contactName);
+        // Use pipeline_contact_id as the parameter name to match the backend route
         $('#moveContactForm').attr('action', `/pipeline/move-contact/${contactId}`);
         $('#stage_id').val(currentStage);
     });
@@ -629,24 +636,46 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         const form = $(this);
-        const formData = form.serialize();
+        const formData = new FormData(form[0]);
         const contactId = form.attr('action').split('/').pop();
         
-        $.ajax({
-            url: form.attr('action'),
+        // Get the CSRF token
+        const csrfToken = $('input[name="csrf_token"]').val();
+        
+        // Add debug logging
+        console.log('Moving contact via form submission');
+        console.log('Form action:', form.attr('action'));
+        console.log('Contact ID:', contactId);
+        console.log('Stage ID:', $('#stage_id').val());
+        
+        // Use fetch API instead of $.ajax for consistency
+        fetch(form.attr('action'), {
             method: 'POST',
-            data: formData,
-            success: function(response) {
-                if (response.success) {
-                    // Reload the page to show the updated pipeline
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + response.message);
-                }
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
             },
-            error: function(xhr) {
-                alert('Error moving contact. Please try again.');
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Move response:', data);
+            if (data.success) {
+                // Reload the page to show the updated pipeline
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error moving contact:', error);
+            alert('Error moving contact. Please try again.');
+        })
         });
     });
 });
