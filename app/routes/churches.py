@@ -22,10 +22,11 @@ churches_bp = Blueprint('churches', __name__, template_folder='../templates/chur
 @login_required
 @office_required
 def index():
-    """Show list of all churches with optimized loading."""
+    """Show list of all churches with optimized loading using server-side pagination and search."""
     from sqlalchemy.orm import joinedload
     from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
     from datetime import datetime
+    from sqlalchemy import or_
     import time
     
     # Generate a unique request ID for tracking performance
@@ -35,26 +36,38 @@ def index():
     start_time = datetime.now()
     print(f"[{request_id}] Churches page request started at {start_time}")
     
-    # Get pagination parameters
+    # Get pagination parameters - use a smaller page size like the people page
     page = request.args.get('page', 1, type=int)
-    per_page = 100  # We have ~94 churches, so this effectively loads all without pagination overhead
+    per_page = 20  # Match the people page pagination size for better performance
+    search_query = request.args.get('q', '')
     
-    # Build the base query with eager loading of ALL needed relationships in a single query
-    # This is the key optimization - load everything we need in ONE query
+    # Build the base query with eager loading of only essential relationships
     query = Church.query.options(
-        joinedload(Church.main_contact),  # Eager load main contact
-        joinedload(Church.owner)          # Eager load owner
+        joinedload(Church.main_contact)  # Eager load main contact
     )
     
     # Apply office filter for non-super admins
     if not current_user.is_super_admin():
         query = query.filter_by(office_id=current_user.office_id)
     
+    # Apply search filter if provided - similar to people page
+    if search_query:
+        search_term = f'%{search_query}%'
+        query = query.filter(
+            or_(
+                Church.name.ilike(search_term),
+                Church.city.ilike(search_term),
+                Church.state.ilike(search_term),
+                Church.denomination.ilike(search_term),
+                Church.email.ilike(search_term),
+                Church.phone.ilike(search_term)
+            )
+        )
+    
     # Order by name for consistency
     query = query.order_by(Church.name)
     
     # Execute the query with pagination
-    # Even though we're loading all churches, using pagination gives us the infrastructure for future growth
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     churches = pagination.items
     
@@ -66,18 +79,22 @@ def index():
     # Get church IDs for efficient pipeline lookup
     church_ids = [church.id for church in churches]
     
-    # Get the main pipeline for churches - cache this in a future optimization
-    main_pipeline = Pipeline.query.filter_by(
-        pipeline_type='church',
-        is_main_pipeline=True,
-        office_id=current_user.office_id if not current_user.is_super_admin() else None
-    ).first()
+    # Get the main pipeline for churches
+    main_pipeline = Pipeline.query.filter(
+        Pipeline.pipeline_type == 'church',
+        Pipeline.is_main_pipeline
+    )
+    
+    # Apply office filter for non-super admins
+    if not current_user.is_super_admin():
+        main_pipeline = main_pipeline.filter_by(office_id=current_user.office_id)
+    
+    main_pipeline = main_pipeline.first()
     
     pipeline_start = datetime.now()
     # Only process pipeline data if we have a main pipeline and churches
     if main_pipeline and churches:
         # Optimize pipeline data loading with a single join query
-        # This gets both the pipeline contacts and stages in one query
         pipeline_data = db.session.query(
             PipelineContact.contact_id,
             PipelineStage.name.label('stage_name')
@@ -106,7 +123,7 @@ def index():
     total_duration = (end_time - start_time).total_seconds()
     print(f"[{request_id}] Churches page fully processed in {total_duration:.2f} seconds")
     
-    return render_template('churches/index.html', churches=churches, pagination=pagination)
+    return render_template('churches/index.html', churches=churches, pagination=pagination, search_query=search_query)
 
 @churches_bp.route('/new', methods=['GET', 'POST'])
 @login_required

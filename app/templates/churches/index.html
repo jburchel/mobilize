@@ -76,12 +76,20 @@
                     </div>
                     <!-- Search Bar -->
                     <div>
-                        <div class="input-group">
-                            <input type="text" id="tableSearch" class="form-control" placeholder="Search by name, location, denomination, or pipeline stage..." aria-label="Search">
-                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" style="display: none;">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                        </div>
+                            <form action="{{ url_for('churches.index') }}" method="get" class="search-form">
+                                <div class="input-group">
+                                    <input type="text" id="tableSearch" name="q" class="form-control" placeholder="Search churches..." aria-label="Search" value="{{ search_query }}">
+                                    {% if search_query %}
+                                    <a href="{{ url_for('churches.index') }}" class="btn btn-outline-secondary" id="clearSearch">
+                                        <i class="bi bi-x-lg"></i>
+                                    </a>
+                                    {% else %}
+                                    <button class="btn btn-outline-secondary" type="submit">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </form>
                     </div>
                 </div>
             </div>
@@ -325,66 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Optimized client-side filtering for maximum performance
-    function filterTable() {
-        const searchTerm = searchInput.value.trim().toLowerCase();
-        const rows = tableBody.querySelectorAll('tr');
-        
-        // Show/hide clear button
-        clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
-        
-        // If empty search, show all rows and remove no-results message
-        if (!searchTerm) {
-            rows.forEach(row => {
-                if (!row.classList.contains('no-results')) {
-                    row.style.display = '';
-                }
-            });
-            
-            // Remove no results message if it exists
-            const noResultsRow = tableBody.querySelector('.no-results');
-            if (noResultsRow) noResultsRow.remove();
-            return;
-        }
-        
-        // Filter rows - use a more efficient approach
-        let visibleCount = 0;
-        
-        // Create a document fragment for better performance
-        const fragment = document.createDocumentFragment();
-        let hasNoResultsRow = false;
-        
-        // Process all rows in a batch for better performance
-        rows.forEach(row => {
-            // Skip the no-results row if it exists
-            if (row.classList.contains('no-results')) {
-                hasNoResultsRow = true;
-                return;
-            }
-            
-            // Check if the row contains the search term
-            const text = row.textContent.toLowerCase();
-            const isVisible = text.includes(searchTerm);
-            
-            // Update visibility
-            row.style.display = isVisible ? '' : 'none';
-            if (isVisible) visibleCount++;
-        });
-        
-        // Handle no results message
-        if (visibleCount === 0) {
-            if (!hasNoResultsRow) {
-                const noResultsRow = document.createElement('tr');
-                noResultsRow.className = 'no-results';
-                noResultsRow.innerHTML = '<td colspan="7" class="text-center">No churches match your search criteria.</td>';
-                tableBody.appendChild(noResultsRow);
-            }
-        } else if (hasNoResultsRow) {
-            // Remove the no-results row if we have visible results
-            const noResultsRow = tableBody.querySelector('.no-results');
-            if (noResultsRow) noResultsRow.remove();
-        }
-    }
+    // No client-side filtering needed since we're using server-side search
     
     // Helper function to format location
     function formatLocation(church) {
@@ -429,19 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return `<span class="badge ${bgClass}">${displayText}</span>`;
     }
     
-    // Add event listeners
-    if (searchInput) {
-        // Use the faster client-side filtering instead of API calls
-        searchInput.addEventListener('input', debounce(filterTable, 100));
-        clearSearchBtn.addEventListener('click', function() {
-            searchInput.value = '';
-            clearSearchBtn.style.display = 'none';
-            filterTable();
-        });
-        
-        // Initial filtering setup
-        filterTable();
-    }
+    // No event listeners needed for search since we're using server-side search with form submission
     
     // Delete confirmation
     const deleteButtons = document.querySelectorAll('.delete-church');
