@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block head %}
+    <!-- Include Sortable.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+{% endblock %}
+
 {% block title %}{% if pipeline.pipeline_type == 'person' %}People Pipeline{% elif pipeline.pipeline_type == 'church' %}Church Pipeline{% else %}{{ pipeline.name }}{% endif %} | Pipeline{% endblock %}
 
 {% block styles %}
@@ -26,14 +31,32 @@
     /* Card Grid Layout */
     .card-grid {
         display: grid;
-        grid-template-columns: auto 1fr;
+        grid-template-columns: 60px 1fr;
         grid-gap: 10px;
         width: 100%;
+        height: 100%;
     }
     
     .move-button-container {
         padding-right: 5px;
         border-right: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        cursor: grab;
+    }
+    
+    .move-button-container:active {
+        cursor: grabbing;
+    }
+    
+    .drag-handle {
+        cursor: grab;
+    }
+    
+    .drag-handle:active {
+        cursor: grabbing;
     }
     
     .move-btn {
@@ -45,6 +68,7 @@
         padding: 5px;
         background-color: #0d6efd;
         border-color: #0d6efd;
+        cursor: grab;
     }
     
     .move-btn:hover {
@@ -165,23 +189,17 @@
                             style="min-height: 100px; position: relative; padding: 10px;">
                             <div class="card-grid">
                                 <!-- Left side - Move button -->
-                                <div class="move-button-container">
-                                    <button type="button" class="btn btn-sm btn-primary move-btn" 
-                                        onclick="showMoveModal({{ contact.id }}, '{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else "Unknown Contact" }}', {{ contact.current_stage_id }})">
-                                        <i class="fas fa-exchange-alt"></i>
-                                        <span>Move</span>
-                                    </button>
+                                <div class="move-button-container drag-handle">
+                                    <div class="btn btn-sm btn-primary move-btn">
+                                        <i class="fas fa-grip-vertical"></i>
+                                        <span>Drag</span>
+                                    </div>
                                 </div>
                                 
                                 <!-- Right side - Contact info -->
                                 <div class="contact-info">
-                                    <!-- Name row -->
-                                    <div class="contact-name">
-                                        <strong>{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else "Unknown Contact" }}</strong>
-                                    </div>
-                                    
                                     <!-- Type row -->
-                                    <div class="contact-type">
+                                    <div class="contact-type mb-1">
                                         {% if contact.contact %}
                                             {% if contact.contact.contact_type == 'person' %}
                                                 <span class="badge bg-primary">PERSON</span>
@@ -189,6 +207,16 @@
                                                 <span class="badge bg-success">CHURCH</span>
                                             {% endif %}
                                         {% endif %}
+                                    </div>
+                                    
+                                    <!-- Name row -->
+                                    <div class="contact-name">
+                                        <strong>{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else "Unknown Contact" }}</strong>
+                                    </div>
+                                    
+                                    <!-- Date added row -->
+                                    <div class="contact-date small text-muted">
+                                        Date: {{ contact.date_added.strftime('%Y-%m-%d') if contact.date_added else 'Unknown' }}
                                     </div>
                                 </div>
                                 
@@ -426,36 +454,57 @@
 
 {% block scripts %}
 <script>
-// Global function to handle move button clicks
-function showMoveModal(contactId, contactName, currentStageId) {
-    console.log('Showing move modal from inline handler for:', contactId, contactName);
-    
-    // Set form data for the move modal
-    document.getElementById('moveContactName').textContent = contactName;
-    document.getElementById('moveContactForm').setAttribute('action', `/pipeline/move-contact/${contactId}`);
-    document.getElementById('stage_id').value = currentStageId;
-    
-    // Show the modal
-    const moveModal = new bootstrap.Modal(document.getElementById('moveContactModal'));
-    moveModal.show();
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Pipeline view loaded - Inline click-to-move approach');
+    console.log('Pipeline view loaded - Initializing Sortable.js drag-and-drop');
     
-    // Add redundant click handlers to move buttons (backup method)
-    document.querySelectorAll('.contact-move-button').forEach(button => {
-        button.addEventListener('click', function(e) {
-            // Redundant handler in case inline onclick doesn't work
-            console.log('Backup click handler activated');
-            
-            // Get data attributes
-            const contactItem = this.closest('.contact-item');
-            const contactId = contactItem.dataset.id;
-            const contactName = contactItem.querySelector('strong').textContent;
-            const currentStageId = contactItem.closest('.pipeline-stage').dataset.stageId;
-            
-            showMoveModal(contactId, contactName, currentStageId);
+    // Initialize sortable on each pipeline stage list
+    document.querySelectorAll('.pipeline-stage-list').forEach(list => {
+        const stageId = list.closest('.pipeline-stage').dataset.stageId;
+        
+        // Create Sortable instance for each list
+        const sortable = new Sortable(list, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',  // Class name for the drop placeholder
+            chosenClass: 'sortable-chosen',  // Class name for the chosen item
+            dragClass: 'sortable-drag',  // Class name for the dragging item
+            handle: '.drag-handle',  // Restricts sort start click/touch to the specified element
+            onEnd: function(evt) {
+                const contactId = evt.item.dataset.id;
+                const newStageId = evt.to.closest('.pipeline-stage').dataset.stageId;
+                const oldStageId = evt.from.closest('.pipeline-stage').dataset.stageId;
+                
+                if (newStageId !== oldStageId) {
+                    console.log(`Moving contact ${contactId} from stage ${oldStageId} to stage ${newStageId}`);
+                    
+                    // Send AJAX request to update contact stage
+                    fetch(`/pipeline/move-contact/${contactId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': document.querySelector('meta[name=\'csrf-token\']').getAttribute('content')
+                        },
+                        body: `stage_id=${newStageId}`
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Contact moved successfully:', data);
+                        // Optional: update counts or other UI elements
+                        updateStageCounts();
+                    })
+                    .catch(error => {
+                        console.error('Error moving contact:', error);
+                        // Revert the drag if there was an error
+                        evt.from.appendChild(evt.item);
+                        // Show an error message
+                        alert('There was an error moving the contact. Please try again.');
+                    });
+                }
+            }
         });
     });
     
