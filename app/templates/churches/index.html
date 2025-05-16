@@ -5,8 +5,6 @@
 {% block page_title %}Churches Management{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css">
 <style>
 /* Search and filter styles */
 .input-group {
@@ -96,7 +94,7 @@
             <div class="card">
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table">
+                        <table class="table" data-no-datatable="true">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -297,7 +295,8 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
+<!-- Override any DataTables scripts from other templates -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Churches list page loaded');

@@ -22,20 +22,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
-    // Activate DataTables if available
+    // Activate DataTables only on pages that need it
     if (typeof $.fn.DataTable !== 'undefined') {
-        $('.datatable').DataTable({
-            responsive: true,
-            pageLength: 15,
-            language: {
-                search: "_INPUT_",
-                searchPlaceholder: "Search records...",
-                paginate: {
-                    previous: "<i class='bi bi-chevron-left'></i>",
-                    next: "<i class='bi bi-chevron-right'></i>"
+        // Skip tables with the data-no-datatable attribute
+        // and skip all tables on the Churches page which uses client-side filtering
+        if (!window.location.pathname.includes('/churches')) {
+            $('table.datatable:not([data-no-datatable])').each(function() {
+                // Check if this table is already initialized
+                if (!$.fn.DataTable.isDataTable(this)) {
+                    $(this).DataTable({
+                        responsive: true,
+                        pageLength: 15,
+                        language: {
+                            search: "_INPUT_",
+                            searchPlaceholder: "Search records...",
+                            paginate: {
+                                previous: "<i class='bi bi-chevron-left'></i>",
+                                next: "<i class='bi bi-chevron-right'></i>"
+                            }
+                        }
+                    });
                 }
-            }
-        });
+            });
+        }
     }
     
     // Add active class to current links
