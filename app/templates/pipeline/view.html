@@ -20,9 +20,12 @@
         cursor: grab;
         transition: all 0.2s ease-in-out;
         position: relative;
+        border-left: 3px solid transparent;
     }
     .contact-item:hover {
         background-color: #f8f9fa;
+        border-left: 3px solid #007bff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .contact-item.sortable-ghost {
         opacity: 0.4;
@@ -40,18 +43,7 @@
         transform: scale(1.05);
         z-index: 1000;
     }
-    .drag-handle {
-        position: absolute;
-        left: 5px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #adb5bd;
-        cursor: grab;
-        opacity: 0.5;
-    }
-    .contact-item:hover .drag-handle {
-        opacity: 1;
-    }
+    /* Drag handle removed - entire card is now draggable */
 </style>
 {% endblock %}
 
@@ -101,11 +93,10 @@
                         id="stage-{{ stage.id }}" 
                         data-stage-id="{{ stage.id }}">
                         {% for contact in contacts_by_stage[stage.id] %}
-                        <li class="list-group-item contact-item pipeline-contact pl-4" 
+                        <li class="list-group-item contact-item pipeline-contact" 
                             id="contact-{{ contact.id }}" 
-                            data-id="{{ contact.id }}" 
-                            style="padding-left: 25px !important;">
-                            <i class="fas fa-grip-vertical drag-handle"></i>
+                            data-id="{{ contact.id }}">
+                            <!-- Drag handle removed - entire card is now draggable -->
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <strong>{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else "Unknown Contact" }}</strong>
@@ -396,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function() {
             animation: 150,               // Animation speed in ms
             ghostClass: 'sortable-ghost',  // Class for the drop placeholder
             chosenClass: 'sortable-chosen', // Class for the selected item
-            handle: '.drag-handle',        // Drag handle selector
+            // Remove handle selector to allow dragging from anywhere on the card
             draggable: '.contact-item',    // Elements that can be dragged
             dataIdAttr: 'data-id',         // HTML attribute that holds the item ID
             forceFallback: true,           // Force fallback mode for better cross-browser compatibility
@@ -625,9 +616,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const contactName = $(this).data('contact-name');
         const currentStage = $(this).data('current-stage');
         
+        console.log('Opening Move Contact modal for:', contactId, contactName);
+        
         $('#moveContactName').text(contactName);
-        // Use pipeline_contact_id as the parameter name to match the backend route
-        $('#moveContactForm').attr('action', `/pipeline/move-contact/${contactId}`);
+        // Set the form action with the correct URL
+        const formAction = `/pipeline/move-contact/${contactId}`;
+        $('#moveContactForm').attr('action', formAction);
+        console.log('Form action set to:', formAction);
+        
+        // Set the current stage in the dropdown
         $('#stage_id').val(currentStage);
     });
     
