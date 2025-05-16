@@ -26,77 +26,87 @@ def index():
     from sqlalchemy.orm import joinedload
     from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
     from datetime import datetime
+    import time
+    
+    # Generate a unique request ID for tracking performance
+    request_id = int(time.time() * 1000)
     
     # Start timing for performance monitoring
     start_time = datetime.now()
-    print(f"Churches page request started at {start_time}")
+    print(f"[{request_id}] Churches page request started at {start_time}")
     
-    # Build the base query with eager loading of ALL needed relationships
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = 100  # We have ~94 churches, so this effectively loads all without pagination overhead
+    
+    # Build the base query with eager loading of ALL needed relationships in a single query
+    # This is the key optimization - load everything we need in ONE query
     query = Church.query.options(
         joinedload(Church.main_contact),  # Eager load main contact
-        joinedload(Church.owner),         # Eager load owner
-        joinedload(Church.office)         # Eager load office
+        joinedload(Church.owner)          # Eager load owner
     )
     
     # Apply office filter for non-super admins
     if not current_user.is_super_admin():
         query = query.filter_by(office_id=current_user.office_id)
     
-    # Execute the query to get all churches first
-    # This is a small dataset (94 churches) so loading all is acceptable
-    churches = query.all()
+    # Order by name for consistency
+    query = query.order_by(Church.name)
+    
+    # Execute the query with pagination
+    # Even though we're loading all churches, using pagination gives us the infrastructure for future growth
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    churches = pagination.items
     
     # Log query time
     query_time = datetime.now()
-    print(f"Churches query completed in {(query_time - start_time).total_seconds():.2f} seconds")
+    query_duration = (query_time - start_time).total_seconds()
+    print(f"[{request_id}] Churches query completed in {query_duration:.2f} seconds")
     
     # Get church IDs for efficient pipeline lookup
     church_ids = [church.id for church in churches]
     
-    # Get the main pipeline for churches
+    # Get the main pipeline for churches - cache this in a future optimization
     main_pipeline = Pipeline.query.filter_by(
         pipeline_type='church',
         is_main_pipeline=True,
         office_id=current_user.office_id if not current_user.is_super_admin() else None
     ).first()
     
+    pipeline_start = datetime.now()
     # Only process pipeline data if we have a main pipeline and churches
     if main_pipeline and churches:
-        # Get pipeline contacts ONLY for the churches we're displaying
-        # This is more efficient than getting ALL pipeline contacts
-        pipeline_contacts = db.session.query(
-            PipelineContact.contact_id, 
-            PipelineContact.current_stage_id
+        # Optimize pipeline data loading with a single join query
+        # This gets both the pipeline contacts and stages in one query
+        pipeline_data = db.session.query(
+            PipelineContact.contact_id,
+            PipelineStage.name.label('stage_name')
+        ).join(
+            PipelineStage,
+            PipelineContact.current_stage_id == PipelineStage.id
         ).filter(
             PipelineContact.contact_id.in_(church_ids),
             PipelineContact.pipeline_id == main_pipeline.id
         ).all()
         
-        # Create a mapping of church_id to stage_id
-        contact_to_stage = {contact_id: stage_id for contact_id, stage_id in pipeline_contacts}
-        
-        # Get all unique stage IDs from the pipeline contacts
-        stage_ids = [stage_id for _, stage_id in pipeline_contacts if stage_id is not None]
-        
-        # Get all pipeline stages in a single query - but only for the stages we need
-        pipeline_stages = {}
-        if stage_ids:
-            stages = PipelineStage.query.filter(PipelineStage.id.in_(stage_ids)).all()
-            pipeline_stages = {stage.id: stage.name for stage in stages}
+        # Create a mapping of church_id to stage_name
+        pipeline_stages = {contact_id: stage_name for contact_id, stage_name in pipeline_data}
         
         # Attach pipeline stage names to churches to avoid template queries
         for church in churches:
-            stage_id = contact_to_stage.get(church.id)
-            church.cached_pipeline_stage = pipeline_stages.get(stage_id) if stage_id else None
-            
-            # Pre-compute church name to avoid multiple get_name() calls in template
+            # Pre-compute values to avoid method calls in template
+            church.cached_pipeline_stage = pipeline_stages.get(church.id)
             church.cached_name = church.get_name()
+    
+    pipeline_duration = (datetime.now() - pipeline_start).total_seconds()
+    print(f"[{request_id}] Pipeline data processing completed in {pipeline_duration:.2f} seconds")
     
     # Log total processing time
     end_time = datetime.now()
-    print(f"Churches page fully processed in {(end_time - start_time).total_seconds():.2f} seconds")
+    total_duration = (end_time - start_time).total_seconds()
+    print(f"[{request_id}] Churches page fully processed in {total_duration:.2f} seconds")
     
-    return render_template('churches/index.html', churches=churches)
+    return render_template('churches/index.html', churches=churches, pagination=pagination)
 
 @churches_bp.route('/new', methods=['GET', 'POST'])
 @login_required
