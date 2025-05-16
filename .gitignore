@@ -68,6 +68,14 @@ app/static/.compressed
 *.br
 *.gz
 
+# Font Awesome - only include essential files
+/app/static/vendor/fontawesome/svgs/
+/app/static/vendor/fontawesome/sprites/
+/app/static/vendor/fontawesome/less/
+/app/static/vendor/fontawesome/scss/
+/app/static/vendor/fontawesome/js/
+/app/static/vendor/fontawesome/metadata/
+
 # Debug files
 *_fix.py
 debug_*.py
