@@ -278,10 +278,16 @@ def create_app(test_config=None):
         # Configure Talisman (Keep logic from development)
         csp = {
             'default-src': ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
-            'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://www.google-analytics.com'],
+            'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.jsdelivr.net', 'https://www.google-analytics.com'],
             'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
             'img-src': ["'self'", 'data:', 'https://www.google-analytics.com'],
-            'font-src': ["'self'", 'data:', 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com']
+            'font-src': ["'self'", 'data:', 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com'],
+            # Add these new directives to allow drag and drop functionality
+            'connect-src': ["'self'"],
+            'worker-src': ["'self'"],
+            'frame-src': ["'self'"],
+            # Use a more permissive child-src policy as a fallback for older browsers
+            'child-src': ["'self'"]
         }
         if env == 'production':
             talisman.init_app(app, force_https=True, content_security_policy=csp,
