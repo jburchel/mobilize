@@ -325,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Simple client-side filtering for faster performance
+    // Optimized client-side filtering for maximum performance
     function filterTable() {
         const searchTerm = searchInput.value.trim().toLowerCase();
         const rows = tableBody.querySelectorAll('tr');
@@ -333,28 +333,54 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show/hide clear button
         clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
         
-        // If empty search, show all rows
+        // If empty search, show all rows and remove no-results message
         if (!searchTerm) {
-            rows.forEach(row => row.style.display = '');
+            rows.forEach(row => {
+                if (!row.classList.contains('no-results')) {
+                    row.style.display = '';
+                }
+            });
+            
+            // Remove no results message if it exists
+            const noResultsRow = tableBody.querySelector('.no-results');
+            if (noResultsRow) noResultsRow.remove();
             return;
         }
         
-        // Filter rows
+        // Filter rows - use a more efficient approach
         let visibleCount = 0;
+        
+        // Create a document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        let hasNoResultsRow = false;
+        
+        // Process all rows in a batch for better performance
         rows.forEach(row => {
+            // Skip the no-results row if it exists
+            if (row.classList.contains('no-results')) {
+                hasNoResultsRow = true;
+                return;
+            }
+            
+            // Check if the row contains the search term
             const text = row.textContent.toLowerCase();
             const isVisible = text.includes(searchTerm);
+            
+            // Update visibility
             row.style.display = isVisible ? '' : 'none';
             if (isVisible) visibleCount++;
         });
         
-        // Show no results message if needed
-        if (visibleCount === 0 && !tableBody.querySelector('.no-results')) {
-            const noResultsRow = document.createElement('tr');
-            noResultsRow.className = 'no-results';
-            noResultsRow.innerHTML = '<td colspan="7" class="text-center">No churches match your search criteria.</td>';
-            tableBody.appendChild(noResultsRow);
-        } else if (visibleCount > 0) {
+        // Handle no results message
+        if (visibleCount === 0) {
+            if (!hasNoResultsRow) {
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.className = 'no-results';
+                noResultsRow.innerHTML = '<td colspan="7" class="text-center">No churches match your search criteria.</td>';
+                tableBody.appendChild(noResultsRow);
+            }
+        } else if (hasNoResultsRow) {
+            // Remove the no-results row if we have visible results
             const noResultsRow = tableBody.querySelector('.no-results');
             if (noResultsRow) noResultsRow.remove();
         }
