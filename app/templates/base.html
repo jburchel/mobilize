@@ -5,24 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <title>{% block title %}Mobilize CRM{% endblock %}</title>
+    <!-- Cache-busting timestamp: {{ range(1, 1000000) | random }} -->
     <!-- Design Tokens -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}?v={{ range(1, 1000000) | random }}">
     <!-- Modernized Components -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-components.css') }}?v={{ range(1, 1000000) | random }}">
     <!-- External CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <!-- Application CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v={{ range(1, 1000000) | random }}">
     <!-- Badge fix CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}?v={{ range(1, 1000000) | random }}">
     <!-- Direct badge override CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-override.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-override.css') }}?v={{ range(1, 1000000) | random }}">
     <!-- Direct badge fix CSS (highest priority) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/direct-badge-fix.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/direct-badge-fix.css') }}?v={{ range(1, 1000000) | random }}">
     <!-- Pipeline Badge CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}?v={{ range(1, 1000000) | random }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -208,13 +209,13 @@
         </div>
     </div>
 
-    <!-- JavaScript Dependencies -->
+    <!-- JavaScript Dependencies with cache-busting: {{ range(1, 1000000) | random }} -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/direct-sidebar-fix.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/force-icons-fix.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}?v={{ range(1, 1000000) | random }}"></script>
+    <script src="{{ url_for('static', filename='js/search.js') }}?v={{ range(1, 1000000) | random }}"></script>
+    <script src="{{ url_for('static', filename='js/direct-sidebar-fix.js') }}?v={{ range(1, 1000000) | random }}"></script>
+    <script src="{{ url_for('static', filename='js/force-icons-fix.js') }}?v={{ range(1, 1000000) | random }}"></script>
     
     {% block scripts %}{% endblock %}
     <!-- Global Email Modal Container for AJAX-loaded modals -->

@@ -1,22 +1,39 @@
 // Force icons fix - ensures all sidebar icons and badges are visible
+// SUPER AGGRESSIVE VERSION - v2.0 with direct DOM injection
+
+// Immediately inject Font Awesome to ensure it's available
+(function() {
+    console.log('IMMEDIATE Font Awesome injection');
+    // Inject Font Awesome CSS directly into the page
+    const fontAwesomeCSS = `
+    .fas{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;display:inline-block;font-style:normal;font-variant:normal;text-rendering:auto;line-height:1}.fa-home:before{content:"\f015"}.fa-users:before{content:"\f0c0"}.fa-church:before{content:"\f51d"}.fa-tasks:before{content:"\f0ae"}.fa-envelope:before{content:"\f0e0"}.fa-project-diagram:before{content:"\f542"}.fa-chart-bar:before{content:"\f080"}.fa-mail-bulk:before{content:"\f674"}.fa-cog:before{content:"\f013"}.fa-user-shield:before{content:"\f505"}.fa-angle-double-left:before{content:"\f100"}.fa-angle-double-right:before{content:"\f101"}.fa-comment-alt:before{content:"\f27a"}
+    @font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:900;font-display:block;src:url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.eot);src:url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.eot?#iefix) format("embedded-opentype"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff2) format("woff2"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff) format("woff"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.ttf) format("truetype"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.svg#fontawesome) format("svg")}.fa,.fas{font-family:"Font Awesome 5 Free";font-weight:900}
+    @font-face{font-family:"Font Awesome 5 Brands";font-style:normal;font-weight:400;font-display:block;src:url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.eot);src:url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.eot?#iefix) format("embedded-opentype"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.woff2) format("woff2"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.woff) format("woff"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.ttf) format("truetype"),url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.svg#fontawesome) format("svg")}.fab{font-family:"Font Awesome 5 Brands";font-weight:400}
+    .fa-google:before{content:"\f1a0"}
+    `;
+    
+    const style = document.createElement('style');
+    style.id = 'force-font-awesome-css';
+    style.textContent = fontAwesomeCSS;
+    document.head.appendChild(style);
+    
+    // Also load the full Font Awesome CSS as a backup
+    const fontAwesomeLink = document.createElement('link');
+    fontAwesomeLink.rel = 'stylesheet';
+    fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+    document.head.appendChild(fontAwesomeLink);
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Force icons fix loaded');
+    console.log('Force icons fix loaded - SUPER AGGRESSIVE VERSION');
     
     // Force load Font Awesome if it's not available
     if (!window.FontAwesome) {
         console.log('Font Awesome not detected, loading it manually');
-        const fontAwesomeLink = document.createElement('link');
-        fontAwesomeLink.rel = 'stylesheet';
-        fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
-        fontAwesomeLink.integrity = 'sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==';
-        fontAwesomeLink.crossOrigin = 'anonymous';
-        document.head.appendChild(fontAwesomeLink);
         
         // Also add the Font Awesome script for better icon rendering
         const fontAwesomeScript = document.createElement('script');
         fontAwesomeScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js';
-        fontAwesomeScript.integrity = 'sha512-Tn2m0TIpgVyTzzvmxLNuqbSJH3JP8jm+Cy3hvHrW7ndTDcJ1w5mBiksqDBb8GpE2ksktFvDB/ykZ0mDpsZj20w==';
-        fontAwesomeScript.crossOrigin = 'anonymous';
         document.body.appendChild(fontAwesomeScript);
     }
     
