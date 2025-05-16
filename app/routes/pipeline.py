@@ -78,10 +78,11 @@ def edit(pipeline_id):
 def manage_stages(pipeline_id):
     return pipeline_manage_stages(pipeline_id)
 
-@pipeline_bp.route('/move-contact/<int:pipeline_contact_id>', methods=['POST'])
+@pipeline_bp.route('/move-contact/<int:contact_id>', methods=['POST'])
 @login_required
-def move_contact(pipeline_contact_id):
-    return pipeline_move_contact_api(pipeline_contact_id)
+def move_contact(contact_id):
+    # Pass the parameter with the correct name to the API function
+    return pipeline_move_contact_api(contact_id)
 
 @pipeline_bp.route('/remove-contact/<int:pipeline_contact_id>', methods=['POST'])
 @login_required

@@ -257,7 +257,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="moveContactForm" method="post">
+                <form id="moveContactForm" method="post" action="">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     
                     <div class="mb-3">
@@ -390,19 +390,19 @@ document.addEventListener('DOMContentLoaded', function() {
     stages.forEach(stage => {
         console.log('Initializing Sortable for stage:', stage.id);
         
-        // Create Sortable instance with enhanced options
+        // Create Sortable instance with simplified options for better compatibility
         const sortable = new Sortable(stage, {
             group: 'pipeline',            // Shared group so items can be moved between lists
             animation: 150,               // Animation speed in ms
-            easing: 'cubic-bezier(1, 0, 0, 1)', // Smoother animation
-            dragClass: 'bg-light',
             ghostClass: 'sortable-ghost',  // Class for the drop placeholder
             chosenClass: 'sortable-chosen', // Class for the selected item
             handle: '.drag-handle',        // Drag handle selector
             draggable: '.contact-item',    // Elements that can be dragged
-            preventOnFilter: true,         // Prevent default when filter is triggered
-            filter: '.filtered',           // Selectors that should not be draggable
             dataIdAttr: 'data-id',         // HTML attribute that holds the item ID
+            forceFallback: true,           // Force fallback mode for better cross-browser compatibility
+            fallbackClass: 'sortable-fallback', // Class for the cloned element when forceFallback is true
+            fallbackOnBody: true,          // Appends the cloned element to the body instead of the list
+            fallbackTolerance: 5,          // Pixels to move before drag operation starts
             // Debug events
             onChoose: function(evt) { logEvent('Choose', evt); },
             onUnchoose: function(evt) { logEvent('Unchoose', evt); },
@@ -636,8 +636,9 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         const form = $(this);
-        const formData = new FormData(form[0]);
         const contactId = form.attr('action').split('/').pop();
+        const stageId = $('#stage_id').val();
+        const notes = $('#notes').val();
         
         // Get the CSRF token
         const csrfToken = $('input[name="csrf_token"]').val();
@@ -646,16 +647,26 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Moving contact via form submission');
         console.log('Form action:', form.attr('action'));
         console.log('Contact ID:', contactId);
-        console.log('Stage ID:', $('#stage_id').val());
+        console.log('Stage ID:', stageId);
+        console.log('Notes:', notes);
         
-        // Use fetch API instead of $.ajax for consistency
+        // Show loading state on the button
+        const submitBtn = form.find('button[type="submit"]');
+        const originalBtnText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Moving...');
+        
+        // Use fetch API with JSON payload for consistency with drag-and-drop
         fetch(form.attr('action'), {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRFToken': csrfToken
             },
-            body: formData
+            body: JSON.stringify({
+                stage_id: stageId,
+                notes: notes
+            })
         })
         .then(response => {
             if (!response.ok) {
@@ -669,11 +680,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Reload the page to show the updated pipeline
                 window.location.reload();
             } else {
+                // Reset button state
+                submitBtn.prop('disabled', false).html(originalBtnText);
                 alert('Error: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Error moving contact:', error);
+            // Reset button state
+            submitBtn.prop('disabled', false).html(originalBtnText);
             alert('Error moving contact. Please try again.');
         })
         });
