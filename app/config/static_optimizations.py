@@ -1,27 +1,90 @@
 """Static file optimizations for production environment."""
 
-from flask import current_app, send_from_directory
+from flask import current_app, send_from_directory, request
 import os
 import gzip
 import brotli
+import time
 from functools import wraps
 
 def optimize_static_files(app):
-    """Apply optimizations for static file serving in production.
+    """Apply optimizations for static file serving in production."""
+    # Set a deployment ID based on timestamp for cache versioning
+    # This ensures static files are properly cached but updated on new deployments
+    deployment_id = str(int(time.time()))
+    app.config['DEPLOYMENT_ID'] = deployment_id
+    app.logger.info(f"Setting deployment ID for static assets: {deployment_id}")
     
-    This function sets up compression and caching for static files
-    to improve load times in production.
-    """
-    # Only apply in production
-    # Check environment in a way compatible with newer Flask versions
-    is_production = app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production'
-    if not is_production:
+    # Skip advanced optimizations in non-production environment
+    if app.config.get('FLASK_ENV') != 'production':
+        app.logger.info("Skipping advanced static file optimizations in non-production environment")
         return
+
+    # Configure Flask to serve static files with caching headers
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # 1 year in seconds
+    
+    # Add compression for static files
+    @app.after_request
+    def add_header(response):
+        # Add caching headers for static files
+        if 'Cache-Control' not in response.headers and request.path.startswith('/static'):
+            response.headers['Cache-Control'] = 'public, max-age=31536000'
+            response.headers['Expires'] = time.strftime(
+                '%a, %d %b %Y %H:%M:%S GMT', 
+                time.gmtime(time.time() + 31536000)
+            )
+        return response
+
+    # Configure Flask-Talisman for security headers
+    from flask_talisman import Talisman
+    from flask import request  # Import request here to avoid circular imports
+    
+    csp = {
+        'default-src': "'self'",
+        'script-src': [
+            "'self'", 
+            "'unsafe-inline'", 
+            "'unsafe-eval'", 
+            "https://code.jquery.com",
+            "https://cdn.jsdelivr.net",
+            "https://www.googletagmanager.com",
+            "https://www.google-analytics.com"
+        ],
+        'style-src': [
+            "'self'", 
+            "'unsafe-inline'", 
+            "https://cdn.jsdelivr.net",
+            "https://fonts.googleapis.com"
+        ],
+        'img-src': [
+            "'self'", 
+            "data:", 
+            "https://www.google-analytics.com"
+        ],
+        'font-src': [
+            "'self'", 
+            "https://cdn.jsdelivr.net",
+            "https://fonts.gstatic.com"
+        ],
+        'connect-src': [
+            "'self'", 
+            "https://www.google-analytics.com"
+        ]
+    }
+    
+    # Initialize Talisman with CSP
+    Talisman(
+        app,
+        content_security_policy=csp,
+        content_security_policy_nonce_in=['script-src', 'style-src'],
+        force_https=True,
+        strict_transport_security=True,
+        strict_transport_security_preload=True,
+        session_cookie_secure=True,
+        session_cookie_http_only=True
+    )            
     
     current_app.logger.info("Applying static file optimizations for production")
-    
-    # Set long cache expiration for static files
-    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000  # 1 year in seconds
     
     # Create compressed versions of static files
     precompress_static_files(app)

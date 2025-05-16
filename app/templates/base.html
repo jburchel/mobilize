@@ -3,28 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Resource hints for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <!-- Add HTTP caching headers -->
+    <meta http-equiv="Cache-Control" content="public, max-age=31536000">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <title>{% block title %}Mobilize CRM{% endblock %}</title>
-    <!-- Cache-busting timestamp: {{ range(1, 1000000) | random }} -->
-    <!-- Design Tokens -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}?v={{ range(1, 1000000) | random }}">
-    <!-- Modernized Components -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-components.css') }}?v={{ range(1, 1000000) | random }}">
-    <!-- External CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Local Font Awesome -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}?v={{ range(1, 1000000) | random }}">
-    <!-- Application CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v={{ range(1, 1000000) | random }}">
-    <!-- Badge fix CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}?v={{ range(1, 1000000) | random }}">
-    <!-- Direct badge override CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-override.css') }}?v={{ range(1, 1000000) | random }}">
-    <!-- Direct badge fix CSS (highest priority) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/direct-badge-fix.css') }}?v={{ range(1, 1000000) | random }}">
-    <!-- Pipeline Badge CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}?v={{ range(1, 1000000) | random }}">
+    <!-- Use a consistent version identifier based on deployment time -->
+    {% set version = '1.0.' + config.get('DEPLOYMENT_ID', '1') %}
+    <!-- Critical CSS first for faster rendering -->
+    <link rel="preload" href="{{ url_for('static', filename='css/styles.css') }}?v={{ version }}" as="style">
+    
+    <!-- External CSS with SRI for security and performance -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" crossorigin="anonymous">
+    
+    <!-- Consolidated CSS files with proper versioning -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern-components.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v={{ version }}">
+    
+    <!-- Badge styles consolidated -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-fix.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/badge-override.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/direct-badge-fix.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pipeline-badges.css') }}?v={{ version }}">
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -210,18 +216,23 @@
         </div>
     </div>
 
-    <!-- JavaScript Dependencies with cache-busting: {{ range(1, 1000000) | random }} -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/scripts.js') }}?v={{ range(1, 1000000) | random }}"></script>
-    <script src="{{ url_for('static', filename='js/search.js') }}?v={{ range(1, 1000000) | random }}"></script>
-    <script src="{{ url_for('static', filename='js/direct-sidebar-fix.js') }}?v={{ range(1, 1000000) | random }}"></script>
-    <script src="{{ url_for('static', filename='js/force-icons-fix.js') }}?v={{ range(1, 1000000) | random }}"></script>
+    <!-- JavaScript Dependencies with proper versioning and async loading where appropriate -->
+    <!-- Core libraries loaded synchronously for critical functionality -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    
+    <!-- Application scripts with consistent versioning -->
+    <script src="{{ url_for('static', filename='js/scripts.js') }}?v={{ version }}"></script>
+    
+    <!-- Non-critical scripts loaded with defer attribute -->
+    <script src="{{ url_for('static', filename='js/search.js') }}?v={{ version }}" defer></script>
+    <script src="{{ url_for('static', filename='js/direct-sidebar-fix.js') }}?v={{ version }}" defer></script>
+    <script src="{{ url_for('static', filename='js/force-icons-fix.js') }}?v={{ version }}" defer></script>
     
     {% block scripts %}{% endblock %}
     <!-- Global Email Modal Container for AJAX-loaded modals -->
     <div id="global-email-modal-container"></div>
-    <script src="{{ url_for('static', filename='js/email-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/email-modal.js') }}?v={{ version }}" defer></script>
 <!-- Custom script for hamburger menu -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
