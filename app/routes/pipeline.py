@@ -724,3 +724,15 @@ def church_pipeline_direct():
 
 # Import the pipeline_bp from the controller
 # All routes are defined in the controller 
+
+@pipeline_bp.route('/debug')
+@login_required
+def debug():
+    """Debug page for diagnosing pipeline drag and drop issues."""
+    # Get the first pipeline for testing
+    pipeline = Pipeline.query.first()
+    # Get some stages
+    stages = PipelineStage.query.filter_by(pipeline_id=pipeline.id).all()
+    
+    current_app.logger.info(f"Loaded debug page with pipeline {pipeline.id} and {len(stages)} stages")
+    return render_template('pipeline/debug.html')
