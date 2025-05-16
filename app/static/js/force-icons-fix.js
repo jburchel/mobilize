@@ -1,41 +1,43 @@
 // Force icons fix - ensures all sidebar icons and badges are visible
-// LOCAL VERSION - v3.0 with direct DOM injection
+// LOCAL VERSION - v4.0 (fixed duplicate icons)
 
-// Immediately inject Font Awesome to ensure it's available
-(function() {
-    console.log('IMMEDIATE Font Awesome injection - LOCAL VERSION');
-    // Inject Font Awesome CSS directly into the page
-    const fontAwesomeCSS = `
-    .fas{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;display:inline-block;font-style:normal;font-variant:normal;text-rendering:auto;line-height:1}.fa-home:before{content:"\f015"}.fa-users:before{content:"\f0c0"}.fa-church:before{content:"\f51d"}.fa-tasks:before{content:"\f0ae"}.fa-envelope:before{content:"\f0e0"}.fa-project-diagram:before{content:"\f542"}.fa-chart-bar:before{content:"\f080"}.fa-mail-bulk:before{content:"\f674"}.fa-cog:before{content:"\f013"}.fa-user-shield:before{content:"\f505"}.fa-angle-double-left:before{content:"\f100"}.fa-angle-double-right:before{content:"\f101"}.fa-comment-alt:before{content:"\f27a"}
-    @font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:900;font-display:block;src:url("/static/vendor/fontawesome/webfonts/fa-solid-900.eot");src:url("/static/vendor/fontawesome/webfonts/fa-solid-900.eot?#iefix") format("embedded-opentype"),url("/static/vendor/fontawesome/webfonts/fa-solid-900.woff2") format("woff2"),url("/static/vendor/fontawesome/webfonts/fa-solid-900.woff") format("woff"),url("/static/vendor/fontawesome/webfonts/fa-solid-900.ttf") format("truetype"),url("/static/vendor/fontawesome/webfonts/fa-solid-900.svg#fontawesome") format("svg")}.fa,.fas{font-family:"Font Awesome 5 Free";font-weight:900}
-    @font-face{font-family:"Font Awesome 5 Brands";font-style:normal;font-weight:400;font-display:block;src:url("/static/vendor/fontawesome/webfonts/fa-brands-400.eot");src:url("/static/vendor/fontawesome/webfonts/fa-brands-400.eot?#iefix") format("embedded-opentype"),url("/static/vendor/fontawesome/webfonts/fa-brands-400.woff2") format("woff2"),url("/static/vendor/fontawesome/webfonts/fa-brands-400.woff") format("woff"),url("/static/vendor/fontawesome/webfonts/fa-brands-400.ttf") format("truetype"),url("/static/vendor/fontawesome/webfonts/fa-brands-400.svg#fontawesome") format("svg")}.fab{font-family:"Font Awesome 5 Brands";font-weight:400}
-    .fa-google:before{content:"\f1a0"}
-    `;
+// Check if Font Awesome is already loaded to avoid duplicates
+function isFontAwesomeLoaded() {
+    // Check if any Font Awesome stylesheets are already loaded
+    const stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
+    for (let i = 0; i < stylesheets.length; i++) {
+        if (stylesheets[i].href && stylesheets[i].href.includes('fontawesome')) {
+            return true;
+        }
+    }
     
-    const style = document.createElement('style');
-    style.id = 'force-font-awesome-css';
-    style.textContent = fontAwesomeCSS;
-    document.head.appendChild(style);
+    // Check if any Font Awesome styles are already injected
+    const styles = document.querySelectorAll('style');
+    for (let i = 0; i < styles.length; i++) {
+        if (styles[i].id === 'force-font-awesome-css') {
+            return true;
+        }
+    }
     
-    // Also load the full Font Awesome CSS from local files
+    return false;
+}
+
+// Only inject Font Awesome if it's not already loaded
+if (!isFontAwesomeLoaded()) {
+    console.log('Font Awesome not detected, loading it locally');
+    
+    // Load the Font Awesome CSS from local files
     const fontAwesomeLink = document.createElement('link');
     fontAwesomeLink.rel = 'stylesheet';
     fontAwesomeLink.href = '/static/vendor/fontawesome/css/all.min.css';
     document.head.appendChild(fontAwesomeLink);
-})();
+}
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Force icons fix loaded - LOCAL VERSION');
+    console.log('Force icons fix loaded - LOCAL VERSION v4.0');
     
-    // Force load Font Awesome if it's not available
-    if (!window.FontAwesome) {
-        console.log('Font Awesome not detected, loading it manually');
-        
-        // Add the Font Awesome script from local files for better icon rendering
-        const fontAwesomeScript = document.createElement('script');
-        fontAwesomeScript.src = '/static/vendor/fontawesome/js/all.min.js';
-        document.body.appendChild(fontAwesomeScript);
-    }
+    // We'll focus on fixing icon visibility without loading Font Awesome again
+    // The icons are already loaded by the base.html template or the code above
     
     // Function to ensure all sidebar links have visible icons
     function fixSidebarIcons() {
