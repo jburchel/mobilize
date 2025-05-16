@@ -2,6 +2,24 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Force icons fix loaded');
     
+    // Force load Font Awesome if it's not available
+    if (!window.FontAwesome) {
+        console.log('Font Awesome not detected, loading it manually');
+        const fontAwesomeLink = document.createElement('link');
+        fontAwesomeLink.rel = 'stylesheet';
+        fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+        fontAwesomeLink.integrity = 'sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==';
+        fontAwesomeLink.crossOrigin = 'anonymous';
+        document.head.appendChild(fontAwesomeLink);
+        
+        // Also add the Font Awesome script for better icon rendering
+        const fontAwesomeScript = document.createElement('script');
+        fontAwesomeScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js';
+        fontAwesomeScript.integrity = 'sha512-Tn2m0TIpgVyTzzvmxLNuqbSJH3JP8jm+Cy3hvHrW7ndTDcJ1w5mBiksqDBb8GpE2ksktFvDB/ykZ0mDpsZj20w==';
+        fontAwesomeScript.crossOrigin = 'anonymous';
+        document.body.appendChild(fontAwesomeScript);
+    }
+    
     // Function to ensure all sidebar links have visible icons
     function fixSidebarIcons() {
         // Map of link text to appropriate Font Awesome icon classes
@@ -19,28 +37,51 @@ document.addEventListener('DOMContentLoaded', function() {
             'Admin Panel': 'fas fa-user-shield'
         };
         
-        // Get all nav links in the sidebar
-        const navLinks = document.querySelectorAll('#sidebar .nav-link');
+        // Get all nav links in the sidebar - expanded selector to catch all possible sidebar structures
+        const navLinks = document.querySelectorAll('#sidebar .nav-link, .sidebar .nav-link, .sidebar-nav .list-group-item, .main-nav .nav-link');
+        
+        console.log(`Found ${navLinks.length} sidebar navigation links`);
         
         navLinks.forEach(link => {
-            // Get the text content of the link
-            const linkText = link.querySelector('.nav-text')?.textContent.trim();
+            // Get the text content of the link - try different selectors
+            let linkText = '';
+            const navTextElement = link.querySelector('.nav-text');
+            
+            if (navTextElement) {
+                linkText = navTextElement.textContent.trim();
+            } else {
+                // If no .nav-text element, try to get text directly from the link
+                // First, clone the link to avoid modifying the DOM
+                const linkClone = link.cloneNode(true);
+                
+                // Remove any icons to get just the text
+                const icons = linkClone.querySelectorAll('i');
+                icons.forEach(icon => icon.remove());
+                
+                // Get the text content
+                linkText = linkClone.textContent.trim();
+            }
             
             if (linkText && iconMap[linkText]) {
                 // Check if link already has an icon
                 let icon = link.querySelector('i');
                 
-                // If no icon exists or it's empty, create a new one
-                if (!icon || !icon.className) {
+                // If no icon exists or it's empty or has no classes, create a new one
+                if (!icon || !icon.className || icon.className === '') {
                     // If icon exists but has no classes, remove it
                     if (icon) icon.remove();
                     
                     // Create new icon with proper classes
                     icon = document.createElement('i');
                     icon.className = iconMap[linkText] + ' me-2';
+                    
+                    // Apply direct styling to ensure visibility
                     icon.style.display = 'inline-block';
                     icon.style.width = '20px';
                     icon.style.textAlign = 'center';
+                    icon.style.verticalAlign = 'middle';
+                    icon.style.color = 'inherit';
+                    icon.style.fontSize = '1rem';
                     
                     // Insert icon at beginning of link
                     if (link.firstChild) {
@@ -50,8 +91,66 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     console.log(`Added icon for ${linkText}`);
+                } else {
+                    // Ensure existing icon is visible
+                    icon.style.display = 'inline-block';
+                    icon.style.width = '20px';
+                    icon.style.textAlign = 'center';
+                    icon.style.verticalAlign = 'middle';
+                    icon.style.color = 'inherit';
+                    icon.style.fontSize = '1rem';
                 }
             }
+        });
+        
+        // Special fix for sidebar toggle button
+        fixSidebarToggleButton();
+    }
+    
+    // Function to fix the sidebar toggle button icon
+    function fixSidebarToggleButton() {
+        // Find the sidebar toggle button
+        const toggleButtons = document.querySelectorAll('#sidebar-toggle-btn, .sidebar-toggle');
+        
+        toggleButtons.forEach(button => {
+            // Check if button already has an icon
+            let icon = button.querySelector('i, .toggle-icon');
+            
+            if (!icon || !icon.className || icon.className === '') {
+                // If icon exists but has no classes, remove it
+                if (icon) icon.remove();
+                
+                // Create new icon with proper classes
+                icon = document.createElement('i');
+                icon.className = 'fas fa-angle-double-left toggle-icon';
+                
+                // Apply direct styling
+                icon.style.display = 'inline-block';
+                icon.style.color = 'white';
+                icon.style.fontSize = '1.2rem';
+                icon.style.margin = '0 !important';
+                
+                // Add to button
+                button.appendChild(icon);
+                console.log('Added icon to sidebar toggle button');
+            } else {
+                // Ensure existing icon is visible
+                icon.style.display = 'inline-block';
+                icon.style.color = 'white';
+                icon.style.fontSize = '1.2rem';
+                icon.style.margin = '0';
+            }
+            
+            // Make sure button is visible and styled properly
+            button.style.padding = '10px';
+            button.style.fontSize = '1.2rem';
+            button.style.border = '1px solid rgba(255,255,255,0.5)';
+            button.style.width = '50px';
+            button.style.height = '50px';
+            button.style.borderRadius = '50%';
+            button.style.display = 'flex';
+            button.style.alignItems = 'center';
+            button.style.justifyContent = 'center';
         });
     }
     
@@ -100,24 +199,81 @@ document.addEventListener('DOMContentLoaded', function() {
             'Emails Sent': 'fas fa-envelope'
         };
         
-        // Get all dashboard cards
-        const cards = document.querySelectorAll('.dashboard-card, .stat-card');
+        // Get all dashboard cards - expanded selector to catch all possible card types
+        const cards = document.querySelectorAll('.dashboard-card, .stat-card, .kpi-card, .card');
+        
+        console.log(`Found ${cards.length} dashboard cards`);
         
         cards.forEach(card => {
             // Try to determine card type from heading or content
             let cardType = null;
-            const cardTitle = card.querySelector('h5, h4, h3, .card-title')?.textContent.trim();
+            let cardTitle = card.querySelector('.kpi-card-title, h5, h4, h3, .card-title')?.textContent.trim();
             
             if (cardTitle && cardIconMap[cardTitle]) {
                 cardType = cardTitle;
             }
             
-            if (cardType) {
+            // Special handling for KPI cards
+            const kpiIconContainer = card.querySelector('.kpi-card-icon');
+            if (kpiIconContainer) {
+                let icon = kpiIconContainer.querySelector('i');
+                
+                // If no icon exists or it's empty, create a new one based on the card title
+                if (!icon || !icon.className || icon.className === '') {
+                    // If icon exists but has no classes, remove it
+                    if (icon) icon.remove();
+                    
+                    // Find the card title if we haven't already
+                    if (!cardTitle) {
+                        cardTitle = card.querySelector('.kpi-card-title')?.textContent.trim();
+                    }
+                    
+                    // Create new icon with proper classes
+                    icon = document.createElement('i');
+                    
+                    // Set icon class based on title
+                    if (cardTitle && cardIconMap[cardTitle]) {
+                        icon.className = cardIconMap[cardTitle];
+                    } else if (cardTitle && cardTitle.includes('People')) {
+                        icon.className = 'fas fa-users';
+                    } else if (cardTitle && cardTitle.includes('Church')) {
+                        icon.className = 'fas fa-church';
+                    } else if (cardTitle && cardTitle.includes('Task')) {
+                        icon.className = 'fas fa-tasks';
+                    } else if (cardTitle && (cardTitle.includes('Email') || cardTitle.includes('Communication'))) {
+                        icon.className = 'fas fa-envelope';
+                    } else {
+                        // Default icon if we can't determine the type
+                        icon.className = 'fas fa-chart-line';
+                    }
+                    
+                    // Apply direct styling to ensure visibility
+                    icon.style.fontSize = '2rem';
+                    icon.style.color = 'white';
+                    icon.style.textShadow = '0 0 3px rgba(0,0,0,0.5)';
+                    icon.style.display = 'inline-block';
+                    icon.style.width = 'auto';
+                    icon.style.height = 'auto';
+                    icon.style.lineHeight = '1';
+                    icon.style.verticalAlign = 'middle';
+                    
+                    // Add the icon to the container
+                    kpiIconContainer.appendChild(icon);
+                    console.log(`Added icon for KPI card: ${cardTitle || 'unknown'}`);
+                } else {
+                    // Ensure existing icon is visible
+                    icon.style.display = 'inline-block';
+                    icon.style.fontSize = '2rem';
+                    icon.style.color = 'white';
+                    icon.style.textShadow = '0 0 3px rgba(0,0,0,0.5)';
+                }
+            } else if (cardType) {
+                // Regular cards (non-KPI)
                 // Check if card already has an icon
                 let icon = card.querySelector('i');
                 
                 // If no icon exists or it's empty, create a new one
-                if (!icon || !icon.className) {
+                if (!icon || !icon.className || icon.className === '') {
                     // If icon exists but has no classes, remove it
                     if (icon) icon.remove();
                     
@@ -127,6 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     icon.style.fontSize = '2rem';
                     icon.style.color = 'white';
                     icon.style.textShadow = '0 0 3px rgba(0,0,0,0.5)';
+                    icon.style.display = 'inline-block';
                     
                     // Find a good place to insert the icon
                     const cardHeader = card.querySelector('.card-header, .card-title');
@@ -138,6 +295,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         console.log(`Added icon for dashboard card: ${cardType}`);
                     }
+                } else {
+                    // Ensure existing icon is visible
+                    icon.style.display = 'inline-block';
+                    icon.style.fontSize = '2rem';
+                    icon.style.color = 'white';
+                    icon.style.textShadow = '0 0 3px rgba(0,0,0,0.5)';
                 }
             }
         });
