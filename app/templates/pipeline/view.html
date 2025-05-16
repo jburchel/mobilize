@@ -186,97 +186,82 @@
                         <li class="list-group-item contact-item pipeline-contact" 
                             id="contact-{{ contact.id }}" 
                             data-id="{{ contact.id }}"
-                            style="min-height: 100px; position: relative; padding: 10px;">
-                            <div class="card-grid">
-                                <!-- Left side - Move button -->
-                                <div class="move-button-container drag-handle">
-                                    <div class="btn btn-sm btn-primary move-btn">
-                                        <i class="fas fa-grip-vertical"></i>
-                                        <span>Drag</span>
-                                    </div>
+                            style="position: relative; min-height: 100px; padding: 0;">
+                            
+                            <div style="display: flex; height: 100%;">
+                                <!-- Left side - Drag handle (first column) -->
+                                <div class="drag-handle" style="width: 40px; background-color: #0d6efd; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="fas fa-grip-vertical"></i>
+                                    <span style="font-size: 11px; margin-top: 3px;">Drag</span>
                                 </div>
                                 
-                                <!-- Right side - Contact info -->
-                                <div class="contact-info">
-                                    <!-- Type row -->
-                                    <div class="contact-type mb-1">
-                                        {% if contact.contact %}
-                                            {% if contact.contact.contact_type == 'person' %}
-                                                <span class="badge bg-primary">PERSON</span>
-                                            {% elif contact.contact.contact_type == 'church' %}
-                                                <span class="badge bg-success">CHURCH</span>
-                                            {% endif %}
-                                        {% endif %}
+                                <!-- Right side - Content (second column) -->
+                                <div style="flex-grow: 1; padding: 10px; position: relative;">
+                                    <!-- Action buttons - Positioned in the top-right of content area -->
+                                    <div style="position: absolute; top: 5px; right: 5px;" class="contact-actions">
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end" style="z-index: 1050;">
+                                                <li>
+                                                    {% if contact.contact and contact.contact.contact_type == 'person' %}
+                                                    <a class="dropdown-item" href="{{ url_for('people.show', id=contact.contact_id) }}">
+                                                        <i class="fas fa-external-link-alt me-2"></i>View Contact
+                                                    </a>
+                                                    {% else %}
+                                                    <a class="dropdown-item" href="{{ url_for('churches.show', id=contact.contact_id) }}">
+                                                        <i class="fas fa-external-link-alt me-2"></i>View Contact
+                                                    </a>
+                                                    {% endif %}
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       data-bs-toggle="modal" 
+                                                       data-bs-target="#moveContactModal" 
+                                                       data-contact-id="{{ contact.id }}" 
+                                                       data-contact-name="{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else 'Unknown Contact' }}" 
+                                                       data-current-stage="{{ contact.current_stage_id }}">
+                                                        <i class="fas fa-exchange-alt me-2"></i>Move
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger remove-contact-btn" href="#" 
+                                                       data-id="{{ contact.id }}" 
+                                                       data-name="{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else 'Unknown Contact' }}">
+                                                        <i class="fas fa-trash-alt me-2"></i>Remove
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                     
-                                    <!-- Name row -->
-                                    <div class="contact-name">
-                                        <strong>{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else "Unknown Contact" }}</strong>
-                                    </div>
-                                    
-                                    <!-- Date added row -->
-                                    <div class="contact-date small text-muted">
-                                        Date: {{ contact.date_added.strftime('%Y-%m-%d') if contact.date_added else 'Unknown' }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Action buttons -->
-                                <div class="contact-actions">
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end position-absolute" style="z-index: 1050;">
-                                            <li>
-                                                <a class="dropdown-item contact-details-btn" href="#" 
-                                                   data-id="{{ contact.id }}" 
-                                                   data-bs-toggle="modal" 
-                                                   data-bs-target="#contactDetailsModal">
-                                                    <i class="fas fa-info-circle me-2"></i>Details
-                                                </a>
-                                            </li>
-                                            <li>
-                                                {% if contact.contact and contact.contact.contact_type == 'person' %}
-                                                <a class="dropdown-item" href="{{ url_for('people.show', id=contact.contact_id) }}">
-                                                    <i class="fas fa-external-link-alt me-2"></i>View Contact
-                                                </a>
-                                                {% else %}
-                                                <a class="dropdown-item" href="{{ url_for('churches.show', id=contact.contact_id) }}">
-                                                    <i class="fas fa-external-link-alt me-2"></i>View Contact
-                                                </a>
+                                    <!-- Contact content -->
+                                    <div style="margin-top: 8px; margin-right: 30px;">
+                                        <!-- Type badge -->
+                                        <div style="margin-bottom: 8px;">
+                                            {% if contact.contact %}
+                                                {% if contact.contact.contact_type == 'person' %}
+                                                    <span class="badge bg-primary">PERSON</span>
+                                                {% elif contact.contact.contact_type == 'church' %}
+                                                    <span class="badge bg-success">CHURCH</span>
                                                 {% endif %}
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item" href="#" 
-                                                   data-bs-toggle="modal" 
-                                                   data-bs-target="#moveContactModal" 
-                                                   data-contact-id="{{ contact.id }}" 
-                                                   data-contact-name="{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else 'Unknown Contact' }}" 
-                                                   data-current-stage="{{ contact.current_stage_id }}">
-                                                    <i class="fas fa-exchange-alt me-2"></i>Move
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item text-danger remove-contact-btn" href="#" 
-                                                   data-id="{{ contact.id }}" 
-                                                   data-name="{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else 'Unknown Contact' }}">
-                                                    <i class="fas fa-trash-alt me-2"></i>Remove
-                                                </a>
-                                            </li>
-                                        </ul>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- Name -->
+                                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">
+                                            {{ contact.contact.get_name() if contact.contact and contact.contact.get_name else "Unknown Contact" }}
+                                        </div>
+                                        
+                                        <!-- Date added -->
+                                        <div class="small text-muted">
+                                            Date: {{ contact.date_added.strftime('%Y-%m-%d') if contact.date_added else 'Unknown' }}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="mt-1 small text-muted">
-                                {% if contact.updated_at %}
-                                Updated {{ contact.updated_at.strftime('%b %d, %Y') }}
-                                {% elif contact.created_at %}
-                                Added {{ contact.created_at.strftime('%b %d, %Y') }}
-                                {% else %}
-                                Date unknown
-                                {% endif %}
                             </div>
                         </li>
                         {% else %}
