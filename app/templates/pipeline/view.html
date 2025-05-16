@@ -28,22 +28,38 @@
         left: 0;
         top: 0;
         bottom: 0;
-        width: 30px;
+        width: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         color: #007bff;
-        border-right: 1px solid #eee;
-        background-color: #f9f9f9;
-        z-index: 100;
+        border-right: 1px solid #ccc;
+        background-color: #e3f2fd;
+        z-index: 999;
+        text-align: center;
+        box-shadow: 1px 0 3px rgba(0,0,0,0.1);
     }
     .contact-move-button:hover {
-        background-color: #e3f2fd;
-        color: #0056b3;
+        background-color: #0d6efd;
+        color: white;
+        box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
     }
     .contact-move-button .fa-exchange-alt {
-        font-size: 14px;
+        font-size: 18px;
+        margin-right: 2px;
+    }
+    
+    .contact-move-button .move-text {
+        font-size: 12px;
+        font-weight: bold;
+        display: block;
+        margin-top: -2px;
+    }
+    
+    .contact-move-button {
+        flex-direction: column;
+        width: 45px;
     }
     .contact-item.sortable-ghost {
         opacity: 0.4;
@@ -115,12 +131,13 @@
                         id="stage-{{ stage.id }}" 
                         data-stage-id="{{ stage.id }}">
                         {% for contact in contacts_by_stage[stage.id] %}
-                        <li class="list-group-item contact-item pipeline-contact pl-4" 
+                        <li class="list-group-item contact-item pipeline-contact" 
                             id="contact-{{ contact.id }}" 
                             data-id="{{ contact.id }}"
-                            style="padding-left: 40px !important;">
-                            <div class="contact-move-button" title="Click to move">
+                            style="padding-left: 55px !important; min-height: 80px; position: relative;">
+                            <div class="contact-move-button" title="Click to move this contact" onclick="showMoveModal({{ contact.id }}, '{{ contact.contact.get_name() if contact.contact and contact.contact.get_name else "Unknown Contact" }}', {{ contact.current_stage_id }})">
                                 <i class="fas fa-exchange-alt"></i>
+                                <span class="move-text">Move</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -366,31 +383,36 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Pipeline view loaded - Simple click-to-move approach');
+// Global function to handle move button clicks
+function showMoveModal(contactId, contactName, currentStageId) {
+    console.log('Showing move modal from inline handler for:', contactId, contactName);
     
-    // Add click handlers to move buttons
+    // Set form data for the move modal
+    document.getElementById('moveContactName').textContent = contactName;
+    document.getElementById('moveContactForm').setAttribute('action', `/pipeline/move-contact/${contactId}`);
+    document.getElementById('stage_id').value = currentStageId;
+    
+    // Show the modal
+    const moveModal = new bootstrap.Modal(document.getElementById('moveContactModal'));
+    moveModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Pipeline view loaded - Inline click-to-move approach');
+    
+    // Add redundant click handlers to move buttons (backup method)
     document.querySelectorAll('.contact-move-button').forEach(button => {
         button.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+            // Redundant handler in case inline onclick doesn't work
+            console.log('Backup click handler activated');
             
-            // Find the parent contact item
+            // Get data attributes
             const contactItem = this.closest('.contact-item');
             const contactId = contactItem.dataset.id;
             const contactName = contactItem.querySelector('strong').textContent;
             const currentStageId = contactItem.closest('.pipeline-stage').dataset.stageId;
             
-            console.log('Opening move modal for contact:', contactId, contactName);
-            
-            // Set form data for the move modal
-            document.getElementById('moveContactName').textContent = contactName;
-            document.getElementById('moveContactForm').setAttribute('action', `/pipeline/move-contact/${contactId}`);
-            document.getElementById('stage_id').value = currentStageId;
-            
-            // Show the modal
-            const moveModal = new bootstrap.Modal(document.getElementById('moveContactModal'));
-            moveModal.show();
+            showMoveModal(contactId, contactName, currentStageId);
         });
     });
     
