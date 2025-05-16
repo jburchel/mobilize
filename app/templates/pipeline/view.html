@@ -31,6 +31,14 @@
     .contact-item.sortable-chosen {
         box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         cursor: grabbing;
+        z-index: 1000;
+        transform: scale(1.02);
+        background-color: #f8f9fa;
+    }
+    .being-dragged {
+        opacity: 0.8;
+        transform: scale(1.05);
+        z-index: 1000;
     }
     .drag-handle {
         position: absolute;
@@ -341,35 +349,75 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Pipeline view loaded');
+    console.log('Pipeline view loaded - Enhanced version with debug mode');
+    
+    // Add debug mode toggle
+    const debugMode = false; // Set to true to enable debug logging
+    
+    // Add a debug button to the page if in debug mode
+    if (debugMode) {
+        const debugButton = document.createElement('button');
+        debugButton.className = 'btn btn-sm btn-warning position-fixed bottom-0 end-0 m-3';
+        debugButton.innerHTML = 'Debug Drag & Drop';
+        debugButton.onclick = function() {
+            alert('Debug info: Check browser console for drag & drop events');
+            console.log('Sortable instances:', sortableInstances);
+        };
+        document.body.appendChild(debugButton);
+    }
+    
+    // Debug helper to log all events
+    function logEvent(name, evt) {
+        if (debugMode) {
+            console.log(`${name} event:`, {
+                item: evt.item ? evt.item.id : 'unknown',
+                from: evt.from ? evt.from.id : 'unknown',
+                to: evt.to ? evt.to.id : 'unknown'
+            });
+        }
+    }
     
     // Initialize Sortable for each stage
     const stages = document.querySelectorAll('.pipeline-stage');
     console.log('Found stages:', stages.length);
     
+    // Store all Sortable instances for later reference
+    const sortableInstances = [];
+    
     stages.forEach(stage => {
         console.log('Initializing Sortable for stage:', stage.id);
-        new Sortable(stage, {
-            group: 'pipeline',
-            animation: 150,
+        
+        // Create Sortable instance with enhanced options
+        const sortable = new Sortable(stage, {
+            group: 'pipeline',            // Shared group so items can be moved between lists
+            animation: 150,               // Animation speed in ms
+            easing: 'cubic-bezier(1, 0, 0, 1)', // Smoother animation
             dragClass: 'bg-light',
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            handle: '.drag-handle', // Use the grip icon as the drag handle
-            forceFallback: false,    // Don't force fallback mode for better performance
-            fallbackTolerance: 3,    // Lower tolerance for better responsiveness
-            scroll: true,
-            scrollSensitivity: 80,
-            scrollSpeed: 10,
-            delay: 150,              // Small delay to improve usability on touch devices
-            delayOnTouchOnly: true,  // Only apply delay for touch devices
+            ghostClass: 'sortable-ghost',  // Class for the drop placeholder
+            chosenClass: 'sortable-chosen', // Class for the selected item
+            handle: '.drag-handle',        // Drag handle selector
+            draggable: '.contact-item',    // Elements that can be dragged
+            preventOnFilter: true,         // Prevent default when filter is triggered
+            filter: '.filtered',           // Selectors that should not be draggable
+            dataIdAttr: 'data-id',         // HTML attribute that holds the item ID
+            // Debug events
+            onChoose: function(evt) { logEvent('Choose', evt); },
+            onUnchoose: function(evt) { logEvent('Unchoose', evt); },
             onStart: function(evt) {
-                console.log('Drag started:', evt.item.id);
+                logEvent('Start', evt);
+                // Add visual feedback
+                document.body.style.cursor = 'grabbing';
+                evt.item.classList.add('being-dragged');
             },
             onEnd: function(evt) {
+                logEvent('End', evt);
+                // Reset visual feedback
+                document.body.style.cursor = '';
+                evt.item.classList.remove('being-dragged');
+                
                 const contactId = evt.item.dataset.id;
                 const newStageId = evt.to.dataset.stageId;
                 const oldStageId = evt.from.dataset.stageId;
@@ -377,21 +425,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`Moving contact ${contactId} from stage ${oldStageId} to ${newStageId}`);
                 
                 if (oldStageId !== newStageId) {
+                    // Show loading indicator on the item
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'position-absolute top-0 end-0 p-2';
+                    loadingIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
+                    evt.item.style.position = 'relative';
+                    evt.item.appendChild(loadingIndicator);
+                    
+                    // Get the CSRF token
+                    let csrfToken = '';
+                    const csrfElement = document.querySelector('input[name="csrf_token"]');
+                    if (csrfElement) {
+                        csrfToken = csrfElement.value;
+                    }
+                    
                     // Send AJAX request to move contact
                     fetch(`/pipeline/move-contact/${contactId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+                            'X-CSRFToken': csrfToken
                         },
                         body: JSON.stringify({
                             stage_id: newStageId,
                             notes: 'Moved via drag and drop'
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         console.log('Move response:', data);
+                        // Remove loading indicator
+                        if (loadingIndicator.parentNode) {
+                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        }
+                        
                         if (!data.success) {
                             // Move failed, revert to original position
                             console.error('Move failed:', data.message);
@@ -415,6 +487,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.error('Error moving contact:', error);
                         alert('Error moving contact. Please try again.');
                         
+                        // Remove loading indicator
+                        if (loadingIndicator.parentNode) {
+                            loadingIndicator.parentNode.removeChild(loadingIndicator);
+                        }
+                        
                         // Revert to original position
                         const originalStage = document.querySelector(`#stage-${oldStageId}`);
                         const currentStage = document.querySelector(`#stage-${newStageId}`);
@@ -426,8 +503,32 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     });
                 }
+            },
+            // Additional events for better debugging and user experience
+            onMove: function(evt) {
+                // Return false to prevent moving to certain containers
+                return true; // Allow all moves
+            },
+            onAdd: function(evt) {
+                logEvent('Add', evt);
+                // Item added to this list from another list
+            },
+            onRemove: function(evt) {
+                logEvent('Remove', evt);
+                // Item removed from this list, added to another list
+            },
+            onFilter: function(evt) {
+                logEvent('Filter', evt);
+                // Called when a filtered element is tried to be dragged
+            },
+            onSort: function(evt) {
+                logEvent('Sort', evt);
+                // Called when the order is changed within the same list
             }
         });
+        
+        // Store the instance for later reference
+        sortableInstances.push(sortable);
     });
     
     // Function to update stage counts
