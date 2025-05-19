@@ -106,25 +106,46 @@ def churches_assignments():
 def assign_people():
     """Assign people to a user."""
     try:
+        # Log the raw request for debugging
+        current_app.logger.info(f'Raw request data: {request.data}')
+        current_app.logger.info(f'Content type: {request.content_type}')
+        current_app.logger.info(f'Form data: {request.form}')
+        
         # Get form data
         user_id = request.form.get('user_id')
+        
         # Try all possible formats of form data
-        person_ids = request.form.getlist('person_ids[]')
-        if not person_ids:
+        person_ids = []
+        if 'person_ids[]' in request.form:
+            person_ids = request.form.getlist('person_ids[]')
+        elif 'person_ids' in request.form:
             person_ids = request.form.getlist('person_ids')
         
-        # Log the raw request data for debugging
-        current_app.logger.info(f'Raw form data: {request.form}')
-        current_app.logger.info(f'Assigning people: user_id={user_id}, person_ids={person_ids}')
+        # Log what we found
+        current_app.logger.info(f'Form data parsed: user_id={user_id}, person_ids={person_ids}')
         
         # Check if we're getting JSON data instead of form data
-        if not user_id and request.is_json:
+        if (not user_id or not person_ids) and request.is_json:
             json_data = request.get_json()
             current_app.logger.info(f'JSON data received: {json_data}')
             if json_data:
                 user_id = json_data.get('user_id')
                 person_ids = json_data.get('person_ids', [])
-    
+                current_app.logger.info(f'JSON data parsed: user_id={user_id}, person_ids={person_ids}')
+        
+        # Check for data in request.data if still not found
+        if (not user_id or not person_ids) and request.data:
+            try:
+                import json
+                data_dict = json.loads(request.data)
+                current_app.logger.info(f'Request.data parsed: {data_dict}')
+                if not user_id:
+                    user_id = data_dict.get('user_id')
+                if not person_ids:
+                    person_ids = data_dict.get('person_ids', [])
+            except Exception as e:
+                current_app.logger.error(f'Error parsing request.data: {str(e)}')
+        
         if not user_id or not person_ids:
             current_app.logger.error(f'Missing required data: user_id={user_id}, person_ids={person_ids}')
             return jsonify({'error': 'Missing required data for assignment'}), 400
@@ -179,24 +200,45 @@ def assign_people():
 def assign_churches():
     """Assign churches to a user."""
     try:
+        # Log the raw request for debugging
+        current_app.logger.info(f'Raw request data: {request.data}')
+        current_app.logger.info(f'Content type: {request.content_type}')
+        current_app.logger.info(f'Form data: {request.form}')
+        
         # Get form data
         user_id = request.form.get('user_id')
+        
         # Try all possible formats of form data
-        church_ids = request.form.getlist('church_ids[]')
-        if not church_ids:
+        church_ids = []
+        if 'church_ids[]' in request.form:
+            church_ids = request.form.getlist('church_ids[]')
+        elif 'church_ids' in request.form:
             church_ids = request.form.getlist('church_ids')
         
-        # Log the raw request data for debugging
-        current_app.logger.info(f'Raw form data: {request.form}')
-        current_app.logger.info(f'Assigning churches: user_id={user_id}, church_ids={church_ids}')
+        # Log what we found
+        current_app.logger.info(f'Form data parsed: user_id={user_id}, church_ids={church_ids}')
         
         # Check if we're getting JSON data instead of form data
-        if not user_id and request.is_json:
+        if (not user_id or not church_ids) and request.is_json:
             json_data = request.get_json()
             current_app.logger.info(f'JSON data received: {json_data}')
             if json_data:
                 user_id = json_data.get('user_id')
                 church_ids = json_data.get('church_ids', [])
+                current_app.logger.info(f'JSON data parsed: user_id={user_id}, church_ids={church_ids}')
+        
+        # Check for data in request.data if still not found
+        if (not user_id or not church_ids) and request.data:
+            try:
+                import json
+                data_dict = json.loads(request.data)
+                current_app.logger.info(f'Request.data parsed: {data_dict}')
+                if not user_id:
+                    user_id = data_dict.get('user_id')
+                if not church_ids:
+                    church_ids = data_dict.get('church_ids', [])
+            except Exception as e:
+                current_app.logger.error(f'Error parsing request.data: {str(e)}')
         
         if not user_id or not church_ids:
             current_app.logger.error(f'Missing required data: user_id={user_id}, church_ids={church_ids}')

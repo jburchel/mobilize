@@ -78,7 +78,7 @@
                                         </div>
                                         
                                         <div class="form-group">
-                                            <button type="button" class="btn btn-primary" id="assignButton" onclick="submitAssignForm()">
+                                            <button type="button" class="btn btn-primary" id="assignButton">
                                                 <i class="fas fa-user-plus"></i> Assign Selected People
                                             </button>
                                         </div>
@@ -265,26 +265,38 @@ Details: ' + xhr2.responseText);
     }
     
     $(document).ready(function() {
+        console.log('Document ready');
+        
+        // Attach click handler to assign button
+        $('#assignButton').on('click', function() {
+            console.log('Assign button clicked');
+            submitAssignForm();
+        });
+        
         // Handle select all unassigned people
-        $('#selectAllUnassigned').click(function() {
+        $('#selectAllUnassigned').on('click', function() {
+            console.log('Select all clicked');
             $('.unassigned-person-checkbox').prop('checked', true);
             updateAssignButtonState();
         });
         
         // Handle deselect all unassigned people
-        $('#deselectAllUnassigned').click(function() {
+        $('#deselectAllUnassigned').on('click', function() {
+            console.log('Deselect all clicked');
             $('.unassigned-person-checkbox').prop('checked', false);
             updateAssignButtonState();
         });
         
         // Handle select all assigned people
-        $('#selectAllAssigned').click(function() {
+        $('#selectAllAssigned').on('click', function() {
+            console.log('Select all assigned clicked');
             $('.assigned-person-checkbox').prop('checked', true);
             updateUnassignButtonState();
         });
         
         // Handle deselect all assigned people
-        $('#deselectAllAssigned').click(function() {
+        $('#deselectAllAssigned').on('click', function() {
+            console.log('Deselect all assigned clicked');
             $('.assigned-person-checkbox').prop('checked', false);
             updateUnassignButtonState();
         });

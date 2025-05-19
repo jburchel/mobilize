@@ -78,7 +78,7 @@
                                         </div>
                                         
                                         <div class="form-group">
-                                            <button type="button" class="btn btn-primary" id="assignButton" onclick="submitAssignForm()">
+                                            <button type="button" class="btn btn-primary" id="assignButton">
                                                 <i class="fas fa-church"></i> Assign Selected Churches
                                             </button>
                                         </div>
@@ -265,26 +265,38 @@ Details: ' + xhr2.responseText);
     }
     
     $(document).ready(function() {
+        console.log('Document ready');
+        
+        // Attach click handler to assign button
+        $('#assignButton').on('click', function() {
+            console.log('Assign button clicked');
+            submitAssignForm();
+        });
+        
         // Handle select all unassigned churches
-        $('#selectAllUnassigned').click(function() {
+        $('#selectAllUnassigned').on('click', function() {
+            console.log('Select all clicked');
             $('.unassigned-church-checkbox').prop('checked', true);
             updateAssignButtonState();
         });
         
         // Handle deselect all unassigned churches
-        $('#deselectAllUnassigned').click(function() {
+        $('#deselectAllUnassigned').on('click', function() {
+            console.log('Deselect all clicked');
             $('.unassigned-church-checkbox').prop('checked', false);
             updateAssignButtonState();
         });
         
         // Handle select all assigned churches
-        $('#selectAllAssigned').click(function() {
+        $('#selectAllAssigned').on('click', function() {
+            console.log('Select all assigned clicked');
             $('.assigned-church-checkbox').prop('checked', true);
             updateUnassignButtonState();
         });
         
         // Handle deselect all assigned churches
-        $('#deselectAllAssigned').click(function() {
+        $('#deselectAllAssigned').on('click', function() {
+            console.log('Deselect all assigned clicked');
             $('.assigned-church-checkbox').prop('checked', false);
             updateUnassignButtonState();
         });
