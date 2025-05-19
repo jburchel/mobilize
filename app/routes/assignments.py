@@ -59,6 +59,41 @@ def test_assignment():
         unassigned_people=unassigned_people
     )
 
+
+@assignments_bp.route('/people-simple')
+@login_required
+@admin_required
+def people_assignments_simple():
+    """Show people assignment management page with simplified interface."""
+    # Get all active users
+    users_query = User.query.filter_by(is_active=True)
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        users_query = users_query.filter_by(office_id=current_user.office_id)
+    
+    users = users_query.all()
+    
+    # Get unassigned people
+    unassigned_people_query = Person.query.filter(
+        (Person.assigned_to.is_(None)) | 
+        (Person.assigned_to == '') | 
+        ~Person.assigned_to.in_([u.username for u in users])
+    )
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        unassigned_people_query = unassigned_people_query.filter_by(office_id=current_user.office_id)
+    
+    unassigned_people = unassigned_people_query.all()
+    
+    return render_template(
+        'assignments/people_simple.html',
+        users=users,
+        unassigned_people=unassigned_people,
+        page_title="People Assignments"
+    )
+
 @assignments_bp.route('/people')
 @login_required
 @admin_required
@@ -139,13 +174,22 @@ def churches_assignments():
 def assign_people():
     """Assign people to a user."""
     # Log the raw request for debugging
-    current_app.logger.info(f'Raw form data: {request.form}')
+    current_app.logger.info(f'Raw form data keys: {list(request.form.keys())}')
+    current_app.logger.info(f'Raw form data: {dict(request.form)}')
     
     # Get form data
     user_id = request.form.get('user_id')
     person_ids = request.form.getlist('person_ids')
     
-    current_app.logger.info(f'Assigning people: user_id={user_id}, person_ids={person_ids}')
+    # Log detailed information
+    current_app.logger.info(f'User ID: {user_id}, type: {type(user_id)}')
+    current_app.logger.info(f'Person IDs: {person_ids}, type: {type(person_ids)}')
+    current_app.logger.info(f'Person IDs length: {len(person_ids)}')
+    
+    # Check if we're getting data in a different format
+    if not person_ids and request.form.getlist('person_ids[]'):
+        person_ids = request.form.getlist('person_ids[]')
+        current_app.logger.info(f'Found person_ids[] format: {person_ids}')
     
     if not user_id or not person_ids:
         flash('Missing required data for assignment', 'danger')
