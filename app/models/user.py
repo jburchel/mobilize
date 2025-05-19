@@ -50,7 +50,7 @@ class User(UserMixin, Base):
     )
     assigned_tasks = relationship(
         'Task',
-        primaryjoin="User.id == foreign(Task.assigned_to)",
+        primaryjoin="User.name == Task.assigned_to",
         back_populates='assigned_user'
     )
     owned_tasks = relationship(

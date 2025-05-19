@@ -81,13 +81,13 @@ class Task(Base):
     # Foreign keys
     person_id: Mapped[Optional[int]] = mapped_column(ForeignKey('people.id'))
     church_id: Mapped[Optional[int]] = mapped_column(ForeignKey('churches.id'))
-    assigned_to: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
+    assigned_to: Mapped[Optional[str]] = mapped_column(String(100), default='UNASSIGNED')
     owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
     office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'))
     
     # Relationships
-    assigned_user = relationship("User", back_populates="assigned_tasks", foreign_keys=[assigned_to])
+    assigned_user = relationship("User", back_populates="assigned_tasks", primaryjoin="User.name==Task.assigned_to", foreign_keys=[assigned_to])
     owner = relationship("User", back_populates="owned_tasks", foreign_keys=[owner_id])
     person = relationship("Person", back_populates="tasks")
     church = relationship("Church", back_populates="tasks")
