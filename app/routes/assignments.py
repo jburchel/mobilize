@@ -26,6 +26,39 @@ def index():
                           users=users,
                           page_title="Assignment Management")
 
+@assignments_bp.route('/test')
+@login_required
+@admin_required
+def test_assignment():
+    """Test page for assignment functionality."""
+    # Get all active users
+    users_query = User.query.filter_by(is_active=True)
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        users_query = users_query.filter_by(office_id=current_user.office_id)
+    
+    users = users_query.all()
+    
+    # Get unassigned people
+    unassigned_people_query = Person.query.filter(
+        (Person.assigned_to.is_(None)) | 
+        (Person.assigned_to == '') | 
+        ~Person.assigned_to.in_([u.username for u in users])
+    )
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        unassigned_people_query = unassigned_people_query.filter_by(office_id=current_user.office_id)
+    
+    unassigned_people = unassigned_people_query.all()
+    
+    return render_template(
+        'assignments/test.html',
+        users=users,
+        unassigned_people=unassigned_people
+    )
+
 @assignments_bp.route('/people')
 @login_required
 @admin_required
@@ -105,65 +138,30 @@ def churches_assignments():
 @admin_required
 def assign_people():
     """Assign people to a user."""
-    try:
-        # Log the raw request for debugging
-        current_app.logger.info(f'Raw request data: {request.data}')
-        current_app.logger.info(f'Content type: {request.content_type}')
-        current_app.logger.info(f'Form data: {request.form}')
-        
-        # Get form data
-        user_id = request.form.get('user_id')
-        
-        # Try all possible formats of form data
-        person_ids = []
-        if 'person_ids[]' in request.form:
-            person_ids = request.form.getlist('person_ids[]')
-        elif 'person_ids' in request.form:
-            person_ids = request.form.getlist('person_ids')
-        
-        # Log what we found
-        current_app.logger.info(f'Form data parsed: user_id={user_id}, person_ids={person_ids}')
-        
-        # Check if we're getting JSON data instead of form data
-        if (not user_id or not person_ids) and request.is_json:
-            json_data = request.get_json()
-            current_app.logger.info(f'JSON data received: {json_data}')
-            if json_data:
-                user_id = json_data.get('user_id')
-                person_ids = json_data.get('person_ids', [])
-                current_app.logger.info(f'JSON data parsed: user_id={user_id}, person_ids={person_ids}')
-        
-        # Check for data in request.data if still not found
-        if (not user_id or not person_ids) and request.data:
-            try:
-                import json
-                data_dict = json.loads(request.data)
-                current_app.logger.info(f'Request.data parsed: {data_dict}')
-                if not user_id:
-                    user_id = data_dict.get('user_id')
-                if not person_ids:
-                    person_ids = data_dict.get('person_ids', [])
-            except Exception as e:
-                current_app.logger.error(f'Error parsing request.data: {str(e)}')
-        
-        if not user_id or not person_ids:
-            current_app.logger.error(f'Missing required data: user_id={user_id}, person_ids={person_ids}')
-            return jsonify({'error': 'Missing required data for assignment'}), 400
-    except Exception as e:
-        current_app.logger.error(f'Error processing assignment form data: {str(e)}')
-        return jsonify({'error': str(e)}), 400
+    # Log the raw request for debugging
+    current_app.logger.info(f'Raw form data: {request.form}')
+    
+    # Get form data
+    user_id = request.form.get('user_id')
+    person_ids = request.form.getlist('person_ids')
+    
+    current_app.logger.info(f'Assigning people: user_id={user_id}, person_ids={person_ids}')
+    
+    if not user_id or not person_ids:
+        flash('Missing required data for assignment', 'danger')
+        return redirect(url_for('assignments.people_assignments'))
     
     try:
         # Get the user to assign to
         user = User.query.get(user_id)
         if not user:
-            current_app.logger.error(f'User not found: {user_id}')
-            return jsonify({'error': 'Selected user not found'}), 404
+            flash('Selected user not found', 'danger')
+            return redirect(url_for('assignments.people_assignments'))
         
         # Check if office admin is trying to assign to users outside their office
         if not current_user.is_super_admin() and user.office_id != current_user.office_id:
-            current_app.logger.error(f'Permission denied: User {current_user.id} trying to assign to user {user_id} in different office')
-            return jsonify({'error': 'You can only assign to users in your office'}), 403
+            flash('You can only assign to users in your office', 'danger')
+            return redirect(url_for('assignments.people_assignments'))
         
         # Get the people to assign
         people_query = Person.query.filter(Person.id.in_(person_ids))
@@ -173,91 +171,53 @@ def assign_people():
             people_query = people_query.filter_by(office_id=current_user.office_id)
         
         people = people_query.all()
-        current_app.logger.info(f'Found {len(people)} people to assign')
         
         # Assign people to the user
         for person in people:
             person.assigned_to = user.username
             person.updated_at = datetime.now()
-            current_app.logger.info(f'Assigned person {person.id} to {user.username}')
         
         db.session.commit()
         
-        # Return success response for AJAX
-        return jsonify({
-            'success': True,
-            'message': f'{len(people)} people assigned to {user.full_name}',
-            'assigned_count': len(people)
-        })
+        flash(f'{len(people)} people assigned to {user.full_name}', 'success')
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error assigning people: {str(e)}')
-        return jsonify({'error': f'Error assigning people: {str(e)}'}), 500
+        flash(f'Error assigning people: {str(e)}', 'danger')
+    
+    return redirect(url_for('assignments.people_assignments'))
+    
+
 
 @assignments_bp.route('/assign-churches', methods=['POST'])
 @login_required
 @admin_required
 def assign_churches():
     """Assign churches to a user."""
-    try:
-        # Log the raw request for debugging
-        current_app.logger.info(f'Raw request data: {request.data}')
-        current_app.logger.info(f'Content type: {request.content_type}')
-        current_app.logger.info(f'Form data: {request.form}')
-        
-        # Get form data
-        user_id = request.form.get('user_id')
-        
-        # Try all possible formats of form data
-        church_ids = []
-        if 'church_ids[]' in request.form:
-            church_ids = request.form.getlist('church_ids[]')
-        elif 'church_ids' in request.form:
-            church_ids = request.form.getlist('church_ids')
-        
-        # Log what we found
-        current_app.logger.info(f'Form data parsed: user_id={user_id}, church_ids={church_ids}')
-        
-        # Check if we're getting JSON data instead of form data
-        if (not user_id or not church_ids) and request.is_json:
-            json_data = request.get_json()
-            current_app.logger.info(f'JSON data received: {json_data}')
-            if json_data:
-                user_id = json_data.get('user_id')
-                church_ids = json_data.get('church_ids', [])
-                current_app.logger.info(f'JSON data parsed: user_id={user_id}, church_ids={church_ids}')
-        
-        # Check for data in request.data if still not found
-        if (not user_id or not church_ids) and request.data:
-            try:
-                import json
-                data_dict = json.loads(request.data)
-                current_app.logger.info(f'Request.data parsed: {data_dict}')
-                if not user_id:
-                    user_id = data_dict.get('user_id')
-                if not church_ids:
-                    church_ids = data_dict.get('church_ids', [])
-            except Exception as e:
-                current_app.logger.error(f'Error parsing request.data: {str(e)}')
-        
-        if not user_id or not church_ids:
-            current_app.logger.error(f'Missing required data: user_id={user_id}, church_ids={church_ids}')
-            return jsonify({'error': 'Missing required data for assignment'}), 400
-    except Exception as e:
-        current_app.logger.error(f'Error processing assignment form data: {str(e)}')
-        return jsonify({'error': str(e)}), 400
+    # Log the raw request for debugging
+    current_app.logger.info(f'Raw form data: {request.form}')
+    
+    # Get form data
+    user_id = request.form.get('user_id')
+    church_ids = request.form.getlist('church_ids')
+    
+    current_app.logger.info(f'Assigning churches: user_id={user_id}, church_ids={church_ids}')
+    
+    if not user_id or not church_ids:
+        flash('Missing required data for assignment', 'danger')
+        return redirect(url_for('assignments.churches_assignments'))
     
     try:
         # Get the user to assign to
         user = User.query.get(user_id)
         if not user:
-            current_app.logger.error(f'User not found: {user_id}')
-            return jsonify({'error': 'Selected user not found'}), 404
+            flash('Selected user not found', 'danger')
+            return redirect(url_for('assignments.churches_assignments'))
         
         # Check if office admin is trying to assign to users outside their office
         if not current_user.is_super_admin() and user.office_id != current_user.office_id:
-            current_app.logger.error(f'Permission denied: User {current_user.id} trying to assign to user {user_id} in different office')
-            return jsonify({'error': 'You can only assign to users in your office'}), 403
+            flash('You can only assign to users in your office', 'danger')
+            return redirect(url_for('assignments.churches_assignments'))
         
         # Get the churches to assign
         churches_query = Church.query.filter(Church.id.in_(church_ids))
@@ -267,26 +227,21 @@ def assign_churches():
             churches_query = churches_query.filter_by(office_id=current_user.office_id)
         
         churches = churches_query.all()
-        current_app.logger.info(f'Found {len(churches)} churches to assign')
         
         # Assign churches to the user
         for church in churches:
             church.assigned_to = user.username
             church.updated_at = datetime.now()
-            current_app.logger.info(f'Assigned church {church.id} to {user.username}')
         
         db.session.commit()
         
-        # Return success response for AJAX
-        return jsonify({
-            'success': True,
-            'message': f'{len(churches)} churches assigned to {user.full_name}',
-            'assigned_count': len(churches)
-        })
+        flash(f'{len(churches)} churches assigned to {user.full_name}', 'success')
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error assigning churches: {str(e)}')
-        return jsonify({'error': f'Error assigning churches: {str(e)}'}), 500
+        flash(f'Error assigning churches: {str(e)}', 'danger')
+    
+    return redirect(url_for('assignments.churches_assignments'))
 
 @assignments_bp.route('/get-user-people/<int:user_id>')
 @login_required

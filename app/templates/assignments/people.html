@@ -19,7 +19,7 @@
                                     <h5 class="card-title">Unassigned People</h5>
                                 </div>
                                 <div class="card-body">
-                                    <form id="assignPeopleForm" action="{{ url_for('assignments.assign_people') }}" method="POST" enctype="multipart/form-data" onsubmit="return validateAssignForm()">
+                                    <form id="assignForm" method="post" action="{{ url_for('assignments.assign_people') }}">
                                         <div class="form-group mb-3">
                                             <label for="userSelect">Assign to User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>
@@ -59,7 +59,7 @@
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}" onchange="updateAssignButtonState()">
+                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}">
                                                                     </div>
                                                                 </td>
                                                                 <td>{{ person.first_name }} {{ person.last_name }}</td>
@@ -78,7 +78,7 @@
                                         </div>
                                         
                                         <div class="form-group">
-                                            <button type="button" class="btn btn-primary" id="assignButton">
+                                            <button type="submit" class="btn btn-primary" id="assignButton">
                                                 <i class="fas fa-user-plus"></i> Assign Selected People
                                             </button>
                                         </div>

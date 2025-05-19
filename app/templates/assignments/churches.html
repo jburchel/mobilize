@@ -59,7 +59,7 @@
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids" value="{{ church.id }}" id="church{{ church.id }}" onchange="updateAssignButtonState()">
+                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids" value="{{ church.id }}" id="church{{ church.id }}">
                                                                     </div>
                                                                 </td>
                                                                 <td>{{ church.name }}</td>
@@ -78,7 +78,7 @@
                                         </div>
                                         
                                         <div class="form-group">
-                                            <button type="button" class="btn btn-primary" id="assignButton">
+                                            <button type="submit" class="btn btn-primary" id="assignButton">
                                                 <i class="fas fa-church"></i> Assign Selected Churches
                                             </button>
                                         </div>
