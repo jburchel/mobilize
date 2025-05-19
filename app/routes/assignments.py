@@ -283,18 +283,21 @@ def get_user_churches(user_id):
         current_app.logger.info(f'Looking for churches assigned to user {user.username}')
         
         # Try multiple query approaches to find assigned churches
-        # First try exact match
+        # First try exact match by username
         churches_query1 = Church.query.filter(Church.assigned_to == user.username)
-        # Then try case-insensitive match
+        # Then try case-insensitive match by username
         churches_query2 = Church.query.filter(Church.assigned_to.ilike(user.username))
-        # Then try partial match
+        # Then try partial match by username
         churches_query3 = Church.query.filter(Church.assigned_to.ilike(f'%{user.username}%'))
+        # Also try to find churches where the owner_id matches the user's ID
+        churches_query4 = Church.query.filter(Church.owner_id == user.id)
         
         # Filter by office for non-super admins
         if not current_user.is_super_admin():
             churches_query1 = churches_query1.filter_by(office_id=current_user.office_id)
             churches_query2 = churches_query2.filter_by(office_id=current_user.office_id)
             churches_query3 = churches_query3.filter_by(office_id=current_user.office_id)
+            churches_query4 = churches_query4.filter_by(office_id=current_user.office_id)
         
         # Try each query in sequence
         churches = churches_query1.all()
@@ -307,6 +310,10 @@ def get_user_churches(user_id):
         if not churches:
             churches = churches_query3.all()
             current_app.logger.info(f'Partial match found {len(churches)} churches')
+            
+        if not churches:
+            churches = churches_query4.all()
+            current_app.logger.info(f'Owner ID match found {len(churches)} churches')
         
         # Convert to dict for JSON response with error handling
         churches_list = []

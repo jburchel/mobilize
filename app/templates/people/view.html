@@ -281,7 +281,7 @@
                                     {% for task in tasks %}
                                         <tr>
                                             <td>{{ task.title }}</td>
-                                            <td>{{ task.due_date.strftime('%Y-%m-%d') }}</td>
+                                            <td>{% if task.due_date %}{{ task.due_date.strftime('%Y-%m-%d') }}{% else %}No date{% endif %}</td>
                                             <td>
                                                 <span class="badge bg-{{ task.priority|string|lower }}">
                                                     {{ task.priority }}
@@ -328,7 +328,7 @@
                                         <h6 class="mb-1">{{ comm.type }}</h6>
                                         <p class="mb-1">{{ comm.notes }}</p>
                                         <small class="text-muted">
-                                            {{ comm.date.strftime('%Y-%m-%d %H:%M') }}
+                                            {% if comm.date %}{{ comm.date.strftime('%Y-%m-%d %H:%M') }}{% else %}No date{% endif %}
                                         </small>
                                     </div>
                                 </div>

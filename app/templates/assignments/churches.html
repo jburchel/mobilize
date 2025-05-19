@@ -59,7 +59,7 @@
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids[]" value="{{ church.id }}" id="church{{ church.id }}">
+                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids" value="{{ church.id }}" id="church{{ church.id }}" onchange="updateAssignButtonState()">
                                                                     </div>
                                                                 </td>
                                                                 <td>{{ church.name }}</td>
@@ -185,6 +185,7 @@
         function updateAssignButtonState() {
             var anyChecked = $('.unassigned-church-checkbox:checked').length > 0;
             var userSelected = $('#userSelect').val() !== '';
+            console.log('Churches - Checkboxes checked:', anyChecked, 'User selected:', userSelected);
             $('#assignButton').prop('disabled', !(anyChecked && userSelected));
         }
         
@@ -195,8 +196,11 @@
         }
         
         // Listen for changes in checkboxes and user selection
-        $('.unassigned-church-checkbox').change(updateAssignButtonState);
+        $(document).on('change', '.unassigned-church-checkbox', updateAssignButtonState);
         $('#userSelect').change(updateAssignButtonState);
+        
+        // Initialize button states on page load
+        updateAssignButtonState();
         
         // Load assigned churches when a user is selected
         $('#viewUserSelect').change(function() {
@@ -220,7 +224,7 @@
                                     <tr>
                                         <td>
                                             <div class="form-check">
-                                                <input class="form-check-input assigned-church-checkbox" type="checkbox" name="church_ids[]" value="${church.id}" id="assignedChurch${church.id}">
+                                                <input class="form-check-input assigned-church-checkbox" type="checkbox" name="church_ids" value="${church.id}" id="assignedChurch${church.id}">
                                             </div>
                                         </td>
                                         <td>${church.name}</td>

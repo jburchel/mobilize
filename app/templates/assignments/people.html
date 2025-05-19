@@ -59,7 +59,7 @@
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids[]" value="{{ person.id }}" id="person{{ person.id }}">
+                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}" onchange="updateAssignButtonState()">
                                                                     </div>
                                                                 </td>
                                                                 <td>{{ person.first_name }} {{ person.last_name }}</td>
@@ -185,6 +185,7 @@
         function updateAssignButtonState() {
             var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
             var userSelected = $('#userSelect').val() !== '';
+            console.log('Checkboxes checked:', anyChecked, 'User selected:', userSelected);
             $('#assignButton').prop('disabled', !(anyChecked && userSelected));
         }
         
@@ -195,8 +196,11 @@
         }
         
         // Listen for changes in checkboxes and user selection
-        $('.unassigned-person-checkbox').change(updateAssignButtonState);
+        $(document).on('change', '.unassigned-person-checkbox', updateAssignButtonState);
         $('#userSelect').change(updateAssignButtonState);
+        
+        // Initialize button states on page load
+        updateAssignButtonState();
         
         // Load assigned people when a user is selected
         $('#viewUserSelect').change(function() {
