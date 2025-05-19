@@ -78,7 +78,7 @@
                                         </div>
                                         
                                         <div class="form-group">
-                                            <button type="submit" class="btn btn-primary" id="assignButton" onclick="return validateAssignForm()">
+                                            <button type="button" class="btn btn-primary" id="assignButton" onclick="submitAssignForm()">
                                                 <i class="fas fa-user-plus"></i> Assign Selected People
                                             </button>
                                         </div>
@@ -156,7 +156,7 @@
 
 {% block scripts %}
 <script>
-    // Form validation and submission function
+    // Form validation function
     function validateAssignForm() {
         var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
         var userSelected = $('#userSelect').val() !== '';
@@ -178,9 +178,56 @@
             return false;
         }
         
-        // Submit the form using regular form submission
-        document.getElementById('assignPeopleForm').submit();
         return true;
+    }
+    
+    // Form submission function using AJAX
+    function submitAssignForm() {
+        if (!validateAssignForm()) {
+            return false;
+        }
+        
+        // Get the form data
+        var userId = $('#userSelect').val();
+        var personIds = [];
+        
+        $('.unassigned-person-checkbox:checked').each(function() {
+            personIds.push($(this).val());
+        });
+        
+        console.log('Submitting form with userId:', userId, 'personIds:', personIds);
+        
+        // Disable the button to prevent multiple submissions
+        $('#assignButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Assigning...');
+        
+        // Create a form data object
+        var formData = new FormData();
+        formData.append('user_id', userId);
+        
+        // Add each person ID to the form data
+        for (var i = 0; i < personIds.length; i++) {
+            formData.append('person_ids', personIds[i]);
+        }
+        
+        // Submit the form using AJAX
+        $.ajax({
+            url: '{{ url_for("assignments.assign_people") }}',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                console.log('Assignment successful:', response);
+                window.location.reload();  // Reload the page to show the updated assignments
+            },
+            error: function(xhr, status, error) {
+                console.error('Error assigning people:', error);
+                alert('Error assigning people. Please try again.');
+                $('#assignButton').prop('disabled', false).html('<i class="fas fa-user-plus"></i> Assign Selected People');
+            }
+        });
+        
+        return false;  // Prevent the default form submission
     }
     
     $(document).ready(function() {
