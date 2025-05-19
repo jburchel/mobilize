@@ -78,7 +78,7 @@
                                         </div>
                                         
                                         <div class="form-group">
-                                            <button type="submit" class="btn btn-primary" id="assignButton" disabled>
+                                            <button type="submit" class="btn btn-primary" id="assignButton" onclick="return validateAssignForm()">
                                                 <i class="fas fa-user-plus"></i> Assign Selected People
                                             </button>
                                         </div>
@@ -161,6 +161,13 @@
         var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
         var userSelected = $('#userSelect').val() !== '';
         
+        console.log('Form validation - Checkboxes checked:', anyChecked, 'User selected:', userSelected);
+        
+        // Force enable the button if both conditions are met
+        if (anyChecked && userSelected) {
+            $('#assignButton').prop('disabled', false);
+        }
+        
         if (!anyChecked) {
             alert('Please select at least one person to assign.');
             return false;
@@ -204,7 +211,15 @@
             var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
             var userSelected = $('#userSelect').val() !== '';
             console.log('Checkboxes checked:', anyChecked, 'User selected:', userSelected);
-            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+            
+            // Always enable the button if both conditions are met
+            if (anyChecked && userSelected) {
+                $('#assignButton').prop('disabled', false);
+                console.log('Enabling assign button');
+            } else {
+                $('#assignButton').prop('disabled', true);
+                console.log('Disabling assign button');
+            }
         }
         
         // Update unassign button state based on selections
