@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, current_app
 from flask_login import login_required, current_user
 from app.utils.decorators import office_required
 from werkzeug.utils import secure_filename
@@ -141,104 +141,113 @@ def create():
                                                          for p in Person.query.filter_by(office_id=current_user.office_id).all()]
     
     if form.validate_on_submit():
-        church = Church(
-            name=form.name.data,
-            address=form.address.data,
-            city=form.city.data,
-            state=form.state.data,
-            zip_code=form.zip_code.data,
-            country=form.country.data,
-            phone=form.phone.data,
-            email=form.email.data,
-            website=form.website.data,
-            location=form.location.data,
-            senior_pastor_name=(f"{form.senior_pastor_first_name.data} {form.senior_pastor_last_name.data}").strip(),
-            senior_pastor_phone=form.senior_pastor_phone.data,
-            senior_pastor_email=form.senior_pastor_email.data,
-            missions_pastor_first_name=form.missions_pastor_first_name.data,
-            missions_pastor_last_name=form.missions_pastor_last_name.data,
-            mission_pastor_phone=form.mission_pastor_phone.data,
-            mission_pastor_email=form.mission_pastor_email.data,
-            denomination=form.denomination.data,
-            weekly_attendance=form.weekly_attendance.data,
-            priority=form.priority.data,
-            assigned_to=form.assigned_to.data,
-            source=form.source.data,
-            virtuous=form.virtuous.data,
-            referred_by=form.referred_by.data,
-            info_given=form.info_given.data,
-            reason_closed=form.reason_closed.data,
-            year_founded=form.year_founded.data,
-            date_closed=form.date_closed.data,
-            notes=form.notes.data,
-            type='church',  # Explicitly set type for the polymorphic model
-            office_id=current_user.office_id,
-            user_id=current_user.id,
-            owner_id=current_user.id,  # Ensure owner_id is set to the current user's ID
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
-        
-        # Handle contact person relationship
-        if form.main_contact_id.data and form.main_contact_id.data != 0:
-            church.main_contact_id = form.main_contact_id.data
-        
-        # Handle profile image upload
-        if form.profile_image.data:
-            # Create upload directory if it doesn't exist
-            upload_dir = os.path.join('app', 'static', 'uploads', 'churches')
-            os.makedirs(upload_dir, exist_ok=True)
+        try:
+            church = Church(
+                name=form.name.data,
+                address=form.address.data,
+                city=form.city.data,
+                state=form.state.data,
+                zip_code=form.zip_code.data,
+                country=form.country.data,
+                phone=form.phone.data,
+                email=form.email.data,
+                website=form.website.data,
+                location=form.location.data,
+                senior_pastor_name=(f"{form.senior_pastor_first_name.data} {form.senior_pastor_last_name.data}").strip(),
+                senior_pastor_phone=form.senior_pastor_phone.data,
+                senior_pastor_email=form.senior_pastor_email.data,
+                missions_pastor_first_name=form.missions_pastor_first_name.data,
+                missions_pastor_last_name=form.missions_pastor_last_name.data,
+                mission_pastor_phone=form.mission_pastor_phone.data,
+                mission_pastor_email=form.mission_pastor_email.data,
+                denomination=form.denomination.data,
+                weekly_attendance=form.weekly_attendance.data,
+                priority=form.priority.data,
+                assigned_to=form.assigned_to.data,
+                source=form.source.data,
+                virtuous=form.virtuous.data,
+                referred_by=form.referred_by.data,
+                info_given=form.info_given.data,
+                reason_closed=form.reason_closed.data,
+                year_founded=form.year_founded.data,
+                date_closed=form.date_closed.data,
+                notes=form.notes.data,
+                type='church',  # Explicitly set type for the polymorphic model
+                office_id=current_user.office_id,
+                user_id=current_user.id,
+                owner_id=current_user.id,  # Ensure owner_id is set to the current user's ID
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
             
-            # Generate unique filename
-            filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
-            filepath = os.path.join(upload_dir, filename)
+            # Handle contact person relationship
+            if form.main_contact_id.data and form.main_contact_id.data != 0:
+                church.main_contact_id = form.main_contact_id.data
             
-            # Save the file
-            form.profile_image.data.save(filepath)
-            
-            # Store the path in the database
-            church.profile_image = f"/static/uploads/churches/{filename}"
-        
-        db.session.add(church)
-        db.session.commit()
-        
-        # Handle main pipeline assignment
-        if form.church_pipeline.data:
-            # Get the main pipeline for churches
-            main_pipeline = Pipeline.query.filter_by(
-                pipeline_type='church',
-                is_main_pipeline=True,
-                office_id=church.office_id
-            ).first()
-            
-            if main_pipeline:
-                # Find the selected stage
-                selected_stage = None
-                for stage in main_pipeline.stages:
-                    if stage.name == form.church_pipeline.data:
-                        selected_stage = stage
-                        break
+            # Handle profile image upload
+            if form.profile_image.data:
+                # Create upload directory if it doesn't exist
+                upload_dir = os.path.join('app', 'static', 'uploads', 'churches')
+                os.makedirs(upload_dir, exist_ok=True)
                 
-                if not selected_stage:
-                    # No matching stage found, try to find by the stage value directly
-                    stage_value = form.church_pipeline.data
+                # Generate unique filename
+                filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
+                filepath = os.path.join(upload_dir, filename)
+                
+                # Save the file
+                form.profile_image.data.save(filepath)
+                
+                # Store the path in the database
+                church.profile_image = f"/static/uploads/churches/{filename}"
+            
+            db.session.add(church)
+            db.session.commit()
+            
+            # Handle main pipeline assignment
+            if form.church_pipeline.data:
+                # Get the main pipeline for churches
+                main_pipeline = Pipeline.query.filter_by(
+                    pipeline_type='church',
+                    is_main_pipeline=True,
+                    office_id=church.office_id
+                ).first()
+                
+                if main_pipeline:
+                    # Find the selected stage
+                    selected_stage = None
                     for stage in main_pipeline.stages:
-                        if stage.name.upper() == stage_value.upper():
+                        if stage.name == form.church_pipeline.data:
                             selected_stage = stage
                             break
-                
-                if selected_stage:
-                    # Add church to pipeline
-                    pipeline_contact = PipelineContact(
-                        contact_id=church.id,
-                        pipeline_id=main_pipeline.id,
-                        current_stage_id=selected_stage.id,
-                        entered_at=datetime.now()
-                    )
-                    db.session.add(pipeline_contact)
-        
-        flash('Church created successfully', 'success')
-        return redirect(url_for('churches.show', id=church.id))
+                    
+                    if not selected_stage:
+                        # No matching stage found, try to find by the stage value directly
+                        stage_value = form.church_pipeline.data
+                        for stage in main_pipeline.stages:
+                            if stage.name.upper() == stage_value.upper():
+                                selected_stage = stage
+                                break
+                    
+                    if selected_stage:
+                        # Add church to pipeline
+                        pipeline_contact = PipelineContact(
+                            contact_id=church.id,
+                            pipeline_id=main_pipeline.id,
+                            current_stage_id=selected_stage.id,
+                            entered_at=datetime.now()
+                        )
+                        db.session.add(pipeline_contact)
+                        db.session.commit()
+            
+            flash('Church created successfully', 'success')
+            return redirect(url_for('churches.show', id=church.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error creating church: {str(e)}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({"error": "Internal server error"}), 500
+            flash(f'Error creating church: {str(e)}', 'danger')
+            return render_template('churches/form.html', form=form)
     
     return render_template('churches/form.html', form=form)
 
@@ -329,121 +338,129 @@ def edit(id):
     form.mission_pastor_email.data = church.mission_pastor_email
     
     if form.validate_on_submit():
-        church.name = form.name.data
-        church.address = form.address.data
-        church.city = form.city.data
-        church.state = form.state.data
-        church.zip_code = form.zip_code.data
-        church.country = form.country.data
-        church.phone = form.phone.data
-        church.email = form.email.data
-        church.website = form.website.data
-        church.location = form.location.data
-        
-        # Combine first and last name into single senior pastor name field
-        church.senior_pastor_name = (f"{form.senior_pastor_first_name.data} {form.senior_pastor_last_name.data}").strip()
-        
-        church.senior_pastor_phone = form.senior_pastor_phone.data
-        church.senior_pastor_email = form.senior_pastor_email.data
-        church.missions_pastor_first_name = form.missions_pastor_first_name.data
-        church.missions_pastor_last_name = form.missions_pastor_last_name.data
-        church.mission_pastor_phone = form.mission_pastor_phone.data
-        church.mission_pastor_email = form.mission_pastor_email.data
-        church.denomination = form.denomination.data
-        church.weekly_attendance = form.weekly_attendance.data
-        church.priority = form.priority.data
-        church.assigned_to = form.assigned_to.data
-        church.source = form.source.data
-        church.virtuous = form.virtuous.data
-        church.referred_by = form.referred_by.data
-        church.info_given = form.info_given.data
-        church.reason_closed = form.reason_closed.data
-        church.year_founded = form.year_founded.data
-        church.date_closed = form.date_closed.data
-        church.notes = form.notes.data
-        church.updated_at = datetime.now()
-        
-        # Handle contact person relationship
-        if form.main_contact_id.data and form.main_contact_id.data != 0:
-            church.main_contact_id = form.main_contact_id.data
-        else:
-            church.main_contact_id = None
-        
-        # Handle profile image upload
-        if form.profile_image.data:
-            # Create upload directory if it doesn't exist
-            upload_dir = os.path.join('app', 'static', 'uploads', 'churches')
-            os.makedirs(upload_dir, exist_ok=True)
+        try:
+            church.name = form.name.data
+            church.address = form.address.data
+            church.city = form.city.data
+            church.state = form.state.data
+            church.zip_code = form.zip_code.data
+            church.country = form.country.data
+            church.phone = form.phone.data
+            church.email = form.email.data
+            church.website = form.website.data
+            church.location = form.location.data
             
-            # Generate unique filename
-            filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
-            filepath = os.path.join(upload_dir, filename)
+            # Combine first and last name into single senior pastor name field
+            church.senior_pastor_name = (f"{form.senior_pastor_first_name.data} {form.senior_pastor_last_name.data}").strip()
             
-            # Delete old profile image if exists
-            if church.profile_image:
-                old_filepath = os.path.join('app', church.profile_image.lstrip('/'))
-                if os.path.exists(old_filepath):
-                    os.remove(old_filepath)
+            church.senior_pastor_phone = form.senior_pastor_phone.data
+            church.senior_pastor_email = form.senior_pastor_email.data
+            church.missions_pastor_first_name = form.missions_pastor_first_name.data
+            church.missions_pastor_last_name = form.missions_pastor_last_name.data
+            church.mission_pastor_phone = form.mission_pastor_phone.data
+            church.mission_pastor_email = form.mission_pastor_email.data
+            church.denomination = form.denomination.data
+            church.weekly_attendance = form.weekly_attendance.data
+            church.priority = form.priority.data
+            church.assigned_to = form.assigned_to.data
+            church.source = form.source.data
+            church.virtuous = form.virtuous.data
+            church.referred_by = form.referred_by.data
+            church.info_given = form.info_given.data
+            church.reason_closed = form.reason_closed.data
+            church.year_founded = form.year_founded.data
+            church.date_closed = form.date_closed.data
+            church.notes = form.notes.data
+            church.updated_at = datetime.now()
             
-            # Save the new file
-            form.profile_image.data.save(filepath)
+            # Handle contact person relationship
+            if form.main_contact_id.data and form.main_contact_id.data != 0:
+                church.main_contact_id = form.main_contact_id.data
+            else:
+                church.main_contact_id = None
             
-            # Store the path in the database
-            church.profile_image = f"/static/uploads/churches/{filename}"
-        
-        # Handle main pipeline assignment
-        if form.church_pipeline.data:
-            # Get the main pipeline for churches
-            main_pipeline = Pipeline.query.filter_by(
-                pipeline_type='church',
-                is_main_pipeline=True,
-                office_id=church.office_id
-            ).first()
-            
-            if main_pipeline:
-                # Find the selected stage
-                selected_stage = None
-                for stage in main_pipeline.stages:
-                    if stage.name == form.church_pipeline.data:
-                        selected_stage = stage
-                        break
+            # Handle profile image upload
+            if form.profile_image.data:
+                # Create upload directory if it doesn't exist
+                upload_dir = os.path.join('app', 'static', 'uploads', 'churches')
+                os.makedirs(upload_dir, exist_ok=True)
                 
-                if not selected_stage:
-                    # No matching stage found, try to find by the stage value directly
-                    stage_value = form.church_pipeline.data
+                # Generate unique filename
+                filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
+                filepath = os.path.join(upload_dir, filename)
+                
+                # Delete old profile image if exists
+                if church.profile_image:
+                    old_filepath = os.path.join('app', church.profile_image.lstrip('/'))
+                    if os.path.exists(old_filepath):
+                        os.remove(old_filepath)
+                
+                # Save the new file
+                form.profile_image.data.save(filepath)
+                
+                # Store the path in the database
+                church.profile_image = f"/static/uploads/churches/{filename}"
+            
+            # Handle main pipeline assignment
+            if form.church_pipeline.data:
+                # Get the main pipeline for churches
+                main_pipeline = Pipeline.query.filter_by(
+                    pipeline_type='church',
+                    is_main_pipeline=True,
+                    office_id=church.office_id
+                ).first()
+                
+                if main_pipeline:
+                    # Find the selected stage
+                    selected_stage = None
                     for stage in main_pipeline.stages:
-                        if stage.name.upper() == stage_value.upper():
+                        if stage.name == form.church_pipeline.data:
                             selected_stage = stage
                             break
-                
-                if selected_stage:
-                    # Check if church is already in this pipeline
-                    pipeline_contact = PipelineContact.query.filter_by(
-                        contact_id=church.id,
-                        pipeline_id=main_pipeline.id
-                    ).first()
                     
-                    if pipeline_contact:
-                        # Update existing pipeline contact
-                        pipeline_contact.move_to_stage(
-                            selected_stage.id, 
-                            user_id=current_user.id,
-                            notes=f"Updated from church edit form"
-                        )
-                    else:
-                        # Add church to pipeline
-                        pipeline_contact = PipelineContact(
+                    if not selected_stage:
+                        # No matching stage found, try to find by the stage value directly
+                        stage_value = form.church_pipeline.data
+                        for stage in main_pipeline.stages:
+                            if stage.name.upper() == stage_value.upper():
+                                selected_stage = stage
+                                break
+                    
+                    if selected_stage:
+                        # Check if church is already in this pipeline
+                        pipeline_contact = PipelineContact.query.filter_by(
                             contact_id=church.id,
-                            pipeline_id=main_pipeline.id,
-                            current_stage_id=selected_stage.id,
-                            entered_at=datetime.now()
-                        )
-                        db.session.add(pipeline_contact)
-        
-        db.session.commit()
-        
-        flash('Church updated successfully', 'success')
-        return redirect(url_for('churches.show', id=church.id))
+                            pipeline_id=main_pipeline.id
+                        ).first()
+                        
+                        if pipeline_contact:
+                            # Update existing pipeline contact
+                            pipeline_contact.move_to_stage(
+                                selected_stage.id, 
+                                user_id=current_user.id,
+                                notes="Updated from church edit form"
+                            )
+                        else:
+                            # Add church to pipeline
+                            pipeline_contact = PipelineContact(
+                                contact_id=church.id,
+                                pipeline_id=main_pipeline.id,
+                                current_stage_id=selected_stage.id,
+                                entered_at=datetime.now()
+                            )
+                            db.session.add(pipeline_contact)
+            
+            db.session.commit()
+            
+            flash('Church updated successfully', 'success')
+            return redirect(url_for('churches.show', id=church.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error updating church {id}: {str(e)}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({"error": "Internal server error"}), 500
+            flash(f'Error updating church: {str(e)}', 'danger')
+            return render_template('churches/form.html', form=form, church=church)
     
     return render_template('churches/form.html', form=form, church=church)
 
