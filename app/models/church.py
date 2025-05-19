@@ -61,7 +61,8 @@ class Church(Contact):
         'User',
         primaryjoin='User.username==foreign(Church.assigned_to)',
         foreign_keys='Church.assigned_to',
-        uselist=False
+        uselist=False,
+        viewonly=True  # Make this a viewonly relationship since there's no actual FK
     )
     
     main_contact = relationship(
