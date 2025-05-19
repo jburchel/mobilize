@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from sqlalchemy import String, Boolean, JSON, ForeignKey, Date, Text, Integer, DateTime, Column, Enum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Integer, Boolean, DateTime, Date, JSON, Text, Column, ForeignKey, func, Enum
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 from app.extensions import db
 from app.models.base import Base
 import enum
@@ -87,7 +87,7 @@ class Task(Base):
     office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'))
     
     # Relationships
-    assigned_user = relationship("User", back_populates="assigned_tasks", primaryjoin="User.username==Task.assigned_to", foreign_keys=[assigned_to])
+    assigned_user = relationship("User", back_populates="assigned_tasks", primaryjoin="User.username==foreign(Task.assigned_to)", foreign_keys=[assigned_to])
     owner = relationship("User", back_populates="owned_tasks", foreign_keys=[owner_id])
     person = relationship("Person", back_populates="tasks")
     church = relationship("Church", back_populates="tasks")

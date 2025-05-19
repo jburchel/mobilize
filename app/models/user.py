@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import String, Integer, Boolean, DateTime, JSON, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Integer, Boolean, DateTime, JSON, ForeignKey, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 from app.extensions import db
 from app.models.base import Base
 
@@ -50,7 +50,7 @@ class User(UserMixin, Base):
     )
     assigned_tasks = relationship(
         'Task',
-        primaryjoin="User.username == Task.assigned_to",
+        primaryjoin="User.username == foreign(Task.assigned_to)",
         back_populates='assigned_user'
     )
     owned_tasks = relationship(

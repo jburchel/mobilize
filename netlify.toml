@@ -1,0 +1,11 @@
+[build]
+  command = "pip install -r requirements.txt && python setup.py"
+  publish = "app"
+
+[build.environment]
+  PYTHON_VERSION = "3.10"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

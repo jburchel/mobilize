@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional, List, Dict, Any
-from sqlalchemy import String, Integer, Boolean, Date, Text, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, func, Text, Date
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.extensions import db
 from app.models.base import Contact
@@ -59,7 +59,7 @@ class Church(Contact):
     # Relationship to get the user object based on assigned_to value
     assigned_user = relationship(
         'User',
-        primaryjoin='User.username==Church.assigned_to',
+        primaryjoin='User.username==foreign(Church.assigned_to)',
         foreign_keys='Church.assigned_to',
         uselist=False
     )

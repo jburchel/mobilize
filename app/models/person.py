@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
-from sqlalchemy import String, Integer, Boolean, Date, Text, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Date, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.extensions import db
 from app.models.base import Contact
@@ -90,7 +90,7 @@ class Person(Contact):
     # Relationship to get the user object based on assigned_to value
     assigned_user = relationship(
         'User',
-        primaryjoin='User.username==Person.assigned_to',
+        primaryjoin='User.username==foreign(Person.assigned_to)',
         foreign_keys='Person.assigned_to',
         uselist=False
     )
