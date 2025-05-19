@@ -208,16 +208,27 @@ def churches_assignments():
 @admin_required
 def assign_people():
     """Assign people to a user."""
+    # Detailed request debugging
+    current_app.logger.info('=== ASSIGN PEOPLE REQUEST DETAILS ===')
+    current_app.logger.info(f'Request method: {request.method}')
+    current_app.logger.info(f'Content type: {request.content_type}')
+    current_app.logger.info(f'Form data keys: {list(request.form.keys())}')
+    current_app.logger.info(f'Raw form data: {dict(request.form)}')
+    current_app.logger.info(f'Request args: {dict(request.args)}')
+    
     # Get form data
     user_id = request.form.get('user_id')
+    current_app.logger.info(f'User ID from form: {user_id}, type: {type(user_id)}')
     
-    # Try both formats of person_ids to ensure compatibility
-    person_ids = request.form.getlist('person_ids[]') or request.form.getlist('person_ids')
+    # Try both formats of person_ids and log results
+    person_ids_brackets = request.form.getlist('person_ids[]')
+    person_ids_no_brackets = request.form.getlist('person_ids')
+    current_app.logger.info(f'person_ids[] values: {person_ids_brackets}')
+    current_app.logger.info(f'person_ids values: {person_ids_no_brackets}')
     
-    # Debug logging
-    current_app.logger.info(f'Form submission received - user_id: {user_id}')
-    current_app.logger.info(f'Form submission received - person_ids: {person_ids}')
-    current_app.logger.info(f'Form data: {dict(request.form)}')
+    # Use whichever format has values
+    person_ids = person_ids_brackets or person_ids_no_brackets
+    current_app.logger.info(f'Final person_ids: {person_ids}, length: {len(person_ids)}')
     
     # Validate required data
     if not user_id:
@@ -232,36 +243,63 @@ def assign_people():
     
     try:
         # Get the user to assign to
+        current_app.logger.info(f'Looking up user with ID: {user_id}')
         user = User.query.get(user_id)
         if not user:
+            current_app.logger.error(f'User with ID {user_id} not found')
             flash('Selected user not found', 'danger')
             return redirect(url_for('assignments.people_assignments'))
         
+        current_app.logger.info(f'Found user: {user.username} (ID: {user.id})')
+        
         # Check if office admin is trying to assign to users outside their office
         if not current_user.is_super_admin() and user.office_id != current_user.office_id:
+            current_app.logger.error(f'Office mismatch: current user office {current_user.office_id}, target user office {user.office_id}')
             flash('You can only assign to users in your office', 'danger')
             return redirect(url_for('assignments.people_assignments'))
         
         # Get the people to assign
-        people_query = Person.query.filter(Person.id.in_(person_ids))
+        current_app.logger.info(f'Querying for people with IDs: {person_ids}')
+        
+        if not person_ids:
+            current_app.logger.error('No person IDs provided')
+            flash('No people selected for assignment', 'danger')
+            return redirect(url_for('assignments.people_assignments'))
+        
+        # Convert string IDs to integers for the query
+        try:
+            person_id_ints = [int(pid) for pid in person_ids]
+            current_app.logger.info(f'Converted person IDs to integers: {person_id_ints}')
+        except ValueError as ve:
+            current_app.logger.error(f'Error converting person IDs to integers: {str(ve)}')
+            flash('Invalid person IDs provided', 'danger')
+            return redirect(url_for('assignments.people_assignments'))
+        
+        people_query = Person.query.filter(Person.id.in_(person_id_ints))
         
         # Filter by office for non-super admins
         if not current_user.is_super_admin():
             people_query = people_query.filter_by(office_id=current_user.office_id)
         
         people = people_query.all()
+        current_app.logger.info(f'Found {len(people)} people to assign')
         
         # Assign people to the user
         for person in people:
+            current_app.logger.info(f'Assigning person {person.id} to user {user.username}')
             person.assigned_to = user.username
             person.updated_at = datetime.now()
         
+        current_app.logger.info('Committing changes to database')
         db.session.commit()
         
         flash(f'{len(people)} people assigned to {user.full_name}', 'success')
+        current_app.logger.info(f'Successfully assigned {len(people)} people to {user.username}')
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error assigning people: {str(e)}')
+        current_app.logger.error(f'Error details: {type(e).__name__}')
+        current_app.logger.exception('Full traceback:')
         flash(f'Error assigning people: {str(e)}', 'danger')
     
     return redirect(url_for('assignments.people_assignments'))
@@ -273,16 +311,27 @@ def assign_people():
 @admin_required
 def assign_churches():
     """Assign churches to a user."""
+    # Detailed request debugging
+    current_app.logger.info('=== ASSIGN CHURCHES REQUEST DETAILS ===')
+    current_app.logger.info(f'Request method: {request.method}')
+    current_app.logger.info(f'Content type: {request.content_type}')
+    current_app.logger.info(f'Form data keys: {list(request.form.keys())}')
+    current_app.logger.info(f'Raw form data: {dict(request.form)}')
+    current_app.logger.info(f'Request args: {dict(request.args)}')
+    
     # Get form data
     user_id = request.form.get('user_id')
+    current_app.logger.info(f'User ID from form: {user_id}, type: {type(user_id)}')
     
-    # Try both formats of church_ids to ensure compatibility
-    church_ids = request.form.getlist('church_ids[]') or request.form.getlist('church_ids')
+    # Try both formats of church_ids and log results
+    church_ids_brackets = request.form.getlist('church_ids[]')
+    church_ids_no_brackets = request.form.getlist('church_ids')
+    current_app.logger.info(f'church_ids[] values: {church_ids_brackets}')
+    current_app.logger.info(f'church_ids values: {church_ids_no_brackets}')
     
-    # Debug logging
-    current_app.logger.info(f'Form submission received - user_id: {user_id}')
-    current_app.logger.info(f'Form submission received - church_ids: {church_ids}')
-    current_app.logger.info(f'Form data: {dict(request.form)}')
+    # Use whichever format has values
+    church_ids = church_ids_brackets or church_ids_no_brackets
+    current_app.logger.info(f'Final church_ids: {church_ids}, length: {len(church_ids)}')
     
     # Validate required data
     if not user_id:
@@ -297,36 +346,63 @@ def assign_churches():
     
     try:
         # Get the user to assign to
+        current_app.logger.info(f'Looking up user with ID: {user_id}')
         user = User.query.get(user_id)
         if not user:
+            current_app.logger.error(f'User with ID {user_id} not found')
             flash('Selected user not found', 'danger')
             return redirect(url_for('assignments.churches_assignments'))
         
+        current_app.logger.info(f'Found user: {user.username} (ID: {user.id})')
+        
         # Check if office admin is trying to assign to users outside their office
         if not current_user.is_super_admin() and user.office_id != current_user.office_id:
+            current_app.logger.error(f'Office mismatch: current user office {current_user.office_id}, target user office {user.office_id}')
             flash('You can only assign to users in your office', 'danger')
             return redirect(url_for('assignments.churches_assignments'))
         
         # Get the churches to assign
-        churches_query = Church.query.filter(Church.id.in_(church_ids))
+        current_app.logger.info(f'Querying for churches with IDs: {church_ids}')
+        
+        if not church_ids:
+            current_app.logger.error('No church IDs provided')
+            flash('No churches selected for assignment', 'danger')
+            return redirect(url_for('assignments.churches_assignments'))
+        
+        # Convert string IDs to integers for the query
+        try:
+            church_id_ints = [int(cid) for cid in church_ids]
+            current_app.logger.info(f'Converted church IDs to integers: {church_id_ints}')
+        except ValueError as ve:
+            current_app.logger.error(f'Error converting church IDs to integers: {str(ve)}')
+            flash('Invalid church IDs provided', 'danger')
+            return redirect(url_for('assignments.churches_assignments'))
+        
+        churches_query = Church.query.filter(Church.id.in_(church_id_ints))
         
         # Filter by office for non-super admins
         if not current_user.is_super_admin():
             churches_query = churches_query.filter_by(office_id=current_user.office_id)
         
         churches = churches_query.all()
+        current_app.logger.info(f'Found {len(churches)} churches to assign')
         
         # Assign churches to the user
         for church in churches:
+            current_app.logger.info(f'Assigning church {church.id} to user {user.username}')
             church.assigned_to = user.username
             church.updated_at = datetime.now()
         
+        current_app.logger.info('Committing changes to database')
         db.session.commit()
         
         flash(f'{len(churches)} churches assigned to {user.full_name}', 'success')
+        current_app.logger.info(f'Successfully assigned {len(churches)} churches to {user.username}')
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error assigning churches: {str(e)}')
+        current_app.logger.error(f'Error details: {type(e).__name__}')
+        current_app.logger.exception('Full traceback:')
         flash(f'Error assigning churches: {str(e)}', 'danger')
     
     return redirect(url_for('assignments.churches_assignments'))
