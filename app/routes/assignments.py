@@ -210,7 +210,9 @@ def assign_people():
     """Assign people to a user."""
     # Get form data
     user_id = request.form.get('user_id')
-    person_ids = request.form.getlist('person_ids')
+    
+    # Try both formats of person_ids to ensure compatibility
+    person_ids = request.form.getlist('person_ids[]') or request.form.getlist('person_ids')
     
     # Debug logging
     current_app.logger.info(f'Form submission received - user_id: {user_id}')
@@ -273,7 +275,9 @@ def assign_churches():
     """Assign churches to a user."""
     # Get form data
     user_id = request.form.get('user_id')
-    church_ids = request.form.getlist('church_ids')
+    
+    # Try both formats of church_ids to ensure compatibility
+    church_ids = request.form.getlist('church_ids[]') or request.form.getlist('church_ids')
     
     # Debug logging
     current_app.logger.info(f'Form submission received - user_id: {user_id}')

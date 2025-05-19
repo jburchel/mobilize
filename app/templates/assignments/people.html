@@ -31,15 +31,13 @@
                                         </div>
                                         
                                         <div class="form-group mb-3">
-                                            <div class="d-flex justify-content-between mb-2">
-                                                <label>Select People to Assign:</label>
+                                            <div class="mb-3 d-flex justify-content-between">
                                                 <div>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllUnassigned">
-                                                        Select All
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllUnassigned">
-                                                        Deselect All
-                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllUnassigned">Select All</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllUnassigned">Deselect All</button>
+                                                </div>
+                                                <div>
+                                                    <span class="badge bg-info">{{ unassigned_people|length }} unassigned</span>
                                                 </div>
                                             </div>
                                             
@@ -59,7 +57,7 @@
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}">
+                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids[]" value="{{ person.id }}" id="person{{ person.id }}">
                                                                     </div>
                                                                 </td>
                                                                 <td>{{ person.first_name }} {{ person.last_name }}</td>
@@ -156,166 +154,48 @@
 
 {% block scripts %}
 <script>
-    // Form validation function
-    function validateAssignForm() {
-        var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
-        var userSelected = $('#userSelect').val() !== '';
-        
-        console.log('Form validation - Checkboxes checked:', anyChecked, 'User selected:', userSelected);
-        
-        // Force enable the button if both conditions are met
-        if (anyChecked && userSelected) {
-            $('#assignButton').prop('disabled', false);
-        }
-        
-        if (!anyChecked) {
-            alert('Please select at least one person to assign.');
-            return false;
-        }
-        
-        if (!userSelected) {
-            alert('Please select a user to assign people to.');
-            return false;
-        }
-        
-        return true;
-    }
-    
-    // Form submission function using AJAX
-    function submitAssignForm() {
-        console.log('submitAssignForm called');
-        
-        if (!validateAssignForm()) {
-            console.log('Form validation failed');
-            return false;
-        }
-        
-        // Get the form data
-        var userId = $('#userSelect').val();
-        var personIds = [];
-        
-        $('.unassigned-person-checkbox:checked').each(function() {
-            personIds.push($(this).val());
-        });
-        
-        console.log('Submitting form with userId:', userId, 'personIds:', personIds);
-        
-        // Show alert to confirm we're about to submit
-        alert('About to assign ' + personIds.length + ' people to user ID ' + userId);
-        
-        // Disable the button to prevent multiple submissions
-        $('#assignButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Assigning...');
-        
-        // Create a form data object
-        var formData = new FormData();
-        formData.append('user_id', userId);
-        
-        // Add each person ID to the form data
-        for (var i = 0; i < personIds.length; i++) {
-            formData.append('person_ids', personIds[i]);
-        }
-        
-        // Also create a regular object for JSON submission as backup
-        var jsonData = {
-            user_id: userId,
-            person_ids: personIds
-        };
-        
-        // Submit the form using AJAX
-        $.ajax({
-            url: '{{ url_for("assignments.assign_people") }}',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                console.log('Assignment successful:', response);
-                alert('Successfully assigned ' + personIds.length + ' people!');
-                window.location.reload();  // Reload the page to show the updated assignments
-            },
-            error: function(xhr, status, error) {
-                console.error('Error assigning people:', error);
-                console.error('Response:', xhr.responseText);
-                
-                // Try again with JSON data as fallback
-                console.log('Trying again with JSON data');
-                $.ajax({
-                    url: '{{ url_for("assignments.assign_people") }}',
-                    type: 'POST',
-                    data: JSON.stringify(jsonData),
-                    contentType: 'application/json',
-                    success: function(response) {
-                        console.log('JSON assignment successful:', response);
-                        alert('Successfully assigned ' + personIds.length + ' people!');
-                        window.location.reload();
-                    },
-                    error: function(xhr2, status2, error2) {
-                        console.error('Error with JSON assignment:', error2);
-                        console.error('Response:', xhr2.responseText);
-                        alert('Error assigning people. Please try again.
-
-Details: ' + xhr2.responseText);
-                        $('#assignButton').prop('disabled', false).html('<i class="fas fa-user-plus"></i> Assign Selected People');
-                    }
-                });
-            }
-        });
-        
-        return false;  // Prevent the default form submission
-    }
-    
     $(document).ready(function() {
-        console.log('Document ready');
-        
-        // Attach click handler to assign button
-        $('#assignButton').on('click', function() {
-            console.log('Assign button clicked');
-            submitAssignForm();
-        });
-        
-        // Handle select all unassigned people
-        $('#selectAllUnassigned').on('click', function() {
-            console.log('Select all clicked');
+        // Select All button for unassigned people
+        $('#selectAllUnassigned').click(function() {
             $('.unassigned-person-checkbox').prop('checked', true);
             updateAssignButtonState();
         });
         
-        // Handle deselect all unassigned people
-        $('#deselectAllUnassigned').on('click', function() {
-            console.log('Deselect all clicked');
+        // Deselect All button for unassigned people
+        $('#deselectAllUnassigned').click(function() {
             $('.unassigned-person-checkbox').prop('checked', false);
             updateAssignButtonState();
         });
         
-        // Handle select all assigned people
-        $('#selectAllAssigned').on('click', function() {
-            console.log('Select all assigned clicked');
+        // Select All button for assigned people
+        $('#selectAllAssigned').click(function() {
             $('.assigned-person-checkbox').prop('checked', true);
             updateUnassignButtonState();
         });
         
-        // Handle deselect all assigned people
-        $('#deselectAllAssigned').on('click', function() {
-            console.log('Deselect all assigned clicked');
+        // Deselect All button for assigned people
+        $('#deselectAllAssigned').click(function() {
             $('.assigned-person-checkbox').prop('checked', false);
             updateUnassignButtonState();
         });
         
-        // Update assign button state based on selections
-        function updateAssignButtonState() {
-            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
-            var userSelected = $('#userSelect').val() !== '';
-            console.log('Checkboxes checked:', anyChecked, 'User selected:', userSelected);
+        // Form validation
+        $('#assignForm').submit(function(e) {
+            var userId = $('#userSelect').val();
+            var hasSelectedPeople = $('.unassigned-person-checkbox:checked').length > 0;
             
-            // Always enable the button if both conditions are met
-            if (anyChecked && userSelected) {
-                $('#assignButton').prop('disabled', false);
-                console.log('Enabling assign button');
-            } else {
-                $('#assignButton').prop('disabled', true);
-                console.log('Disabling assign button');
+            if (!userId) {
+                alert('Please select a user to assign people to.');
+                e.preventDefault();
+                return false;
             }
-        }
+            
+            if (!hasSelectedPeople) {
+                alert('Please select at least one person to assign.');
+                e.preventDefault();
+                return false;
+            }
+        });
         
         // Update unassign button state based on selections
         function updateUnassignButtonState() {
@@ -324,11 +204,18 @@ Details: ' + xhr2.responseText);
         }
         
         // Listen for changes in checkboxes and user selection
-        $(document).on('change', '.unassigned-person-checkbox', updateAssignButtonState);
-        $('#userSelect').change(updateAssignButtonState);
+        $(document).on('change', '.unassigned-person-checkbox', function() {
+            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
+            var userSelected = $('#userSelect').val() !== '';
+            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+        });
         
         // Initialize button states on page load
-        updateAssignButtonState();
+        function updateAssignButtonState() {
+            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
+            var userSelected = $('#userSelect').val() !== '';
+            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+        }
         
         // Load assigned people when a user is selected
         $('#viewUserSelect').change(function() {

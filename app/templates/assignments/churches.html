@@ -19,7 +19,7 @@
                                     <h5 class="card-title">Unassigned Churches</h5>
                                 </div>
                                 <div class="card-body">
-                                    <form id="assignChurchesForm" action="{{ url_for('assignments.assign_churches') }}" method="POST" enctype="multipart/form-data" onsubmit="return validateAssignForm()">
+                                    <form id="assignForm" action="{{ url_for('assignments.assign_churches') }}" method="POST">
                                         <div class="form-group mb-3">
                                             <label for="userSelect">Assign to User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>
@@ -59,7 +59,7 @@
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids" value="{{ church.id }}" id="church{{ church.id }}">
+                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids[]" value="{{ church.id }}" id="church{{ church.id }}">
                                                                     </div>
                                                                 </td>
                                                                 <td>{{ church.name }}</td>
@@ -156,49 +156,96 @@
 
 {% block scripts %}
 <script>
-    // Form validation function
-    function validateAssignForm() {
-        var anyChecked = $('.unassigned-church-checkbox:checked').length > 0;
-        var userSelected = $('#userSelect').val() !== '';
-        
-        console.log('Form validation - Checkboxes checked:', anyChecked, 'User selected:', userSelected);
-        
-        // Force enable the button if both conditions are met
-        if (anyChecked && userSelected) {
-            $('#assignButton').prop('disabled', false);
-        }
-        
-        if (!anyChecked) {
-            alert('Please select at least one church to assign.');
-            return false;
-        }
-        
-        if (!userSelected) {
-            alert('Please select a user to assign churches to.');
-            return false;
-        }
-        
-        return true;
-    }
-    
-    // Form submission function using AJAX
-    function submitAssignForm() {
-        console.log('submitAssignForm called');
-        
-        if (!validateAssignForm()) {
-            console.log('Form validation failed');
-            return false;
-        }
-        
-        // Get the form data
-        var userId = $('#userSelect').val();
-        var churchIds = [];
-        
-        $('.unassigned-church-checkbox:checked').each(function() {
-            churchIds.push($(this).val());
+    $(document).ready(function() {
+        // Select All button for unassigned churches
+        $('#selectAllUnassigned').click(function() {
+            $('.unassigned-church-checkbox').prop('checked', true);
+            updateAssignButtonState();
         });
         
-        console.log('Submitting form with userId:', userId, 'churchIds:', churchIds);
+        // Deselect All button for unassigned churches
+        $('#deselectAllUnassigned').click(function() {
+            $('.unassigned-church-checkbox').prop('checked', false);
+            updateAssignButtonState();
+        });
+        
+        // Select All button for assigned churches
+        $('#selectAllAssigned').click(function() {
+            $('.assigned-church-checkbox').prop('checked', true);
+            updateUnassignButtonState();
+        });
+        
+        // Deselect All button for assigned churches
+        $('#deselectAllAssigned').click(function() {
+            $('.assigned-church-checkbox').prop('checked', false);
+            updateUnassignButtonState();
+        });
+        
+        // Form validation function
+        function validateAssignForm() {
+            var anyChecked = $('.unassigned-church-checkbox:checked').length > 0;
+            var userSelected = $('#userSelect').val() !== '';
+            
+            // Force enable the button if both conditions are met
+            if (anyChecked && userSelected) {
+                $('#assignButton').prop('disabled', false);
+            }
+            
+            if (!anyChecked) {
+                alert('Please select at least one church to assign.');
+                return false;
+            }
+            
+            if (!userSelected) {
+                alert('Please select a user to assign churches to.');
+                return false;
+            }
+            
+            return true;
+        }
+    
+    // Update assign button state based on selections
+    function updateAssignButtonState() {
+        var anyChecked = $('.unassigned-church-checkbox:checked').length > 0;
+        var userSelected = $('#userSelect').val() !== '';
+        $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+    }
+    
+    // Update unassign button state based on selections
+    function updateUnassignButtonState() {
+        var anyChecked = $('.assigned-church-checkbox:checked').length > 0;
+        $('#unassignButton').prop('disabled', !anyChecked);
+    }
+    
+    // Listen for changes in checkboxes and user selection
+    $(document).on('change', '.unassigned-church-checkbox', function() {
+        updateAssignButtonState();
+    });
+    
+    $(document).on('change', '#userSelect', function() {
+        updateAssignButtonState();
+    });
+    
+    // Initialize button states on page load
+    updateAssignButtonState();
+    
+    // Form validation on submit
+    $('#assignForm').submit(function(e) {
+        var userId = $('#userSelect').val();
+        var hasSelectedChurches = $('.unassigned-church-checkbox:checked').length > 0;
+        
+        if (!userId) {
+            alert('Please select a user to assign churches to.');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!hasSelectedChurches) {
+            alert('Please select at least one church to assign.');
+            e.preventDefault();
+            return false;
+        }
+    });
         
         // Show alert to confirm we're about to submit
         alert('About to assign ' + churchIds.length + ' churches to user ID ' + userId);
@@ -211,42 +258,6 @@
         formData.append('user_id', userId);
         
         // Add each church ID to the form data
-        for (var i = 0; i < churchIds.length; i++) {
-            formData.append('church_ids', churchIds[i]);
-        }
-        
-        // Also create a regular object for JSON submission as backup
-        var jsonData = {
-            user_id: userId,
-            church_ids: churchIds
-        };
-        
-        // Submit the form using AJAX
-        $.ajax({
-            url: '{{ url_for("assignments.assign_churches") }}',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                console.log('Assignment successful:', response);
-                alert('Successfully assigned ' + churchIds.length + ' churches!');
-                window.location.reload();  // Reload the page to show the updated assignments
-            },
-            error: function(xhr, status, error) {
-                console.error('Error assigning churches:', error);
-                console.error('Response:', xhr.responseText);
-                
-                // Try again with JSON data as fallback
-                console.log('Trying again with JSON data');
-                $.ajax({
-                    url: '{{ url_for("assignments.assign_churches") }}',
-                    type: 'POST',
-                    data: JSON.stringify(jsonData),
-                    contentType: 'application/json',
-                    success: function(response) {
-                        console.log('JSON assignment successful:', response);
-                        alert('Successfully assigned ' + churchIds.length + ' churches!');
                         window.location.reload();
                     },
                     error: function(xhr2, status2, error2) {
@@ -352,7 +363,7 @@ Details: ' + xhr2.responseText);
                                     <tr>
                                         <td>
                                             <div class="form-check">
-                                                <input class="form-check-input assigned-church-checkbox" type="checkbox" name="church_ids" value="${church.id}" id="assignedChurch${church.id}">
+                                                <input class="form-check-input assigned-church-checkbox" type="checkbox" name="church_ids[]" value="${church.id}" id="assignedChurch${church.id}">
                                             </div>
                                         </td>
                                         <td>${church.name}</td>
