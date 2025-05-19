@@ -94,6 +94,41 @@ def people_assignments_simple():
         page_title="People Assignments"
     )
 
+
+@assignments_bp.route('/churches-simple')
+@login_required
+@admin_required
+def churches_assignments_simple():
+    """Show churches assignment management page with simplified interface."""
+    # Get all active users
+    users_query = User.query.filter_by(is_active=True)
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        users_query = users_query.filter_by(office_id=current_user.office_id)
+    
+    users = users_query.all()
+    
+    # Get unassigned churches
+    unassigned_churches_query = Church.query.filter(
+        (Church.assigned_to.is_(None)) | 
+        (Church.assigned_to == '') | 
+        ~Church.assigned_to.in_([u.username for u in users])
+    )
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        unassigned_churches_query = unassigned_churches_query.filter_by(office_id=current_user.office_id)
+    
+    unassigned_churches = unassigned_churches_query.all()
+    
+    return render_template(
+        'assignments/churches_simple.html',
+        users=users,
+        unassigned_churches=unassigned_churches,
+        page_title="Church Assignments"
+    )
+
 @assignments_bp.route('/people')
 @login_required
 @admin_required
@@ -173,26 +208,24 @@ def churches_assignments():
 @admin_required
 def assign_people():
     """Assign people to a user."""
-    # Log the raw request for debugging
-    current_app.logger.info(f'Raw form data keys: {list(request.form.keys())}')
-    current_app.logger.info(f'Raw form data: {dict(request.form)}')
-    
     # Get form data
     user_id = request.form.get('user_id')
     person_ids = request.form.getlist('person_ids')
     
-    # Log detailed information
-    current_app.logger.info(f'User ID: {user_id}, type: {type(user_id)}')
-    current_app.logger.info(f'Person IDs: {person_ids}, type: {type(person_ids)}')
-    current_app.logger.info(f'Person IDs length: {len(person_ids)}')
+    # Debug logging
+    current_app.logger.info(f'Form submission received - user_id: {user_id}')
+    current_app.logger.info(f'Form submission received - person_ids: {person_ids}')
+    current_app.logger.info(f'Form data: {dict(request.form)}')
     
-    # Check if we're getting data in a different format
-    if not person_ids and request.form.getlist('person_ids[]'):
-        person_ids = request.form.getlist('person_ids[]')
-        current_app.logger.info(f'Found person_ids[] format: {person_ids}')
+    # Validate required data
+    if not user_id:
+        current_app.logger.error('Missing user_id in form data')
+        flash('Please select a user to assign people to', 'danger')
+        return redirect(url_for('assignments.people_assignments'))
     
-    if not user_id or not person_ids:
-        flash('Missing required data for assignment', 'danger')
+    if not person_ids:
+        current_app.logger.error('Missing person_ids in form data')
+        flash('Please select at least one person to assign', 'danger')
         return redirect(url_for('assignments.people_assignments'))
     
     try:
@@ -238,17 +271,24 @@ def assign_people():
 @admin_required
 def assign_churches():
     """Assign churches to a user."""
-    # Log the raw request for debugging
-    current_app.logger.info(f'Raw form data: {request.form}')
-    
     # Get form data
     user_id = request.form.get('user_id')
     church_ids = request.form.getlist('church_ids')
     
-    current_app.logger.info(f'Assigning churches: user_id={user_id}, church_ids={church_ids}')
+    # Debug logging
+    current_app.logger.info(f'Form submission received - user_id: {user_id}')
+    current_app.logger.info(f'Form submission received - church_ids: {church_ids}')
+    current_app.logger.info(f'Form data: {dict(request.form)}')
     
-    if not user_id or not church_ids:
-        flash('Missing required data for assignment', 'danger')
+    # Validate required data
+    if not user_id:
+        current_app.logger.error('Missing user_id in form data')
+        flash('Please select a user to assign churches to', 'danger')
+        return redirect(url_for('assignments.churches_assignments'))
+    
+    if not church_ids:
+        current_app.logger.error('Missing church_ids in form data')
+        flash('Please select at least one church to assign', 'danger')
         return redirect(url_for('assignments.churches_assignments'))
     
     try:
