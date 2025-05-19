@@ -46,13 +46,13 @@ class ChurchForm(FlaskForm):
                           validators=[Optional()])
     assigned_to = SelectField('Assigned To', 
                              choices=[], 
-                             validators=[Optional()], coerce=int)
+                             validators=[Optional()])
     
     def __init__(self, *args, **kwargs):
         super(ChurchForm, self).__init__(*args, **kwargs)
         # Dynamically load users from database
         users = User.query.filter_by(is_active=True).order_by(User.first_name).all()
-        self.assigned_to.choices = [(0, 'Unassigned')] + [(user.id, f"{user.first_name} {user.last_name}") for user in users]
+        self.assigned_to.choices = [('UNASSIGNED', 'Unassigned')] + [(user.name, f"{user.first_name} {user.last_name}") for user in users]
     source = SelectField('Source', 
                         choices=[('', 'Select Source')] + SOURCE_CHOICES, 
                         validators=[Optional()])

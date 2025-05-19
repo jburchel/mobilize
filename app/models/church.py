@@ -35,8 +35,7 @@ class Church(Contact):
     mission_pastor_phone: Mapped[Optional[str]] = mapped_column(String(50))
     mission_pastor_email: Mapped[Optional[str]] = mapped_column(String)
     priority: Mapped[str] = mapped_column(String(100), default='MEDIUM')
-    assigned_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
-    assigned_to_string: Mapped[Optional[str]] = mapped_column(String(100), default='UNASSIGNED')  # Keep for backward compatibility
+    assigned_to: Mapped[Optional[str]] = mapped_column(String(100), default='UNASSIGNED')
     source: Mapped[str] = mapped_column(String(100), default='UNKNOWN')
     referred_by: Mapped[Optional[str]] = mapped_column(String(100))
     info_given: Mapped[Optional[str]] = mapped_column(Text)
@@ -57,10 +56,12 @@ class Church(Contact):
         primaryjoin='User.id==Church.owner_id'
     )
     
+    # Relationship to get the user object based on assigned_to value
     assigned_user = relationship(
         'User',
-        foreign_keys=[assigned_to_id],
-        primaryjoin='User.id==Church.assigned_to_id'
+        primaryjoin='User.name==Church.assigned_to',
+        foreign_keys='Church.assigned_to',
+        uselist=False
     )
     
     main_contact = relationship(

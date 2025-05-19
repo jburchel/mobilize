@@ -63,8 +63,7 @@ class Person(Contact):
     pipeline_status: Mapped[Optional[str]] = mapped_column(String(50))
     pipeline_stage: Mapped[Optional[str]] = mapped_column(String(50))
     priority: Mapped[str] = mapped_column(String(50), default='MEDIUM')
-    assigned_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
-    assigned_to_string: Mapped[Optional[str]] = mapped_column(String(50), default='UNASSIGNED')  # Keep for backward compatibility
+    assigned_to: Mapped[Optional[str]] = mapped_column(String(100), default='UNASSIGNED')
     source: Mapped[str] = mapped_column(String(50), default='UNKNOWN')
     reason_closed: Mapped[Optional[str]] = mapped_column(String(255))
     date_closed: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -88,10 +87,12 @@ class Person(Contact):
         foreign_keys="User.person_id"
     )
     
+    # Relationship to get the user object based on assigned_to value
     assigned_user = relationship(
-        "User",
-        foreign_keys=[assigned_to_id],
-        primaryjoin="User.id==Person.assigned_to_id"
+        'User',
+        primaryjoin='User.name==Person.assigned_to',
+        foreign_keys='Person.assigned_to',
+        uselist=False
     )
     primary_for_churches = relationship(
         "Church",
