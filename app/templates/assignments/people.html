@@ -183,7 +183,10 @@
     
     // Form submission function using AJAX
     function submitAssignForm() {
+        console.log('submitAssignForm called');
+        
         if (!validateAssignForm()) {
+            console.log('Form validation failed');
             return false;
         }
         
@@ -197,6 +200,9 @@
         
         console.log('Submitting form with userId:', userId, 'personIds:', personIds);
         
+        // Show alert to confirm we're about to submit
+        alert('About to assign ' + personIds.length + ' people to user ID ' + userId);
+        
         // Disable the button to prevent multiple submissions
         $('#assignButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Assigning...');
         
@@ -209,6 +215,12 @@
             formData.append('person_ids', personIds[i]);
         }
         
+        // Also create a regular object for JSON submission as backup
+        var jsonData = {
+            user_id: userId,
+            person_ids: personIds
+        };
+        
         // Submit the form using AJAX
         $.ajax({
             url: '{{ url_for("assignments.assign_people") }}',
@@ -218,12 +230,34 @@
             contentType: false,
             success: function(response) {
                 console.log('Assignment successful:', response);
+                alert('Successfully assigned ' + personIds.length + ' people!');
                 window.location.reload();  // Reload the page to show the updated assignments
             },
             error: function(xhr, status, error) {
                 console.error('Error assigning people:', error);
-                alert('Error assigning people. Please try again.');
-                $('#assignButton').prop('disabled', false).html('<i class="fas fa-user-plus"></i> Assign Selected People');
+                console.error('Response:', xhr.responseText);
+                
+                // Try again with JSON data as fallback
+                console.log('Trying again with JSON data');
+                $.ajax({
+                    url: '{{ url_for("assignments.assign_people") }}',
+                    type: 'POST',
+                    data: JSON.stringify(jsonData),
+                    contentType: 'application/json',
+                    success: function(response) {
+                        console.log('JSON assignment successful:', response);
+                        alert('Successfully assigned ' + personIds.length + ' people!');
+                        window.location.reload();
+                    },
+                    error: function(xhr2, status2, error2) {
+                        console.error('Error with JSON assignment:', error2);
+                        console.error('Response:', xhr2.responseText);
+                        alert('Error assigning people. Please try again.
+
+Details: ' + xhr2.responseText);
+                        $('#assignButton').prop('disabled', false).html('<i class="fas fa-user-plus"></i> Assign Selected People');
+                    }
+                });
             }
         });
         

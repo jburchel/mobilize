@@ -183,7 +183,10 @@
     
     // Form submission function using AJAX
     function submitAssignForm() {
+        console.log('submitAssignForm called');
+        
         if (!validateAssignForm()) {
+            console.log('Form validation failed');
             return false;
         }
         
@@ -197,6 +200,9 @@
         
         console.log('Submitting form with userId:', userId, 'churchIds:', churchIds);
         
+        // Show alert to confirm we're about to submit
+        alert('About to assign ' + churchIds.length + ' churches to user ID ' + userId);
+        
         // Disable the button to prevent multiple submissions
         $('#assignButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Assigning...');
         
@@ -209,6 +215,12 @@
             formData.append('church_ids', churchIds[i]);
         }
         
+        // Also create a regular object for JSON submission as backup
+        var jsonData = {
+            user_id: userId,
+            church_ids: churchIds
+        };
+        
         // Submit the form using AJAX
         $.ajax({
             url: '{{ url_for("assignments.assign_churches") }}',
@@ -218,12 +230,34 @@
             contentType: false,
             success: function(response) {
                 console.log('Assignment successful:', response);
+                alert('Successfully assigned ' + churchIds.length + ' churches!');
                 window.location.reload();  // Reload the page to show the updated assignments
             },
             error: function(xhr, status, error) {
                 console.error('Error assigning churches:', error);
-                alert('Error assigning churches. Please try again.');
-                $('#assignButton').prop('disabled', false).html('<i class="fas fa-church"></i> Assign Selected Churches');
+                console.error('Response:', xhr.responseText);
+                
+                // Try again with JSON data as fallback
+                console.log('Trying again with JSON data');
+                $.ajax({
+                    url: '{{ url_for("assignments.assign_churches") }}',
+                    type: 'POST',
+                    data: JSON.stringify(jsonData),
+                    contentType: 'application/json',
+                    success: function(response) {
+                        console.log('JSON assignment successful:', response);
+                        alert('Successfully assigned ' + churchIds.length + ' churches!');
+                        window.location.reload();
+                    },
+                    error: function(xhr2, status2, error2) {
+                        console.error('Error with JSON assignment:', error2);
+                        console.error('Response:', xhr2.responseText);
+                        alert('Error assigning churches. Please try again.
+
+Details: ' + xhr2.responseText);
+                        $('#assignButton').prop('disabled', false).html('<i class="fas fa-church"></i> Assign Selected Churches');
+                    }
+                });
             }
         });
         
