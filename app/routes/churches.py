@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, session
 from flask_login import login_required, current_user
 from app.utils.decorators import office_required
 from werkzeug.utils import secure_filename
@@ -256,35 +256,58 @@ def create():
 @office_required
 def show(id):
     """Show a specific church."""
-    church = Church.query.get_or_404(id)
-    
-    # Check access permissions (allow super admins to view all)
-    if not current_user.is_super_admin() and church.office_id != current_user.office_id:
-        flash('You do not have permission to view this church', 'danger')
+    try:
+        church = Church.query.get_or_404(id)
+        
+        # Check access permissions (allow super admins to view all)
+        if not current_user.is_super_admin() and church.office_id != current_user.office_id:
+            flash('You do not have permission to view this church', 'danger')
+            return redirect(url_for('churches.index'))
+        
+        # Get the contact person if specified
+        contact_person = None
+        if church.main_contact_id:
+            try:
+                contact_person = Person.query.get(church.main_contact_id)
+            except Exception as e:
+                current_app.logger.error(f"Error fetching contact person for church {id}: {str(e)}")
+        
+        # Get people associated with this church
+        try:
+            church.people = Person.query.filter_by(church_id=church.id).all()
+        except Exception as e:
+            current_app.logger.error(f"Error fetching people for church {id}: {str(e)}")
+            church.people = []
+        
+        # Get all people for the add member modal
+        try:
+            if current_user.is_super_admin():
+                people = Person.query.order_by(Person.first_name, Person.last_name).all()
+            else:
+                people = Person.query.filter_by(office_id=current_user.office_id).order_by(Person.first_name, Person.last_name).all()
+        except Exception as e:
+            current_app.logger.error(f"Error fetching all people for church modal {id}: {str(e)}")
+            people = []
+        
+        # Get church roles for the modal
+        try:
+            from app.models.constants import CHURCH_ROLE_CHOICES
+        except Exception as e:
+            current_app.logger.error(f"Error importing CHURCH_ROLE_CHOICES: {str(e)}")
+            CHURCH_ROLE_CHOICES = []
+        
+        # Make sure church name is not None for page title
+        # This is used in the template
+        
+        return render_template('churches/detail.html', 
+                            church=church, 
+                            contact_person=contact_person,
+                            people=people,
+                            church_roles=CHURCH_ROLE_CHOICES)
+    except Exception as e:
+        current_app.logger.error(f"Error showing church {id}: {str(e)}")
+        flash(f"Error loading church details: {str(e)}", 'danger')
         return redirect(url_for('churches.index'))
-    
-    # Get the contact person if specified
-    contact_person = None
-    if church.main_contact_id:
-        contact_person = Person.query.get(church.main_contact_id)
-    
-    # Get people associated with this church
-    church.people = Person.query.filter_by(church_id=church.id).all()
-    
-    # Get all people for the add member modal
-    if current_user.is_super_admin():
-        people = Person.query.order_by(Person.first_name, Person.last_name).all()
-    else:
-        people = Person.query.filter_by(office_id=current_user.office_id).order_by(Person.first_name, Person.last_name).all()
-    
-    # Get church roles for the modal
-    from app.models.constants import CHURCH_ROLE_CHOICES
-    
-    return render_template('churches/detail.html', 
-                          church=church, 
-                          contact_person=contact_person,
-                          people=people,
-                          church_roles=CHURCH_ROLE_CHOICES)
 
 @churches_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required

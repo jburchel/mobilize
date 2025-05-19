@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app.models.user import User
 from app.models.person import Person
@@ -16,7 +16,7 @@ assignments_bp = Blueprint('assignments', __name__, template_folder='../template
 def index():
     """Show assignment management page."""
     # Get all users that can be assigned to
-    users = User.query.filter_by(is_active=True).all()
+    users = User.query.filter_by(is_active=True).order_by(User.username).all()
     
     # For office admins, only show users in their office
     if not current_user.is_super_admin():
@@ -32,20 +32,25 @@ def index():
 def people_assignments():
     """Show people assignment management page."""
     # Get all users that can be assigned to
-    users = User.query.filter_by(is_active=True).all()
+    users = User.query.filter_by(is_active=True).order_by(User.username).all()
     
     # For office admins, only show users in their office
     if not current_user.is_super_admin():
         users = [u for u in users if u.office_id == current_user.office_id]
     
-    # Get unassigned people
-    unassigned_query = Person.query.filter(or_(Person.assigned_to == 'UNASSIGNED', Person.assigned_to is None))
+    # Get unassigned people - handle multiple ways the field might be empty
+    unassigned_query = Person.query.filter(or_(
+        Person.assigned_to == 'UNASSIGNED', 
+        Person.assigned_to == '', 
+        Person.assigned_to.is_(None)
+    ))
     
     # Filter by office for non-super admins
     if not current_user.is_super_admin():
         unassigned_query = unassigned_query.filter_by(office_id=current_user.office_id)
     
     unassigned_people = unassigned_query.all()
+    current_app.logger.info(f'Found {len(unassigned_people)} unassigned people')
     
     return render_template('assignments/people.html', 
                           users=users,
@@ -58,20 +63,25 @@ def people_assignments():
 def churches_assignments():
     """Show churches assignment management page."""
     # Get all users that can be assigned to
-    users = User.query.filter_by(is_active=True).all()
+    users = User.query.filter_by(is_active=True).order_by(User.username).all()
     
     # For office admins, only show users in their office
     if not current_user.is_super_admin():
         users = [u for u in users if u.office_id == current_user.office_id]
     
-    # Get unassigned churches
-    unassigned_query = Church.query.filter(or_(Church.assigned_to == 'UNASSIGNED', Church.assigned_to is None))
+    # Get unassigned churches - handle multiple ways the field might be empty
+    unassigned_query = Church.query.filter(or_(
+        Church.assigned_to == 'UNASSIGNED', 
+        Church.assigned_to == '', 
+        Church.assigned_to.is_(None)
+    ))
     
     # Filter by office for non-super admins
     if not current_user.is_super_admin():
         unassigned_query = unassigned_query.filter_by(office_id=current_user.office_id)
     
     unassigned_churches = unassigned_query.all()
+    current_app.logger.info(f'Found {len(unassigned_churches)} unassigned churches')
     
     return render_template('assignments/churches.html', 
                           users=users,
@@ -121,6 +131,7 @@ def assign_people():
         flash(f'{len(people)} people assigned to {user.full_name}', 'success')
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f'Error assigning people: {str(e)}')
         flash(f'Error assigning people: {str(e)}', 'danger')
     
     return redirect(url_for('assignments.people_assignments'))
@@ -168,6 +179,7 @@ def assign_churches():
         flash(f'{len(churches)} churches assigned to {user.full_name}', 'success')
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f'Error assigning churches: {str(e)}')
         flash(f'Error assigning churches: {str(e)}', 'danger')
     
     return redirect(url_for('assignments.churches_assignments'))
@@ -181,32 +193,74 @@ def get_user_people(user_id):
         # Get the user
         user = User.query.get(user_id)
         if not user:
+            current_app.logger.error(f'User {user_id} not found')
             return jsonify({'error': 'User not found'}), 404
         
         # Check if office admin is trying to view users outside their office
         if not current_user.is_super_admin() and user.office_id != current_user.office_id:
             return jsonify({'error': 'You can only view users in your office'}), 403
         
-        # Get people assigned to this user
-        people_query = Person.query.filter_by(assigned_to=user.username)
+        # Get people assigned to this user - handle case sensitivity and empty values
+        # Use a more flexible match to catch potential case differences or partial matches
+        current_app.logger.info(f'Looking for people assigned to user {user.username}')
+        
+        # Try multiple query approaches to find assigned people
+        # First try exact match
+        people_query1 = Person.query.filter(Person.assigned_to == user.username)
+        # Then try case-insensitive match
+        people_query2 = Person.query.filter(Person.assigned_to.ilike(user.username))
+        # Then try partial match
+        people_query3 = Person.query.filter(Person.assigned_to.ilike(f'%{user.username}%'))
         
         # Filter by office for non-super admins
         if not current_user.is_super_admin():
-            people_query = people_query.filter_by(office_id=current_user.office_id)
+            people_query1 = people_query1.filter_by(office_id=current_user.office_id)
+            people_query2 = people_query2.filter_by(office_id=current_user.office_id)
+            people_query3 = people_query3.filter_by(office_id=current_user.office_id)
         
-        people = people_query.all()
+        # Try each query in sequence
+        people = people_query1.all()
+        current_app.logger.info(f'Exact match found {len(people)} people')
         
-        # Convert to dict for JSON response
-        people_list = [{
-            'id': p.id,
-            'name': p.name,
-            'email': p.email,
-            'phone': p.phone,
-            'pipeline': p.people_pipeline
-        } for p in people]
+        if not people:
+            people = people_query2.all()
+            current_app.logger.info(f'Case-insensitive match found {len(people)} people')
+        
+        if not people:
+            people = people_query3.all()
+            current_app.logger.info(f'Partial match found {len(people)} people')
+        
+        # Convert to dict for JSON response with error handling
+        people_list = []
+        for p in people:
+            try:
+                # Handle different property access patterns
+                name = ""
+                if hasattr(p, 'name') and p.name:
+                    name = p.name
+                else:
+                    name = f"{p.first_name or ''} {p.last_name or ''}".strip()
+                    if not name:
+                        name = "Unnamed Person"
+                
+                email = p.email if hasattr(p, 'email') and p.email else ''
+                phone = p.phone if hasattr(p, 'phone') and p.phone else ''
+                pipeline = p.people_pipeline if hasattr(p, 'people_pipeline') and p.people_pipeline else ''
+                
+                people_list.append({
+                    'id': p.id,
+                    'name': name,
+                    'email': email,
+                    'phone': phone,
+                    'pipeline': pipeline
+                })
+                current_app.logger.info(f'Found assigned person: {p.id} - {name}')
+            except Exception as err:
+                current_app.logger.error(f'Error processing person {p.id if hasattr(p, "id") else "unknown"}: {str(err)}')
         
         return jsonify(people_list)
     except Exception as e:
+        current_app.logger.error(f'Error in get_user_people: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 @assignments_bp.route('/get-user-churches/<int:user_id>')
@@ -218,32 +272,65 @@ def get_user_churches(user_id):
         # Get the user
         user = User.query.get(user_id)
         if not user:
+            current_app.logger.error(f'User {user_id} not found')
             return jsonify({'error': 'User not found'}), 404
         
         # Check if office admin is trying to view users outside their office
         if not current_user.is_super_admin() and user.office_id != current_user.office_id:
             return jsonify({'error': 'You can only view users in your office'}), 403
         
-        # Get churches assigned to this user
-        churches_query = Church.query.filter_by(assigned_to=user.username)
+        # Get churches assigned to this user - handle case sensitivity and empty values
+        current_app.logger.info(f'Looking for churches assigned to user {user.username}')
+        
+        # Try multiple query approaches to find assigned churches
+        # First try exact match
+        churches_query1 = Church.query.filter(Church.assigned_to == user.username)
+        # Then try case-insensitive match
+        churches_query2 = Church.query.filter(Church.assigned_to.ilike(user.username))
+        # Then try partial match
+        churches_query3 = Church.query.filter(Church.assigned_to.ilike(f'%{user.username}%'))
         
         # Filter by office for non-super admins
         if not current_user.is_super_admin():
-            churches_query = churches_query.filter_by(office_id=current_user.office_id)
+            churches_query1 = churches_query1.filter_by(office_id=current_user.office_id)
+            churches_query2 = churches_query2.filter_by(office_id=current_user.office_id)
+            churches_query3 = churches_query3.filter_by(office_id=current_user.office_id)
         
-        churches = churches_query.all()
+        # Try each query in sequence
+        churches = churches_query1.all()
+        current_app.logger.info(f'Exact match found {len(churches)} churches')
         
-        # Convert to dict for JSON response
-        churches_list = [{
-            'id': c.id,
-            'name': c.name,
-            'location': c.location,
-            'phone': c.phone,
-            'email': c.email
-        } for c in churches]
+        if not churches:
+            churches = churches_query2.all()
+            current_app.logger.info(f'Case-insensitive match found {len(churches)} churches')
+        
+        if not churches:
+            churches = churches_query3.all()
+            current_app.logger.info(f'Partial match found {len(churches)} churches')
+        
+        # Convert to dict for JSON response with error handling
+        churches_list = []
+        for c in churches:
+            try:
+                name = c.name if hasattr(c, 'name') and c.name else 'Unnamed Church'
+                location = c.location if hasattr(c, 'location') and c.location else ''
+                phone = c.phone if hasattr(c, 'phone') and c.phone else ''
+                email = c.email if hasattr(c, 'email') and c.email else ''
+                
+                churches_list.append({
+                    'id': c.id,
+                    'name': name,
+                    'location': location,
+                    'phone': phone,
+                    'email': email
+                })
+                current_app.logger.info(f'Found assigned church: {c.id} - {name}')
+            except Exception as err:
+                current_app.logger.error(f'Error processing church {c.id if hasattr(c, "id") else "unknown"}: {str(err)}')
         
         return jsonify(churches_list)
     except Exception as e:
+        current_app.logger.error(f'Error in get_user_churches: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 @assignments_bp.route('/unassign-people', methods=['POST'])
@@ -277,6 +364,7 @@ def unassign_people():
         flash(f'{len(people)} people unassigned', 'success')
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f'Error unassigning people: {str(e)}')
         flash(f'Error unassigning people: {str(e)}', 'danger')
     
     return redirect(url_for('assignments.people_assignments'))
@@ -312,6 +400,7 @@ def unassign_churches():
         flash(f'{len(churches)} churches unassigned', 'success')
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f'Error unassigning churches: {str(e)}')
         flash(f'Error unassigning churches: {str(e)}', 'danger')
     
     return redirect(url_for('assignments.churches_assignments'))

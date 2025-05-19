@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from app.models.person import Person
@@ -206,28 +206,47 @@ def create():
 @office_required
 def show(id):
     """Show a specific person."""
-    person = Person.query.get_or_404(id)
-    
-    # Check permissions (allow super admins to view any person)
-    if not current_user.is_super_admin() and person.office_id != current_user.office_id:
-        flash('You do not have permission to view this person', 'danger')
+    try:
+        person = Person.query.get_or_404(id)
+        
+        # Check permissions (allow super admins to view any person)
+        if not current_user.is_super_admin() and person.office_id != current_user.office_id:
+            flash('You do not have permission to view this person', 'danger')
+            return redirect(url_for('people.index'))
+        
+        # Get person's church if associated
+        church = None
+        if person.church_id:
+            church = Church.query.get(person.church_id)
+        
+        # Get communications and tasks for this person - with error handling
+        try:
+            communications = Communication.query.filter_by(person_id=person.id).order_by(Communication.date.desc()).all()
+        except Exception as e:
+            current_app.logger.error(f"Error fetching communications for person {id}: {str(e)}")
+            communications = []
+            
+        try:
+            tasks = Task.query.filter_by(person_id=person.id).order_by(Task.due_date).all()
+        except Exception as e:
+            current_app.logger.error(f"Error fetching tasks for person {id}: {str(e)}")
+            tasks = []
+        
+        # Ensure first_name and last_name are not None to avoid template errors
+        first_name = person.first_name or ""
+        last_name = person.last_name or ""
+        page_title = f"{first_name} {last_name}" if first_name or last_name else f"Person {id}"
+        
+        return render_template('people/view.html', 
+                            person=person, 
+                            church=church,
+                            communications=communications,
+                            tasks=tasks,
+                            page_title=page_title)
+    except Exception as e:
+        current_app.logger.error(f"Error showing person {id}: {str(e)}")
+        flash(f"Error loading person details: {str(e)}", 'danger')
         return redirect(url_for('people.index'))
-    
-    # Get person's church if associated
-    church = None
-    if person.church_id:
-        church = Church.query.get(person.church_id)
-    
-    # Get communications and tasks for this person
-    communications = Communication.query.filter_by(person_id=person.id).order_by(Communication.date.desc()).all()
-    tasks = Task.query.filter_by(person_id=person.id).order_by(Task.due_date).all()
-    
-    return render_template('people/view.html', 
-                          person=person, 
-                          church=church,
-                          communications=communications,
-                          tasks=tasks,
-                          page_title=f"{person.first_name} {person.last_name}")
 
 @people_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
