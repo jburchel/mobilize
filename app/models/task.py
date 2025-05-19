@@ -87,7 +87,7 @@ class Task(Base):
     office_id: Mapped[Optional[int]] = mapped_column(ForeignKey('offices.id'))
     
     # Relationships
-    assigned_user = relationship("User", back_populates="assigned_tasks", primaryjoin="User.name==Task.assigned_to", foreign_keys=[assigned_to])
+    assigned_user = relationship("User", back_populates="assigned_tasks", primaryjoin="User.username==Task.assigned_to", foreign_keys=[assigned_to])
     owner = relationship("User", back_populates="owned_tasks", foreign_keys=[owner_id])
     person = relationship("Person", back_populates="tasks")
     church = relationship("Church", back_populates="tasks")

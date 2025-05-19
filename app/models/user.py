@@ -50,7 +50,7 @@ class User(UserMixin, Base):
     )
     assigned_tasks = relationship(
         'Task',
-        primaryjoin="User.name == Task.assigned_to",
+        primaryjoin="User.username == Task.assigned_to",
         back_populates='assigned_user'
     )
     owned_tasks = relationship(
@@ -163,6 +163,11 @@ class User(UserMixin, Base):
     def full_name(self) -> str:
         """Get user's full name."""
         return f"{self.first_name or ''} {self.last_name or ''}".strip()
+        
+    @property
+    def name(self) -> str:
+        """Get user's username as name for compatibility."""
+        return self.username
 
     def is_admin(self) -> bool:
         """Check if user is an admin (either super_admin or office_admin)."""

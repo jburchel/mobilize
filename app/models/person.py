@@ -90,7 +90,7 @@ class Person(Contact):
     # Relationship to get the user object based on assigned_to value
     assigned_user = relationship(
         'User',
-        primaryjoin='User.name==Person.assigned_to',
+        primaryjoin='User.username==Person.assigned_to',
         foreign_keys='Person.assigned_to',
         uselist=False
     )

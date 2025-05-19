@@ -74,7 +74,7 @@ class PersonForm(FlaskForm):
         super(PersonForm, self).__init__(*args, **kwargs)
         # Dynamically load users from database
         users = User.query.filter_by(is_active=True).order_by(User.first_name).all()
-        self.assigned_to.choices = [('UNASSIGNED', 'Unassigned')] + [(user.name, f"{user.first_name} {user.last_name}") for user in users]
+        self.assigned_to.choices = [('UNASSIGNED', 'Unassigned')] + [(user.username, f"{user.first_name} {user.last_name}") for user in users]
     referred_by = StringField('Referred By', validators=[Optional(), Length(max=100)])
     
     # Additional fields from old model
