@@ -19,7 +19,7 @@
                                     <h5 class="card-title">Unassigned Churches</h5>
                                 </div>
                                 <div class="card-body">
-                                    <form id="assignChurchesForm" action="{{ url_for('assignments.assign_churches') }}" method="POST" onsubmit="return validateAssignForm()">
+                                    <form id="assignChurchesForm" action="{{ url_for('assignments.assign_churches') }}" method="POST" enctype="multipart/form-data" onsubmit="return validateAssignForm()">
                                         <div class="form-group mb-3">
                                             <label for="userSelect">Assign to User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>
@@ -156,7 +156,7 @@
 
 {% block scripts %}
 <script>
-    // Form validation function
+    // Form validation and submission function
     function validateAssignForm() {
         var anyChecked = $('.unassigned-church-checkbox:checked').length > 0;
         var userSelected = $('#userSelect').val() !== '';
@@ -178,6 +178,8 @@
             return false;
         }
         
+        // Submit the form using regular form submission
+        document.getElementById('assignChurchesForm').submit();
         return true;
     }
     
