@@ -229,7 +229,7 @@
                                             <option value="{{ person.id }}" {% if person.church_role == 'senior_pastor' %}selected{% endif %}>{{ person.first_name }} {{ person.last_name }}</option>
                                         {% endfor %}
                                     </select>
-                                    <div class="form-text">Assign a Senior Pastor from associated people. <a href="{{ url_for('people.add') }}" target="_blank">Add new person</a> if needed.</div>
+                                    <div class="form-text">Assign a Senior Pastor from associated people. <a href="{{ url_for('people.create') }}" target="_blank">Add new person</a> if needed.</div>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -241,7 +241,7 @@
                                             <option value="{{ person.id }}" {% if person.church_role == 'missions_pastor' %}selected{% endif %}>{{ person.first_name }} {{ person.last_name }}</option>
                                         {% endfor %}
                                     </select>
-                                    <div class="form-text">Assign a Missions Pastor from associated people. <a href="{{ url_for('people.add') }}" target="_blank">Add new person</a> if needed.</div>
+                                    <div class="form-text">Assign a Missions Pastor from associated people. <a href="{{ url_for('people.create') }}" target="_blank">Add new person</a> if needed.</div>
                                 </div>
                             </div>
                         </div>
