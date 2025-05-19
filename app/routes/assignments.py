@@ -38,11 +38,17 @@ def people_assignments():
     if not current_user.is_super_admin():
         users = [u for u in users if u.office_id == current_user.office_id]
     
-    # Get unassigned people - handle multiple ways the field might be empty
+    # Get unassigned people - handle multiple ways the field might be empty or invalid
+    # First get all usernames to check against
+    all_usernames = [user.username for user in users]
+    current_app.logger.info(f'Valid usernames: {all_usernames}')
+    
+    # Get all people who either have no assignment or have an invalid assignment
     unassigned_query = Person.query.filter(or_(
         Person.assigned_to == 'UNASSIGNED', 
         Person.assigned_to == '', 
-        Person.assigned_to.is_(None)
+        Person.assigned_to.is_(None),
+        ~Person.assigned_to.in_(all_usernames)  # Not in valid usernames
     ))
     
     # Filter by office for non-super admins
@@ -69,11 +75,17 @@ def churches_assignments():
     if not current_user.is_super_admin():
         users = [u for u in users if u.office_id == current_user.office_id]
     
-    # Get unassigned churches - handle multiple ways the field might be empty
+    # Get unassigned churches - handle multiple ways the field might be empty or invalid
+    # First get all usernames to check against
+    all_usernames = [user.username for user in users]
+    current_app.logger.info(f'Valid usernames for churches: {all_usernames}')
+    
+    # Get all churches who either have no assignment or have an invalid assignment
     unassigned_query = Church.query.filter(or_(
         Church.assigned_to == 'UNASSIGNED', 
         Church.assigned_to == '', 
-        Church.assigned_to.is_(None)
+        Church.assigned_to.is_(None),
+        ~Church.assigned_to.in_(all_usernames)  # Not in valid usernames
     ))
     
     # Filter by office for non-super admins
@@ -94,7 +106,12 @@ def churches_assignments():
 def assign_people():
     """Assign people to a user."""
     user_id = request.form.get('user_id')
+    # Try both formats of form data
     person_ids = request.form.getlist('person_ids[]')
+    if not person_ids:
+        person_ids = request.form.getlist('person_ids')
+    
+    current_app.logger.info(f'Assigning people: user_id={user_id}, person_ids={person_ids}')
     
     if not user_id or not person_ids:
         flash('Missing required data for assignment', 'danger')
@@ -142,7 +159,12 @@ def assign_people():
 def assign_churches():
     """Assign churches to a user."""
     user_id = request.form.get('user_id')
+    # Try both formats of form data
     church_ids = request.form.getlist('church_ids[]')
+    if not church_ids:
+        church_ids = request.form.getlist('church_ids')
+    
+    current_app.logger.info(f'Assigning churches: user_id={user_id}, church_ids={church_ids}')
     
     if not user_id or not church_ids:
         flash('Missing required data for assignment', 'danger')
@@ -345,7 +367,12 @@ def get_user_churches(user_id):
 @admin_required
 def unassign_people():
     """Unassign people from a user."""
+    # Try both formats of form data
     person_ids = request.form.getlist('person_ids[]')
+    if not person_ids:
+        person_ids = request.form.getlist('person_ids')
+    
+    current_app.logger.info(f'Unassigning people: person_ids={person_ids}')
     
     if not person_ids:
         flash('No people selected for unassignment', 'danger')
@@ -381,7 +408,12 @@ def unassign_people():
 @admin_required
 def unassign_churches():
     """Unassign churches from a user."""
+    # Try both formats of form data
     church_ids = request.form.getlist('church_ids[]')
+    if not church_ids:
+        church_ids = request.form.getlist('church_ids')
+    
+    current_app.logger.info(f'Unassigning churches: church_ids={church_ids}')
     
     if not church_ids:
         flash('No churches selected for unassignment', 'danger')

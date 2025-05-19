@@ -19,7 +19,7 @@
                                     <h5 class="card-title">Unassigned People</h5>
                                 </div>
                                 <div class="card-body">
-                                    <form id="assignPeopleForm" action="{{ url_for('assignments.assign_people') }}" method="POST">
+                                    <form id="assignPeopleForm" action="{{ url_for('assignments.assign_people') }}" method="POST" onsubmit="return validateAssignForm()">
                                         <div class="form-group mb-3">
                                             <label for="userSelect">Assign to User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>
@@ -156,6 +156,24 @@
 
 {% block scripts %}
 <script>
+    // Form validation function
+    function validateAssignForm() {
+        var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
+        var userSelected = $('#userSelect').val() !== '';
+        
+        if (!anyChecked) {
+            alert('Please select at least one person to assign.');
+            return false;
+        }
+        
+        if (!userSelected) {
+            alert('Please select a user to assign people to.');
+            return false;
+        }
+        
+        return true;
+    }
+    
     $(document).ready(function() {
         // Handle select all unassigned people
         $('#selectAllUnassigned').click(function() {
