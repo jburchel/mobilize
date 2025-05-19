@@ -583,7 +583,7 @@ def church_view():
             # Regular users see only their assigned contacts
             filtered_contacts = [
                 pc for pc in pipeline_contacts
-                if hasattr(pc.contact, 'assigned_to_id') and pc.contact.assigned_to_id == current_user.id
+                if hasattr(pc.contact, 'assigned_to') and pc.contact.assigned_to == current_user.name
                 and hasattr(pc.contact, 'office_id') and pc.contact.office_id == current_user.office_id
             ]
                     
@@ -618,7 +618,7 @@ def church_view():
             # Regular users see only their assigned churches
             church_query = church_query.filter(
                 Church.office_id == current_user.office_id,
-                Church.assigned_to_id == current_user.id
+                Church.assigned_to == current_user.name
             )
             
         churches = church_query.all()

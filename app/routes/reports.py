@@ -316,7 +316,7 @@ def export_data(entity_type):
         
         elif entity_type == 'tasks':
             query = db.session.query(Task).filter(Task.office_id == office_id)
-            columns = ['id', 'title', 'description', 'status', 'priority', 'due_date', 'assigned_to_id', 'created_at']
+            columns = ['id', 'title', 'description', 'status', 'priority', 'due_date', 'assigned_to', 'created_at']
             filename = f"tasks_export_{datetime.datetime.now().strftime('%Y%m%d')}"
         
         elif entity_type == 'communications':
@@ -556,7 +556,7 @@ def generate_volunteer_report(office_id, start_date, end_date, include_fields):
         db.func.count(Task.id).label('task_count'),
         db.func.sum(db.case([(Task.status == 'completed', 1)], else_=0)).label('completed_tasks')
     ).outerjoin(
-        Task, User.id == Task.assigned_to_id
+        Task, User.name == Task.assigned_to
     ).filter(
         User.offices.any(Office.id == office_id),
         Task.created_at.between(start_date, end_date)

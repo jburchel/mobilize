@@ -288,7 +288,7 @@ def view(pipeline_id):
             pipeline_contacts = []
             for pc in all_pipeline_contacts:
                 contact = pc.contact
-                contact_user_id = getattr(contact, 'assigned_to_id', None)
+                contact_user_id = getattr(contact, 'assigned_to', None)
                 contact_office_id = getattr(contact, 'office_id', None)
                 
                 # Include if assigned to this user and from the same office
@@ -357,7 +357,7 @@ def view(pipeline_id):
                 # Regular users see only their assigned people
                 people_query = people_query.filter(
                     Person.office_id == current_user.office_id,
-                    Person.assigned_to_id == current_user.id
+                    Person.assigned_to == current_user.name
                 )
                 
             people = people_query.all()
@@ -382,7 +382,7 @@ def view(pipeline_id):
                 # Regular users see only their assigned churches
                 church_query = church_query.filter(
                     Church.office_id == current_user.office_id,
-                    Church.assigned_to_id == current_user.id
+                    Church.assigned_to == current_user.name
                 )
                 
             churches = church_query.all()
