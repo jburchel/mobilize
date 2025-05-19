@@ -122,7 +122,7 @@ def create():
             date_closed=form.date_closed.data,
             tags=form.tags.data if hasattr(form, 'tags') else None,
             notes=form.notes.data,
-            assigned_to=form.assigned_to.data,
+            assigned_to=form.assigned_to.data if form.assigned_to.data else current_user.username,
             priority=form.priority.data,
             source=form.source.data,
             type='person',  # Explicitly set type for the polymorphic model

@@ -144,6 +144,11 @@
                                             <i class="fas fa-user-shield me-2"></i><span class="nav-text">Admin Panel</span>
                                         </a>
                                     </li>
+                                    <li class="nav-item">
+                                        <a href="{{ url_for('assignments.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('assignments') %}active{% endif %}">
+                                            <i class="fas fa-user-cog me-2"></i><span class="nav-text">Assignments</span>
+                                        </a>
+                                    </li>
                                     {% endif %}
                                 </ul>
                             </div>

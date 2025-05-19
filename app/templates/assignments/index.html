@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Assignment Management</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">People Assignments</h5>
+                                    <p class="card-text">Manage assignments of people to users</p>
+                                    <a href="{{ url_for('assignments.people_assignments') }}" class="btn btn-primary">
+                                        <i class="fas fa-users"></i> Manage People Assignments
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Church Assignments</h5>
+                                    <p class="card-text">Manage assignments of churches to users</p>
+                                    <a href="{{ url_for('assignments.churches_assignments') }}" class="btn btn-primary">
+                                        <i class="fas fa-church"></i> Manage Church Assignments
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

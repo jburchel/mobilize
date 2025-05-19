@@ -17,6 +17,7 @@ from app.routes.settings import settings_bp
 from app.routes.pipeline import pipeline_bp
 from app.routes.reports import reports_bp
 from app.routes.emails import emails_bp
+from app.routes.assignments import assignments_bp
 from app.onboarding.routes import onboarding_bp
 
 test_bp = Blueprint('test_route', __name__)
@@ -46,6 +47,7 @@ blueprints = [
     pipeline_bp,
     reports_bp,
     emails_bp,
+    assignments_bp,
     onboarding_bp
 ]
 

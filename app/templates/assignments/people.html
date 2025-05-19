@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="card-title">People Assignments</h4>
+                    <a href="{{ url_for('assignments.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to Assignment Management
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Unassigned People</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="assignPeopleForm" action="{{ url_for('assignments.assign_people') }}" method="POST">
+                                        <div class="form-group mb-3">
+                                            <label for="userSelect">Assign to User:</label>
+                                            <select class="form-control" id="userSelect" name="user_id" required>
+                                                <option value="">Select a user...</option>
+                                                {% for user in users %}
+                                                <option value="{{ user.id }}">{{ user.full_name }} ({{ user.username }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="form-group mb-3">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <label>Select People to Assign:</label>
+                                                <div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllUnassigned">
+                                                        Select All
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllUnassigned">
+                                                        Deselect All
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 40px;">Select</th>
+                                                            <th>Name</th>
+                                                            <th>Email</th>
+                                                            <th>Pipeline</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% if unassigned_people %}
+                                                            {% for person in unassigned_people %}
+                                                            <tr>
+                                                                <td>
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids[]" value="{{ person.id }}" id="person{{ person.id }}">
+                                                                    </div>
+                                                                </td>
+                                                                <td>{{ person.first_name }} {{ person.last_name }}</td>
+                                                                <td>{{ person.email }}</td>
+                                                                <td>{{ person.people_pipeline }}</td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <tr>
+                                                                <td colspan="4" class="text-center">No unassigned people found</td>
+                                                            </tr>
+                                                        {% endif %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <button type="submit" class="btn btn-primary" id="assignButton" disabled>
+                                                <i class="fas fa-user-plus"></i> Assign Selected People
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Current Assignments</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group mb-3">
+                                        <label for="viewUserSelect">View Assignments for User:</label>
+                                        <select class="form-control" id="viewUserSelect">
+                                            <option value="">Select a user...</option>
+                                            {% for user in users %}
+                                            <option value="{{ user.id }}">{{ user.full_name }} ({{ user.username }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    
+                                    <div id="userAssignmentsContainer" style="display: none;">
+                                        <form id="unassignPeopleForm" action="{{ url_for('assignments.unassign_people') }}" method="POST">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <h6 id="assignedPeopleTitle">Assigned People</h6>
+                                                <div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllAssigned">
+                                                        Select All
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllAssigned">
+                                                        Deselect All
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 40px;">Select</th>
+                                                            <th>Name</th>
+                                                            <th>Email</th>
+                                                            <th>Pipeline</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="assignedPeopleTableBody">
+                                                        <tr>
+                                                            <td colspan="4" class="text-center">Select a user to view their assigned people</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            
+                                            <div class="form-group mt-3">
+                                                <button type="submit" class="btn btn-warning" id="unassignButton" disabled>
+                                                    <i class="fas fa-user-minus"></i> Unassign Selected People
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Handle select all unassigned people
+        $('#selectAllUnassigned').click(function() {
+            $('.unassigned-person-checkbox').prop('checked', true);
+            updateAssignButtonState();
+        });
+        
+        // Handle deselect all unassigned people
+        $('#deselectAllUnassigned').click(function() {
+            $('.unassigned-person-checkbox').prop('checked', false);
+            updateAssignButtonState();
+        });
+        
+        // Handle select all assigned people
+        $('#selectAllAssigned').click(function() {
+            $('.assigned-person-checkbox').prop('checked', true);
+            updateUnassignButtonState();
+        });
+        
+        // Handle deselect all assigned people
+        $('#deselectAllAssigned').click(function() {
+            $('.assigned-person-checkbox').prop('checked', false);
+            updateUnassignButtonState();
+        });
+        
+        // Update assign button state based on selections
+        function updateAssignButtonState() {
+            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
+            var userSelected = $('#userSelect').val() !== '';
+            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+        }
+        
+        // Update unassign button state based on selections
+        function updateUnassignButtonState() {
+            var anyChecked = $('.assigned-person-checkbox:checked').length > 0;
+            $('#unassignButton').prop('disabled', !anyChecked);
+        }
+        
+        // Listen for changes in checkboxes and user selection
+        $('.unassigned-person-checkbox').change(updateAssignButtonState);
+        $('#userSelect').change(updateAssignButtonState);
+        
+        // Load assigned people when a user is selected
+        $('#viewUserSelect').change(function() {
+            var userId = $(this).val();
+            if (userId) {
+                $.ajax({
+                    url: '/assignments/get-user-people/' + userId,
+                    type: 'GET',
+                    success: function(data) {
+                        $('#userAssignmentsContainer').show();
+                        var tableBody = $('#assignedPeopleTableBody');
+                        tableBody.empty();
+                        
+                        if (data.length === 0) {
+                            tableBody.append('<tr><td colspan="4" class="text-center">No people assigned to this user</td></tr>');
+                            $('#unassignButton').prop('disabled', true);
+                        } else {
+                            data.forEach(function(person) {
+                                var row = `
+                                    <tr>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input assigned-person-checkbox" type="checkbox" name="person_ids[]" value="${person.id}" id="assignedPerson${person.id}">
+                                            </div>
+                                        </td>
+                                        <td>${person.name}</td>
+                                        <td>${person.email || ''}</td>
+                                        <td>${person.pipeline || ''}</td>
+                                    </tr>
+                                `;
+                                tableBody.append(row);
+                            });
+                            
+                            // Add event listener to the newly created checkboxes
+                            $('.assigned-person-checkbox').change(updateUnassignButtonState);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error loading assigned people:', error);
+                        alert('Error loading assigned people. Please try again.');
+                    }
+                });
+            } else {
+                $('#userAssignmentsContainer').hide();
+            }
+        });
+    });
+</script>
+{% endblock %}

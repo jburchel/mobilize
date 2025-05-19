@@ -7,7 +7,7 @@ from datetime import datetime
 from app.models.church import Church
 from app.models.person import Person
 from app.models.pipeline import Pipeline, PipelineContact, PipelineStage
-from app.models.task import Task
+# Task model is used in relationship but not directly imported here
 from app.extensions import db
 from app.forms.church import ChurchForm
 from app.forms.import_form import ImportForm, FieldMappingForm
@@ -163,7 +163,7 @@ def create():
                 denomination=form.denomination.data,
                 weekly_attendance=form.weekly_attendance.data,
                 priority=form.priority.data,
-                assigned_to=form.assigned_to.data,
+                assigned_to=form.assigned_to.data if form.assigned_to.data else current_user.username,
                 source=form.source.data,
                 virtuous=form.virtuous.data,
                 referred_by=form.referred_by.data,
@@ -241,12 +241,12 @@ def create():
             
             flash('Church created successfully', 'success')
             return redirect(url_for('churches.show', id=church.id))
-        except Exception as e:
+        except Exception as error:
             db.session.rollback()
-            current_app.logger.error(f"Error creating church: {str(e)}")
+            current_app.logger.error(f"Error creating church: {str(error)}")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({"error": "Internal server error"}), 500
-            flash(f'Error creating church: {str(e)}', 'danger')
+            flash(f'Error creating church: {str(error)}', 'danger')
             return render_template('churches/form.html', form=form)
     
     return render_template('churches/form.html', form=form)
