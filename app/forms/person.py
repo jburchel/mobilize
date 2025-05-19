@@ -3,9 +3,10 @@ from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, TextAreaField, DateField, SelectField, EmailField, TelField, BooleanField
 from wtforms.validators import DataRequired, Email, Optional, Length
 from app.models.constants import (
-    STATE_CHOICES, MARITAL_STATUS_CHOICES, PEOPLE_PIPELINE_CHOICES, 
-    PRIORITY_CHOICES, ASSIGNED_TO_CHOICES, SOURCE_CHOICES, CHURCH_ROLE_CHOICES
+    STATE_CHOICES, PEOPLE_PIPELINE_CHOICES, MARITAL_STATUS_CHOICES,
+    PRIORITY_CHOICES, SOURCE_CHOICES, CHURCH_ROLE_CHOICES
 )
+from app.models.user import User
 
 class PersonForm(FlaskForm):
     """Form for creating and editing a person."""
@@ -66,8 +67,14 @@ class PersonForm(FlaskForm):
                       choices=[('', 'Select Source')] + SOURCE_CHOICES, 
                       validators=[Optional()])
     assigned_to = SelectField('Assigned To', 
-                           choices=[('', 'Select Assignee')] + ASSIGNED_TO_CHOICES, 
-                           validators=[Optional()])
+                           choices=[], 
+                           validators=[Optional()], coerce=int)
+    
+    def __init__(self, *args, **kwargs):
+        super(PersonForm, self).__init__(*args, **kwargs)
+        # Dynamically load users from database
+        users = User.query.filter_by(is_active=True).order_by(User.first_name).all()
+        self.assigned_to.choices = [(0, 'Unassigned')] + [(user.id, f"{user.first_name} {user.last_name}") for user in users]
     referred_by = StringField('Referred By', validators=[Optional(), Length(max=100)])
     
     # Additional fields from old model

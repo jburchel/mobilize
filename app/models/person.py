@@ -63,7 +63,8 @@ class Person(Contact):
     pipeline_status: Mapped[Optional[str]] = mapped_column(String(50))
     pipeline_stage: Mapped[Optional[str]] = mapped_column(String(50))
     priority: Mapped[str] = mapped_column(String(50), default='MEDIUM')
-    assigned_to: Mapped[str] = mapped_column(String(50), default='UNASSIGNED')
+    assigned_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
+    assigned_to_string: Mapped[Optional[str]] = mapped_column(String(50), default='UNASSIGNED')  # Keep for backward compatibility
     source: Mapped[str] = mapped_column(String(50), default='UNKNOWN')
     reason_closed: Mapped[Optional[str]] = mapped_column(String(255))
     date_closed: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -85,6 +86,12 @@ class Person(Contact):
         back_populates="person",
         uselist=False,
         foreign_keys="User.person_id"
+    )
+    
+    assigned_user = relationship(
+        "User",
+        foreign_keys=[assigned_to_id],
+        primaryjoin="User.id==Person.assigned_to_id"
     )
     primary_for_churches = relationship(
         "Church",

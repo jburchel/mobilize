@@ -35,7 +35,8 @@ class Church(Contact):
     mission_pastor_phone: Mapped[Optional[str]] = mapped_column(String(50))
     mission_pastor_email: Mapped[Optional[str]] = mapped_column(String)
     priority: Mapped[str] = mapped_column(String(100), default='MEDIUM')
-    assigned_to: Mapped[str] = mapped_column(String(100), default='UNASSIGNED')
+    assigned_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id'))
+    assigned_to_string: Mapped[Optional[str]] = mapped_column(String(100), default='UNASSIGNED')  # Keep for backward compatibility
     source: Mapped[str] = mapped_column(String(100), default='UNKNOWN')
     referred_by: Mapped[Optional[str]] = mapped_column(String(100))
     info_given: Mapped[Optional[str]] = mapped_column(Text)
@@ -54,6 +55,12 @@ class Church(Contact):
         back_populates='owned_churches',
         foreign_keys=[owner_id],
         primaryjoin='User.id==Church.owner_id'
+    )
+    
+    assigned_user = relationship(
+        'User',
+        foreign_keys=[assigned_to_id],
+        primaryjoin='User.id==Church.assigned_to_id'
     )
     
     main_contact = relationship(

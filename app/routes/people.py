@@ -122,6 +122,10 @@ def create():
             date_closed=form.date_closed.data,
             tags=form.tags.data if hasattr(form, 'tags') else None,
             notes=form.notes.data,
+            assigned_to_id=form.assigned_to.data if form.assigned_to.data != 0 else None,
+            assigned_to_string='UNASSIGNED' if form.assigned_to.data == 0 else None,
+            priority=form.priority.data,
+            source=form.source.data,
             type='person',  # Explicitly set type for the polymorphic model
             office_id=current_user.office_id,
             user_id=current_user.id,
@@ -272,6 +276,10 @@ def edit(id):
         person.reason_closed = form.reason_closed.data
         person.date_closed = form.date_closed.data
         person.tags = form.tags.data if hasattr(form, 'tags') else None
+        person.assigned_to_id = form.assigned_to.data if form.assigned_to.data != 0 else None
+        person.assigned_to_string = 'UNASSIGNED' if form.assigned_to.data == 0 else None
+        person.priority = form.priority.data
+        person.source = form.source.data
         
         # Update status based on pipeline status
         if form.pipeline_status.data:

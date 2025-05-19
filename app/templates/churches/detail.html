@@ -314,7 +314,7 @@
                             
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Assigned To:</div>
-                                <div class="col-7">{{ church.assigned_to or 'Not assigned' }}</div>
+                                <div class="col-7">{% if church.assigned_user %}{{ church.assigned_user.first_name }} {{ church.assigned_user.last_name }}{% elif church.assigned_to_string %}{{ church.assigned_to_string }}{% else %}Not assigned{% endif %}</div>
                             </div>
                             
                             {% if church.date_closed %}

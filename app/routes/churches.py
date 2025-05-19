@@ -162,7 +162,8 @@ def create():
             denomination=form.denomination.data,
             weekly_attendance=form.weekly_attendance.data,
             priority=form.priority.data,
-            assigned_to=form.assigned_to.data,
+            assigned_to_id=form.assigned_to.data if form.assigned_to.data != 0 else None,
+            assigned_to_string='UNASSIGNED' if form.assigned_to.data == 0 else None,
             source=form.source.data,
             virtuous=form.virtuous.data,
             referred_by=form.referred_by.data,
@@ -352,7 +353,8 @@ def edit(id):
         church.denomination = form.denomination.data
         church.weekly_attendance = form.weekly_attendance.data
         church.priority = form.priority.data
-        church.assigned_to = form.assigned_to.data
+        church.assigned_to_id = form.assigned_to.data if form.assigned_to.data != 0 else None
+        church.assigned_to_string = 'UNASSIGNED' if form.assigned_to.data == 0 else None
         church.source = form.source.data
         church.virtuous = form.virtuous.data
         church.referred_by = form.referred_by.data

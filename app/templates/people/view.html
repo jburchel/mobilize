@@ -220,7 +220,7 @@
                             </div>
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Assigned To:</div>
-                                <div class="col-7">{{ person.assigned_to }}</div>
+                                <div class="col-7">{% if person.assigned_user %}{{ person.assigned_user.first_name }} {{ person.assigned_user.last_name }}{% elif person.assigned_to_string %}{{ person.assigned_to_string }}{% else %}Not assigned{% endif %}</div>
                             </div>
                         </div>
                     </div>
