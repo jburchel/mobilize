@@ -14,6 +14,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
+                        <!-- Left Column: Unassigned People -->
                         <div class="col-md-6">
                             <div class="card">
                                 <div class="card-header">
@@ -89,6 +90,7 @@
                             </div>
                         </div>
                         
+                        <!-- Right Column: Current Assignments -->
                         <div class="col-md-6">
                             <div class="card">
                                 <div class="card-header">
@@ -271,13 +273,17 @@
             if (userId) {
                 var url = '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId);
                 console.log('AJAX request URL:', url);
+                
+                // Show loading indicator
+                $('#userAssignmentsContainer').show();
+                var tableBody = $('#assignedPeopleTableBody');
+                tableBody.html('<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                
                 $.ajax({
                     url: url,
                     type: 'GET',
                     success: function(response) {
                         console.log('Response received:', response);
-                        $('#userAssignmentsContainer').show();
-                        var tableBody = $('#assignedPeopleTableBody');
                         tableBody.empty();
                         
                         if (response.people && response.people.length > 0) {
@@ -313,7 +319,7 @@
                         console.error('Error loading assigned people:', error);
                         console.error('Status:', status);
                         console.error('Response:', xhr.responseText);
-                        tableBody.append('<tr><td colspan="4" class="text-center text-danger">Error loading assigned people: ' + error + '</td></tr>');
+                        tableBody.html('<tr><td colspan="4" class="text-center text-danger">Error loading assigned people: ' + error + '</td></tr>');
                     }
                 });
             } else {
