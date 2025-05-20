@@ -188,7 +188,11 @@
         
         // Update assign button state based on selections
         function updateAssignButtonState() {
-            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
+            // Force a recheck of all checkboxes
+            var checkboxes = $('.unassigned-person-checkbox');
+            console.log('Total unassigned checkboxes found:', checkboxes.length);
+            
+            var anyChecked = checkboxes.filter(':checked').length > 0;
             var userSelected = $('#userSelect').val() !== '';
             console.log('People - Checkboxes checked:', anyChecked, 'User selected:', userSelected);
             
@@ -200,6 +204,11 @@
                 $('#assignButton').prop('disabled', true);
                 console.log('Disabling assign button - anyChecked:', anyChecked, 'userSelected:', userSelected);
             }
+            
+            // Debug each checkbox
+            checkboxes.each(function(index) {
+                console.log('Checkbox', index, 'checked:', $(this).prop('checked'), 'id:', $(this).attr('id'));
+            });
         }
         
         // Update unassign button state based on selections
@@ -285,23 +294,25 @@
         // Load assigned people when a user is selected
         $('#viewUserSelect').change(function() {
             var userId = $(this).val();
-            console.log('User selected:', userId);
+            console.log('User selected for viewing:', userId);
+            
             if (userId) {
-                var url = '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId);
-                console.log('AJAX request URL:', url);
-                
-                // Show loading indicator
+                // Make sure the container is visible first
                 $('#userAssignmentsContainer').show();
                 var tableBody = $('#assignedPeopleTableBody');
+                
+                // Show loading indicator
                 tableBody.html('<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
                 
-                // Add a timestamp to prevent caching
+                // Construct the URL with a timestamp to prevent caching
+                var baseUrl = '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId);
                 var timestamp = new Date().getTime();
-                var urlWithTimestamp = url + '?t=' + timestamp;
-                console.log('Making AJAX request to:', urlWithTimestamp);
+                var url = baseUrl + '?t=' + timestamp;
+                
+                console.log('Making AJAX request to:', url);
                 
                 $.ajax({
-                    url: urlWithTimestamp,
+                    url: url,
                     type: 'GET',
                     dataType: 'json',
                     cache: false,

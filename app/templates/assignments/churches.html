@@ -400,7 +400,11 @@ Details: ' + xhr2.responseText);
         
         // Update assign button state based on selections
         function updateAssignButtonState() {
-            var anyChecked = $('.unassigned-church-checkbox:checked').length > 0;
+            // Force a recheck of all checkboxes
+            var checkboxes = $('.unassigned-church-checkbox');
+            console.log('Total unassigned checkboxes found:', checkboxes.length);
+            
+            var anyChecked = checkboxes.filter(':checked').length > 0;
             var userSelected = $('#userSelect').val() !== '';
             console.log('Churches - Checkboxes checked:', anyChecked, 'User selected:', userSelected);
             
@@ -410,8 +414,13 @@ Details: ' + xhr2.responseText);
                 console.log('Enabling assign button');
             } else {
                 $('#assignButton').prop('disabled', true);
-                console.log('Disabling assign button');
+                console.log('Disabling assign button - anyChecked:', anyChecked, 'userSelected:', userSelected);
             }
+            
+            // Debug each checkbox
+            checkboxes.each(function(index) {
+                console.log('Checkbox', index, 'checked:', $(this).prop('checked'), 'id:', $(this).attr('id'));
+            });
         }
         
         // Update unassign button state based on selections
@@ -431,18 +440,27 @@ Details: ' + xhr2.responseText);
         $('#viewUserSelect').change(function() {
             var userId = $(this).val();
             console.log('User selected for churches:', userId);
+            
             if (userId) {
-                var url = '{{ url_for("assignments.get_user_churches", user_id=0) }}'.replace('0', userId);
-                console.log('AJAX request URL for churches:', url);
-                
-                // Show loading indicator
+                // Make sure the container is visible first
                 $('#userAssignmentsContainer').show();
                 var tableBody = $('#assignedChurchesTableBody');
+                
+                // Show loading indicator
                 tableBody.html('<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                
+                // Construct the URL with a timestamp to prevent caching
+                var baseUrl = '{{ url_for("assignments.get_user_churches", user_id=0) }}'.replace('0', userId);
+                var timestamp = new Date().getTime();
+                var url = baseUrl + '?t=' + timestamp;
+                
+                console.log('Making AJAX request to:', url);
                 
                 $.ajax({
                     url: url,
                     type: 'GET',
+                    dataType: 'json',
+                    cache: false,
                     success: function(response) {
                         console.log('Church response received:', response);
                         tableBody.empty();
@@ -480,8 +498,19 @@ Details: ' + xhr2.responseText);
                     error: function(xhr, status, error) {
                         console.error('Error loading assigned churches:', error);
                         console.error('Status:', status);
-                        console.error('Response:', xhr.responseText);
-                        tableBody.append('<tr><td colspan="4" class="text-center text-danger">Error loading assigned churches: ' + error + '</td></tr>');
+                        console.error('Status code:', xhr.status);
+                        console.error('Response text:', xhr.responseText);
+                        
+                        var errorMessage = 'Error loading assigned churches: ' + error;
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage += ' - ' + xhr.responseJSON.error;
+                        }
+                        
+                        // Display detailed error message in the table
+                        tableBody.html('<tr><td colspan="4" class="text-center text-danger">' + errorMessage + '</td></tr>');
+                        
+                        // Also check the network tab in browser console
+                        console.log('Please check the Network tab in your browser console for more details');
                     }
                 });
             } else {
