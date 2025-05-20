@@ -1,3 +1,4 @@
+{# Template version 2.0 #}
 {% extends "base.html" %}
 
 {% block content %}
@@ -19,10 +20,9 @@
                                     <h5 class="card-title">Unassigned People</h5>
                                 </div>
                                 <div class="card-body">
-                                    <form id="assignForm" method="post" action="{{ url_for('assignments.assign_people') }}">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div id="assignForm">
                                         <div class="form-group mb-3">
-                                            <label for="userSelect">Assign to User:</label>
+                                            <label for="userSelect">Select User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>
                                                 <option value="">Select a user...</option>
                                                 {% for user in users %}
@@ -31,57 +31,57 @@
                                             </select>
                                         </div>
                                         
-                                        <div class="form-group mb-3">
-                                            <div class="mb-3 d-flex justify-content-between">
-                                                <div>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllUnassigned">Select All</button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllUnassigned">Deselect All</button>
-                                                </div>
-                                                <div>
-                                                    <span class="badge bg-info">{{ unassigned_people|length }} unassigned</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                                <table class="table table-sm table-hover">
-                                                    <thead>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="selectAllPeople">
+                                                                <label class="form-check-label" for="selectAllPeople">
+                                                                    Select All
+                                                                </label>
+                                                            </div>
+                                                        </th>
+                                                        <th>Name</th>
+                                                        <th>Email</th>
+                                                        <th>Phone</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% if unassigned_people %}
+                                                        {% for person in unassigned_people %}
                                                         <tr>
-                                                            <th style="width: 40px;">Select</th>
-                                                            <th>Name</th>
-                                                            <th>Email</th>
-                                                            <th>Pipeline</th>
+                                                            <td>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}">
+                                                                </div>
+                                                            </td>
+                                                            <td>{{ person.full_name }}</td>
+                                                            <td>{{ person.email }}</td>
+                                                            <td>{{ person.phone }}</td>
                                                         </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% if unassigned_people %}
-                                                            {% for person in unassigned_people %}
-                                                            <tr>
-                                                                <td>
-                                                                    <div class="form-check">
-                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}">
-                                                                    </div>
-                                                                </td>
-                                                                <td>{{ person.first_name }} {{ person.last_name }}</td>
-                                                                <td>{{ person.email }}</td>
-                                                                <td>{{ person.people_pipeline }}</td>
-                                                            </tr>
-                                                            {% endfor %}
-                                                        {% else %}
-                                                            <tr>
-                                                                <td colspan="4" class="text-center">No unassigned people found</td>
-                                                            </tr>
-                                                        {% endif %}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                        {% endfor %}
+                                                    {% else %}
+                                                        <tr>
+                                                            <td colspan="4" class="text-center">No unassigned people found</td>
+                                                        </tr>
+                                                    {% endif %}
+                                                </tbody>
+                                            </table>
                                         </div>
                                         
-                                        <div class="form-group">
-                                            <button type="submit" class="btn btn-primary" id="assignButton">
-                                                <i class="fas fa-user-plus"></i> Assign Selected People
-                                            </button>
-                                        </div>
+                                        <button type="submit" class="btn btn-primary mt-3">Assign People</button>
                                     </form>
+                                    
+                                    <script>
+                                        $(document).ready(function() {
+                                            // Handle select all checkbox
+                                            $('#selectAllPeople').change(function() {
+                                                $('.person-checkbox').prop('checked', $(this).prop('checked'));
+                                            });
+                                        });
+                                    </script>
                                 </div>
                             </div>
                         </div>

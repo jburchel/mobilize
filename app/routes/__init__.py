@@ -19,6 +19,9 @@ from app.routes.reports import reports_bp
 from app.routes.emails import emails_bp
 from app.routes.assignments import assignments_bp
 from app.onboarding.routes import onboarding_bp
+from app.routes.api.assignments import assignments_api_bp
+from app.routes.direct_assignments import direct_assignments_bp
+from app.routes.simple_assignments import simple_assignments_bp
 
 test_bp = Blueprint('test_route', __name__)
 
@@ -48,7 +51,10 @@ blueprints = [
     reports_bp,
     emails_bp,
     assignments_bp,
-    onboarding_bp
+    onboarding_bp,
+    assignments_api_bp,
+    direct_assignments_bp,
+    simple_assignments_bp
 ]
 
 # This function is no longer used since blueprints are registered directly in app/__init__.py

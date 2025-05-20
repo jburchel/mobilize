@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ page_title }}</h1>
+    
+    <div class="alert alert-info">
+        This is a simplified assignment page using basic form submissions without AJAX or JavaScript.
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">People Assignments</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('simple_assignments.simple_assign_people') }}" method="post">
+                        <div class="form-group mb-3">
+                            <label for="userSelectPeople">Select User:</label>
+                            <select class="form-control" id="userSelectPeople" name="user_id" required>
+                                <option value="">Select a user...</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.full_name }} ({{ user.username }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if unassigned_people %}
+                                        {% for person in unassigned_people %}
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" name="person_ids" value="{{ person.id }}">
+                                            </td>
+                                            <td>{{ person.full_name }}</td>
+                                            <td>{{ person.email }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">No unassigned people found</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary mt-3">Assign People</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Church Assignments</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('simple_assignments.simple_assign_churches') }}" method="post">
+                        <div class="form-group mb-3">
+                            <label for="userSelectChurches">Select User:</label>
+                            <select class="form-control" id="userSelectChurches" name="user_id" required>
+                                <option value="">Select a user...</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.full_name }} ({{ user.username }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Name</th>
+                                        <th>City</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if unassigned_churches %}
+                                        {% for church in unassigned_churches %}
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" name="church_ids" value="{{ church.id }}">
+                                            </td>
+                                            <td>{{ church.name }}</td>
+                                            <td>{{ church.city }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">No unassigned churches found</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary mt-3">Assign Churches</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

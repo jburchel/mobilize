@@ -76,13 +76,23 @@
                             <i class="bi bi-download"></i> Export
                         </button>
                     </div>
-                    <!-- Search Bar -->
-                    <div>
-                        <div class="input-group">
-                            <input type="text" id="tableSearch" class="form-control" placeholder="Search by name, email, phone, pipeline stage, or priority..." aria-label="Search">
-                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" style="display: none;">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
+                    <!-- Search and Filters -->
+                    <div class="d-flex gap-2">
+                        <!-- Assignment Filter -->
+                        <div class="me-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="showAssignedToMe" {% if show_assigned %}checked{% endif %}>
+                                <label class="form-check-label" for="showAssignedToMe">Show only my assignments</label>
+                            </div>
+                        </div>
+                        <!-- Search Bar -->
+                        <div>
+                            <div class="input-group">
+                                <input type="text" id="tableSearch" class="form-control" placeholder="Search by name, email, phone, pipeline stage, or priority..." aria-label="Search" value="{{ search_query }}">
+                                <button class="btn btn-outline-secondary" type="button" id="clearSearch" {% if not search_query %}style="display: none;"{% endif %}>
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -332,6 +342,14 @@ document.addEventListener('DOMContentLoaded', function() {
             params.delete('q');
         }
         
+        // Preserve assignment filter if it's active
+        const showAssignedToMe = document.getElementById('showAssignedToMe');
+        if (showAssignedToMe && showAssignedToMe.checked) {
+            params.set('assigned', 'me');
+        } else if (params.has('assigned')) {
+            params.delete('assigned');
+        }
+        
         // Always reset to page 1 when searching
         params.set('page', 1);
         
@@ -360,6 +378,32 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchParam) {
         searchInput.value = searchParam;
         clearSearchBtn.style.display = 'block';
+    }
+    
+    // Assignment filter toggle event listener
+    const showAssignedToMe = document.getElementById('showAssignedToMe');
+    if (showAssignedToMe) {
+        showAssignedToMe.addEventListener('change', function() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Update assignment filter parameter
+            if (this.checked) {
+                params.set('assigned', 'me');
+            } else {
+                params.delete('assigned');
+            }
+            
+            // Preserve search query if present
+            if (searchInput.value.trim()) {
+                params.set('q', searchInput.value.trim());
+            }
+            
+            // Reset to page 1
+            params.set('page', 1);
+            
+            // Navigate to updated URL
+            window.location.href = `${window.location.pathname}?${params.toString()}`;
+        });
     }
                     <td>
                         ${person.priority ? 

@@ -1,5 +1,5 @@
 FROM python:3.9-slim
-
+# Build version 3.0 - Force rebuild with CSRF token field implementation
 WORKDIR /app
 
 # Install system dependencies

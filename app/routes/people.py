@@ -1,10 +1,9 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from app.models.person import Person
 from app.models.church import Church
-from app.models.communication import Communication
-from app.models.task import Task
 from app.models.pipeline import Pipeline, PipelineStage, PipelineContact
 from app.forms.person import PersonForm
 from app.extensions import db
@@ -21,16 +20,33 @@ people_bp = Blueprint('people', __name__, template_folder='../templates/people')
 @office_required
 def index():
     """Show list of all people with pagination and search functionality."""
+    # Start timer for performance logging
+    start_time = datetime.now()
+    
+    # Get pagination and search parameters
     page = request.args.get('page', 1, type=int)
     per_page = 20  # Number of records per page
     search_query = request.args.get('q', '')
+    show_assigned = request.args.get('assigned', '') == 'me'  # New filter parameter
     
-    # Create base query
+    # Create optimized base query with eager loading
+    
+    # Get the main pipeline first (this can be cached in the future)
+    main_pipeline = Pipeline.query.filter(
+        Pipeline.is_main_pipeline,
+        Pipeline.pipeline_type.in_(['person', 'people'])
+    ).first()
+    
+    # Create base query with eager loading
     query = Person.query
     
     # Filter by office for non-super admins
     if not current_user.is_super_admin():
         query = query.filter_by(office_id=current_user.office_id)
+        
+    # Filter by assignment if requested
+    if show_assigned:
+        query = query.filter_by(assigned_to=current_user.username)
     
     # Apply search filter if provided
     if search_query:
@@ -45,43 +61,52 @@ def index():
             )
         )
     
-    # Using pagination to limit the number of records fetched
-    pagination = query.order_by(Person.last_name, Person.first_name).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    # Using pagination with optimized query
+    # Add index hint for better performance
+    query = query.order_by(Person.last_name, Person.first_name)
     
+    # Apply pagination
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     people = pagination.items
     
-    # Get the main pipeline for proper pipeline stages
-    # Check for both 'person' and 'people' pipeline types since both are used
-    main_pipeline = Pipeline.query.filter(
-        Pipeline.is_main_pipeline,
-        Pipeline.pipeline_type.in_(['person', 'people'])
-    ).first()
-    
-    if main_pipeline:
-        # Get pipeline stages for all people in the current page
+    # Get pipeline stages in a single optimized query if main pipeline exists
+    if main_pipeline and people:
         person_ids = [p.id for p in people]
-        pipeline_contacts = PipelineContact.query.filter(
+        
+        # Use a join to get pipeline data more efficiently
+        pipeline_data = db.session.query(
+            PipelineContact.contact_id, 
+            PipelineStage.name
+        ).join(
+            PipelineStage, 
+            PipelineContact.current_stage_id == PipelineStage.id
+        ).filter(
             PipelineContact.contact_id.in_(person_ids),
             PipelineContact.pipeline_id == main_pipeline.id
         ).all()
         
         # Create a mapping of person_id to pipeline stage
-        pipeline_stages = {}
-        for pc in pipeline_contacts:
-            if pc.current_stage:
-                pipeline_stages[pc.contact_id] = pc.current_stage.name
+        pipeline_stages = {contact_id: stage_name for contact_id, stage_name in pipeline_data}
         
         # Attach pipeline stage to each person object
         for person in people:
             person.current_pipeline_stage = pipeline_stages.get(person.id, 'Not in Pipeline')
+    else:
+        # Set default pipeline stage if no pipeline exists
+        for person in people:
+            person.current_pipeline_stage = 'Not in Pipeline'
+    
+    # Log performance metrics
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    current_app.logger.info(f"People index page loaded in {duration:.2f} seconds")
     
     # Pass data to template with pagination info
     return render_template('people/list.html', 
                           people=people,
                           pagination=pagination,
                           search_query=search_query,
+                          show_assigned=show_assigned,
                           page_title="People Management")
 
 @people_bp.route('/new', methods=['GET', 'POST'])
@@ -201,52 +226,88 @@ def create():
     
     return render_template('people/form.html', form=form)
 
+
 @people_bp.route('/<int:id>')
 @login_required
 @office_required
 def show(id):
     """Show a specific person."""
+    # Start timer for performance logging
+    start_time = datetime.now()
+    
+    # Use eager loading to reduce the number of database queries
+    
     try:
-        person = Person.query.get_or_404(id)
+        # Get the person with eager loading of related data
+        person = Person.query.options(
+            joinedload(Person.tasks),
+            joinedload(Person.communications)
+        ).get_or_404(id)
         
-        # Check permissions (allow super admins to view any person)
+        # Check if user has access to this person
         if not current_user.is_super_admin() and person.office_id != current_user.office_id:
             flash('You do not have permission to view this person', 'danger')
             return redirect(url_for('people.index'))
         
-        # Get person's church if associated
+        # Use the preloaded data instead of making separate queries
+        # Sort the communications and tasks in Python rather than making new queries
+        communications = sorted(person.communications, key=lambda c: c.created_at if c.created_at else datetime.min, reverse=True)
+        tasks = sorted(person.tasks, key=lambda t: t.due_date if t.due_date else datetime.max)
+        
+        # Get church if associated - single query
         church = None
         if person.church_id:
             church = Church.query.get(person.church_id)
         
-        # Get communications and tasks for this person - with error handling
-        try:
-            communications = Communication.query.filter_by(person_id=person.id).order_by(Communication.date.desc()).all()
-        except Exception as e:
-            current_app.logger.error(f"Error fetching communications for person {id}: {str(e)}")
-            communications = []
-            
-        try:
-            tasks = Task.query.filter_by(person_id=person.id).order_by(Task.due_date).all()
-        except Exception as e:
-            current_app.logger.error(f"Error fetching tasks for person {id}: {str(e)}")
-            tasks = []
+        # Get pipeline information with a single optimized query
+        pipeline_info = None
+        
+        # Use a more efficient query with joins to get pipeline data
+        pipeline_data = db.session.query(
+            Pipeline.name.label('pipeline_name'),
+            PipelineStage.name.label('stage_name'),
+            PipelineContact.entry_date,
+            PipelineContact.last_stage_change
+        ).join(
+            PipelineContact, Pipeline.id == PipelineContact.pipeline_id
+        ).join(
+            PipelineStage, PipelineContact.current_stage_id == PipelineStage.id
+        ).filter(
+            Pipeline.is_main_pipeline,
+            Pipeline.pipeline_type.in_(['person', 'people']),
+            PipelineContact.contact_id == id
+        ).first()
+        
+        if pipeline_data:
+            pipeline_info = {
+                'pipeline_name': pipeline_data.pipeline_name,
+                'current_stage': pipeline_data.stage_name,
+                'entry_date': pipeline_data.entry_date,
+                'last_stage_change': pipeline_data.last_stage_change
+            }
         
         # Ensure first_name and last_name are not None to avoid template errors
         first_name = person.first_name or ""
         last_name = person.last_name or ""
         page_title = f"{first_name} {last_name}" if first_name or last_name else f"Person {id}"
         
+        # Log performance metrics
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        current_app.logger.info(f"Person detail page for ID {id} loaded in {duration:.2f} seconds")
+        
         return render_template('people/view.html', 
-                            person=person, 
-                            church=church,
+                            person=person,
                             communications=communications,
                             tasks=tasks,
+                            church=church,
+                            pipeline_info=pipeline_info,
                             page_title=page_title)
     except Exception as e:
         current_app.logger.error(f"Error showing person {id}: {str(e)}")
         flash(f"Error loading person details: {str(e)}", 'danger')
         return redirect(url_for('people.index'))
+
 
 @people_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required

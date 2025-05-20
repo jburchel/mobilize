@@ -35,6 +35,7 @@ from app.cli import register_commands
 from app.config.performance_optimizations import optimize_flask_app
 from app.config.static_optimizations import optimize_static_files
 from app.config.database_optimizations import optimize_database_queries
+from app.config.connection_pool import optimize_connection_pool
 
 # Load environment variables based on the current environment
 env = os.environ.get('FLASK_ENV', 'development')
@@ -330,7 +331,11 @@ def create_app(test_config=None):
         return {'now': datetime.datetime.now()}
     @app.context_processor
     def inject_csrf_token():
-        return dict(csrf_token=generate_csrf())
+        token = generate_csrf()
+        return {
+            'csrf_token': token,
+            'csrf_token_field': f'<input type="hidden" name="csrf_token" value="{token}">',
+        }
     @app.context_processor
     def inject_pipeline_utilities():
         from app.extensions import db
@@ -377,6 +382,7 @@ def create_app(test_config=None):
     optimize_flask_app(app)
     optimize_static_files(app)
     optimize_database_queries(app)
+    optimize_connection_pool(app, db)
     
     # Setup pipelines and migrate contacts (Keep logic from development)
     with app.app_context():

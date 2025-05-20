@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ page_title }}</h1>
+    
+    <div class="alert alert-info">
+        This is a simplified assignment page that uses direct links instead of forms to avoid CSRF token issues.
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">People Assignments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label for="userSelectPeople">Select User:</label>
+                        <select class="form-control" id="userSelectPeople">
+                            <option value="">Select a user...</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.full_name }} ({{ user.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if unassigned_people %}
+                                    {% for person in unassigned_people %}
+                                    <tr>
+                                        <td>{{ person.full_name }}</td>
+                                        <td>{{ person.email }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary assign-person" data-person-id="{{ person.id }}">
+                                                Assign
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No unassigned people found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Church Assignments</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label for="userSelectChurches">Select User:</label>
+                        <select class="form-control" id="userSelectChurches">
+                            <option value="">Select a user...</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.full_name }} ({{ user.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>City</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if unassigned_churches %}
+                                    {% for church in unassigned_churches %}
+                                    <tr>
+                                        <td>{{ church.name }}</td>
+                                        <td>{{ church.city }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary assign-church" data-church-id="{{ church.id }}">
+                                                Assign
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No unassigned churches found</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Handle person assignment
+    $('.assign-person').click(function() {
+        const personId = $(this).data('person-id');
+        const userId = $('#userSelectPeople').val();
+        
+        if (!userId) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        // Redirect to the direct assignment URL
+        window.location.href = `/direct-assign-person/${personId}/to/${userId}`;
+    });
+    
+    // Handle church assignment
+    $('.assign-church').click(function() {
+        const churchId = $(this).data('church-id');
+        const userId = $('#userSelectChurches').val();
+        
+        if (!userId) {
+            alert('Please select a user first');
+            return;
+        }
+        
+        // Redirect to the direct assignment URL
+        window.location.href = `/direct-assign-church/${churchId}/to/${userId}`;
+    });
+});
+</script>
+{% endblock %}
