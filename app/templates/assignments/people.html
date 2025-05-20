@@ -32,20 +32,24 @@
                                             </select>
                                         </div>
                                         
-                                        <div class="table-responsive">
-                                            <table class="table table-striped">
-                                                <thead>
-                                                    <tr>
-                                                        <th>
-                                                            <div class="d-flex gap-2">
-                                                                <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllPeople">
-                                                                    Select All
-                                                                </button>
-                                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllPeople">
-                                                                    Deselect All
-                                                                </button>
-                                                            </div>
-                                                        </th>
+                                        <div class="form-group mb-3">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <label>Select People to Assign:</label>
+                                                <div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllPeople">
+                                                        Select All
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllPeople">
+                                                        Deselect All
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                                <table class="table table-sm table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 40px;">Select</th>
                                                         <th>Name</th>
                                                         <th>Email</th>
                                                         <th>Phone</th>
@@ -191,40 +195,21 @@
             updateAssignButtonState();
         });
         
-        // Deselect All button for unassigned people
-        $('#deselectAllUnassigned').click(function() {
-            $('.unassigned-person-checkbox').prop('checked', false);
-            updateAssignButtonState();
+        // Handle deselect all button
+        $('#deselectAllPeople').click(function() {
+            $('.person-checkbox').prop('checked', false);
         });
         
-        // Select All button for assigned people
+        // Handle select all assigned button
         $('#selectAllAssigned').click(function() {
             $('.assigned-person-checkbox').prop('checked', true);
             updateUnassignButtonState();
         });
         
-        // Deselect All button for assigned people
+        // Handle deselect all assigned button
         $('#deselectAllAssigned').click(function() {
             $('.assigned-person-checkbox').prop('checked', false);
             updateUnassignButtonState();
-        });
-        
-        // Form validation
-        $('#assignForm').submit(function(e) {
-            var userId = $('#userSelect').val();
-            var hasSelectedPeople = $('.unassigned-person-checkbox:checked').length > 0;
-            
-            if (!userId) {
-                alert('Please select a user to assign people to.');
-                e.preventDefault();
-                return false;
-            }
-            
-            if (!hasSelectedPeople) {
-                alert('Please select at least one person to assign.');
-                e.preventDefault();
-                return false;
-            }
         });
         
         // Update unassign button state based on selections
@@ -233,7 +218,9 @@
             $('#unassignButton').prop('disabled', !anyChecked);
         }
         
-        // Listen for changes in checkboxes and user selection
+        // Listen for changes in assigned checkboxes
+        $(document).on('change', '.assigned-person-checkbox', function() {
+            updateUnassignButtonState();
         $(document).on('change', '.unassigned-person-checkbox', function() {
             var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
             var userSelected = $('#userSelect').val() !== '';
@@ -252,28 +239,29 @@
             var userId = $(this).val();
             if (userId) {
                 $.ajax({
-                    url: '/assignments/get-user-people/' + userId,
+                    url: '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId),
                     type: 'GET',
-                    success: function(data) {
+                    success: function(response) {
                         $('#userAssignmentsContainer').show();
                         var tableBody = $('#assignedPeopleTableBody');
                         tableBody.empty();
                         
-                        if (data.length === 0) {
-                            tableBody.append('<tr><td colspan="4" class="text-center">No people assigned to this user</td></tr>');
-                            $('#unassignButton').prop('disabled', true);
-                        } else {
-                            data.forEach(function(person) {
+                        if (response.people && response.people.length > 0) {
+                            // Update the title with the user's name
+                            $('#assignedPeopleTitle').text('People Assigned to ' + response.user.full_name);
+                            
+                            // Add each person to the table
+                            response.people.forEach(function(person) {
                                 var row = `
                                     <tr>
                                         <td>
                                             <div class="form-check">
-                                                <input class="form-check-input assigned-person-checkbox" type="checkbox" name="person_ids[]" value="${person.id}" id="assignedPerson${person.id}">
+                                                <input class="form-check-input assigned-person-checkbox" type="checkbox" name="person_ids" value="${person.id}" id="assignedPerson${person.id}">
                                             </div>
                                         </td>
-                                        <td>${person.name}</td>
+                                        <td>${person.full_name}</td>
                                         <td>${person.email || ''}</td>
-                                        <td>${person.pipeline || ''}</td>
+                                        <td>${person.city || ''} ${person.state || ''}</td>
                                     </tr>
                                 `;
                                 tableBody.append(row);
@@ -281,6 +269,9 @@
                             
                             // Add event listener to the newly created checkboxes
                             $('.assigned-person-checkbox').change(updateUnassignButtonState);
+                        } else {
+                            tableBody.append('<tr><td colspan="4" class="text-center">No people assigned to this user</td></tr>');
+                            $('#unassignButton').prop('disabled', true);
                         }
                     },
                     error: function(xhr, status, error) {

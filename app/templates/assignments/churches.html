@@ -383,19 +383,21 @@ Details: ' + xhr2.responseText);
             var userId = $(this).val();
             if (userId) {
                 $.ajax({
-                    url: '/assignments/get-user-churches/' + userId,
+                    url: '{{ url_for("assignments.get_user_churches", user_id=0) }}'.replace('0', userId),
                     type: 'GET',
-                    success: function(data) {
+                    success: function(response) {
                         $('#userAssignmentsContainer').show();
                         var tableBody = $('#assignedChurchesTableBody');
                         tableBody.empty();
                         
-                        if (data.length === 0) {
-                            tableBody.append('<tr><td colspan="4" class="text-center">No churches assigned to this user</td></tr>');
-                            $('#unassignButton').prop('disabled', true);
-                        } else {
-                            data.forEach(function(church) {
-                                var contact = church.phone || church.email || '';
+                        if (response.churches && response.churches.length > 0) {
+                            // Update the title with the user's name
+                            $('#assignedChurchesTitle').text('Churches Assigned to ' + response.user.full_name);
+                            
+                            // Add each church to the table
+                            response.churches.forEach(function(church) {
+                                var location = (church.city || '') + (church.state ? ', ' + church.state : '');
+                                var contact = church.pastor || church.phone || '';
                                 var row = `
                                     <tr>
                                         <td>
@@ -404,7 +406,7 @@ Details: ' + xhr2.responseText);
                                             </div>
                                         </td>
                                         <td>${church.name}</td>
-                                        <td>${church.location || ''}</td>
+                                        <td>${location}</td>
                                         <td>${contact}</td>
                                     </tr>
                                 `;
@@ -413,6 +415,9 @@ Details: ' + xhr2.responseText);
                             
                             // Add event listener to the newly created checkboxes
                             $('.assigned-church-checkbox').change(updateUnassignButtonState);
+                        } else {
+                            tableBody.append('<tr><td colspan="4" class="text-center">No churches assigned to this user</td></tr>');
+                            $('#unassignButton').prop('disabled', true);
                         }
                     },
                     error: function(xhr, status, error) {
