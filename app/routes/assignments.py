@@ -211,16 +211,22 @@ def assign_people():
         
         # Validate form data
         if not user_id:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'Please select a user'}), 400
             flash('Please select a user', 'danger')
             return redirect(url_for('assignments.people'))
         
         if not person_ids:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'Please select at least one person'}), 400
             flash('Please select at least one person', 'danger')
             return redirect(url_for('assignments.people'))
         
         # Get the user
         user = User.query.get(user_id)
         if not user:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'User not found'}), 404
             flash('User not found', 'danger')
             return redirect(url_for('assignments.people'))
         
@@ -234,12 +240,22 @@ def assign_people():
                 count += 1
         
         db.session.commit()
-        flash(f'Successfully assigned {count} people to {user.full_name}', 'success')
         
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': True,
+                'message': f'Successfully assigned {count} people to {user.full_name}'
+            })
+            
+        flash(f'Successfully assigned {count} people to {user.full_name}', 'success')
         return redirect(url_for('assignments.people'))
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error in assign_people: {str(e)}')
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': str(e)}), 500
+            
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('assignments.people'))
 
@@ -258,16 +274,22 @@ def assign_churches():
         
         # Validate form data
         if not user_id:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'Please select a user'}), 400
             flash('Please select a user', 'danger')
             return redirect(url_for('assignments.churches'))
         
         if not church_ids:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'Please select at least one church'}), 400
             flash('Please select at least one church', 'danger')
             return redirect(url_for('assignments.churches'))
         
         # Get the user
         user = User.query.get(user_id)
         if not user:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': 'User not found'}), 404
             flash('User not found', 'danger')
             return redirect(url_for('assignments.churches'))
         
@@ -281,12 +303,22 @@ def assign_churches():
                 count += 1
         
         db.session.commit()
-        flash(f'Successfully assigned {count} churches to {user.full_name}', 'success')
         
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': True,
+                'message': f'Successfully assigned {count} churches to {user.full_name}'
+            })
+            
+        flash(f'Successfully assigned {count} churches to {user.full_name}', 'success')
         return redirect(url_for('assignments.churches'))
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Error in assign_churches: {str(e)}')
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': str(e)}), 500
+            
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('assignments.churches'))
 

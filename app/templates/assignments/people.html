@@ -23,7 +23,7 @@
                                     <form id="assignForm" action="{{ url_for('assignments.assign_people') }}" method="POST">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <div class="form-group mb-3">
-                                            <label for="userSelect">Select User:</label>
+                                            <label for="userSelect">Assign to User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>
                                                 <option value="">Select a user...</option>
                                                 {% for user in users %}
@@ -50,70 +50,41 @@
                                                     <thead>
                                                         <tr>
                                                             <th style="width: 40px;">Select</th>
-                                                        <th>Name</th>
-                                                        <th>Email</th>
-                                                        <th>Phone</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {% if unassigned_people %}
-                                                        {% for person in unassigned_people %}
-                                                        <tr>
-                                                            <td>
-                                                                <div class="form-check">
-                                                                    <input class="form-check-input person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}">
-                                                                </div>
-                                                            </td>
-                                                            <td>{{ person.full_name }}</td>
-                                                            <td>{{ person.email }}</td>
-                                                            <td>{{ person.phone }}</td>
+                                                            <th>Name</th>
+                                                            <th>Email</th>
+                                                            <th>Phone</th>
                                                         </tr>
-                                                        {% endfor %}
-                                                    {% else %}
-                                                        <tr>
-                                                            <td colspan="4" class="text-center">No unassigned people found</td>
-                                                        </tr>
-                                                    {% endif %}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% if unassigned_people %}
+                                                            {% for person in unassigned_people %}
+                                                            <tr>
+                                                                <td>
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input unassigned-person-checkbox" type="checkbox" name="person_ids" value="{{ person.id }}" id="person{{ person.id }}">
+                                                                    </div>
+                                                                </td>
+                                                                <td>{{ person.full_name }}</td>
+                                                                <td>{{ person.email }}</td>
+                                                                <td>{{ person.phone }}</td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <tr>
+                                                                <td colspan="4" class="text-center">No unassigned people found</td>
+                                                            </tr>
+                                                        {% endif %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                         
-                                        <button type="submit" class="btn btn-primary mt-3">Assign People</button>
+                                        <div class="mt-3">
+                                            <button type="button" class="btn btn-primary" id="assignButton" disabled>
+                                                <i class="fas fa-user"></i> Assign Selected People
+                                            </button>
+                                        </div>
                                     </form>
-                                    
-                                    <script>
-                                        $(document).ready(function() {
-                                            // Handle select all button
-                                            $('#selectAllPeople').click(function() {
-                                                $('.person-checkbox').prop('checked', true);
-                                            });
-                                            
-                                            // Handle deselect all button
-                                            $('#deselectAllPeople').click(function() {
-                                                $('.person-checkbox').prop('checked', false);
-                                            });
-                                            
-                                            // Form validation
-                                            $('#assignForm').submit(function(e) {
-                                                const userId = $('#userSelect').val();
-                                                const checkedPeople = $('input[name="person_ids"]:checked').length;
-                                                
-                                                if (!userId) {
-                                                    alert('Please select a user to assign people to');
-                                                    e.preventDefault();
-                                                    return false;
-                                                }
-                                                
-                                                if (checkedPeople === 0) {
-                                                    alert('Please select at least one person to assign');
-                                                    e.preventDefault();
-                                                    return false;
-                                                }
-                                                
-                                                return true;
-                                            });
-                                        });
-                                    </script>
                                 </div>
                             </div>
                         </div>
@@ -156,7 +127,7 @@
                                                             <th style="width: 40px;">Select</th>
                                                             <th>Name</th>
                                                             <th>Email</th>
-                                                            <th>Pipeline</th>
+                                                            <th>Location</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="assignedPeopleTableBody">
@@ -190,14 +161,15 @@
 <script>
     $(document).ready(function() {
         // Select All button for unassigned people
-        $('#selectAllUnassigned').click(function() {
+        $('#selectAllPeople').click(function() {
             $('.unassigned-person-checkbox').prop('checked', true);
             updateAssignButtonState();
         });
         
-        // Handle deselect all button
+        // Handle deselect all button for unassigned people
         $('#deselectAllPeople').click(function() {
-            $('.person-checkbox').prop('checked', false);
+            $('.unassigned-person-checkbox').prop('checked', false);
+            updateAssignButtonState();
         });
         
         // Handle select all assigned button
@@ -212,6 +184,13 @@
             updateUnassignButtonState();
         });
         
+        // Update assign button state based on selections
+        function updateAssignButtonState() {
+            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
+            var userSelected = $('#userSelect').val() !== '';
+            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+        }
+        
         // Update unassign button state based on selections
         function updateUnassignButtonState() {
             var anyChecked = $('.assigned-person-checkbox:checked').length > 0;
@@ -221,18 +200,69 @@
         // Listen for changes in assigned checkboxes
         $(document).on('change', '.assigned-person-checkbox', function() {
             updateUnassignButtonState();
+        });
+        
+        // Listen for changes in unassigned checkboxes
         $(document).on('change', '.unassigned-person-checkbox', function() {
-            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
-            var userSelected = $('#userSelect').val() !== '';
-            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+            updateAssignButtonState();
+        });
+        
+        // Listen for changes in user selection
+        $('#userSelect').change(function() {
+            updateAssignButtonState();
         });
         
         // Initialize button states on page load
-        function updateAssignButtonState() {
-            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
-            var userSelected = $('#userSelect').val() !== '';
-            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
-        }
+        updateAssignButtonState();
+        updateUnassignButtonState();
+        
+        // Handle assign button click - AJAX implementation
+        $('#assignButton').click(function() {
+            const userId = $('#userSelect').val();
+            const personIds = [];
+            
+            // Get all checked checkboxes
+            $('input.unassigned-person-checkbox:checked').each(function() {
+                personIds.push($(this).val());
+            });
+            
+            // Validate form
+            if (!userId) {
+                alert('Please select a user to assign people to');
+                return;
+            }
+            
+            if (personIds.length === 0) {
+                alert('Please select at least one person to assign');
+                return;
+            }
+            
+            // Show loading state
+            $('#assignButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Assigning...');
+            
+            // Send AJAX request
+            $.ajax({
+                url: '{{ url_for("assignments.assign_people") }}',
+                type: 'POST',
+                data: {
+                    'csrf_token': $('input[name="csrf_token"]').val(),
+                    'user_id': userId,
+                    'person_ids': personIds
+                },
+                success: function(response) {
+                    alert('People assigned successfully!');
+                    window.location.reload();
+                },
+                error: function(xhr) {
+                    let errorMessage = 'An error occurred while assigning people';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage = xhr.responseJSON.error;
+                    }
+                    alert(errorMessage);
+                    $('#assignButton').prop('disabled', false).html('<i class="fas fa-user"></i> Assign Selected People');
+                }
+            });
+        });
         
         // Load assigned people when a user is selected
         $('#viewUserSelect').change(function() {
@@ -252,6 +282,7 @@
                             
                             // Add each person to the table
                             response.people.forEach(function(person) {
+                                var location = (person.city || '') + (person.state ? ', ' + person.state : '');
                                 var row = `
                                     <tr>
                                         <td>
@@ -261,7 +292,7 @@
                                         </td>
                                         <td>${person.full_name}</td>
                                         <td>${person.email || ''}</td>
-                                        <td>${person.city || ''} ${person.state || ''}</td>
+                                        <td>${location}</td>
                                     </tr>
                                 `;
                                 tableBody.append(row);
