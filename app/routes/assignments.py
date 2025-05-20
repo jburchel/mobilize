@@ -216,6 +216,12 @@ def assign_people():
     current_app.logger.info(f'Raw form data: {dict(request.form)}')
     current_app.logger.info(f'Request args: {dict(request.args)}')
     
+    # Check for CSRF token
+    if 'csrf_token' not in request.form:
+        current_app.logger.error('CSRF token missing from form submission')
+        flash('Security token missing. Please try again.', 'danger')
+        return redirect(url_for('assignments.people_assignments'))
+    
     # Get form data
     user_id = request.form.get('user_id')
     current_app.logger.info(f'User ID from form: {user_id}, type: {type(user_id)}')
@@ -318,6 +324,12 @@ def assign_churches():
     current_app.logger.info(f'Form data keys: {list(request.form.keys())}')
     current_app.logger.info(f'Raw form data: {dict(request.form)}')
     current_app.logger.info(f'Request args: {dict(request.args)}')
+    
+    # Check for CSRF token
+    if 'csrf_token' not in request.form:
+        current_app.logger.error('CSRF token missing from form submission')
+        flash('Security token missing. Please try again.', 'danger')
+        return redirect(url_for('assignments.churches_assignments'))
     
     # Get form data
     user_id = request.form.get('user_id')
