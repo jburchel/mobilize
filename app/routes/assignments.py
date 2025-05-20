@@ -328,19 +328,27 @@ def assign_churches():
 def get_user_people(user_id):
     """Get people assigned to a specific user."""
     try:
+        current_app.logger.info(f'get_user_people called with user_id: {user_id}')
+        
         # Get the user
         user = User.query.get(user_id)
         if not user:
+            current_app.logger.error(f'User not found with id: {user_id}')
             return jsonify({'error': 'User not found'}), 404
+        
+        current_app.logger.info(f'Found user: {user.username} ({user.full_name})')
         
         # Get people assigned to this user
         people_query = Person.query.filter_by(assigned_to=user.username)
+        current_app.logger.info(f'Filtering people by assigned_to: {user.username}')
         
         # Filter by office for non-super admins
         if not current_user.is_super_admin():
             people_query = people_query.filter_by(office_id=current_user.office_id)
+            current_app.logger.info(f'Additional filter by office_id: {current_user.office_id}')
         
         people = people_query.all()
+        current_app.logger.info(f'Found {len(people)} people assigned to user {user.username}')
         
         # Format the response
         people_data = []
@@ -373,19 +381,27 @@ def get_user_people(user_id):
 def get_user_churches(user_id):
     """Get churches assigned to a specific user."""
     try:
+        current_app.logger.info(f'get_user_churches called with user_id: {user_id}')
+        
         # Get the user
         user = User.query.get(user_id)
         if not user:
+            current_app.logger.error(f'User not found with id: {user_id}')
             return jsonify({'error': 'User not found'}), 404
+        
+        current_app.logger.info(f'Found user: {user.username} ({user.full_name})')
         
         # Get churches assigned to this user
         churches_query = Church.query.filter_by(assigned_to=user.username)
+        current_app.logger.info(f'Filtering churches by assigned_to: {user.username}')
         
         # Filter by office for non-super admins
         if not current_user.is_super_admin():
             churches_query = churches_query.filter_by(office_id=current_user.office_id)
+            current_app.logger.info(f'Additional filter by office_id: {current_user.office_id}')
         
         churches = churches_query.all()
+        current_app.logger.info(f'Found {len(churches)} churches assigned to user {user.username}')
         
         # Format the response
         churches_data = []
