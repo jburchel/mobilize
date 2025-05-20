@@ -60,7 +60,7 @@
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids[]" value="{{ church.id }}" id="church{{ church.id }}">
+                                                                        <input class="form-check-input unassigned-church-checkbox" type="checkbox" name="church_ids" value="{{ church.id }}" id="church{{ church.id }}">
                                                                     </div>
                                                                 </td>
                                                                 <td>{{ church.name }}</td>
@@ -364,7 +364,7 @@ Details: ' + xhr2.responseText);
                                     <tr>
                                         <td>
                                             <div class="form-check">
-                                                <input class="form-check-input assigned-church-checkbox" type="checkbox" name="church_ids[]" value="${church.id}" id="assignedChurch${church.id}">
+                                                <input class="form-check-input assigned-church-checkbox" type="checkbox" name="church_ids" value="${church.id}" id="assignedChurch${church.id}">
                                             </div>
                                         </td>
                                         <td>${church.name}</td>
