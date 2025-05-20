@@ -22,6 +22,7 @@
                                 </div>
                                 <div class="card-body">
                                     <form id="assignForm" method="post" action="{{ url_for('assignments.assign_churches') }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <div class="form-group mb-3">
                                             <label for="userSelect">Assign to User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>

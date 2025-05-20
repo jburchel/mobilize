@@ -158,6 +158,7 @@
                                     
                                     <div id="userAssignmentsContainer" style="display: none;">
                                         <form id="unassignChurchesForm" action="{{ url_for('assignments.unassign_churches') }}" method="POST">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                             <div class="d-flex justify-content-between mb-2">
                                                 <h6 id="assignedChurchesTitle">Assigned Churches</h6>
                                                 <div>
