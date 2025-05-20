@@ -102,6 +102,11 @@ def index():
     current_app.logger.info(f"People index page loaded in {duration:.2f} seconds")
     
     # Pass data to template with pagination info
+    
+    # Add a flash message to make the filter more visible if it's active
+    if show_assigned:
+        flash('Showing only people assigned to you. Use the filter toggle to show all people.', 'info')
+    
     return render_template('people/list.html', 
                           people=people,
                           pagination=pagination,

@@ -60,6 +60,15 @@
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Assignment Filter Alert -->
+    {% if show_assigned %}
+    <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+        <strong>Filter Active:</strong> Showing only people assigned to you.
+        <a href="{{ url_for('people.index') }}" class="btn btn-sm btn-outline-primary ms-3">Show All People</a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    
     <!-- Action Bar -->
     <div class="row mb-4">
         <div class="col-12">
@@ -75,6 +84,10 @@
                         <button class="btn btn-outline-secondary" id="exportButton" data-bs-toggle="modal" data-bs-target="#exportModal">
                             <i class="bi bi-download"></i> Export
                         </button>
+                        <a href="{{ url_for('people.index', assigned='me' if not show_assigned else '') }}" class="btn {% if show_assigned %}btn-success{% else %}btn-outline-primary{% endif %}">
+                            <i class="bi {% if show_assigned %}bi-check-circle-fill{% else %}bi-filter{% endif %}"></i> 
+                            {% if show_assigned %}Showing My Assignments{% else %}Show Only My Assignments{% endif %}
+                        </a>
                     </div>
                     <!-- Search and Filters -->
                     <div class="d-flex gap-3 align-items-center">
