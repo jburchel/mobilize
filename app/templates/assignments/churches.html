@@ -434,13 +434,17 @@ Details: ' + xhr2.responseText);
             if (userId) {
                 var url = '{{ url_for("assignments.get_user_churches", user_id=0) }}'.replace('0', userId);
                 console.log('AJAX request URL for churches:', url);
+                
+                // Show loading indicator
+                $('#userAssignmentsContainer').show();
+                var tableBody = $('#assignedChurchesTableBody');
+                tableBody.html('<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                
                 $.ajax({
                     url: url,
                     type: 'GET',
                     success: function(response) {
                         console.log('Church response received:', response);
-                        $('#userAssignmentsContainer').show();
-                        var tableBody = $('#assignedChurchesTableBody');
                         tableBody.empty();
                         
                         if (response.churches && response.churches.length > 0) {
