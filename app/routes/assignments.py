@@ -1013,45 +1013,6 @@ def get_user_churches(user_id):
         current_app.logger.error(f'Error in get_user_churches: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-            church_ids = request.form.getlist('church_ids')
-            
-            # Debug logging
-            current_app.logger.info(f"Form data - user_id: {user_id}, church_ids: {church_ids}")
-            
-            # Validate form data
-            if not user_id:
-                flash('Please select a user', 'danger')
-                return redirect(url_for('assignments.churches'))
-            
-            if not church_ids:
-                flash('Please select at least one church', 'danger')
-                return redirect(url_for('assignments.churches'))
-            
-            # Get the user
-            user = User.query.get(user_id)
-            if not user:
-                flash('User not found', 'danger')
-                return redirect(url_for('assignments.churches'))
-            
-            # Assign churches
-            count = 0
-            for church_id in church_ids:
-                church = Church.query.get(church_id)
-                if church:
-                    church.assigned_to = user.username
-                    church.updated_at = datetime.now()
-                    count += 1
-            
-            db.session.commit()
-            flash(f'Successfully assigned {count} churches to {user.full_name}', 'success')
-        
-        return redirect(url_for('assignments.churches'))
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f'Error in assign_churches: {str(e)}')
-        flash(f'Error: {str(e)}', 'danger')
-        return redirect(url_for('assignments.churches'))
-
 @assignments_bp.route('/unassign-people', methods=['POST'])
 @login_required
 @admin_required
