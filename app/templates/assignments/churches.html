@@ -20,10 +20,11 @@
                                     <h5 class="card-title">Unassigned Churches</h5>
                                 </div>
                                 <div class="card-body">
-                                    <div id="assignForm">
+                                    <form id="assignForm" action="{{ url_for('assignments.assign_churches') }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <div class="form-group mb-3">
                                             <label for="userSelect">Assign to User:</label>
-                                            <select class="form-control" id="userSelect" required>
+                                            <select class="form-control" id="userSelect" name="user_id" required>
                                                 <option value="">Select a user...</option>
                                                 {% for user in users %}
                                                 <option value="{{ user.id }}">{{ user.full_name }} ({{ user.username }})</option>
@@ -83,7 +84,7 @@
                                                 <i class="fas fa-church"></i> Assign Selected Churches
                                             </button>
                                         </div>
-                                    </div>
+                                    </form>
                                     
                                     <script>
                                     $(document).ready(function() {
@@ -113,15 +114,15 @@
                                             
                                             // Send AJAX request
                                             $.ajax({
-                                                url: '/assignments_api/api/assign-churches',
+                                                url: '{{ url_for("assignments.assign_churches") }}',
                                                 type: 'POST',
-                                                contentType: 'application/json',
-                                                data: JSON.stringify({
-                                                    user_id: userId,
-                                                    church_ids: churchIds
-                                                }),
+                                                data: {
+                                                    'csrf_token': $('input[name="csrf_token"]').val(),
+                                                    'user_id': userId,
+                                                    'church_ids': churchIds
+                                                },
                                                 success: function(response) {
-                                                    alert(response.message);
+                                                    alert('Churches assigned successfully!');
                                                     window.location.reload();
                                                 },
                                                 error: function(xhr) {

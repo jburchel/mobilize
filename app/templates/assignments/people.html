@@ -20,7 +20,8 @@
                                     <h5 class="card-title">Unassigned People</h5>
                                 </div>
                                 <div class="card-body">
-                                    <div id="assignForm">
+                                    <form id="assignForm" action="{{ url_for('assignments.assign_people') }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                         <div class="form-group mb-3">
                                             <label for="userSelect">Select User:</label>
                                             <select class="form-control" id="userSelect" name="user_id" required>
@@ -71,7 +72,7 @@
                                             </table>
                                         </div>
                                         
-                                        <button type="submit" class="btn btn-primary mt-3">Assign People</button>
+                                        <button type="button" class="btn btn-primary mt-3" id="assignButton">Assign People</button>
                                     </form>
                                     
                                     <script>
@@ -79,6 +80,54 @@
                                             // Handle select all checkbox
                                             $('#selectAllPeople').change(function() {
                                                 $('.person-checkbox').prop('checked', $(this).prop('checked'));
+                                            });
+                                            
+                                            // Handle assignment button click
+                                            $('#assignButton').click(function() {
+                                                const userId = $('#userSelect').val();
+                                                const personIds = [];
+                                                
+                                                // Get all checked checkboxes
+                                                $('input[name="person_ids"]:checked').each(function() {
+                                                    personIds.push(parseInt($(this).val()));
+                                                });
+                                                
+                                                // Validate form
+                                                if (!userId) {
+                                                    alert('Please select a user to assign people to');
+                                                    return;
+                                                }
+                                                
+                                                if (personIds.length === 0) {
+                                                    alert('Please select at least one person to assign');
+                                                    return;
+                                                }
+                                                
+                                                // Show loading state
+                                                $('#assignButton').prop('disabled', true).text('Assigning...');
+                                                
+                                                // Send AJAX request
+                                                $.ajax({
+                                                    url: '{{ url_for("assignments.assign_people") }}',
+                                                    type: 'POST',
+                                                    data: {
+                                                        'csrf_token': $('input[name="csrf_token"]').val(),
+                                                        'user_id': userId,
+                                                        'person_ids': personIds
+                                                    },
+                                                    success: function(response) {
+                                                        alert('People assigned successfully!');
+                                                        window.location.reload();
+                                                    },
+                                                    error: function(xhr) {
+                                                        let errorMessage = 'An error occurred while assigning people';
+                                                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                                                            errorMessage = xhr.responseJSON.error;
+                                                        }
+                                                        alert(errorMessage);
+                                                        $('#assignButton').prop('disabled', false).text('Assign People');
+                                                    }
+                                                });
                                             });
                                         });
                                     </script>
