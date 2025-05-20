@@ -463,25 +463,50 @@ def edit(id):
 @office_required
 def delete(id):
     """Delete a specific person."""
-    person = Person.query.get_or_404(id)
-    
-    # Check permissions (allow super admins to delete any person)
-    if not current_user.is_super_admin() and person.office_id != current_user.office_id:
-        flash('You do not have permission to delete this person', 'danger')
+    try:
+        person = Person.query.get_or_404(id)
+        
+        # Check permissions (allow super admins to delete any person)
+        if not current_user.is_super_admin() and person.office_id != current_user.office_id:
+            flash('You do not have permission to delete this person', 'danger')
+            return redirect(url_for('people.index'))
+        
+        # Check for CSRF token
+        if 'csrf_token' not in request.form:
+            flash('CSRF token missing', 'danger')
+            if request.referrer and 'view' in request.referrer:
+                return redirect(url_for('people.view', id=id))
+            return redirect(url_for('people.index'))
+        
+        # Delete profile image if exists
+        if person.profile_image:
+            filepath = os.path.join('app', person.profile_image.lstrip('/'))
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        
+        # First, remove any pipeline associations
+        pipeline_contacts = PipelineContact.query.filter_by(contact_id=person.id).all()
+        for pc in pipeline_contacts:
+            db.session.delete(pc)
+        
+        # If person is a main contact for any churches, remove that relationship
+        churches = Church.query.filter_by(main_contact_id=person.id).all()
+        for church in churches:
+            church.main_contact_id = None
+        
+        # Delete the person
+        db.session.delete(person)
+        db.session.commit()
+        
+        flash('Person deleted successfully', 'success')
         return redirect(url_for('people.index'))
-    
-    # Delete profile image if exists
-    if person.profile_image:
-        filepath = os.path.join('app', person.profile_image.lstrip('/'))
-        if os.path.exists(filepath):
-            os.remove(filepath)
-    
-    # Delete the person
-    db.session.delete(person)
-    db.session.commit()
-    
-    flash('Person deleted successfully', 'success')
-    return redirect(url_for('people.index'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting person: {str(e)}')
+        flash(f'Error deleting person: {str(e)}', 'danger')
+        if request.referrer and 'view' in request.referrer:
+            return redirect(url_for('people.view', id=id))
+        return redirect(url_for('people.index'))
 
 @people_bp.route('/add_note/<int:id>', methods=['POST'])
 @login_required
