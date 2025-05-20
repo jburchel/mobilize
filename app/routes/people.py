@@ -2,16 +2,56 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
+from datetime import datetime
+import os
+import pandas as pd
+import uuid
+
 from app.models.person import Person
 from app.models.church import Church
 from app.models.pipeline import Pipeline, PipelineStage, PipelineContact
 from app.forms.person import PersonForm
 from app.extensions import db
 from app.utils.decorators import office_required
-from datetime import datetime
-import os
-import pandas as pd
-import uuid
+
+# Utility function to get pipeline stage consistently
+def get_main_pipeline_stage(person_id, office_id=None):
+    """Get the main pipeline stage for a person consistently.
+    
+    This function ensures the same pipeline stage is returned regardless of where it's called from.
+    """
+    # Use a consistent query with joins to get pipeline data
+    pipeline_data = db.session.query(
+        Pipeline.name.label('pipeline_name'),
+        PipelineStage.name.label('stage_name'),
+        PipelineStage.id.label('stage_id'),
+        PipelineContact.entry_date,
+        PipelineContact.last_stage_change
+    ).join(
+        PipelineContact, Pipeline.id == PipelineContact.pipeline_id
+    ).join(
+        PipelineStage, PipelineContact.current_stage_id == PipelineStage.id
+    ).filter(
+        Pipeline.is_main_pipeline,
+        Pipeline.pipeline_type.in_(['person', 'people']),
+        PipelineContact.contact_id == person_id
+    )
+    
+    # Add office filter if provided
+    if office_id:
+        pipeline_data = pipeline_data.filter(Pipeline.office_id == office_id)
+        
+    result = pipeline_data.first()
+    
+    if result:
+        return {
+            'pipeline_name': result.pipeline_name,
+            'current_stage': result.stage_name,
+            'stage_id': result.stage_id,
+            'entry_date': result.entry_date,
+            'last_stage_change': result.last_stage_change
+        }
+    return None
 
 people_bp = Blueprint('people', __name__, template_folder='../templates/people')
 
@@ -30,12 +70,6 @@ def index():
     show_assigned = request.args.get('assigned', '') == 'me'  # New filter parameter
     
     # Create optimized base query with eager loading
-    
-    # Get the main pipeline first (this can be cached in the future)
-    main_pipeline = Pipeline.query.filter(
-        Pipeline.is_main_pipeline,
-        Pipeline.pipeline_type.in_(['person', 'people'])
-    ).first()
     
     # Create base query with eager loading
     query = Person.query
@@ -69,32 +103,15 @@ def index():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     people = pagination.items
     
-    # Get pipeline stages in a single optimized query if main pipeline exists
-    if main_pipeline and people:
-        person_ids = [p.id for p in people]
-        
-        # Use a join to get pipeline data more efficiently
-        pipeline_data = db.session.query(
-            PipelineContact.contact_id, 
-            PipelineStage.name
-        ).join(
-            PipelineStage, 
-            PipelineContact.current_stage_id == PipelineStage.id
-        ).filter(
-            PipelineContact.contact_id.in_(person_ids),
-            PipelineContact.pipeline_id == main_pipeline.id
-        ).all()
-        
-        # Create a mapping of person_id to pipeline stage
-        pipeline_stages = {contact_id: stage_name for contact_id, stage_name in pipeline_data}
-        
-        # Attach pipeline stage to each person object
+    # Get pipeline stages using our consistent function
+    if people:
         for person in people:
-            person.current_pipeline_stage = pipeline_stages.get(person.id, 'Not in Pipeline')
-    else:
-        # Set default pipeline stage if no pipeline exists
-        for person in people:
-            person.current_pipeline_stage = 'Not in Pipeline'
+            # Get pipeline stage using our consistent function
+            pipeline_info = get_main_pipeline_stage(person.id, person.office_id)
+            if pipeline_info:
+                person.current_pipeline_stage = pipeline_info['current_stage']
+            else:
+                person.current_pipeline_stage = 'Not in Pipeline'
     
     # Log performance metrics
     end_time = datetime.now()
@@ -264,32 +281,8 @@ def show(id):
         if person.church_id:
             church = Church.query.get(person.church_id)
         
-        # Get pipeline information with a single optimized query
-        pipeline_info = None
-        
-        # Use a more efficient query with joins to get pipeline data
-        pipeline_data = db.session.query(
-            Pipeline.name.label('pipeline_name'),
-            PipelineStage.name.label('stage_name'),
-            PipelineContact.entry_date,
-            PipelineContact.last_stage_change
-        ).join(
-            PipelineContact, Pipeline.id == PipelineContact.pipeline_id
-        ).join(
-            PipelineStage, PipelineContact.current_stage_id == PipelineStage.id
-        ).filter(
-            Pipeline.is_main_pipeline,
-            Pipeline.pipeline_type.in_(['person', 'people']),
-            PipelineContact.contact_id == id
-        ).first()
-        
-        if pipeline_data:
-            pipeline_info = {
-                'pipeline_name': pipeline_data.pipeline_name,
-                'current_stage': pipeline_data.stage_name,
-                'entry_date': pipeline_data.entry_date,
-                'last_stage_change': pipeline_data.last_stage_change
-            }
+        # Get pipeline information using our consistent function
+        pipeline_info = get_main_pipeline_stage(id, person.office_id)
         
         # Ensure first_name and last_name are not None to avoid template errors
         first_name = person.first_name or ""
@@ -333,6 +326,11 @@ def edit(id):
         form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.all()]
     else:
         form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.filter_by(office_id=current_user.office_id).all()]
+    
+    # Get current pipeline stage using our consistent function
+    pipeline_info = get_main_pipeline_stage(id, person.office_id)
+    if pipeline_info and hasattr(form, 'people_pipeline'):
+        form.people_pipeline.data = pipeline_info['current_stage']
     
     if form.validate_on_submit():
         person.first_name = form.first_name.data
@@ -448,6 +446,10 @@ def edit(id):
                             entered_at=datetime.now()
                         )
                         db.session.add(pipeline_contact)
+                        
+            # Update the person.people_pipeline field to match the pipeline stage
+            # This ensures consistency across all views
+            person.people_pipeline = form.people_pipeline.data
         
         db.session.commit()
         
