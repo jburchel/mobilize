@@ -1,5 +1,5 @@
 FROM python:3.9-slim
-# Build version 3.1 - Force rebuild to include template changes - May 20, 2025
+# Build version: 1.0.2 - Force rebuild to fix indentation errors - May 20, 2025
 WORKDIR /app
 
 # Install system dependencies
