@@ -430,11 +430,15 @@ Details: ' + xhr2.responseText);
         // Load assigned churches when a user is selected
         $('#viewUserSelect').change(function() {
             var userId = $(this).val();
+            console.log('User selected for churches:', userId);
             if (userId) {
+                var url = '{{ url_for("assignments.get_user_churches", user_id=0) }}'.replace('0', userId);
+                console.log('AJAX request URL for churches:', url);
                 $.ajax({
-                    url: '{{ url_for("assignments.get_user_churches", user_id=0) }}'.replace('0', userId),
+                    url: url,
                     type: 'GET',
                     success: function(response) {
+                        console.log('Church response received:', response);
                         $('#userAssignmentsContainer').show();
                         var tableBody = $('#assignedChurchesTableBody');
                         tableBody.empty();
@@ -471,7 +475,9 @@ Details: ' + xhr2.responseText);
                     },
                     error: function(xhr, status, error) {
                         console.error('Error loading assigned churches:', error);
-                        alert('Error loading assigned churches. Please try again.');
+                        console.error('Status:', status);
+                        console.error('Response:', xhr.responseText);
+                        tableBody.append('<tr><td colspan="4" class="text-center text-danger">Error loading assigned churches: ' + error + '</td></tr>');
                     }
                 });
             } else {

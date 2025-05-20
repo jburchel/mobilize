@@ -267,11 +267,15 @@
         // Load assigned people when a user is selected
         $('#viewUserSelect').change(function() {
             var userId = $(this).val();
+            console.log('User selected:', userId);
             if (userId) {
+                var url = '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId);
+                console.log('AJAX request URL:', url);
                 $.ajax({
-                    url: '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId),
+                    url: url,
                     type: 'GET',
                     success: function(response) {
+                        console.log('Response received:', response);
                         $('#userAssignmentsContainer').show();
                         var tableBody = $('#assignedPeopleTableBody');
                         tableBody.empty();
@@ -307,7 +311,9 @@
                     },
                     error: function(xhr, status, error) {
                         console.error('Error loading assigned people:', error);
-                        alert('Error loading assigned people. Please try again.');
+                        console.error('Status:', status);
+                        console.error('Response:', xhr.responseText);
+                        tableBody.append('<tr><td colspan="4" class="text-center text-danger">Error loading assigned people: ' + error + '</td></tr>');
                     }
                 });
             } else {
