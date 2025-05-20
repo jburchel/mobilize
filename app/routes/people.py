@@ -25,8 +25,8 @@ def get_main_pipeline_stage(person_id, office_id=None):
         Pipeline.name.label('pipeline_name'),
         PipelineStage.name.label('stage_name'),
         PipelineStage.id.label('stage_id'),
-        PipelineContact.entry_date,
-        PipelineContact.last_stage_change
+        PipelineContact.entered_at,
+        PipelineContact.last_updated.label('last_stage_change')
     ).join(
         PipelineContact, Pipeline.id == PipelineContact.pipeline_id
     ).join(
@@ -48,7 +48,7 @@ def get_main_pipeline_stage(person_id, office_id=None):
             'pipeline_name': result.pipeline_name,
             'current_stage': result.stage_name,
             'stage_id': result.stage_id,
-            'entry_date': result.entry_date,
+            'entry_date': result.entered_at,
             'last_stage_change': result.last_stage_change
         }
     return None
