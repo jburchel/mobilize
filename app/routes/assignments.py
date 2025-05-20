@@ -5,7 +5,6 @@ from app.models.person import Person
 from app.models.church import Church
 from app.extensions import db
 from app.utils.decorators import admin_required
-from sqlalchemy import or_
 from datetime import datetime
 
 assignments_bp = Blueprint('assignments', __name__, template_folder='../templates/assignments')

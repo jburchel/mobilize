@@ -16,14 +16,16 @@ def optimize_connection_pool(app, db):
         'pool_pre_ping': True,  # Check connection validity before using it
     }
     
-    # Set up event listeners to ensure connections are properly returned to the pool
-    @event.listens_for(db.engine, 'checkout')
-    def checkout(dbapi_connection, connection_record, connection_proxy):
-        app.logger.debug("Connection checked out from pool")
-    
-    @event.listens_for(db.engine, 'checkin')
-    def checkin(dbapi_connection, connection_record):
-        app.logger.debug("Connection returned to pool")
+    # We need to make sure we're in an application context before accessing db.engine
+    with app.app_context():
+        # Set up event listeners to ensure connections are properly returned to the pool
+        @event.listens_for(db.engine, 'checkout')
+        def checkout(dbapi_connection, connection_record, connection_proxy):
+            app.logger.debug("Connection checked out from pool")
+        
+        @event.listens_for(db.engine, 'checkin')
+        def checkin(dbapi_connection, connection_record):
+            app.logger.debug("Connection returned to pool")
     
     # Explicitly close connections at the end of requests
     @app.teardown_request
