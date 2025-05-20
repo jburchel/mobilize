@@ -37,11 +37,13 @@
                                                 <thead>
                                                     <tr>
                                                         <th>
-                                                            <div class="form-check">
-                                                                <input class="form-check-input" type="checkbox" id="selectAllPeople">
-                                                                <label class="form-check-label" for="selectAllPeople">
+                                                            <div class="d-flex gap-2">
+                                                                <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllPeople">
                                                                     Select All
-                                                                </label>
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllPeople">
+                                                                    Deselect All
+                                                                </button>
                                                             </div>
                                                         </th>
                                                         <th>Name</th>
@@ -72,62 +74,39 @@
                                             </table>
                                         </div>
                                         
-                                        <button type="button" class="btn btn-primary mt-3" id="assignButton">Assign People</button>
+                                        <button type="submit" class="btn btn-primary mt-3">Assign People</button>
                                     </form>
                                     
                                     <script>
                                         $(document).ready(function() {
-                                            // Handle select all checkbox
-                                            $('#selectAllPeople').change(function() {
-                                                $('.person-checkbox').prop('checked', $(this).prop('checked'));
+                                            // Handle select all button
+                                            $('#selectAllPeople').click(function() {
+                                                $('.person-checkbox').prop('checked', true);
                                             });
                                             
-                                            // Handle assignment button click
-                                            $('#assignButton').click(function() {
+                                            // Handle deselect all button
+                                            $('#deselectAllPeople').click(function() {
+                                                $('.person-checkbox').prop('checked', false);
+                                            });
+                                            
+                                            // Form validation
+                                            $('#assignForm').submit(function(e) {
                                                 const userId = $('#userSelect').val();
-                                                const personIds = [];
+                                                const checkedPeople = $('input[name="person_ids"]:checked').length;
                                                 
-                                                // Get all checked checkboxes
-                                                $('input[name="person_ids"]:checked').each(function() {
-                                                    personIds.push(parseInt($(this).val()));
-                                                });
-                                                
-                                                // Validate form
                                                 if (!userId) {
                                                     alert('Please select a user to assign people to');
-                                                    return;
+                                                    e.preventDefault();
+                                                    return false;
                                                 }
                                                 
-                                                if (personIds.length === 0) {
+                                                if (checkedPeople === 0) {
                                                     alert('Please select at least one person to assign');
-                                                    return;
+                                                    e.preventDefault();
+                                                    return false;
                                                 }
                                                 
-                                                // Show loading state
-                                                $('#assignButton').prop('disabled', true).text('Assigning...');
-                                                
-                                                // Send AJAX request
-                                                $.ajax({
-                                                    url: '{{ url_for("assignments.assign_people") }}',
-                                                    type: 'POST',
-                                                    data: {
-                                                        'csrf_token': $('input[name="csrf_token"]').val(),
-                                                        'user_id': userId,
-                                                        'person_ids': personIds
-                                                    },
-                                                    success: function(response) {
-                                                        alert('People assigned successfully!');
-                                                        window.location.reload();
-                                                    },
-                                                    error: function(xhr) {
-                                                        let errorMessage = 'An error occurred while assigning people';
-                                                        if (xhr.responseJSON && xhr.responseJSON.error) {
-                                                            errorMessage = xhr.responseJSON.error;
-                                                        }
-                                                        alert(errorMessage);
-                                                        $('#assignButton').prop('disabled', false).text('Assign People');
-                                                    }
-                                                });
+                                                return true;
                                             });
                                         });
                                     </script>

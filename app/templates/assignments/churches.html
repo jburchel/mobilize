@@ -80,7 +80,7 @@
                                         </div>
                                         
                                         <div class="mt-3">
-                                            <button type="button" class="btn btn-primary" id="assignButton">
+                                            <button type="submit" class="btn btn-primary">
                                                 <i class="fas fa-church"></i> Assign Selected Churches
                                             </button>
                                         </div>
@@ -88,52 +88,34 @@
                                     
                                     <script>
                                     $(document).ready(function() {
-                                        // Handle assignment button click
-                                        $('#assignButton').click(function() {
+                                        // Handle select all checkbox for unassigned churches
+                                        $('#selectAllUnassigned').click(function() {
+                                            $('.unassigned-church-checkbox').prop('checked', true);
+                                        });
+                                        
+                                        // Handle deselect all checkbox for unassigned churches
+                                        $('#deselectAllUnassigned').click(function() {
+                                            $('.unassigned-church-checkbox').prop('checked', false);
+                                        });
+                                        
+                                        // Form validation
+                                        $('#assignForm').submit(function(e) {
                                             const userId = $('#userSelect').val();
-                                            const churchIds = [];
+                                            const checkedChurches = $('input[name="church_ids"]:checked').length;
                                             
-                                            // Get all checked checkboxes
-                                            $('input[name="church_ids"]:checked').each(function() {
-                                                churchIds.push(parseInt($(this).val()));
-                                            });
-                                            
-                                            // Validate form
                                             if (!userId) {
                                                 alert('Please select a user to assign churches to');
-                                                return;
+                                                e.preventDefault();
+                                                return false;
                                             }
                                             
-                                            if (churchIds.length === 0) {
+                                            if (checkedChurches === 0) {
                                                 alert('Please select at least one church to assign');
-                                                return;
+                                                e.preventDefault();
+                                                return false;
                                             }
                                             
-                                            // Show loading state
-                                            $('#assignButton').prop('disabled', true).text('Assigning...');
-                                            
-                                            // Send AJAX request
-                                            $.ajax({
-                                                url: '{{ url_for("assignments.assign_churches") }}',
-                                                type: 'POST',
-                                                data: {
-                                                    'csrf_token': $('input[name="csrf_token"]').val(),
-                                                    'user_id': userId,
-                                                    'church_ids': churchIds
-                                                },
-                                                success: function(response) {
-                                                    alert('Churches assigned successfully!');
-                                                    window.location.reload();
-                                                },
-                                                error: function(xhr) {
-                                                    let errorMessage = 'An error occurred while assigning churches';
-                                                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                                                        errorMessage = xhr.responseJSON.error;
-                                                    }
-                                                    alert(errorMessage);
-                                                    $('#assignButton').prop('disabled', false).text('Assign Selected Churches');
-                                                }
-                                            });
+                                            return true;
                                         });
                                     });
                                     </script>
