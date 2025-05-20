@@ -461,5 +461,3 @@ def unassign_churches():
         flash(f'Error unassigning churches: {str(e)}', 'danger')
     
     return redirect(url_for('assignments.churches'))
-                          page_title="Assignment Management")
-
