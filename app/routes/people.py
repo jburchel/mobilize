@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, send_file, Response
 from flask_login import login_required, current_user
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 import os
@@ -292,7 +292,8 @@ def edit(id):
                 
                 params['person_id'] = id
                 
-                sql = f"UPDATE people SET {', '.join(sql_parts)} WHERE id = :person_id"
+                sql = text(f"UPDATE people SET {', '.join(sql_parts)} WHERE id = :person_id")
+                # Import text function at the top of the file
                 
                 # Execute the SQL directly
                 db.session.execute(sql, params)
