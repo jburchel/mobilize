@@ -274,6 +274,34 @@ def edit(id):
         flash(f'Error updating person: {str(e)}', 'danger')
         return redirect(url_for('people.index'))
 
+@people_bp.route('/<int:id>', methods=['GET'])
+@login_required
+@office_required
+def show(id):
+    """Show a specific person."""
+    try:
+        person = Person.query.get_or_404(id)
+        
+        # Check permissions (allow super admins to view any person)
+        if not current_user.is_super_admin() and person.office_id != current_user.office_id:
+            flash('You do not have permission to view this person', 'danger')
+            return redirect(url_for('people.index'))
+        
+        # Get pipeline information if available
+        pipeline_info = None
+        if hasattr(person, 'pipeline_stage') and person.pipeline_stage:
+            person.current_pipeline_stage = person.pipeline_stage
+        else:
+            person.current_pipeline_stage = 'Not in Pipeline'
+        
+        return render_template('people/show.html', 
+                            person=person,
+                            page_title=f'{person.first_name} {person.last_name}')
+    except Exception as e:
+        current_app.logger.error(f"Error showing person {id}: {str(e)}")
+        flash(f'Error loading person details: {str(e)}', 'danger')
+        return redirect(url_for('people.index'))
+
 @people_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
 @office_required
