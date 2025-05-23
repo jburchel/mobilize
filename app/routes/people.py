@@ -335,17 +335,16 @@ def edit(id):
                     people_sql = text(f"UPDATE people SET {', '.join(people_sql_parts)} WHERE id = :person_id")
                     
                     # Execute the people update
-                    # Execute the people update
                     db.session.execute(people_sql, people_params)
+                
+                # Re-enable triggers
+                db.session.execute(text("SET session_replication_role = 'origin'"))
 
-                    # Re-enable triggers
-                    db.session.execute(text("SET session_replication_role = 'origin'"))
+                # Commit the transaction
+                db.session.commit()
 
-                    # Commit the transaction
-                    db.session.commit()
                 # Log the success
                 current_app.logger.info(f"Successfully updated person {id} using direct SQL")
-                
                 flash('Person updated successfully', 'success')
                 return redirect(url_for('people.show', id=person.id))
             except Exception as e:
