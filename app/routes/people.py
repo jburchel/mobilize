@@ -169,7 +169,7 @@ def show(id):
         
         page_title = f"{person.first_name} {person.last_name}"
         
-        return render_template('people/detail.html', 
+        return render_template('people/view.html', 
                             person=person,
                             pipeline_info=pipeline_info,
                             page_title=page_title)
