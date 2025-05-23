@@ -167,13 +167,13 @@
                                     </td>
                                     <td>{{ person.last_contact_date.strftime('%Y-%m-%d') if person.last_contact_date }}</td>
                                     <td>
-                                        <div class="table-actions">
-                                            <a href="{{ url_for('people.edit', id=person.id) }}" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
-                                            <form action="{{ url_for('people.delete', id=person.id) }}" method="POST" class="d-inline delete-person-form">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                                <button type="button" class="btn-icon btn-sm delete-person-btn" data-id="{{ person.id }}" data-name="{{ person.first_name }} {{ person.last_name }}" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                                            </form>
-                                        </div>
+                                         <div class="table-actions">
+                                             <a href="{{ url_for('people.edit', id=person.id) }}" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                             <form action="{{ url_for('people.delete', id=person.id) }}" method="POST" class="d-inline delete-person-form" id="delete-form-{{ person.id }}">
+                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                 <button type="button" class="btn-icon btn-sm delete-person-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="{{ person.id }}" data-name="{{ person.get_name() }}" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                             </form>
+                                         </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -508,6 +508,53 @@ document.addEventListener('DOMContentLoaded', function() {
         // Keep a copy of the initial table data
         const initialRows = Array.from(tableBody.querySelectorAll('tr'));
         tableBody._initialRows = initialRows.map(row => row.cloneNode(true));
+    }
+});
+</script>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deletePersonName"></strong>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle delete confirmation modal
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            // Button that triggered the modal
+            const button = event.relatedTarget;
+            // Extract info from data-* attributes
+            const personId = button.getAttribute('data-id');
+            const personName = button.getAttribute('data-name');
+            
+            // Update the modal's content
+            const modalPersonName = deleteModal.querySelector('#deletePersonName');
+            modalPersonName.textContent = personName;
+            
+            // Set up the confirm delete button
+            const confirmDeleteBtn = document.getElementById('confirmDelete');
+            confirmDeleteBtn.onclick = function() {
+                // Submit the form
+                document.getElementById(`delete-form-${personId}`).submit();
+            };
+        });
     }
 });
 </script>
