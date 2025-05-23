@@ -552,6 +552,9 @@ def import_people():
 @office_required
 def search():
     """Search people based on query parameters"""
+    # Log request details for debugging
+    current_app.logger.info(f"Search request received: {request.args}")
+    
     search_term = request.args.get('q', '').strip()
     pipeline_filter = request.args.get('pipeline', '')
     priority_filter = request.args.get('priority', '')
@@ -603,33 +606,43 @@ def search():
     if not current_user.is_super_admin():
         query = query.filter(Person.office_id == current_user.office_id)
     
-    # Get results with increased limit
-    people = query.limit(50).all()
-    
-    # Debug output
-    print(f"Search query: {search_term}")
-    print(f"Found {len(people)} people matching criteria")
-    
-    # Convert people to dictionaries with all necessary fields for display
-    people_dicts = []
-    for person in people:
-        person_dict = person.to_dict()
+    try:
+        # Get results with increased limit
+        people = query.limit(50).all()
         
-        # Add pipeline stage information
-        if person.people_pipeline:
-            person_dict['pipeline_stage'] = person.people_pipeline
-        else:
-            person_dict['pipeline_stage'] = 'Not in Pipeline'
+        # Debug output
+        current_app.logger.info(f"Search query: {search_term}")
+        current_app.logger.info(f"Found {len(people)} people matching criteria")
         
-        # Add church information if available
-        if person.church_id:
-            church = Church.query.get(person.church_id)
-            if church:
-                person_dict['church'] = {
-                    'id': church.id,
-                    'name': church.name
-                }
+        # Convert people to dictionaries with all necessary fields for display
+        people_dicts = []
+        for person in people:
+            try:
+                person_dict = person.to_dict()
+                
+                # Add pipeline stage information
+                if person.people_pipeline:
+                    person_dict['pipeline_stage'] = person.people_pipeline
+                else:
+                    person_dict['pipeline_stage'] = 'Not in Pipeline'
+                
+                # Add church information if available
+                if person.church_id:
+                    church = Church.query.get(person.church_id)
+                    if church:
+                        person_dict['church'] = {
+                            'id': church.id,
+                            'name': church.name
+                        }
+                
+                people_dicts.append(person_dict)
+            except Exception as e:
+                current_app.logger.error(f"Error processing person {person.id}: {str(e)}")
+                # Continue with next person
         
-        people_dicts.append(person_dict)
-    
-    return jsonify(people_dicts)
+        # Log the response we're about to send
+        current_app.logger.info(f"Returning {len(people_dicts)} people in search results")
+        return jsonify(people_dicts)
+    except Exception as e:
+        current_app.logger.error(f"Search error: {str(e)}")
+        return jsonify({"error": str(e)}), 500

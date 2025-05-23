@@ -365,13 +365,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 params.set('assigned', 'me');
             }
             
+            console.log('Fetching search results with params:', params.toString());
+            
             // Fetch results from API
+            console.log('Sending request to:', `/people/search?${params.toString()}`);
             const response = await fetch(`/people/search?${params.toString()}`);
+            console.log('Response status:', response.status);
+            
             if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
+                throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
             }
             
-            const people = await response.json();
+            const responseText = await response.text();
+            console.log('Response text:', responseText);
+            
+            // Try to parse the response as JSON
+            let people;
+            try {
+                people = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                throw new Error(`Failed to parse response as JSON: ${parseError.message}`);
+            }
             
             // Clear table and populate with results
             tableBody.innerHTML = '';
@@ -480,9 +495,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>
                         <div class="table-actions">
                             <a href="/people/${person.id}/edit" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
-                            <form action="/people/${person.id}/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this person? This action cannot be undone.');">
+                            <form action="/people/${person.id}/delete" method="POST" class="d-inline delete-person-form" id="delete-form-${person.id}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                <button type="submit" class="btn-icon btn-sm" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                <button type="button" class="btn-icon btn-sm delete-person-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="${person.id}" data-name="${person.first_name} ${person.last_name}" aria-label="Delete"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>
                     </td>
@@ -493,16 +508,24 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('Search error:', error);
-            // Fall back to showing all people
-            tableBody.innerHTML = '';
-            document.querySelectorAll('#peopleTable tbody tr').forEach(originalRow => {
-                tableBody.appendChild(originalRow.cloneNode(true));
-            });
             
-            // Show error message
+            // Show detailed error message
+            tableBody.innerHTML = '';
             const errorRow = document.createElement('tr');
-            errorRow.innerHTML = '<td colspan="7" class="text-center text-danger">Error loading search results. Please try again.</td>';
+            errorRow.innerHTML = `<td colspan="7" class="text-center text-danger">
+                <div class="alert alert-danger">
+                    <strong>Error loading search results:</strong> ${error.message}
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">Reload Page</button>
+                    </div>
+                </div>
+            </td>`;
             tableBody.appendChild(errorRow);
+            
+            // Log additional debug info
+            console.log('Search term:', searchTerm);
+            console.log('Pipeline filter:', pipelineValue);
+            console.log('Priority filter:', priorityValue);
         }
     }
     
