@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, ClassVar
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Date, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -70,7 +70,7 @@ class Person(Contact):
     tags: Mapped[Optional[str]] = mapped_column(Text)
     
     # Virtual field for profile image - not stored in database
-    _profile_image: Optional[str] = None
+    _profile_image: ClassVar[Optional[str]] = None
 
     # Relationships with type hints
     church = relationship(
