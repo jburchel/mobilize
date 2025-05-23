@@ -178,11 +178,12 @@ def show(id):
         flash(f"Error loading person details: {str(e)}", 'danger')
         return redirect(url_for('people.index'))
 
+
 @people_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 @office_required
 def edit(id):
-    """Edit a specific person - simplified version to avoid stack depth issues."""
+    """Edit a specific person - using direct SQL to avoid stack depth issues."""
     try:
         # Get the person with minimal relationships loaded
         person = db.session.query(Person).filter(Person.id == id).first()
@@ -204,80 +205,109 @@ def edit(id):
             form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.filter_by(office_id=current_user.office_id).all()]
         
         if form.validate_on_submit():
-            # Update basic fields directly
-            person.first_name = form.first_name.data
-            person.last_name = form.last_name.data
-            person.email = form.email.data
-            person.phone = form.phone.data
-            person.address = form.address.data
-            person.city = form.city.data
-            person.state = form.state.data
-            person.zip_code = form.zip_code.data
-            person.country = form.country.data
-            person.notes = form.notes.data
-            person.title = form.title.data
-            person.marital_status = form.marital_status.data
-            person.spouse_first_name = form.spouse_first_name.data
-            person.spouse_last_name = form.spouse_last_name.data
-            person.birthday = form.date_of_birth.data
-            person.church_role = form.church_role.data
-            person.is_primary_contact = form.is_primary_contact.data
-            person.virtuous = form.virtuous.data
-            person.info_given = form.info_given.data
-            person.desired_service = form.desired_service.data
-            person.reason_closed = form.reason_closed.data
-            person.date_closed = form.date_closed.data
-            person.tags = form.tags.data if hasattr(form, 'tags') else None
-            person.assigned_to = form.assigned_to.data
-            person.priority = form.priority.data
-            person.source = form.source.data
-            
-            # Update status based on pipeline status
-            if form.pipeline_status.data:
-                person.status = form.pipeline_status.data
-            else:
-                person.status = 'active'  # Default status
+            # Instead of updating the object directly, use a direct SQL update
+            # to avoid triggering complex recursive operations
+            try:
+                # Collect all the data to update
+                update_data = {
+                    'first_name': form.first_name.data,
+                    'last_name': form.last_name.data,
+                    'email': form.email.data,
+                    'phone': form.phone.data,
+                    'address': form.address.data,
+                    'city': form.city.data,
+                    'state': form.state.data,
+                    'zip_code': form.zip_code.data,
+                    'country': form.country.data,
+                    'notes': form.notes.data,
+                    'title': form.title.data,
+                    'marital_status': form.marital_status.data,
+                    'spouse_first_name': form.spouse_first_name.data,
+                    'spouse_last_name': form.spouse_last_name.data,
+                    'birthday': form.date_of_birth.data,
+                    'church_role': form.church_role.data,
+                    'is_primary_contact': form.is_primary_contact.data,
+                    'virtuous': form.virtuous.data,
+                    'info_given': form.info_given.data,
+                    'desired_service': form.desired_service.data,
+                    'reason_closed': form.reason_closed.data,
+                    'date_closed': form.date_closed.data,
+                    'assigned_to': form.assigned_to.data,
+                    'priority': form.priority.data,
+                    'source': form.source.data,
+                    'updated_at': datetime.now()
+                }
                 
-            person.updated_at = datetime.now()
-            
-            # Handle church relationship
-            if form.church_id.data and form.church_id.data != 0:
-                person.church_id = form.church_id.data
-            else:
-                person.church_id = None
-            
-            # Handle profile image upload
-            if form.profile_image.data:
-                # Create upload directory if it doesn't exist
-                upload_dir = os.path.join('app', 'static', 'uploads', 'profiles')
-                os.makedirs(upload_dir, exist_ok=True)
+                # Handle tags separately since it might be None
+                if hasattr(form, 'tags'):
+                    update_data['tags'] = form.tags.data
                 
-                # Generate unique filename
-                filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
-                filepath = os.path.join(upload_dir, filename)
+                # Update status based on pipeline status
+                if form.pipeline_status.data:
+                    update_data['status'] = form.pipeline_status.data
+                else:
+                    update_data['status'] = 'active'  # Default status
                 
-                # Delete old profile image if exists
-                if person.profile_image:
-                    old_filepath = os.path.join('app', person.profile_image.lstrip('/'))
-                    if os.path.exists(old_filepath):
-                        os.remove(old_filepath)
+                # Handle church relationship
+                if form.church_id.data and form.church_id.data != 0:
+                    update_data['church_id'] = form.church_id.data
+                else:
+                    update_data['church_id'] = None
                 
-                # Save the new file
-                form.profile_image.data.save(filepath)
+                # Handle profile image upload
+                if form.profile_image.data:
+                    # Create upload directory if it doesn't exist
+                    upload_dir = os.path.join('app', 'static', 'uploads', 'profiles')
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    # Generate unique filename
+                    filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
+                    filepath = os.path.join(upload_dir, filename)
+                    
+                    # Delete old profile image if exists
+                    if person.profile_image:
+                        old_filepath = os.path.join('app', person.profile_image.lstrip('/'))
+                        if os.path.exists(old_filepath):
+                            os.remove(old_filepath)
+                    
+                    # Save the new file
+                    form.profile_image.data.save(filepath)
+                    
+                    # Store the path in the database
+                    update_data['profile_image'] = f"/static/uploads/profiles/{filename}"
                 
-                # Store the path in the database
-                person.profile_image = f"/static/uploads/profiles/{filename}"
-            
-            # Simple pipeline stage update - just update the fields directly
-            if form.people_pipeline.data:
-                person.people_pipeline = form.people_pipeline.data
-                person.pipeline_stage = form.people_pipeline.data
-            
-            # Save changes
-            db.session.commit()
-            
-            flash('Person updated successfully', 'success')
-            return redirect(url_for('people.show', id=person.id))
+                # Simple pipeline stage update - just update the fields directly
+                if form.people_pipeline.data:
+                    update_data['people_pipeline'] = form.people_pipeline.data
+                    update_data['pipeline_stage'] = form.people_pipeline.data
+                
+                # Use a direct SQL update to avoid triggering complex recursive operations
+                # This bypasses the ORM and any triggers that might be causing the stack depth issue
+                sql_parts = []
+                params = {}
+                
+                for key, value in update_data.items():
+                    sql_parts.append(f"{key} = :{key}")
+                    params[key] = value
+                
+                params['person_id'] = id
+                
+                sql = f"UPDATE people SET {', '.join(sql_parts)} WHERE id = :person_id"
+                
+                # Execute the SQL directly
+                db.session.execute(sql, params)
+                db.session.commit()
+                
+                # Log the success
+                current_app.logger.info(f"Successfully updated person {id} using direct SQL")
+                
+                flash('Person updated successfully', 'success')
+                return redirect(url_for('people.show', id=person.id))
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"SQL Error updating person {id}: {str(e)}")
+                flash(f'Error updating person: {str(e)}', 'danger')
+                return render_template('people/form.html', form=form, person=person)
         
         return render_template('people/form.html', form=form, person=person)
     except Exception as e:
@@ -285,7 +315,6 @@ def edit(id):
         current_app.logger.error(f"Error editing person {id}: {str(e)}")
         flash(f'Error updating person: {str(e)}', 'danger')
         return redirect(url_for('people.index'))
-
 @people_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
 @office_required
