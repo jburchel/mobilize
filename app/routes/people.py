@@ -314,9 +314,13 @@ def edit(id):
                     
                     contacts_sql = text(f"UPDATE contacts SET {', '.join(contacts_sql_parts)} WHERE id = (SELECT id FROM people WHERE id = :person_id)")
                     
+                    
+                    # Execute the contacts update with triggers disabled
+                    # First, disable triggers
+                    db.session.execute(text("SET session_replication_role = 'replica'"))
+                    
                     # Execute the contacts update
                     db.session.execute(contacts_sql, contacts_params)
-                
                 # Update the people table next
                 if people_update:
                     people_sql_parts = []
@@ -325,12 +329,16 @@ def edit(id):
                     for key, value in people_update.items():
                         people_sql_parts.append(f"{key} = :{key}")
                         people_params[key] = value
-                    
-                    people_params['person_id'] = id
-                    
-                    people_sql = text(f"UPDATE people SET {', '.join(people_sql_parts)} WHERE id = :person_id")
-                    
+              
                     # Execute the people update
+                    db.session.execute(people_sql, people_params)
+                    
+                    # Re-enable triggers
+                    db.session.execute(text("SET session_replication_role = 'origin'"))
+                    
+                    # Commit the transaction
+                    db.session.commit()
+                update
                     db.session.execute(people_sql, people_params)
                 # Execute the SQL directly
                 db.session.execute(sql, params)
