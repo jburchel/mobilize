@@ -68,6 +68,9 @@ class Person(Contact):
     reason_closed: Mapped[Optional[str]] = mapped_column(String(255))
     date_closed: Mapped[Optional[datetime]] = mapped_column(DateTime)
     tags: Mapped[Optional[str]] = mapped_column(Text)
+    
+    # Virtual field for profile image - not stored in database
+    _profile_image: Optional[str] = None
 
     # Relationships with type hints
     church = relationship(
@@ -199,6 +202,23 @@ class Person(Contact):
         
         return f"{first_name} {last_name}".strip() or "Unnamed Person"
 
+    @property
+    def profile_image(self) -> Optional[str]:
+        """Get profile image path, checking both the virtual field and the base class image field."""
+        # First check if we have a value in the virtual field
+        if self._profile_image is not None:
+            return self._profile_image
+        # Fall back to the image field from the Contact base class
+        return self.image if hasattr(self, 'image') else None
+    
+    @profile_image.setter
+    def profile_image(self, value: Optional[str]) -> None:
+        """Set profile image path in the virtual field and update the base class image field if it exists."""
+        self._profile_image = value
+        # Also update the image field in the Contact base class if it exists
+        if hasattr(self, 'image'):
+            self.image = value
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert person to dictionary."""
         return {
@@ -241,5 +261,6 @@ class Person(Contact):
             'source': self.source,
             'reason_closed': self.reason_closed,
             'date_closed': self.date_closed.isoformat() if self.date_closed else None,
-            'tags': self.tags
+            'tags': self.tags,
+            'profile_image': self.profile_image
         } 
