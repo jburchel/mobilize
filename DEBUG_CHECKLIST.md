@@ -24,7 +24,7 @@
 - [ ] Takes too long to load individual people when you click on them (a few seconds)
 - [x] In the main list table the column for name shows None None all the way down
 - [ ] In the same table the Pipeline Stage column is showing only PROMOTION for everyone even though in the Supabase database people have differing stages in the pipeline
-- [ ] The delete icon for a person in the same table takes the user to the Internal server error page
+- [x] The delete icon for a person in the same table takes the user to the Internal server error page
 - [ ] Some people don't open up when you click them (give Internal server error)... some do open up
 
 ## People Detail Page

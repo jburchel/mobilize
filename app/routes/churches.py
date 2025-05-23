@@ -472,6 +472,9 @@ def edit(id):
                                 entered_at=datetime.now()
                             )
                             db.session.add(pipeline_contact)
+                # CRITICAL FIX: Also update pipeline_stage field directly
+                if form.church_pipeline.data:
+                    church.pipeline_stage = form.church_pipeline.data
             
             db.session.commit()
             

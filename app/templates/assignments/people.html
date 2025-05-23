@@ -14,6 +14,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
+                        <!-- Left Column: Unassigned People -->
                         <div class="col-md-6">
                             <div class="card">
                                 <div class="card-header">
@@ -79,7 +80,7 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="mt-3">
+                                        <div class="form-group mt-3">
                                             <button type="button" class="btn btn-primary" id="assignButton" disabled>
                                                 <i class="fas fa-user"></i> Assign Selected People
                                             </button>
@@ -89,6 +90,7 @@
                             </div>
                         </div>
                         
+                        <!-- Right Column: Current Assignments -->
                         <div class="col-md-6">
                             <div class="card">
                                 <div class="card-header">
@@ -186,9 +188,27 @@
         
         // Update assign button state based on selections
         function updateAssignButtonState() {
-            var anyChecked = $('.unassigned-person-checkbox:checked').length > 0;
+            // Force a recheck of all checkboxes
+            var checkboxes = $('.unassigned-person-checkbox');
+            console.log('Total unassigned checkboxes found:', checkboxes.length);
+            
+            var anyChecked = checkboxes.filter(':checked').length > 0;
             var userSelected = $('#userSelect').val() !== '';
-            $('#assignButton').prop('disabled', !(anyChecked && userSelected));
+            console.log('People - Checkboxes checked:', anyChecked, 'User selected:', userSelected);
+            
+            // Always enable the button if both conditions are met
+            if (anyChecked && userSelected) {
+                $('#assignButton').prop('disabled', false);
+                console.log('Enabling assign button');
+            } else {
+                $('#assignButton').prop('disabled', true);
+                console.log('Disabling assign button - anyChecked:', anyChecked, 'userSelected:', userSelected);
+            }
+            
+            // Debug each checkbox
+            checkboxes.each(function(index) {
+                console.log('Checkbox', index, 'checked:', $(this).prop('checked'), 'id:', $(this).attr('id'));
+            });
         }
         
         // Update unassign button state based on selections
@@ -217,14 +237,21 @@
         updateUnassignButtonState();
         
         // Handle assign button click - AJAX implementation
-        $('#assignButton').click(function() {
+        $('#assignButton').click(function(e) {
+            console.log('Assign button clicked');
+            e.preventDefault(); // Prevent form submission
+            
             const userId = $('#userSelect').val();
+            console.log('Selected user ID:', userId);
+            
             const personIds = [];
             
             // Get all checked checkboxes
             $('input.unassigned-person-checkbox:checked').each(function() {
                 personIds.push($(this).val());
             });
+            
+            console.log('Selected person IDs:', personIds);
             
             // Validate form
             if (!userId) {
@@ -267,17 +294,30 @@
         // Load assigned people when a user is selected
         $('#viewUserSelect').change(function() {
             var userId = $(this).val();
-            console.log('User selected:', userId);
+            console.log('User selected for viewing:', userId);
+            
             if (userId) {
-                var url = '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId);
-                console.log('AJAX request URL:', url);
+                // Make sure the container is visible first
+                $('#userAssignmentsContainer').show();
+                var tableBody = $('#assignedPeopleTableBody');
+                
+                // Show loading indicator
+                tableBody.html('<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                
+                // Construct the URL with a timestamp to prevent caching
+                var baseUrl = '{{ url_for("assignments.get_user_people", user_id=0) }}'.replace('0', userId);
+                var timestamp = new Date().getTime();
+                var url = baseUrl + '?t=' + timestamp;
+                
+                console.log('Making AJAX request to:', url);
+                
                 $.ajax({
                     url: url,
                     type: 'GET',
+                    dataType: 'json',
+                    cache: false,
                     success: function(response) {
                         console.log('Response received:', response);
-                        $('#userAssignmentsContainer').show();
-                        var tableBody = $('#assignedPeopleTableBody');
                         tableBody.empty();
                         
                         if (response.people && response.people.length > 0) {
@@ -312,8 +352,19 @@
                     error: function(xhr, status, error) {
                         console.error('Error loading assigned people:', error);
                         console.error('Status:', status);
-                        console.error('Response:', xhr.responseText);
-                        tableBody.append('<tr><td colspan="4" class="text-center text-danger">Error loading assigned people: ' + error + '</td></tr>');
+                        console.error('Status code:', xhr.status);
+                        console.error('Response text:', xhr.responseText);
+                        
+                        var errorMessage = 'Error loading assigned people: ' + error;
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage += ' - ' + xhr.responseJSON.error;
+                        }
+                        
+                        // Display detailed error message in the table
+                        tableBody.html('<tr><td colspan="4" class="text-center text-danger">' + errorMessage + '</td></tr>');
+                        
+                        // Also check the network tab in browser console
+                        console.log('Please check the Network tab in your browser console for more details');
                     }
                 });
             } else {
