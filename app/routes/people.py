@@ -329,7 +329,11 @@ def edit(id):
                     for key, value in people_update.items():
                         people_sql_parts.append(f"{key} = :{key}")
                         people_params[key] = value
-              
+                    
+                    people_params['person_id'] = id
+                    
+                    people_sql = text(f"UPDATE people SET {', '.join(people_sql_parts)} WHERE id = :person_id")
+                    
                     # Execute the people update
                     # Execute the people update
                     db.session.execute(people_sql, people_params)
