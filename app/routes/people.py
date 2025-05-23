@@ -331,19 +331,14 @@ def edit(id):
                         people_params[key] = value
               
                     # Execute the people update
+                    # Execute the people update
                     db.session.execute(people_sql, people_params)
-                    
+
                     # Re-enable triggers
                     db.session.execute(text("SET session_replication_role = 'origin'"))
-                    
+
                     # Commit the transaction
                     db.session.commit()
-                update
-                    db.session.execute(people_sql, people_params)
-                # Execute the SQL directly
-                db.session.execute(sql, params)
-                db.session.commit()
-                
                 # Log the success
                 current_app.logger.info(f"Successfully updated person {id} using direct SQL")
                 
