@@ -61,8 +61,8 @@
                         </h4>
                         
                         <div class="mt-2">
-                            {% if person.main_pipeline_stage %}
-                                <span class="badge bg-info">{{ person.main_pipeline_stage }}</span>
+                            {% if person.pipeline_stage %}
+                                <span class="badge bg-info">{{ person.pipeline_stage }}</span>
                             {% endif %}
                             {% if person.priority %}
                                 <span class="badge bg-{{ person.priority.lower() }}">{{ person.priority }}</span>
@@ -198,7 +198,7 @@
                         <div class="col-md-6">
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Main Pipeline Stage:</div>
-                                <div class="col-7">Promotion</div>
+                                <div class="col-7">{{ person.pipeline_stage }}</div>
                             </div>
                             <div class="row mb-3">
                                 <div class="col-5 text-muted">Priority:</div>
