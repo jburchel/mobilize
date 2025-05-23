@@ -352,6 +352,76 @@ def delete(id):
 @login_required
 @office_required
 def add_note(id):
+
+
+@people_bp.route('/import', methods=['POST'])
+@login_required
+@office_required
+def import_people():
+    """Import people from a CSV file."""
+    try:
+        if 'file' not in request.files:
+            flash('No file part', 'danger')
+            return redirect(url_for('people.index'))
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash('No selected file', 'danger')
+            return redirect(url_for('people.index'))
+        
+        if not file.filename.endswith('.csv'):
+            flash('File must be a CSV', 'danger')
+            return redirect(url_for('people.index'))
+        
+        # Process CSV file
+        df = pd.read_csv(file)
+        
+        # Check if header row should be skipped
+        if 'header_row' not in request.form:
+            # No header row, add default column names
+            df.columns = ['first_name', 'last_name', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'country']
+        
+        # Process each row
+        success_count = 0
+        error_count = 0
+        
+        for index, row in df.iterrows():
+            try:
+                # Create a new person
+                person = Person(
+                    first_name=row.get('first_name', ''),
+                    last_name=row.get('last_name', ''),
+                    email=row.get('email', ''),
+                    phone=row.get('phone', ''),
+                    address=row.get('address', ''),
+                    city=row.get('city', ''),
+                    state=row.get('state', ''),
+                    zip_code=row.get('zip_code', ''),
+                    country=row.get('country', ''),
+                    type='person',
+                    office_id=current_user.office_id,
+                    user_id=current_user.id,
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                    status='active'
+                )
+                
+                db.session.add(person)
+                success_count += 1
+            except Exception as e:
+                current_app.logger.error(f"Error importing person: {str(e)}")
+                error_count += 1
+        
+        db.session.commit()
+        
+        flash(f'Successfully imported {success_count} people. {error_count} errors.', 'success')
+        return redirect(url_for('people.index'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error importing people: {str(e)}")
+        flash(f'Error importing people: {str(e)}', 'danger')
+        return redirect(url_for('people.index'))
     """Add a note to a person."""
     person = Person.query.get_or_404(id)
     
