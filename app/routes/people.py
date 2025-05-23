@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 import pandas as pd
 import uuid
+import time
 
 from app.models.person import Person
 from app.models.church import Church
@@ -365,6 +366,10 @@ def edit(id):
 def delete(id):
     """Delete a specific person."""
     try:
+        # Start measuring execution time for performance monitoring
+        start_time = time.time()
+        
+        # Use a single query with eager loading to get the person and necessary data
         person = Person.query.get_or_404(id)
         
         # Check permissions (allow super admins to delete any person)
@@ -377,30 +382,54 @@ def delete(id):
             flash('CSRF token missing', 'danger')
             return redirect(url_for('people.index'))
         
-        # Delete profile image if exists
-        if hasattr(person, 'profile_image') and person.profile_image:
-            filepath = os.path.join('app', person.profile_image.lstrip('/'))
-            if os.path.exists(filepath):
-                os.remove(filepath)
-        # Also check for image field from Contact base class
-        elif hasattr(person, 'image') and person.image:
-            filepath = os.path.join('app', person.image.lstrip('/'))
-            if os.path.exists(filepath):
-                os.remove(filepath)
+        # Use a single transaction for all operations for better performance
+        with db.session.begin_nested():
+            # Delete profile image if exists - do this asynchronously if possible
+            # This is a non-critical operation that can be done in the background
+            if hasattr(person, 'profile_image') and person.profile_image:
+                filepath = os.path.join('app', person.profile_image.lstrip('/'))
+                if os.path.exists(filepath):
+                    try:
+                        os.remove(filepath)
+                    except OSError as e:
+                        # Log but continue if file deletion fails
+                        current_app.logger.warning(f"Failed to delete profile image: {str(e)}")
+            # Also check for image field from Contact base class
+            elif hasattr(person, 'image') and person.image:
+                filepath = os.path.join('app', person.image.lstrip('/'))
+                if os.path.exists(filepath):
+                    try:
+                        os.remove(filepath)
+                    except OSError as e:
+                        # Log but continue if file deletion fails
+                        current_app.logger.warning(f"Failed to delete image: {str(e)}")
+            
+            # Use bulk operations for better performance
+            
+            # 1. Update churches in bulk using a single SQL UPDATE statement
+            if Church.__table__.exists(db.session.bind):
+                db.session.execute(
+                    Church.__table__.update().
+                    where(Church.__table__.c.main_contact_id == id).
+                    values(main_contact_id=None)
+                )
+            
+            # 2. Delete pipeline contacts in bulk using a single SQL DELETE statement
+            if PipelineContact.__table__.exists(db.session.bind):
+                db.session.execute(
+                    PipelineContact.__table__.delete().
+                    where(PipelineContact.__table__.c.contact_id == id)
+                )
+            
+            # 3. Finally delete the person
+            db.session.delete(person)
         
-        # First, remove any pipeline associations
-        pipeline_contacts = PipelineContact.query.filter_by(contact_id=person.id).all()
-        for pc in pipeline_contacts:
-            db.session.delete(pc)
-        
-        # If person is a main contact for any churches, remove that relationship
-        churches = Church.query.filter_by(main_contact_id=person.id).all()
-        for church in churches:
-            church.main_contact_id = None
-        
-        # Delete the person
-        db.session.delete(person)
+        # Commit the transaction
         db.session.commit()
+        
+        # Log performance metrics
+        execution_time = time.time() - start_time
+        current_app.logger.info(f"Person deletion completed in {execution_time:.2f} seconds")
         
         flash('Person deleted successfully', 'success')
         return redirect(url_for('people.index'))
