@@ -378,8 +378,13 @@ def delete(id):
             return redirect(url_for('people.index'))
         
         # Delete profile image if exists
-        if person.profile_image:
+        if hasattr(person, 'profile_image') and person.profile_image:
             filepath = os.path.join('app', person.profile_image.lstrip('/'))
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        # Also check for image field from Contact base class
+        elif hasattr(person, 'image') and person.image:
+            filepath = os.path.join('app', person.image.lstrip('/'))
             if os.path.exists(filepath):
                 os.remove(filepath)
         
