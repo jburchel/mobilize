@@ -281,20 +281,57 @@ def edit(id):
                     update_data['people_pipeline'] = form.people_pipeline.data
                     update_data['pipeline_stage'] = form.people_pipeline.data
                 
+                
                 # Use a direct SQL update to avoid triggering complex recursive operations
                 # This bypasses the ORM and any triggers that might be causing the stack depth issue
-                sql_parts = []
-                params = {}
+                
+                # Separate fields into contacts table and people table
+                contacts_fields = [
+                    'email', 'phone', 'address', 'city', 'state', 'zip_code', 'country', 'notes',
+                    'updated_at'
+                ]
+                
+                # Create separate update dictionaries for each table
+                contacts_update = {}
+                people_update = {}
                 
                 for key, value in update_data.items():
-                    sql_parts.append(f"{key} = :{key}")
-                    params[key] = value
+                    if key in contacts_fields:
+                        contacts_update[key] = value
+                    else:
+                        people_update[key] = value
                 
-                params['person_id'] = id
+                # Update the contacts table first
+                if contacts_update:
+                    contacts_sql_parts = []
+                    contacts_params = {}
+                    
+                    for key, value in contacts_update.items():
+                        contacts_sql_parts.append(f"{key} = :{key}")
+                        contacts_params[key] = value
+                    
+                    contacts_params['person_id'] = id
+                    
+                    contacts_sql = text(f"UPDATE contacts SET {', '.join(contacts_sql_parts)} WHERE id = (SELECT id FROM people WHERE id = :person_id)")
+                    
+                    # Execute the contacts update
+                    db.session.execute(contacts_sql, contacts_params)
                 
-                sql = text(f"UPDATE people SET {', '.join(sql_parts)} WHERE id = :person_id")
-                # Import text function at the top of the file
-                
+                # Update the people table next
+                if people_update:
+                    people_sql_parts = []
+                    people_params = {}
+                    
+                    for key, value in people_update.items():
+                        people_sql_parts.append(f"{key} = :{key}")
+                        people_params[key] = value
+                    
+                    people_params['person_id'] = id
+                    
+                    people_sql = text(f"UPDATE people SET {', '.join(people_sql_parts)} WHERE id = :person_id")
+                    
+                    # Execute the people update
+                    db.session.execute(people_sql, people_params)
                 # Execute the SQL directly
                 db.session.execute(sql, params)
                 db.session.commit()
