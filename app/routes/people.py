@@ -441,6 +441,65 @@ def add_note(id):
         flash(f'Error adding note: {str(e)}', 'danger')
         return redirect(url_for('people.show', id=person.id))
 
+@people_bp.route('/debug/richard', methods=['GET'])
+@login_required
+def debug_richard_anderson():
+    """Temporary debug route to query Richard Anderson's pipeline stage information"""
+    try:
+        # Query for Richard Anderson's pipeline stage
+        query = text("""
+            SELECT 
+                p.id, 
+                p.first_name, 
+                p.last_name, 
+                p.pipeline_stage,
+                p.pipeline_status,
+                p.pipeline_notes,
+                p.people_pipeline
+            FROM 
+                people p 
+                JOIN contacts c ON p.id = c.id
+            WHERE 
+                p.first_name = 'Richard' AND p.last_name = 'Anderson'
+        """)
+        
+        result = db.session.execute(query)
+        rows = result.fetchall()
+        
+        if not rows:
+            return "No person found with name Richard Anderson"
+        
+        # Format the results
+        output = "<h1>Pipeline information for Richard Anderson:</h1>"
+        
+        for row in rows:
+            output += f"<p><strong>ID:</strong> {row[0]}</p>"
+            output += f"<p><strong>Name:</strong> {row[1]} {row[2]}</p>"
+            output += f"<p><strong>pipeline_stage:</strong> {row[3]}</p>"
+            output += f"<p><strong>pipeline_status:</strong> {row[4]}</p>"
+            output += f"<p><strong>pipeline_notes:</strong> {row[5]}</p>"
+            output += f"<p><strong>people_pipeline:</strong> {row[6]}</p>"
+        
+        # Also query the pipeline_stages table to see what stages are available
+        stages_query = text("""SELECT id, name, description FROM pipeline_stages ORDER BY id""")
+        stages_result = db.session.execute(stages_query)
+        stages_rows = stages_result.fetchall()
+        
+        output += "<h1>Available Pipeline Stages:</h1>"
+        
+        for row in stages_rows:
+            output += f"<p><strong>ID:</strong> {row[0]}</p>"
+            output += f"<p><strong>Name:</strong> {row[1]}</p>"
+            output += f"<p><strong>Description:</strong> {row[2]}</p>"
+            output += "<hr>"
+        
+        return output
+    
+    except Exception as e:
+        error_msg = f"ERROR querying database: {str(e)}"
+        current_app.logger.error(error_msg)
+        return error_msg
+
 @people_bp.route('/import', methods=['POST'])
 @login_required
 @office_required
