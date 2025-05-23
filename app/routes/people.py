@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, send_file, Response
 from flask_login import login_required, current_user
 from sqlalchemy import or_
@@ -52,16 +51,16 @@ def index():
 @office_required
 def create():
     """Create a new person."""
-    form = PersonForm()
-    
-    # Get church choices for the form
-    if current_user.is_super_admin():
-        form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.all()]
-    else:
-        form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.filter_by(office_id=current_user.office_id).all()]
-    
-    if form.validate_on_submit():
-        try:
+    try:
+        form = PersonForm()
+        
+        # Get church choices for the form
+        if current_user.is_super_admin():
+            form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.all()]
+        else:
+            form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.filter_by(office_id=current_user.office_id).all()]
+        
+        if form.validate_on_submit():
             person = Person(
                 first_name=form.first_name.data,
                 last_name=form.last_name.data,
@@ -122,22 +121,28 @@ def create():
                 # Store the path in the database
                 person.profile_image = f"/static/uploads/profiles/{filename}"
             
-            # Set pipeline_stage field directly
+            # CRITICAL FIX: Set pipeline_stage field directly first
             if form.people_pipeline.data:
                 person.pipeline_stage = form.people_pipeline.data
+                # Also set the people_pipeline field for backward compatibility
                 person.people_pipeline = form.people_pipeline.data
                 
             db.session.add(person)
             db.session.commit()
             
+            # Simplified pipeline processing
+            if form.people_pipeline.data:
+                # Just log that we're skipping complex pipeline processing
+                current_app.logger.info(f"Skipping complex pipeline processing for person {person.id}")
+            
             flash('Person created successfully', 'success')
             return redirect(url_for('people.show', id=person.id))
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error creating person: {str(e)}")
-            flash(f"Error creating person: {str(e)}", 'danger')
-    
-    return render_template('people/form.html', form=form)
+        
+        return render_template('people/form.html', form=form)
+    except Exception as e:
+        current_app.logger.error(f"Error creating person: {str(e)}")
+        flash(f"Error creating person: {str(e)}", 'danger')
+        return render_template('people/form.html', form=form)
 
 @people_bp.route('/<int:id>')
 @login_required
@@ -145,6 +150,7 @@ def create():
 def show(id):
     """Show a specific person."""
     try:
+        # Use a simple query without complex joins
         person = Person.query.get_or_404(id)
         
         # Check permissions (allow super admins to view all)
@@ -176,9 +182,13 @@ def show(id):
 @login_required
 @office_required
 def edit(id):
-    """Edit a specific person."""
+    """Edit a specific person - simplified version to avoid stack depth issues."""
     try:
-        person = Person.query.get_or_404(id)
+        # Get the person with minimal relationships loaded
+        person = db.session.query(Person).filter(Person.id == id).first()
+        if not person:
+            flash('Person not found', 'danger')
+            return redirect(url_for('people.index'))
         
         # Check permissions (allow super admins to edit any person)
         if not current_user.is_super_admin() and person.office_id != current_user.office_id:
@@ -194,7 +204,7 @@ def edit(id):
             form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.filter_by(office_id=current_user.office_id).all()]
         
         if form.validate_on_submit():
-            # Update basic fields
+            # Update basic fields directly
             person.first_name = form.first_name.data
             person.last_name = form.last_name.data
             person.email = form.email.data
@@ -225,7 +235,9 @@ def edit(id):
             # Update status based on pipeline status
             if form.pipeline_status.data:
                 person.status = form.pipeline_status.data
-            
+            else:
+                person.status = 'active'  # Default status
+                
             person.updated_at = datetime.now()
             
             # Handle church relationship
@@ -256,7 +268,7 @@ def edit(id):
                 # Store the path in the database
                 person.profile_image = f"/static/uploads/profiles/{filename}"
             
-            # Update pipeline fields directly
+            # Simple pipeline stage update - just update the fields directly
             if form.people_pipeline.data:
                 person.people_pipeline = form.people_pipeline.data
                 person.pipeline_stage = form.people_pipeline.data
@@ -272,34 +284,6 @@ def edit(id):
         db.session.rollback()
         current_app.logger.error(f"Error editing person {id}: {str(e)}")
         flash(f'Error updating person: {str(e)}', 'danger')
-        return redirect(url_for('people.index'))
-
-@people_bp.route('/<int:id>', methods=['GET'])
-@login_required
-@office_required
-def show(id):
-    """Show a specific person."""
-    try:
-        person = Person.query.get_or_404(id)
-        
-        # Check permissions (allow super admins to view any person)
-        if not current_user.is_super_admin() and person.office_id != current_user.office_id:
-            flash('You do not have permission to view this person', 'danger')
-            return redirect(url_for('people.index'))
-        
-        # Get pipeline information if available
-        pipeline_info = None
-        if hasattr(person, 'pipeline_stage') and person.pipeline_stage:
-            person.current_pipeline_stage = person.pipeline_stage
-        else:
-            person.current_pipeline_stage = 'Not in Pipeline'
-        
-        return render_template('people/show.html', 
-                            person=person,
-                            page_title=f'{person.first_name} {person.last_name}')
-    except Exception as e:
-        current_app.logger.error(f"Error showing person {id}: {str(e)}")
-        flash(f'Error loading person details: {str(e)}', 'danger')
         return redirect(url_for('people.index'))
 
 @people_bp.route('/<int:id>/delete', methods=['POST'])
@@ -352,7 +336,37 @@ def delete(id):
 @login_required
 @office_required
 def add_note(id):
-
+    """Add a note to a person."""
+    try:
+        person = Person.query.get_or_404(id)
+        
+        # Check permissions
+        if not current_user.is_super_admin() and person.office_id != current_user.office_id:
+            flash('You do not have permission to add notes to this person', 'danger')
+            return redirect(url_for('people.index'))
+        
+        content = request.form.get('content', '')
+        
+        if content:
+            # Add note to existing notes or create new notes
+            if person.notes:
+                person.notes = f"{person.notes}\n\n{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.full_name}:\n{content}"
+            else:
+                person.notes = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.full_name}:\n{content}"
+            
+            person.updated_at = datetime.now()
+            db.session.commit()
+            
+            flash('Note added successfully', 'success')
+        else:
+            flash('Note cannot be empty', 'warning')
+        
+        return redirect(url_for('people.show', id=person.id))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error adding note to person: {str(e)}')
+        flash(f'Error adding note: {str(e)}', 'danger')
+        return redirect(url_for('people.show', id=person.id))
 
 @people_bp.route('/import', methods=['POST'])
 @login_required
@@ -422,28 +436,3 @@ def import_people():
         current_app.logger.error(f"Error importing people: {str(e)}")
         flash(f'Error importing people: {str(e)}', 'danger')
         return redirect(url_for('people.index'))
-    """Add a note to a person."""
-    person = Person.query.get_or_404(id)
-    
-    # Check permissions
-    if not current_user.is_super_admin() and person.office_id != current_user.office_id:
-        flash('You do not have permission to add notes to this person', 'danger')
-        return redirect(url_for('people.index'))
-    
-    content = request.form.get('content', '')
-    
-    if content:
-        # Add note to existing notes or create new notes
-        if person.notes:
-            person.notes = f"{person.notes}\n\n{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.full_name}:\n{content}"
-        else:
-            person.notes = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} - {current_user.full_name}:\n{content}"
-        
-        person.updated_at = datetime.now()
-        db.session.commit()
-        
-        flash('Note added successfully', 'success')
-    else:
-        flash('Note cannot be empty', 'warning')
-    
-    return redirect(url_for('people.show', id=person.id))
