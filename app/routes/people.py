@@ -545,3 +545,91 @@ def import_people():
         current_app.logger.error(f"Error importing people: {str(e)}")
         flash(f'Error importing people: {str(e)}', 'danger')
         return redirect(url_for('people.index'))
+
+
+@people_bp.route('/search', methods=['GET'])
+@login_required
+@office_required
+def search():
+    """Search people based on query parameters"""
+    search_term = request.args.get('q', '').strip()
+    pipeline_filter = request.args.get('pipeline', '')
+    priority_filter = request.args.get('priority', '')
+    assigned_filter = request.args.get('assigned', '')
+    
+    # Start with a base query for Person
+    query = Person.query
+    
+    # Apply text search filter if provided
+    if search_term:
+        # Check if the search term matches any pipeline stage
+        pipeline_match = False
+        
+        # Check for pipeline stage match
+        pipeline_stages = ['PROMOTION', 'INFORMATION', 'INVITATION', 'CONFIRMATION', 'EN42', 'AUTOMATION']
+        for stage in pipeline_stages:
+            if stage.upper() in search_term.upper():
+                query = query.filter(Person.people_pipeline == stage)
+                pipeline_match = True
+                break
+        
+        # If no pipeline match, search other fields
+        if not pipeline_match:
+            query = query.filter(
+                or_(
+                    Person.first_name.ilike(f'%{search_term}%'),
+                    Person.last_name.ilike(f'%{search_term}%'),
+                    Person.email.ilike(f'%{search_term}%'),
+                    Person.phone.ilike(f'%{search_term}%'),
+                    Person.address.ilike(f'%{search_term}%'),
+                    Person.city.ilike(f'%{search_term}%'),
+                    Person.state.ilike(f'%{search_term}%')
+                )
+            )
+    
+    # Apply pipeline filter if provided
+    if pipeline_filter:
+        query = query.filter(Person.people_pipeline == pipeline_filter)
+    
+    # Apply priority filter if provided
+    if priority_filter:
+        query = query.filter(Person.priority == priority_filter)
+        
+    # Apply assignment filter if requested
+    if assigned_filter == 'me':
+        query = query.filter(Person.assigned_to == current_user.full_name)
+    
+    # Filter by office for non-super admins
+    if not current_user.is_super_admin():
+        query = query.filter(Person.office_id == current_user.office_id)
+    
+    # Get results with increased limit
+    people = query.limit(50).all()
+    
+    # Debug output
+    print(f"Search query: {search_term}")
+    print(f"Found {len(people)} people matching criteria")
+    
+    # Convert people to dictionaries with all necessary fields for display
+    people_dicts = []
+    for person in people:
+        person_dict = person.to_dict()
+        
+        # Add pipeline stage information
+        if person.people_pipeline:
+            person_dict['pipeline_stage'] = person.people_pipeline
+        else:
+            person_dict['pipeline_stage'] = 'Not in Pipeline'
+        
+        # Add church information if available
+        if person.church_id:
+            church = Church.query.get(person.church_id)
+            if church:
+                person_dict['church'] = {
+                    'id': church.id,
+                    'name': church.name
+                }
+        
+        people_dicts.append(person_dict)
+    
+    return jsonify(people_dicts)

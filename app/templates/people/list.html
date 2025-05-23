@@ -332,86 +332,143 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Search function - redirects to the same page with search parameters
-    function searchPeople() {
+    // Search function - uses AJAX to fetch results without page reload
+    async function searchPeople() {
         const searchTerm = searchInput.value.trim();
+        const pipelineValue = pipelineFilter ? pipelineFilter.value : '';
+        const priorityValue = priorityFilter ? priorityFilter.value : '';
         
         // Show/hide clear button
-        clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
+        clearSearchBtn.style.display = searchTerm || pipelineValue || priorityValue ? 'block' : 'none';
         
-        // Build query parameters for server-side search
-        const params = new URLSearchParams(window.location.search);
+        // Show loading indicator
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>';
         
-        // Update or remove search parameter
-        if (searchTerm) {
-            params.set('q', searchTerm);
-        } else {
-            params.delete('q');
+        try {
+            // Build query parameters for API request
+            const params = new URLSearchParams();
+            if (searchTerm) {
+                params.set('q', searchTerm);
+            }
+            
+            // Add filter parameters if needed
+            if (pipelineValue) {
+                params.set('pipeline', pipelineValue);
+            }
+            if (priorityValue) {
+                params.set('priority', priorityValue);
+            }
+            
+            // Add assignment filter if checked
+            const showAssignedToMe = document.getElementById('showAssignedToMe');
+            if (showAssignedToMe && showAssignedToMe.checked) {
+                params.set('assigned', 'me');
+            }
+            
+            // Fetch results from API
+            const response = await fetch(`/people/search?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            
+            const people = await response.json();
+            
+            // Clear table and populate with results
+            tableBody.innerHTML = '';
+            
+            // Update visible count
+            if (visibleCountElement) {
+                visibleCountElement.textContent = people.length;
+            }
+            
+            if (people.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = '<td colspan="7" class="text-center">No people found matching your search criteria.</td>';
+                tableBody.appendChild(emptyRow);
+                return;
+            }
+            
+            // Populate table with results
+            people.forEach(person => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="table-user">
+                            <div class="table-user-avatar">${person.first_name[0]}${person.last_name[0]}</div>
+                            <div class="table-user-info">
+                                <div class="table-user-name"><a href="/people/${person.id}">${person.first_name} ${person.last_name}</a></div>
+                                <div class="table-user-title">${person.email || ''}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${person.phone || ''}</td>
+                    <td>${person.church ? `<a href="/churches/${person.church.id}">${person.church.name}</a>` : ''}</td>
+                    <td>
+                        ${person.pipeline_stage ? 
+                            `<span class="badge bg-${getBadgeColorForPipeline(person.pipeline_stage)}">${person.pipeline_stage}</span>` : 
+                            '<span class="badge bg-secondary">Not in Pipeline</span>'}
+                    </td>
+                    <td>
+                        ${person.priority ? 
+                            `<span class="badge bg-${getBadgeColorForPriority(person.priority)}">${person.priority}</span>` : 
+                            '<span class="badge bg-secondary">Not Set</span>'}
+                    </td>
+                    <td>${person.last_contact_date || ''}</td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="/people/${person.id}/edit" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                            <form action="/people/${person.id}/delete" method="POST" class="d-inline delete-person-form" id="delete-form-${person.id}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="button" class="btn-icon btn-sm delete-person-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="${person.id}" data-name="${person.first_name} ${person.last_name}" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+        } catch (error) {
+            console.error('Search error:', error);
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading search results. Please try again.</td></tr>';
         }
-        
-        // Preserve assignment filter if it's active
-        const showAssignedToMe = document.getElementById('showAssignedToMe');
-        if (showAssignedToMe && showAssignedToMe.checked) {
-            params.set('assigned', 'me');
-        } else if (params.has('assigned')) {
-            params.delete('assigned');
-        }
-        
-        // Always reset to page 1 when searching
-        params.set('page', 1);
-        
-        // Redirect to the same page with updated parameters
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
     }
     
-    // Handle search input
+    // Handle search input with debouncing
+    searchInput.addEventListener('input', debounce(searchPeople, 300));
+    
+    // Also trigger search on Enter key
     searchInput.addEventListener('keyup', function(event) {
         if (event.key === 'Enter') {
             searchPeople();
         }
     });
     
+    // Add event listeners for filters if they exist
+    if (pipelineFilter) {
+        pipelineFilter.addEventListener('change', searchPeople);
+    }
+    
+    if (priorityFilter) {
+        priorityFilter.addEventListener('change', searchPeople);
+    }
+    
     // Clear search when clicking the clear button
     clearSearchBtn.addEventListener('click', function() {
         searchInput.value = '';
-        const params = new URLSearchParams(window.location.search);
-        params.delete('q');
-        window.location.href = `${window.location.pathname}?${params.toString()}`;
+        if (pipelineFilter) pipelineFilter.value = '';
+        if (priorityFilter) priorityFilter.value = '';
+        searchPeople();
     });
-    
-    // Set search input value from URL parameter if present
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchParam = urlParams.get('q');
-    if (searchParam) {
-        searchInput.value = searchParam;
-        clearSearchBtn.style.display = 'block';
-    }
     
     // Assignment filter toggle event listener
     const showAssignedToMe = document.getElementById('showAssignedToMe');
     if (showAssignedToMe) {
-        showAssignedToMe.addEventListener('change', function() {
-            const params = new URLSearchParams(window.location.search);
-            
-            // Update assignment filter parameter
-            if (this.checked) {
-                params.set('assigned', 'me');
-            } else {
-                params.delete('assigned');
-            }
-            
-            // Preserve search query if present
-            if (searchInput.value.trim()) {
-                params.set('q', searchInput.value.trim());
-            }
-            
-            // Reset to page 1
-            params.set('page', 1);
-            
-            // Navigate to updated URL
-            window.location.href = `${window.location.pathname}?${params.toString()}`;
-        });
+        showAssignedToMe.addEventListener('change', searchPeople);
     }
+    
+    // Initial search to load data on page load
+    searchPeople();
                     <td>
                         ${person.priority ? 
                             `<span class="badge badge-${getBadgeColorForPriority(person.priority)}">
