@@ -80,6 +80,17 @@ app/static/.compressed
 *_fix.py
 debug_*.py
 *.bak
+add_delete_function.py
+check_routes.py
+disable_pipeline_processing.py
+fix_delete_route.py
+fix_people_routes.py
+fix_pipeline.py
+fix_syntax.py
+pipeline_fix_clean.py
+remove_logging.py
+simple_pipeline_fix_v2.py
+simplified_people.py
 
 # Jupyter Notebook
 .ipynb_checkpoints
