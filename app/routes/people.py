@@ -133,59 +133,75 @@ def create():
                     'updated_at': datetime.now()
                 }
                 
-                # Execute the contacts insert and get the new ID
-                result = db.session.execute(contacts_sql, contacts_params)
-                contact_id = result.scalar()
+                # Disable triggers to prevent recursive operations that cause stack depth issues
+                db.session.execute(text("SET session_replication_role = 'replica'"))
                 
-                current_app.logger.info(f"Created new contact with ID {contact_id}")
-                
-                # Now insert into people table
-                people_sql = text("""
-                INSERT INTO people (
-                    id, title, marital_status, spouse_first_name, spouse_last_name, birthday,
-                    church_id, church_role, is_primary_contact, virtuous, info_given, desired_service,
-                    reason_closed, date_closed, tags, assigned_to, priority, source, status,
-                    people_pipeline, pipeline_stage
-                ) VALUES (
-                    :id, :title, :marital_status, :spouse_first_name, :spouse_last_name, :birthday,
-                    :church_id, :church_role, :is_primary_contact, :virtuous, :info_given, :desired_service,
-                    :reason_closed, :date_closed, :tags, :assigned_to, :priority, :source, :status,
-                    :people_pipeline, :pipeline_stage
-                )
-                """)
-                
-                people_params = {
-                    'id': contact_id,
-                    'title': form.title.data,
-                    'marital_status': form.marital_status.data,
-                    'spouse_first_name': form.spouse_first_name.data,
-                    'spouse_last_name': form.spouse_last_name.data,
-                    'birthday': form.date_of_birth.data,
-                    'church_id': church_id,
-                    'church_role': form.church_role.data,
-                    'is_primary_contact': form.is_primary_contact.data,
-                    'virtuous': form.virtuous.data,
-                    'info_given': form.info_given.data,
-                    'desired_service': form.desired_service.data,
-                    'reason_closed': form.reason_closed.data,
-                    'date_closed': form.date_closed.data,
-                    'tags': tags,
-                    'assigned_to': assigned_to,
-                    'priority': form.priority.data,
-                    'source': form.source.data,
-                    'status': status,
-                    'people_pipeline': people_pipeline,
-                    'pipeline_stage': pipeline_stage
-                }
-                
-                # Execute the people insert
-                db.session.execute(people_sql, people_params)
-                db.session.commit()
-                
-                current_app.logger.info(f"Successfully created new person with ID {contact_id}")
-                
-                flash('Person created successfully', 'success')
-                return redirect(url_for('people.show', id=contact_id))
+                try:
+                    # Execute the contacts insert and get the new ID
+                    result = db.session.execute(contacts_sql, contacts_params)
+                    contact_id = result.scalar()
+                    
+                    current_app.logger.info(f"Created new contact with ID {contact_id}")
+                    
+                    # Now insert into people table
+                    people_sql = text("""
+                    INSERT INTO people (
+                        id, title, marital_status, spouse_first_name, spouse_last_name, birthday,
+                        church_id, church_role, is_primary_contact, virtuous, info_given, desired_service,
+                        reason_closed, date_closed, tags, assigned_to, priority, source, status,
+                        people_pipeline, pipeline_stage
+                    ) VALUES (
+                        :id, :title, :marital_status, :spouse_first_name, :spouse_last_name, :birthday,
+                        :church_id, :church_role, :is_primary_contact, :virtuous, :info_given, :desired_service,
+                        :reason_closed, :date_closed, :tags, :assigned_to, :priority, :source, :status,
+                        :people_pipeline, :pipeline_stage
+                    )
+                    """)
+                    
+                    people_params = {
+                        'id': contact_id,
+                        'title': form.title.data,
+                        'marital_status': form.marital_status.data,
+                        'spouse_first_name': form.spouse_first_name.data,
+                        'spouse_last_name': form.spouse_last_name.data,
+                        'birthday': form.date_of_birth.data,
+                        'church_id': church_id,
+                        'church_role': form.church_role.data,
+                        'is_primary_contact': form.is_primary_contact.data,
+                        'virtuous': form.virtuous.data,
+                        'info_given': form.info_given.data,
+                        'desired_service': form.desired_service.data,
+                        'reason_closed': form.reason_closed.data,
+                        'date_closed': form.date_closed.data,
+                        'tags': tags,
+                        'assigned_to': assigned_to,
+                        'priority': form.priority.data,
+                        'source': form.source.data,
+                        'status': status,
+                        'people_pipeline': people_pipeline,
+                        'pipeline_stage': pipeline_stage
+                    }
+                    
+                    # Execute the people insert
+                    db.session.execute(people_sql, people_params)
+                    
+                    # Re-enable triggers
+                    db.session.execute(text("SET session_replication_role = 'origin'"))
+                    
+                    # Commit the transaction
+                    db.session.commit()
+                    
+                    current_app.logger.info(f"Successfully created new person with ID {contact_id}")
+                    
+                    flash('Person created successfully', 'success')
+                    return redirect(url_for('people.show', id=contact_id))
+                except Exception as e:
+                    # Make sure to re-enable triggers even if there's an error
+                    db.session.execute(text("SET session_replication_role = 'origin'"))
+                    db.session.rollback()
+                    current_app.logger.error(f"SQL Error creating person: {str(e)}")
+                    flash(f"Error creating person: {str(e)}", 'danger')
+                    return render_template('people/form.html', form=form)
                 
             except Exception as sql_error:
                 db.session.rollback()
