@@ -21,19 +21,19 @@ def register_template_utilities(app):
             if not stage:
                 return 'secondary'
             
-            stage = stage.lower()
-            if 'lead' in stage or 'new' in stage:
+            stage = stage.upper()
+            if stage == 'PROMOTION':
                 return 'info'
-            elif 'contact' in stage or 'follow' in stage:
+            elif stage == 'INFORMATION':
                 return 'primary'
-            elif 'qualified' in stage or 'meeting' in stage:
-                return 'success'
-            elif 'proposal' in stage or 'negotiation' in stage:
+            elif stage == 'INVITATION':
                 return 'warning'
-            elif 'closed' in stage and 'won' in stage:
+            elif stage == 'CONFIRMATION':
                 return 'success'
-            elif 'closed' in stage and 'lost' in stage:
+            elif stage == 'AUTOMATION':
                 return 'danger'
+            elif stage == 'EN42':
+                return 'dark'
             else:
                 return 'secondary'
         
