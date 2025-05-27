@@ -19,23 +19,23 @@ def register_template_utilities(app):
         def get_badge_color_for_pipeline(stage):
             """Get the appropriate badge color for a pipeline stage."""
             if not stage:
-                return 'secondary'
+                return 'pipeline-default'
             
             stage = stage.upper()
             if stage == 'PROMOTION':
-                return 'info'
+                return 'pipeline-promotion'
             elif stage == 'INFORMATION':
-                return 'primary'
+                return 'pipeline-information'
             elif stage == 'INVITATION':
-                return 'warning'
+                return 'pipeline-invitation'
             elif stage == 'CONFIRMATION':
-                return 'success'
+                return 'pipeline-confirmation'
             elif stage == 'AUTOMATION':
-                return 'danger'
+                return 'pipeline-automation'
             elif stage == 'EN42':
-                return 'dark'
+                return 'pipeline-en42'
             else:
-                return 'secondary'
+                return 'pipeline-default'
         
         def get_badge_color_for_priority(priority):
             """Get the appropriate badge color for a priority level."""

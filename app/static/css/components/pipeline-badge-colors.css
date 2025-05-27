@@ -1,0 +1,41 @@
+/**
+ * Pipeline Badge Colors
+ * Creates a gradient of colors from green to blue for pipeline stages
+ */
+
+/* Pipeline Stage Badge Colors - Green to Blue Gradient */
+.badge-pipeline-promotion {
+  color: white;
+  background-color: var(--color-secondary); /* Start with green */
+}
+
+.badge-pipeline-information {
+  color: white;
+  background-color: #37a36e; /* Green-teal mix */
+}
+
+.badge-pipeline-invitation {
+  color: white;
+  background-color: #2d9189; /* Teal */
+}
+
+.badge-pipeline-confirmation {
+  color: white;
+  background-color: #237fa4; /* Teal-blue mix */
+}
+
+.badge-pipeline-automation {
+  color: white;
+  background-color: #1a6dbe; /* Light blue */
+}
+
+.badge-pipeline-en42 {
+  color: white;
+  background-color: var(--color-primary); /* End with blue */
+}
+
+/* Default badge for when pipeline stage is not set */
+.badge-pipeline-default {
+  color: var(--color-gray-900);
+  background-color: var(--color-gray-300);
+}
