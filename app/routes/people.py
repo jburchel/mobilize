@@ -145,12 +145,12 @@ def create():
                     id, title, marital_status, spouse_first_name, spouse_last_name, birthday,
                     church_id, church_role, is_primary_contact, virtuous, info_given, desired_service,
                     reason_closed, date_closed, tags, assigned_to, priority, source, status,
-                    people_pipeline, pipeline_stage, profile_image
+                    people_pipeline, pipeline_stage
                 ) VALUES (
                     :id, :title, :marital_status, :spouse_first_name, :spouse_last_name, :birthday,
                     :church_id, :church_role, :is_primary_contact, :virtuous, :info_given, :desired_service,
                     :reason_closed, :date_closed, :tags, :assigned_to, :priority, :source, :status,
-                    :people_pipeline, :pipeline_stage, :profile_image
+                    :people_pipeline, :pipeline_stage
                 )
                 """)
                 
@@ -175,8 +175,7 @@ def create():
                     'source': form.source.data,
                     'status': status,
                     'people_pipeline': people_pipeline,
-                    'pipeline_stage': pipeline_stage,
-                    'profile_image': profile_image_path
+                    'pipeline_stage': pipeline_stage
                 }
                 
                 # Execute the people insert
