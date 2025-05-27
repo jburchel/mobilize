@@ -62,82 +62,137 @@ def create():
             form.church_id.choices = [(0, 'None')] + [(c.id, c.name) for c in Church.query.filter_by(office_id=current_user.office_id).all()]
         
         if form.validate_on_submit():
-            person = Person(
-                first_name=form.first_name.data,
-                last_name=form.last_name.data,
-                email=form.email.data,
-                phone=form.phone.data,
-                address=form.address.data,
-                city=form.city.data,
-                state=form.state.data,
-                zip_code=form.zip_code.data,
-                country=form.country.data,
-                title=form.title.data,
-                marital_status=form.marital_status.data,
-                spouse_first_name=form.spouse_first_name.data,
-                spouse_last_name=form.spouse_last_name.data,
-                birthday=form.date_of_birth.data,
-                church_role=form.church_role.data,
-                is_primary_contact=form.is_primary_contact.data,
-                virtuous=form.virtuous.data,
-                info_given=form.info_given.data,
-                desired_service=form.desired_service.data,
-                reason_closed=form.reason_closed.data,
-                date_closed=form.date_closed.data,
-                tags=form.tags.data if hasattr(form, 'tags') else None,
-                notes=form.notes.data,
-                assigned_to=form.assigned_to.data if form.assigned_to.data else current_user.username,
-                priority=form.priority.data,
-                source=form.source.data,
-                type='person',  # Explicitly set type for the polymorphic model
-                office_id=current_user.office_id,
-                user_id=current_user.id,
-                created_at=datetime.now(),
-                updated_at=datetime.now()
-            )
+            current_app.logger.info("Creating new person using direct SQL approach")
+            
+            # Handle profile image upload first
+            profile_image_path = None
+            if form.profile_image.data:
+                try:
+                    # Create upload directory if it doesn't exist
+                    upload_dir = os.path.join('app', 'static', 'uploads', 'profiles')
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    # Generate unique filename
+                    filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
+                    filepath = os.path.join(upload_dir, filename)
+                    
+                    # Save the file
+                    form.profile_image.data.save(filepath)
+                    
+                    # Store the path
+                    profile_image_path = f"/static/uploads/profiles/{filename}"
+                    current_app.logger.info(f"Saved profile image to {filepath}")
+                except Exception as img_error:
+                    current_app.logger.error(f"Error saving profile image: {str(img_error)}")
             
             # Set status based on pipeline status
-            if form.pipeline_status.data:
-                person.status = form.pipeline_status.data
-            else:
-                person.status = 'active'  # Default status
+            status = form.pipeline_status.data if form.pipeline_status.data else 'active'
+            
+            # Set assigned_to
+            assigned_to = form.assigned_to.data if form.assigned_to.data else current_user.username
             
             # Handle church relationship
-            if form.church_id.data and form.church_id.data != 0:
-                person.church_id = form.church_id.data
+            church_id = form.church_id.data if form.church_id.data and form.church_id.data != 0 else None
             
-            # Handle profile image upload
-            if form.profile_image.data:
-                # Create upload directory if it doesn't exist
-                upload_dir = os.path.join('app', 'static', 'uploads', 'profiles')
-                os.makedirs(upload_dir, exist_ok=True)
-                
-                # Generate unique filename
-                filename = f"{uuid.uuid4()}.{form.profile_image.data.filename.split('.')[-1]}"
-                filepath = os.path.join(upload_dir, filename)
-                
-                # Save the file
-                form.profile_image.data.save(filepath)
-                
-                # Store the path in the database
-                person.profile_image = f"/static/uploads/profiles/{filename}"
+            # Set pipeline stage and people_pipeline
+            pipeline_stage = form.people_pipeline.data if form.people_pipeline.data else None
+            people_pipeline = pipeline_stage  # Same value for both fields
             
-            # CRITICAL FIX: Set pipeline_stage field directly first
-            if form.people_pipeline.data:
-                person.pipeline_stage = form.people_pipeline.data
-                # Also set the people_pipeline field for backward compatibility
-                person.people_pipeline = form.people_pipeline.data
+            # Get tags
+            tags = form.tags.data if hasattr(form, 'tags') and form.tags.data else None
+            
+            # First, insert into contacts table
+            try:
+                # Use direct SQL to insert into contacts table
+                contacts_sql = text("""
+                INSERT INTO contacts (
+                    type, first_name, last_name, email, phone, address, city, state, zip_code, country,
+                    notes, office_id, user_id, image, created_at, updated_at
+                ) VALUES (
+                    :type, :first_name, :last_name, :email, :phone, :address, :city, :state, :zip_code, :country,
+                    :notes, :office_id, :user_id, :image, :created_at, :updated_at
+                ) RETURNING id
+                """)
                 
-            db.session.add(person)
-            db.session.commit()
-            
-            # Simplified pipeline processing
-            if form.people_pipeline.data:
-                # Just log that we're skipping complex pipeline processing
-                current_app.logger.info(f"Skipping complex pipeline processing for person {person.id}")
-            
-            flash('Person created successfully', 'success')
-            return redirect(url_for('people.show', id=person.id))
+                contacts_params = {
+                    'type': 'person',
+                    'first_name': form.first_name.data,
+                    'last_name': form.last_name.data,
+                    'email': form.email.data,
+                    'phone': form.phone.data,
+                    'address': form.address.data,
+                    'city': form.city.data,
+                    'state': form.state.data,
+                    'zip_code': form.zip_code.data,
+                    'country': form.country.data,
+                    'notes': form.notes.data,
+                    'office_id': current_user.office_id,
+                    'user_id': current_user.id,
+                    'image': profile_image_path,
+                    'created_at': datetime.now(),
+                    'updated_at': datetime.now()
+                }
+                
+                # Execute the contacts insert and get the new ID
+                result = db.session.execute(contacts_sql, contacts_params)
+                contact_id = result.scalar()
+                
+                current_app.logger.info(f"Created new contact with ID {contact_id}")
+                
+                # Now insert into people table
+                people_sql = text("""
+                INSERT INTO people (
+                    id, title, marital_status, spouse_first_name, spouse_last_name, birthday,
+                    church_id, church_role, is_primary_contact, virtuous, info_given, desired_service,
+                    reason_closed, date_closed, tags, assigned_to, priority, source, status,
+                    people_pipeline, pipeline_stage, profile_image
+                ) VALUES (
+                    :id, :title, :marital_status, :spouse_first_name, :spouse_last_name, :birthday,
+                    :church_id, :church_role, :is_primary_contact, :virtuous, :info_given, :desired_service,
+                    :reason_closed, :date_closed, :tags, :assigned_to, :priority, :source, :status,
+                    :people_pipeline, :pipeline_stage, :profile_image
+                )
+                """)
+                
+                people_params = {
+                    'id': contact_id,
+                    'title': form.title.data,
+                    'marital_status': form.marital_status.data,
+                    'spouse_first_name': form.spouse_first_name.data,
+                    'spouse_last_name': form.spouse_last_name.data,
+                    'birthday': form.date_of_birth.data,
+                    'church_id': church_id,
+                    'church_role': form.church_role.data,
+                    'is_primary_contact': form.is_primary_contact.data,
+                    'virtuous': form.virtuous.data,
+                    'info_given': form.info_given.data,
+                    'desired_service': form.desired_service.data,
+                    'reason_closed': form.reason_closed.data,
+                    'date_closed': form.date_closed.data,
+                    'tags': tags,
+                    'assigned_to': assigned_to,
+                    'priority': form.priority.data,
+                    'source': form.source.data,
+                    'status': status,
+                    'people_pipeline': people_pipeline,
+                    'pipeline_stage': pipeline_stage,
+                    'profile_image': profile_image_path
+                }
+                
+                # Execute the people insert
+                db.session.execute(people_sql, people_params)
+                db.session.commit()
+                
+                current_app.logger.info(f"Successfully created new person with ID {contact_id}")
+                
+                flash('Person created successfully', 'success')
+                return redirect(url_for('people.show', id=contact_id))
+                
+            except Exception as sql_error:
+                db.session.rollback()
+                current_app.logger.error(f"SQL Error creating person: {str(sql_error)}")
+                flash(f"Error creating person: {str(sql_error)}", 'danger')
+                return render_template('people/form.html', form=form)
         
         return render_template('people/form.html', form=form)
     except Exception as e:
