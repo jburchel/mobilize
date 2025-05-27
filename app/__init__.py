@@ -435,6 +435,33 @@ def create_app(test_config=None):
             g.cached_stats = {}
             
         if current_user.is_authenticated:
+            # Check if user needs profile image update from Google
+            try:
+                if not current_user.profile_image and hasattr(current_user, 'email'):
+                    # Check if user has Google token
+                    from app.models.google_token import GoogleToken
+                    token = GoogleToken.query.filter_by(user_id=current_user.id).first()
+                    
+                    if token:
+                        # Try to get profile image from Google
+                        try:
+                            from app.auth.google_oauth import get_google_credentials
+                            credentials = get_google_credentials(current_user.id)
+                            
+                            if credentials:
+                                from googleapiclient.discovery import build
+                                service = build('oauth2', 'v2', credentials=credentials)
+                                user_info = service.userinfo().get().execute()
+                                
+                                if user_info and 'picture' in user_info and user_info['picture']:
+                                    app.logger.info(f"Auto-updating profile image for user {current_user.id} from Google")
+                                    current_user.profile_image = user_info['picture']
+                                    db.session.commit()
+                        except Exception as e:
+                            app.logger.warning(f"Could not fetch Google profile image: {str(e)}")
+            except Exception as e:
+                app.logger.error(f"Error in profile image check: {str(e)}")
+            
             # Only calculate stats if they haven't been calculated yet
             if not hasattr(g, 'stats') or g.stats is None:
                 g.stats = {

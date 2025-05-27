@@ -265,6 +265,12 @@ def oauth2callback():
             )
             db.session.add(user)
             db.session.commit()
+        else:
+            # Update existing user's profile image from Google
+            if 'picture' in user_info and user_info['picture']:
+                current_app.logger.info(f"Updating profile image for user {user.id} from Google: {user_info['picture']}")
+                user.profile_image = user_info['picture']
+                db.session.commit()
         
         # Store Google token
         try:
