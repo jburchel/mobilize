@@ -30,7 +30,6 @@ def get_default_signature(user_id):
 @communications_bp.route('/')
 @communications_bp.route('/index')
 @login_required
-@cached_query(timeout=60)  # Cache results for 1 minute in production
 def index():
     """Display communications hub."""
     start_time = datetime.now()
