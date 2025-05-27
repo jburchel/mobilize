@@ -1,8 +1,7 @@
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from sqlalchemy import String, Integer, Boolean, DateTime, Date, JSON, Text, Column, ForeignKey, func, Enum
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
-from app.extensions import db
+from typing import Optional, Dict, Any
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Boolean, Enum
+from sqlalchemy.orm import relationship, mapped_column, Mapped
 from app.models.base import Base
 import enum
 
@@ -138,6 +137,39 @@ class Task(Base):
             'created_by_user': self.created_by_user.to_dict() if hasattr(self, 'created_by_user') and self.created_by_user else None
         }
 
+    @property
+    def status_display(self) -> str:
+        """Return a human-readable representation of the task status."""
+        if not self.status:
+            return 'Unknown'
+        
+        # Convert enum value to a readable format
+        status_map = {
+            'pending': 'Pending',
+            'in_progress': 'In Progress',
+            'on_hold': 'On Hold',
+            'completed': 'Completed',
+            'cancelled': 'Cancelled'
+        }
+        
+        return status_map.get(self.status.value, str(self.status.value).capitalize())
+    
+    @property
+    def priority_display(self) -> str:
+        """Return a human-readable representation of the task priority."""
+        if not self.priority:
+            return 'Unknown'
+        
+        # Convert enum value to a readable format
+        priority_map = {
+            'low': 'Low',
+            'medium': 'Medium',
+            'high': 'High',
+            'urgent': 'Urgent'
+        }
+        
+        return priority_map.get(self.priority.value, str(self.priority.value).capitalize())
+        
     def get_reminder_display(self) -> str:
         """Return a human-readable representation of the reminder option."""
         reminder_map = {

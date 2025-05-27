@@ -93,8 +93,8 @@
                             <tbody>
                                 {% if tasks %}
                                     {% for task in tasks %}
-                                    <tr data-status="{{ task.status }}" data-priority="{{ task.priority }}" 
-                                        {% if task.due_date and ((task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date) and task.status != 'completed' %}data-is-overdue="true"{% endif %}>
+                                    <tr data-status="{{ task.status.value }}" data-priority="{{ task.priority.value }}" 
+                                        {% if task.due_date and ((task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date) and task.status.value != 'completed' %}data-is-overdue="true"{% endif %}>
                                         <td>
                                             <a href="{{ url_for('tasks.edit', id=task.id) }}">
                                                 {{ task.title }}
@@ -127,27 +127,27 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if task.status == 'pending' %}
-                                                <span class="badge bg-warning">Pending</span>
-                                            {% elif task.status == 'in_progress' %}
-                                                <span class="badge bg-info">In Progress</span>
-                                            {% elif task.status == 'completed' %}
-                                                <span class="badge bg-success">Completed</span>
-                                            {% elif task.status == 'overdue' %}
-                                                <span class="badge bg-danger">Overdue</span>
+                                            {% if task.status.value == 'pending' %}
+                                                <span class="badge bg-warning">{{ task.status_display }}</span>
+                                            {% elif task.status.value == 'in_progress' %}
+                                                <span class="badge bg-info">{{ task.status_display }}</span>
+                                            {% elif task.status.value == 'completed' %}
+                                                <span class="badge bg-success">{{ task.status_display }}</span>
+                                            {% elif task.status.value == 'overdue' %}
+                                                <span class="badge bg-danger">{{ task.status_display }}</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ task.status|capitalize }}</span>
+                                                <span class="badge bg-secondary">{{ task.status_display }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if task.priority == 'high' %}
-                                                <span class="badge bg-danger">High</span>
-                                            {% elif task.priority == 'medium' %}
-                                                <span class="badge bg-warning">Medium</span>
-                                            {% elif task.priority == 'low' %}
-                                                <span class="badge bg-info">Low</span>
+                                            {% if task.priority.value == 'high' %}
+                                                <span class="badge bg-danger">{{ task.priority_display }}</span>
+                                            {% elif task.priority.value == 'medium' %}
+                                                <span class="badge bg-warning">{{ task.priority_display }}</span>
+                                            {% elif task.priority.value == 'low' %}
+                                                <span class="badge bg-info">{{ task.priority_display }}</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ task.priority|capitalize }}</span>
+                                                <span class="badge bg-secondary">{{ task.priority_display }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
@@ -192,19 +192,19 @@
                     <div class="row text-center">
                         <div class="col-6 mb-3">
                             <div class="p-3 border rounded bg-light">
-                                <h3 class="text-primary">{{ tasks|selectattr('status', 'equalto', 'pending')|list|length }}</h3>
+                                <h3 class="text-primary">{{ tasks|selectattr('status.value', 'equalto', 'pending')|list|length }}</h3>
                                 <p class="mb-0">Pending</p>
                             </div>
                         </div>
                         <div class="col-6 mb-3">
                             <div class="p-3 border rounded bg-light">
-                                <h3 class="text-info">{{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }}</h3>
+                                <h3 class="text-info">{{ tasks|selectattr('status.value', 'equalto', 'in_progress')|list|length }}</h3>
                                 <p class="mb-0">In Progress</p>
                             </div>
                         </div>
                         <div class="col-6 mb-3">
                             <div class="p-3 border rounded bg-light">
-                                <h3 class="text-success">{{ tasks|selectattr('status', 'equalto', 'completed')|list|length }}</h3>
+                                <h3 class="text-success">{{ tasks|selectattr('status.value', 'equalto', 'completed')|list|length }}</h3>
                                 <p class="mb-0">Completed</p>
                             </div>
                         </div>
@@ -220,29 +220,29 @@
                         <h6 class="border-bottom pb-2 mb-3">Task Priorities</h6>
                         <div class="progress mb-2" style="height: 25px;">
                             <div class="progress-bar bg-danger" role="progressbar" 
-                                style="width: {{ (tasks|selectattr('priority', 'equalto', 'high')|list|length / tasks|length * 100)|round|int if tasks else 0 }}%" 
-                                aria-valuenow="{{ tasks|selectattr('priority', 'equalto', 'high')|list|length }}" 
+                                style="width: {{ (tasks|selectattr('priority.value', 'equalto', 'high')|list|length / tasks|length * 100)|round|int if tasks else 0 }}%" 
+                                aria-valuenow="{{ tasks|selectattr('priority.value', 'equalto', 'high')|list|length }}" 
                                 aria-valuemin="0" 
                                 aria-valuemax="{{ tasks|length }}">
-                                High ({{ tasks|selectattr('priority', 'equalto', 'high')|list|length }})
+                                High ({{ tasks|selectattr('priority.value', 'equalto', 'high')|list|length }})
                             </div>
                         </div>
                         <div class="progress mb-2" style="height: 25px;">
                             <div class="progress-bar bg-warning" role="progressbar" 
-                                style="width: {{ (tasks|selectattr('priority', 'equalto', 'medium')|list|length / tasks|length * 100)|round|int if tasks else 0 }}%" 
-                                aria-valuenow="{{ tasks|selectattr('priority', 'equalto', 'medium')|list|length }}" 
+                                style="width: {{ (tasks|selectattr('priority.value', 'equalto', 'medium')|list|length / tasks|length * 100)|round|int if tasks else 0 }}%" 
+                                aria-valuenow="{{ tasks|selectattr('priority.value', 'equalto', 'medium')|list|length }}" 
                                 aria-valuemin="0" 
                                 aria-valuemax="{{ tasks|length }}">
-                                Medium ({{ tasks|selectattr('priority', 'equalto', 'medium')|list|length }})
+                                Medium ({{ tasks|selectattr('priority.value', 'equalto', 'medium')|list|length }})
                             </div>
                         </div>
                         <div class="progress mb-2" style="height: 25px;">
                             <div class="progress-bar bg-info" role="progressbar" 
-                                style="width: {{ (tasks|selectattr('priority', 'equalto', 'low')|list|length / tasks|length * 100)|round|int if tasks else 0 }}%" 
-                                aria-valuenow="{{ tasks|selectattr('priority', 'equalto', 'low')|list|length }}" 
+                                style="width: {{ (tasks|selectattr('priority.value', 'equalto', 'low')|list|length / tasks|length * 100)|round|int if tasks else 0 }}%" 
+                                aria-valuenow="{{ tasks|selectattr('priority.value', 'equalto', 'low')|list|length }}" 
                                 aria-valuemin="0" 
                                 aria-valuemax="{{ tasks|length }}">
-                                Low ({{ tasks|selectattr('priority', 'equalto', 'low')|list|length }})
+                                Low ({{ tasks|selectattr('priority.value', 'equalto', 'low')|list|length }})
                             </div>
                         </div>
                     </div>
@@ -257,7 +257,7 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group">
-                        {% set upcoming_tasks = tasks|selectattr('status', 'ne', 'completed')|selectattr('due_date')|list|sort(attribute='due_date') %}
+                        {% set upcoming_tasks = tasks|selectattr('status.value', 'ne', 'completed')|selectattr('due_date')|list|sort(attribute='due_date') %}
                         {% if upcoming_tasks %}
                             {% for task in upcoming_tasks[:5] %}
                             <div class="list-group-item list-group-item-action">
@@ -268,15 +268,17 @@
                                     </small>
                                 </div>
                                 <div class="d-flex w-100 justify-content-between">
-                                    <small>
-                                        {% if task.priority == 'high' %}
-                                            <span class="text-danger">High Priority</span>
-                                        {% elif task.priority == 'medium' %}
-                                            <span class="text-warning">Medium Priority</span>
-                                        {% else %}
-                                            <span class="text-info">Low Priority</span>
-                                        {% endif %}
-                                    </small>
+                                        <small>
+                                            {% if task.priority.value == 'high' %}
+                                                <span class="text-danger">{{ task.priority_display }} Priority</span>
+                                            {% elif task.priority.value == 'medium' %}
+                                                <span class="text-warning">{{ task.priority_display }} Priority</span>
+                                            {% elif task.priority.value == 'low' %}
+                                                <span class="text-info">{{ task.priority_display }} Priority</span>
+                                            {% else %}
+                                                <span class="text-secondary">{{ task.priority_display }} Priority</span>
+                                            {% endif %}
+                                        </small>
                                     <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-arrow-right"></i>
                                     </a>
