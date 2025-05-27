@@ -407,19 +407,33 @@ def delete(id):
             # Use bulk operations for better performance
             
             # 1. Update churches in bulk using a single SQL UPDATE statement
-            if Church.__table__.exists(db.session.bind):
-                db.session.execute(
-                    Church.__table__.update().
-                    where(Church.__table__.c.main_contact_id == id).
-                    values(main_contact_id=None)
-                )
+            try:
+                # Check if table exists using inspector instead of the exists attribute
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                if 'churches' in inspector.get_table_names():
+                    db.session.execute(
+                        Church.__table__.update().
+                        where(Church.__table__.c.main_contact_id == id).
+                        values(main_contact_id=None)
+                    )
+            except Exception as table_error:
+                current_app.logger.warning(f"Error updating churches: {str(table_error)}")
+                # Continue with deletion even if this step fails
             
             # 2. Delete pipeline contacts in bulk using a single SQL DELETE statement
-            if PipelineContact.__table__.exists(db.session.bind):
-                db.session.execute(
-                    PipelineContact.__table__.delete().
-                    where(PipelineContact.__table__.c.contact_id == id)
-                )
+            try:
+                # Check if table exists using inspector
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                if 'pipeline_contacts' in inspector.get_table_names():
+                    db.session.execute(
+                        PipelineContact.__table__.delete().
+                        where(PipelineContact.__table__.c.contact_id == id)
+                    )
+            except Exception as pipeline_error:
+                current_app.logger.warning(f"Error deleting pipeline contacts: {str(pipeline_error)}")
+                # Continue with deletion even if this step fails
             
             # 3. Finally delete the person
             db.session.delete(person)
