@@ -138,14 +138,7 @@
                                     <td>
                                         {% set pipeline_stage = church.cached_pipeline_stage if hasattr(church, 'cached_pipeline_stage') else church.main_pipeline_stage %}
                                         {% if pipeline_stage %}
-                                            {% set badge_class = {
-                                                'INFORMATION': 'bg-info',
-                                                'PROMOTION': 'bg-primary',
-                                                'INVITATION': 'bg-warning',
-                                                'CONFIRMATION': 'bg-success',
-                                                'EN42': 'bg-secondary',
-                                                'AUTOMATION': 'bg-dark'
-                                            }.get(pipeline_stage, 'bg-secondary') %}
+                                            {% set badge_class = 'badge-' + get_badge_color_for_pipeline(pipeline_stage) %}
                                             
                                             {% set display_name = {
                                                 'INFORMATION': 'Information',
@@ -158,7 +151,7 @@
                                             
                                             <span class="badge {{ badge_class }}">{{ display_name }}</span>
                                         {% else %}
-                                            <span class="badge bg-light text-dark">Not Set</span>
+                                            <span class="badge badge-secondary">Not Set</span>
                                         {% endif %}
                                     </td>
                                     <td>
