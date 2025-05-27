@@ -13,10 +13,11 @@ class TaskForm(FlaskForm):
         ('completed', 'Completed')
     ], validators=[DataRequired()])
     priority = SelectField('Priority', choices=[
-        ('Low', 'Low'),
-        ('Medium', 'Medium'),
-        ('High', 'High')
-    ], default='Medium')
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent')
+    ], default='medium')
     due_date = DateField('Due Date', format='%Y-%m-%d', validators=[Optional()])
     due_time = StringField('Due Time', validators=[Optional()])
     assigned_to = SelectField('Assigned To', coerce=int, validators=[Optional()])
