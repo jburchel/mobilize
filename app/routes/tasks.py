@@ -102,6 +102,9 @@ def add():
             if not priority:
                 priority = 'medium'  # Default priority
                 
+            # Ensure priority is lowercase to match the TaskPriority enum values
+            priority = priority.lower() if priority else 'medium'
+                
             due_date_str = request.form.get('due_date')
             due_date = None
             if due_date_str:
