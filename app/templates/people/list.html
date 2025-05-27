@@ -149,7 +149,7 @@
                                     <td>{{ person.phone }}</td>
                                     <td>
                                         {% if person.current_pipeline_stage %}
-                                        <span class="badge badge-{{ 'primary' if person.current_pipeline_stage == 'PROMOTION' else 'success' if person.current_pipeline_stage == 'INFORMATION' else 'warning' if person.current_pipeline_stage == 'INVITATION' else 'info' if person.current_pipeline_stage == 'CONFIRMATION' else 'secondary' }}">
+                                        <span class="badge badge-{{ get_badge_color_for_pipeline(person.current_pipeline_stage) }}">
                                             {{ person.current_pipeline_stage }}
                                         </span>
                                         {% else %}
@@ -158,7 +158,7 @@
                                     </td>
                                     <td>
                                         {% if person.priority %}
-                                        <span class="badge badge-{{ 'danger' if person.priority == 'URGENT' or person.priority == 'HIGH' else 'warning' if person.priority == 'MEDIUM' else 'success' if person.priority == 'LOW' else 'secondary' }}">
+                                        <span class="badge badge-{{ get_badge_color_for_priority(person.priority) }}">
                                             {{ person.priority }}
                                         </span>
                                         {% else %}
@@ -167,13 +167,13 @@
                                     </td>
                                     <td>{{ person.last_contact_date.strftime('%Y-%m-%d') if person.last_contact_date }}</td>
                                     <td>
-                                         <div class="table-actions">
-                                             <a href="{{ url_for('people.edit', id=person.id) }}" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
-                                             <form action="{{ url_for('people.delete', id=person.id) }}" method="POST" class="d-inline delete-person-form" id="delete-form-{{ person.id }}">
-                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                                 <button type="button" class="btn-icon btn-sm delete-person-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="{{ person.id }}" data-name="{{ person.get_name() }}" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                                             </form>
-                                         </div>
+                                        <div class="table-actions">
+                                            <a href="{{ url_for('people.edit', id=person.id) }}" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                            <form action="{{ url_for('people.delete', id=person.id) }}" method="POST" class="d-inline delete-person-form" id="delete-form-{{ person.id }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="button" class="btn-icon btn-sm delete-person-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="{{ person.id }}" data-name="{{ person.get_name() }}" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -181,23 +181,26 @@
                         </table>
                     </div>
                     
-                    <!-- Pagination Controls -->
+                    <!-- Pagination -->
                     {% if pagination and pagination.pages > 1 %}
-                    <div class="d-flex justify-content-center mt-4">
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div>
+                            Showing <span id="visibleCount">{{ people|length }}</span> of {{ pagination.total }} people
+                        </div>
                         <nav aria-label="Page navigation">
                             <ul class="pagination">
                                 <!-- Previous button -->
-                                <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
+                                <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
                                     <a class="page-link" href="{{ url_for('people.index', page=pagination.prev_num) if pagination.has_prev else '#' }}" aria-label="Previous">
                                         <span aria-hidden="true">&laquo;</span>
                                     </a>
                                 </li>
                                 
                                 <!-- Page numbers -->
-                                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-                                    {% if page_num %}
-                                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
-                                            <a class="page-link" href="{{ url_for('people.index', page=page_num) }}">{{ page_num }}</a>
+                                {% for page in pagination.iter_pages() %}
+                                    {% if page %}
+                                        <li class="page-item {{ 'active' if page == pagination.page else '' }}">
+                                            <a class="page-link" href="{{ url_for('people.index', page=page) }}">{{ page }}</a>
                                         </li>
                                     {% else %}
                                         <li class="page-item disabled">
@@ -260,10 +263,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form action="{{ url_for('reports.export_data', entity_type='contacts') }}" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <!-- Radio buttons for export format -->
+                <form action="{{ url_for('people.export_people') }}" method="GET">
                     <div class="mb-3">
+                        <label class="form-label">Export Format</label>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="format" id="formatCSV" value="csv" checked>
                             <label class="form-check-label" for="formatCSV">CSV</label>
@@ -273,29 +275,15 @@
                             <label class="form-check-label" for="formatExcel">Excel</label>
                         </div>
                     </div>
-                    <div class="mb-0 text-end">
-                        <button type="submit" class="btn btn-primary">Export</button>
+                    <div class="mb-3">
+                        <label class="form-label">Export Options</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeNotes" name="include_notes" value="1">
+                            <label class="form-check-label" for="includeNotes">Include Notes</label>
+                        </div>
                     </div>
+                    <button type="submit" class="btn btn-primary">Export</button>
                 </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirm Delete</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete <span id="deleteName"></span>? This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Person</button>
             </div>
         </div>
     </div>
@@ -304,6 +292,9 @@
 
 {% block extra_js %}
 <script>
+// Store CSRF token for use in JavaScript
+window.csrfToken = '{{ csrf_token() }}';
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add standard styling to tables
     document.querySelectorAll('.datatable').forEach(table => {
@@ -433,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="table-actions">
                             <a href="/people/${person.id}/edit" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
                             <form action="/people/${person.id}/delete" method="POST" class="d-inline delete-person-form" id="delete-form-${person.id}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="csrf_token" value="${window.csrfToken}">
                                 <button type="button" class="btn-icon btn-sm delete-person-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="${person.id}" data-name="${person.first_name} ${person.last_name}" aria-label="Delete"><i class="bi bi-trash"></i></button>
                             </form>
                         </div>
@@ -449,7 +440,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Handle search input with debouncing
+    // Helper function to get badge color for pipeline stage
+    function getBadgeColorForPipeline(stage) {
+        switch(stage) {
+            case 'PROMOTION': return 'primary';
+            case 'INFORMATION': return 'info';
+            case 'INVITATION': return 'warning';
+            case 'CONFIRMATION': return 'success';
+            case 'EN42': return 'danger';
+            case 'AUTOMATION': return 'dark';
+            default: return 'secondary';
+        }
+    }
+    
+    // Helper function to get badge color for priority
+    function getBadgeColorForPriority(priority) {
+        switch(priority) {
+            case 'URGENT': return 'danger';
+            case 'HIGH': return 'danger';
+            case 'MEDIUM': return 'warning';
+            case 'LOW': return 'success';
+            default: return 'secondary';
+        }
+    }
+    
+    // Add event listeners with debouncing for search input
     searchInput.addEventListener('input', debounce(searchPeople, 300));
     
     // Also trigger search on Enter key
@@ -484,111 +499,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial search to load data on page load
     searchPeople();
-                    <td>
-                        ${person.priority ? 
-                            `<span class="badge badge-${getBadgeColorForPriority(person.priority)}">
-                                ${person.priority}
-                            </span>` : 
-                            '<span class="badge badge-secondary">Not Set</span>'}
-                    </td>
-                    <td>${person.last_contact_date || ''}</td>
-                    <td>
-                        <div class="table-actions">
-                            <a href="/people/${person.id}/edit" class="btn-icon btn-sm" aria-label="Edit"><i class="bi bi-pencil"></i></a>
-                            <form action="/people/${person.id}/delete" method="POST" class="d-inline delete-person-form" id="delete-form-${person.id}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                <button type="button" class="btn-icon btn-sm delete-person-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="${person.id}" data-name="${person.first_name} ${person.last_name}" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                            </form>
-                        </div>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-            
-        } catch (error) {
-            console.error('Search error:', error);
-            
-            // Show detailed error message
-            tableBody.innerHTML = '';
-            const errorRow = document.createElement('tr');
-            errorRow.innerHTML = `<td colspan="7" class="text-center text-danger">
-                <div class="alert alert-danger">
-                    <strong>Error loading search results:</strong> ${error.message}
-                    <div class="mt-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">Reload Page</button>
-                    </div>
-                </div>
-            </td>`;
-            tableBody.appendChild(errorRow);
-            
-            // Log additional debug info
-            console.log('Search term:', searchTerm);
-            console.log('Pipeline filter:', pipelineValue);
-            console.log('Priority filter:', priorityValue);
-        }
-    }
-    
-    // Helper function to get badge color for pipeline
-    function getBadgeColorForPipeline(pipeline) {
-        switch(pipeline) {
-            case 'PROMOTION': return 'primary';
-            case 'INFORMATION': return 'success';
-            case 'INVITATION': return 'warning';
-            case 'CONFIRMATION': return 'info';
-            case 'AUTOMATION': return 'secondary';
-            default: return 'secondary';
-        }
-    }
-    
-    // Helper function to get badge color for priority
-    function getBadgeColorForPriority(priority) {
-        switch(priority) {
-            case 'URGENT': return 'danger';
-            case 'HIGH': return 'danger';
-            case 'MEDIUM': return 'warning';
-            case 'LOW': return 'success';
-            default: return 'secondary';
-        }
-    }
-    
-    // Add event listeners with debouncing for search input
-    searchInput.addEventListener('input', debounce(searchPeople, 300));
-    pipelineFilter.addEventListener('change', searchPeople);
-    priorityFilter.addEventListener('change', searchPeople);
-    
-    // Clear search button
-    clearSearchBtn.addEventListener('click', function() {
-        searchInput.value = '';
-        pipelineFilter.value = '';
-        priorityFilter.value = '';
-        searchPeople();
-    });
-    
-    // Delete confirmation
-    const deleteButtons = document.querySelectorAll('.delete-person-btn');
-    if (deleteButtons) {
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                const personId = this.getAttribute('data-id');
-                const personName = this.getAttribute('data-name');
-                if (confirm(`Are you sure you want to delete ${personName}? This action cannot be undone.`)) {
-                    // Find the form and submit it
-                    const form = this.closest('.delete-person-form');
-                    if (form) {
-                        form.submit();
-                    }
-                }
-            });
-        });
-    }
-    
-    // Initial load
-    if (table && tableBody) {
-        // Keep a copy of the initial table data
-        const initialRows = Array.from(tableBody.querySelectorAll('tr'));
-        tableBody._initialRows = initialRows.map(row => row.cloneNode(true));
-    }
 });
 </script>
 
@@ -638,4 +548,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{% endblock %} 
+{% endblock %}
