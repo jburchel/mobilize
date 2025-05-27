@@ -100,7 +100,7 @@ def add():
             status = request.form.get('status', 'pending')  # Default to pending if not provided
             priority = request.form.get('priority')
             if not priority:
-                priority = 'Medium'  # Default priority
+                priority = 'medium'  # Default priority
                 
             due_date_str = request.form.get('due_date')
             due_date = None
