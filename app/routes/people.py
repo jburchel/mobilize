@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, send_file, make_response
 from flask_login import login_required, current_user
 from sqlalchemy import or_, text
 from sqlalchemy.orm import joinedload
@@ -7,6 +7,7 @@ import os
 import pandas as pd
 import uuid
 import time
+import io
 
 from app.models.person import Person
 from app.models.church import Church
@@ -636,6 +637,90 @@ def import_people():
         flash(f'Error importing people: {str(e)}', 'danger')
         return redirect(url_for('people.index'))
 
+
+@people_bp.route('/export', methods=['GET'])
+@login_required
+@office_required
+def export_people():
+    """Export people to CSV or Excel format."""
+    try:
+        # Get export format
+        export_format = request.args.get('format', 'csv')
+        include_notes = 'include_notes' in request.args
+        # include_tasks parameter is reserved for future implementation
+        # when task export functionality is added
+        
+        # Start with a base query
+        if current_user.is_super_admin():
+            query = Person.query
+        else:
+            query = Person.query.filter_by(office_id=current_user.office_id)
+            
+        # Get all people
+        people = query.order_by(Person.last_name, Person.first_name).all()
+        
+        # Create a DataFrame from the people data
+        data = []
+        for person in people:
+            person_data = {
+                'ID': person.id,
+                'First Name': person.first_name,
+                'Last Name': person.last_name,
+                'Email': person.email,
+                'Phone': person.phone,
+                'Address': person.address,
+                'City': person.city,
+                'State': person.state,
+                'Zip': person.zip_code,
+                'Country': person.country,
+                'Pipeline Stage': person.pipeline_stage,
+                'Priority': person.priority,
+                'Assigned To': person.assigned_to,
+                'Created': person.date_created.strftime('%Y-%m-%d') if person.date_created else '',
+                'Last Updated': person.date_modified.strftime('%Y-%m-%d') if person.date_modified else ''
+            }
+            
+            # Include notes if requested
+            if include_notes and person.notes:
+                person_data['Notes'] = person.notes
+                
+            data.append(person_data)
+            
+        # Create DataFrame
+        df = pd.DataFrame(data)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Export based on requested format
+        if export_format == 'excel':
+            # Create Excel file in memory
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, sheet_name='People', index=False)
+                
+            output.seek(0)
+            
+            return send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=f'people_export_{timestamp}.xlsx'
+            )
+        else:  # Default to CSV
+            # Create CSV in memory
+            output = io.StringIO()
+            df.to_csv(output, index=False)
+            
+            response = make_response(output.getvalue())
+            response.headers['Content-Disposition'] = f'attachment; filename=people_export_{timestamp}.csv'
+            response.headers['Content-Type'] = 'text/csv'
+            return response
+            
+    except Exception as e:
+        current_app.logger.error(f'Error exporting people: {str(e)}')
+        flash(f'Error exporting people: {str(e)}', 'danger')
+        return redirect(url_for('people.index'))
 
 @people_bp.route('/search', methods=['GET'])
 @login_required
