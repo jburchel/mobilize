@@ -1,13 +1,15 @@
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any, ClassVar
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Date, Integer
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from typing import Optional, ClassVar, Dict, Any
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Date
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.extensions import db
 from app.models.base import Contact
 from app.models.constants import (
-    MARITAL_STATUS_CHOICES, PEOPLE_PIPELINE_CHOICES, PRIORITY_CHOICES, 
-    ASSIGNED_TO_CHOICES, SOURCE_CHOICES
+    STATE_CHOICES, PREFERRED_CONTACT_METHODS, ROLE_CHOICES,
+    CHURCH_PIPELINE_CHOICES, PRIORITY_CHOICES, ASSIGNED_TO_CHOICES,
+    SOURCE_CHOICES, MARITAL_STATUS_CHOICES, PEOPLE_PIPELINE_CHOICES,
+    CHURCH_ROLE_CHOICES
 )
 
 from app.models.pipeline import PipelineContact, Pipeline, PipelineStage
