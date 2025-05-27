@@ -505,15 +505,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete <strong id="deletePersonName"></strong>?</p>
-                <p class="text-danger">This action cannot be undone.</p>
+                <p>Are you sure you want to delete <strong id="deletePersonName"></strong>? This action cannot be undone.</p>
                 <form id="deleteForm" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </div>
                 </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
             </div>
         </div>
     </div>
@@ -523,7 +522,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // Handle delete confirmation modal
 document.addEventListener('DOMContentLoaded', function() {
     const deleteModal = document.getElementById('deleteModal');
-    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     
     if (deleteModal) {
         deleteModal.addEventListener('show.bs.modal', function (event) {
@@ -537,15 +535,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const modalPersonName = deleteModal.querySelector('#deletePersonName');
             modalPersonName.textContent = personName;
             
-            // Set up the delete form
+            // Set up the delete form - use the same pattern as the view page
             const deleteForm = document.getElementById('deleteForm');
             deleteForm.action = '/people/' + personId + '/delete';
             
-            // Set up the confirm delete button
-            confirmDeleteBtn.onclick = function() {
-                console.log('Submitting delete form for person ID:', personId);
-                deleteForm.submit();
-            };
+            console.log('Delete form set up for person:', personName, 'with ID:', personId);
+            console.log('Form action:', deleteForm.action);
         });
     }
 });
