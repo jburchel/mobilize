@@ -507,14 +507,13 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="modal-body">
                 <p>Are you sure you want to delete <strong id="deletePersonName"></strong>?</p>
                 <p class="text-danger">This action cannot be undone.</p>
-                <!-- Direct form submission approach -->
                 <form id="deleteForm" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="text-end mt-3">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Delete</button>
-                    </div>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
             </div>
         </div>
     </div>
@@ -524,6 +523,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Handle delete confirmation modal
 document.addEventListener('DOMContentLoaded', function() {
     const deleteModal = document.getElementById('deleteModal');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
     if (deleteModal) {
         deleteModal.addEventListener('show.bs.modal', function (event) {
             // Button that triggered the modal
@@ -536,9 +537,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const modalPersonName = deleteModal.querySelector('#deletePersonName');
             modalPersonName.textContent = personName;
             
-            // Set the form action dynamically
+            // Set up the delete form
             const deleteForm = document.getElementById('deleteForm');
-            deleteForm.action = `/people/${personId}/delete`;
+            deleteForm.action = '/people/' + personId + '/delete';
+            
+            // Set up the confirm delete button
+            confirmDeleteBtn.onclick = function() {
+                console.log('Submitting delete form for person ID:', personId);
+                deleteForm.submit();
+            };
         });
     }
 });

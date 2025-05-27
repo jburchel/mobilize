@@ -27,6 +27,8 @@ def index():
     assigned_filter = request.args.get('assigned', '')
     show_assigned = assigned_filter == 'me'
     
+    current_app.logger.info(f"Index route called with assigned_filter={assigned_filter}, show_assigned={show_assigned}")
+    
     # Simple query to get all people without complex joins
     try:
         # Start with a base query
@@ -37,11 +39,17 @@ def index():
         
         # Apply assigned filter if requested
         if show_assigned:
-            current_app.logger.info(f"Filtering people assigned to {current_user.full_name}")
-            query = query.filter(Person.assigned_to == current_user.full_name)
+            current_app.logger.info(f"Filtering people assigned to {current_user.username}")
+            # Try different ways to match the assigned_to field
+            # First, check if assigned_to matches username
+            query = query.filter(Person.assigned_to == current_user.username)
+            
+            # Log the SQL query for debugging
+            current_app.logger.info(f"SQL Query: {query}")
         
         # Get the results ordered by name
         people = query.order_by(Person.last_name, Person.first_name).all()
+        current_app.logger.info(f"Found {len(people)} people matching the criteria")
         
         # Set a default pipeline stage for display
         for person in people:
