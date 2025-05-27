@@ -83,8 +83,8 @@
                             <thead>
                                 <tr>
                                     <th class="sortable" data-sort="related">Related To <i class="bi bi-arrow-down-up"></i></th>
-                                    <th class="sortable" data-sort="title">Title <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="due-date">Due Date <i class="bi bi-arrow-down-up"></i></th>
+                                    <th class="sortable" data-sort="title">Title <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="priority">Priority <i class="bi bi-arrow-down-up"></i></th>
                                     <th>Actions</th>
@@ -111,11 +111,6 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('tasks.edit', id=task.id) }}">
-                                                {{ task.title }}
-                                            </a>
-                                        </td>
-                                        <td>
                                             {% if task.due_date %}
                                                 {% if (task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date and task.status != 'completed' %}
                                                     <span class="text-danger">{{ task.due_date.strftime('%Y-%m-%d') if hasattr(task.due_date, 'strftime') else task.due_date }}</span>
@@ -125,6 +120,11 @@
                                             {% else %}
                                                 <span class="text-muted">No due date</span>
                                             {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('tasks.edit', id=task.id) }}">
+                                                {{ task.title }}
+                                            </a>
                                         </td>
                                         <td>
                                             {% if task.status.value == 'pending' %}
