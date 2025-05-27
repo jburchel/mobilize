@@ -82,8 +82,8 @@
                         <table class="table table-hover" id="tasks-table">
                             <thead>
                                 <tr>
-                                    <th class="sortable" data-sort="title">Title <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="related">Related To <i class="bi bi-arrow-down-up"></i></th>
+                                    <th class="sortable" data-sort="title">Title <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="due-date">Due Date <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="priority">Priority <i class="bi bi-arrow-down-up"></i></th>
@@ -95,11 +95,6 @@
                                     {% for task in tasks %}
                                     <tr data-status="{{ task.status.value }}" data-priority="{{ task.priority.value }}" 
                                         {% if task.due_date and ((task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date) and task.status.value != 'completed' %}data-is-overdue="true"{% endif %}>
-                                        <td>
-                                            <a href="{{ url_for('tasks.edit', id=task.id) }}">
-                                                {{ task.title }}
-                                            </a>
-                                        </td>
                                         <td>
                                             {% if task.person_id %}
                                                 <a href="{{ url_for('people.show', id=task.person_id) }}">
@@ -114,6 +109,11 @@
                                             {% else %}
                                                 <span class="text-muted">None</span>
                                             {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('tasks.edit', id=task.id) }}">
+                                                {{ task.title }}
+                                            </a>
                                         </td>
                                         <td>
                                             {% if task.due_date %}
@@ -155,7 +155,7 @@
                                                 <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-outline-primary" title="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                {% if task.status != 'completed' %}
+                                                {% if task.status.value != 'completed' %}
                                                 <button type="button" class="btn btn-outline-success complete-task-btn" 
                                                    data-id="{{ task.id }}" title="Complete">
                                                     <i class="bi bi-check-lg"></i>
@@ -524,7 +524,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('confirm-complete-btn').addEventListener('click', function() {
         const form = document.getElementById('complete-task-form');
         form.action = "{{ url_for('tasks.complete', id=0) }}".replace('0', taskIdToComplete);
+        
+        // Ensure the form is properly set up for POST request
+        form.method = 'POST';
+        form.enctype = 'application/x-www-form-urlencoded';
+        
+        // Submit the form
         form.submit();
+        
+        // Close the modal
+        var completeModal = bootstrap.Modal.getInstance(document.getElementById('completeTaskModal'));
+        completeModal.hide();
     });
     
     // Delete task button
@@ -547,6 +557,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = "{{ url_for('tasks.delete', id=0) }}".replace('0', taskIdToDelete);
+        form.enctype = 'application/x-www-form-urlencoded';
         
         // Add CSRF token
         const csrfInput = document.createElement('input');
@@ -558,6 +569,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Submit the form
         document.body.appendChild(form);
         form.submit();
+        
+        // Close the modal
+        var deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteTaskModal'));
+        deleteModal.hide();
     });
     
     // Search functionality
