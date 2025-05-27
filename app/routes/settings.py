@@ -1,8 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
-from app.models import User
 from app.extensions import db
-from flask import current_app
+import os
 
 settings_bp = Blueprint('settings', __name__)
 
@@ -22,17 +21,53 @@ def profile():
         last_name = request.form.get('last_name')
         email = request.form.get('email')
         phone = request.form.get('phone')
+        job_title = request.form.get('job_title')
+        department = request.form.get('department')
         
         # Validate required fields
         if not all([first_name, last_name, email]):
             flash('Name and email are required', 'danger')
             return redirect(url_for('settings.profile'))
         
+        # Handle profile image upload
+        profile_image = request.files.get('profile_image')
+        if profile_image and profile_image.filename:
+            try:
+                # Create upload directory if it doesn't exist
+                upload_dir = os.path.join('app', 'static', 'uploads', 'profiles')
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                # Generate unique filename
+                import uuid
+                filename = f"{uuid.uuid4()}.{profile_image.filename.split('.')[-1]}"
+                filepath = os.path.join(upload_dir, filename)
+                
+                # Remove old profile image if it exists
+                if current_user.profile_image:
+                    old_filepath = os.path.join('app', current_user.profile_image.lstrip('/'))
+                    if os.path.exists(old_filepath):
+                        try:
+                            os.remove(old_filepath)
+                        except Exception as e:
+                            current_app.logger.warning(f"Could not remove old profile image: {str(e)}")
+                
+                # Save the new profile image
+                profile_image.save(filepath)
+                current_user.profile_image = f"/static/uploads/profiles/{filename}"
+                current_app.logger.info(f"Updated profile image for user {current_user.id} to {current_user.profile_image}")
+            except Exception as e:
+                current_app.logger.error(f"Error saving profile image: {str(e)}")
+                flash(f'Error saving profile image: {str(e)}', 'warning')
+        
         # Update user profile
         current_user.first_name = first_name
         current_user.last_name = last_name
         current_user.email = email
         current_user.phone = phone
+        if job_title:
+            current_user.job_title = job_title
+        if department:
+            current_user.department = department
         
         try:
             db.session.commit()
