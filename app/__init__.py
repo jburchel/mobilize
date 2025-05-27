@@ -455,8 +455,39 @@ def create_app(test_config=None):
                                 
                                 if user_info and 'picture' in user_info and user_info['picture']:
                                     app.logger.info(f"Auto-updating profile image for user {current_user.id} from Google")
-                                    current_user.profile_image = user_info['picture']
-                                    db.session.commit()
+                                    
+                                    # Download and store the image locally instead of just storing the URL
+                                    try:
+                                        import requests
+                                        import os
+                                        from werkzeug.utils import secure_filename
+                                        from flask import url_for
+                                        
+                                        # Create profile images directory if it doesn't exist
+                                        profile_images_dir = os.path.join(app.static_folder, 'profile_images')
+                                        os.makedirs(profile_images_dir, exist_ok=True)
+                                        
+                                        # Download the image
+                                        response = requests.get(user_info['picture'])
+                                        if response.status_code == 200:
+                                            # Generate a unique filename
+                                            filename = f"user_{current_user.id}_profile.jpg"
+                                            secure_name = secure_filename(filename)
+                                            file_path = os.path.join(profile_images_dir, secure_name)
+                                            
+                                            # Save the image
+                                            with open(file_path, 'wb') as f:
+                                                f.write(response.content)
+                                            
+                                            # Update the user's profile image with the local path
+                                            current_user.profile_image = url_for('static', filename=f'profile_images/{secure_name}', _external=True)
+                                            db.session.commit()
+                                            app.logger.info(f"Successfully downloaded and stored Google profile image for user {current_user.id}")
+                                    except Exception as e:
+                                        app.logger.warning(f"Error downloading Google profile image: {str(e)}")
+                                        # Fallback to just storing the URL if download fails
+                                        current_user.profile_image = user_info['picture']
+                                        db.session.commit()
                         except Exception as e:
                             app.logger.warning(f"Could not fetch Google profile image: {str(e)}")
             except Exception as e:

@@ -269,8 +269,39 @@ def oauth2callback():
             # Update existing user's profile image from Google
             if 'picture' in user_info and user_info['picture']:
                 current_app.logger.info(f"Updating profile image for user {user.id} from Google: {user_info['picture']}")
-                user.profile_image = user_info['picture']
-                db.session.commit()
+                
+                # Download and store the image locally instead of just storing the URL
+                try:
+                    import requests
+                    import os
+                    from werkzeug.utils import secure_filename
+                    from flask import current_app
+                    
+                    # Create profile images directory if it doesn't exist
+                    profile_images_dir = os.path.join(current_app.static_folder, 'profile_images')
+                    os.makedirs(profile_images_dir, exist_ok=True)
+                    
+                    # Download the image
+                    response = requests.get(user_info['picture'])
+                    if response.status_code == 200:
+                        # Generate a unique filename
+                        filename = f"user_{user.id}_profile.jpg"
+                        secure_name = secure_filename(filename)
+                        file_path = os.path.join(profile_images_dir, secure_name)
+                        
+                        # Save the image
+                        with open(file_path, 'wb') as f:
+                            f.write(response.content)
+                        
+                        # Update the user's profile image with the local path
+                        user.profile_image = url_for('static', filename=f'profile_images/{secure_name}', _external=True)
+                        db.session.commit()
+                        current_app.logger.info(f"Successfully downloaded and stored Google profile image for user {user.id}")
+                except Exception as e:
+                    current_app.logger.error(f"Error downloading Google profile image: {str(e)}")
+                    # Fallback to just storing the URL if download fails
+                    user.profile_image = user_info['picture']
+                    db.session.commit()
         
         # Store Google token
         try:

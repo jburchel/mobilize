@@ -4,7 +4,6 @@ from app.models.user import User
 from app.services.gmail_service import GmailService
 from app.services.calendar_service import CalendarService
 from app.services.contacts_service import ContactsService
-from app.extensions import db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,7 +50,8 @@ def sync_all_users():
     try:
         users = User.query.filter_by(is_active=True).all()
         for user in users:
-            if user.google_token:
+            # Check if the user has any Google tokens in the relationship
+            if hasattr(user, 'google_tokens') and user.google_tokens:
                 sync_user_gmail.delay(user.id)
                 sync_user_calendar.delay(user.id)
                 sync_user_contacts.delay(user.id)
