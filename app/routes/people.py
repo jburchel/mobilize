@@ -37,8 +37,8 @@ def index():
         
         # Apply assigned filter if requested
         if show_assigned:
-            current_app.logger.info(f"Filtering people assigned to {current_user.username}")
-            query = query.filter(Person.assigned_to == current_user.username)
+            current_app.logger.info(f"Filtering people assigned to {current_user.full_name}")
+            query = query.filter(Person.assigned_to == current_user.full_name)
         
         # Get the results ordered by name
         people = query.order_by(Person.last_name, Person.first_name).all()
