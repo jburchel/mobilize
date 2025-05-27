@@ -264,18 +264,18 @@
                 <div class="card-body">
                     <p>Create and manage personalized email signatures for your communications.</p>
                     <div class="list-group">
-                        {% if current_user.email_signatures|length > 0 %}
+                        {% if current_user.email_signatures is defined and current_user.email_signatures|default([])|length > 0 %}
                             <div class="list-group-item">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">Default Signature</h6>
-                                    <small class="text-muted">{{ current_user.email_signatures|selectattr('is_default', 'equalto', true)|list|length }} active</small>
+                                    <small class="text-muted">{{ current_user.email_signatures|default([])|selectattr('is_default', 'equalto', true)|list|length }} active</small>
                                 </div>
                                 <p class="mb-1 small text-muted">Your default signature is automatically used when composing new emails.</p>
                             </div>
                             <div class="list-group-item">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">All Signatures</h6>
-                                    <small class="text-muted">{{ current_user.email_signatures|length }} total</small>
+                                    <small class="text-muted">{{ current_user.email_signatures|default([])|length }} total</small>
                                 </div>
                                 <p class="mb-1 small text-muted">View and manage all your available signatures.</p>
                             </div>

@@ -207,10 +207,12 @@ def oauth2callback():
         host = request.headers.get('Host', '')
         scheme = request.headers.get('X-Forwarded-Proto', 'https')
         
-        current_app.logger.info(f"OAuth callback received from: {callback_url}")
-        current_app.logger.info(f"Host header: {host}")
-        current_app.logger.info(f"X-Forwarded-Proto: {scheme}")
-        current_app.logger.info(f"Flow redirect URI: {flow.redirect_uri}")
+        # Use app logger safely
+        from flask import current_app as app
+        app.logger.info(f"OAuth callback received from: {callback_url}")
+        app.logger.info(f"Host header: {host}")
+        app.logger.info(f"X-Forwarded-Proto: {scheme}")
+        app.logger.info(f"Flow redirect URI: {flow.redirect_uri}")
         
         # Validate the state parameter
         state = session.get('state')
