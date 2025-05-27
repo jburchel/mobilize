@@ -23,12 +23,25 @@ people_bp = Blueprint('people', __name__)
 @office_required
 def index():
     """List all people."""
+    # Get the 'assigned' parameter from the request
+    assigned_filter = request.args.get('assigned', '')
+    show_assigned = assigned_filter == 'me'
+    
     # Simple query to get all people without complex joins
     try:
+        # Start with a base query
         if current_user.is_super_admin():
-            people = Person.query.order_by(Person.last_name, Person.first_name).all()
+            query = Person.query
         else:
-            people = Person.query.filter_by(office_id=current_user.office_id).order_by(Person.last_name, Person.first_name).all()
+            query = Person.query.filter_by(office_id=current_user.office_id)
+        
+        # Apply assigned filter if requested
+        if show_assigned:
+            current_app.logger.info(f"Filtering people assigned to {current_user.username}")
+            query = query.filter(Person.assigned_to == current_user.username)
+        
+        # Get the results ordered by name
+        people = query.order_by(Person.last_name, Person.first_name).all()
         
         # Set a default pipeline stage for display
         for person in people:
@@ -39,6 +52,7 @@ def index():
         
         return render_template('people/list.html', 
                             people=people,
+                            show_assigned=show_assigned,
                             page_title='People')
     except Exception as e:
         current_app.logger.error(f"Error listing people: {str(e)}")
