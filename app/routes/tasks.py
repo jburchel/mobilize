@@ -180,9 +180,34 @@ def add():
                 try:
                     current_app.logger.info(f"Attempting to create Google Calendar event for task: {task.id}, title: {task.title}")
                     from app.services.calendar_service import CalendarService
-                    calendar_service = CalendarService(current_user.id)
-                    calendar_service.create_event(task)
-                    current_app.logger.info(f"Successfully created Google Calendar event for task: {task.id}, event ID: {task.google_calendar_event_id}")
+                    
+                    # Check if user has Google token
+                    from app.models.google_token import GoogleToken
+                    token = GoogleToken.query.filter_by(user_id=current_user.id).first()
+                    
+                    if not token:
+                        current_app.logger.error(f"No Google token found for user {current_user.id}")
+                        flash('Task was created, but calendar sync failed: You need to connect your Google account first. Go to Settings > Integrations to connect.', 'warning')
+                    else:
+                        # Check if token has calendar scope
+                        has_calendar_scope = False
+                        if token.scopes:
+                            try:
+                                import json
+                                scopes = json.loads(token.scopes)
+                                has_calendar_scope = any('calendar' in scope.lower() for scope in scopes)
+                            except json.JSONDecodeError:
+                                current_app.logger.warning(f"Could not parse token scopes JSON: {token.scopes}")
+                        
+                        if not has_calendar_scope:
+                            current_app.logger.warning(f"Token for user {current_user.id} does not have calendar scopes")
+                            flash('Task was created, but calendar sync failed: Your Google account needs calendar permissions. Go to Settings > Integrations to reconnect with calendar access.', 'warning')
+                        else:
+                            # Proceed with calendar sync
+                            calendar_service = CalendarService(current_user.id)
+                            calendar_service.create_event(task)
+                            current_app.logger.info(f"Successfully created Google Calendar event for task: {task.id}, event ID: {task.google_calendar_event_id}")
+                            flash('Task created and added to your Google Calendar!', 'success')
                 except Exception as e:
                     import traceback
                     error_details = traceback.format_exc()
