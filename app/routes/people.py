@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, send_file, Response
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import or_, text
 from sqlalchemy.orm import joinedload
@@ -368,78 +368,62 @@ def delete(id):
     try:
         # Start measuring execution time for performance monitoring
         start_time = time.time()
+        current_app.logger.info(f"Starting deletion of person with ID {id}")
         
-        # Use a single query with eager loading to get the person and necessary data
+        # Get the person to delete
         person = Person.query.get_or_404(id)
+        current_app.logger.info(f"Found person: {person.first_name} {person.last_name}")
         
         # Check permissions (allow super admins to delete any person)
         if not current_user.is_super_admin() and person.office_id != current_user.office_id:
             flash('You do not have permission to delete this person', 'danger')
             return redirect(url_for('people.index'))
         
-        # Check for CSRF token
-        if 'csrf_token' not in request.form:
-            flash('CSRF token missing', 'danger')
-            return redirect(url_for('people.index'))
+        # Delete profile image files if they exist
+        if hasattr(person, 'profile_image') and person.profile_image:
+            filepath = os.path.join('app', person.profile_image.lstrip('/'))
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                    current_app.logger.info(f"Deleted profile image: {filepath}")
+                except OSError as e:
+                    current_app.logger.warning(f"Failed to delete profile image: {str(e)}")
+        elif hasattr(person, 'image') and person.image:
+            filepath = os.path.join('app', person.image.lstrip('/'))
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                    current_app.logger.info(f"Deleted image: {filepath}")
+                except OSError as e:
+                    current_app.logger.warning(f"Failed to delete image: {str(e)}")
         
-        # Use a single transaction for all operations for better performance
-        with db.session.begin_nested():
-            # Delete profile image if exists - do this asynchronously if possible
-            # This is a non-critical operation that can be done in the background
-            if hasattr(person, 'profile_image') and person.profile_image:
-                filepath = os.path.join('app', person.profile_image.lstrip('/'))
-                if os.path.exists(filepath):
-                    try:
-                        os.remove(filepath)
-                    except OSError as e:
-                        # Log but continue if file deletion fails
-                        current_app.logger.warning(f"Failed to delete profile image: {str(e)}")
-            # Also check for image field from Contact base class
-            elif hasattr(person, 'image') and person.image:
-                filepath = os.path.join('app', person.image.lstrip('/'))
-                if os.path.exists(filepath):
-                    try:
-                        os.remove(filepath)
-                    except OSError as e:
-                        # Log but continue if file deletion fails
-                        current_app.logger.warning(f"Failed to delete image: {str(e)}")
-            
-            # Use bulk operations for better performance
-            
-            # 1. Update churches in bulk using a single SQL UPDATE statement
-            try:
-                # Check if table exists using inspector instead of the exists attribute
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                if 'churches' in inspector.get_table_names():
-                    db.session.execute(
-                        Church.__table__.update().
-                        where(Church.__table__.c.main_contact_id == id).
-                        values(main_contact_id=None)
-                    )
-            except Exception as table_error:
-                current_app.logger.warning(f"Error updating churches: {str(table_error)}")
-                # Continue with deletion even if this step fails
-            
-            # 2. Delete pipeline contacts in bulk using a single SQL DELETE statement
-            try:
-                # Check if table exists using inspector
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                if 'pipeline_contacts' in inspector.get_table_names():
-                    db.session.execute(
-                        PipelineContact.__table__.delete().
-                        where(PipelineContact.__table__.c.contact_id == id)
-                    )
-            except Exception as pipeline_error:
-                current_app.logger.warning(f"Error deleting pipeline contacts: {str(pipeline_error)}")
-                # Continue with deletion even if this step fails
-            
-            # 3. Finally delete the person
-            db.session.delete(person)
+        # 1. Update any churches where this person is the main contact
+        try:
+            # Use direct SQL to avoid SQLAlchemy ORM issues
+            db.session.execute(
+                text("UPDATE churches SET main_contact_id = NULL WHERE main_contact_id = :person_id"),
+                {"person_id": id}
+            )
+            current_app.logger.info(f"Updated churches where person {id} was main contact")
+        except Exception as e:
+            current_app.logger.warning(f"Error updating churches: {str(e)}")
         
-        # Commit the transaction
+        # 2. Delete pipeline contacts for this person
+        try:
+            # Use direct SQL to avoid SQLAlchemy ORM issues
+            db.session.execute(
+                text("DELETE FROM pipeline_contacts WHERE contact_id = :person_id"),
+                {"person_id": id}
+            )
+            current_app.logger.info(f"Deleted pipeline contacts for person {id}")
+        except Exception as e:
+            current_app.logger.warning(f"Error deleting pipeline contacts: {str(e)}")
+        
+        # 3. Delete the person
+        person_name = f"{person.first_name} {person.last_name}"
+        db.session.delete(person)
         db.session.commit()
+        current_app.logger.info(f"Successfully deleted person {person_name}")
         
         # Log performance metrics
         execution_time = time.time() - start_time
