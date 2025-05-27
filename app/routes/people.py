@@ -261,11 +261,20 @@ def show(id):
         else:
             pipeline_info = None
         
+        # Load tasks associated with this person
+        from app.models.task import Task
+        tasks = Task.query.filter_by(person_id=id).all()
+        
+        # Get communications if any
+        communications = []  # Placeholder for communications if implemented
+        
         page_title = f"{person.first_name} {person.last_name}"
         
         return render_template('people/view.html', 
                             person=person,
                             pipeline_info=pipeline_info,
+                            tasks=tasks,
+                            communications=communications,
                             page_title=page_title)
     except Exception as e:
         current_app.logger.error(f"Error showing person {id}: {str(e)}")

@@ -283,11 +283,11 @@
                                             <td>{{ task.title }}</td>
                                             <td>{% if task.due_date %}{{ task.due_date.strftime('%Y-%m-%d') }}{% else %}No date{% endif %}</td>
                                             <td>
-                                                <span class="badge bg-{{ task.priority|string|lower }}">
-                                                    {{ task.priority }}
+                                                <span class="badge bg-{{ task.priority.value }}">
+                                                    {{ task.priority_display }}
                                                 </span>
                                             </td>
-                                            <td>{{ task.status }}</td>
+                                            <td>{{ task.status_display }}</td>
                                             <td>
                                                 <div class="btn-group">
                                                     <button class="btn btn-sm btn-success" title="Complete"
