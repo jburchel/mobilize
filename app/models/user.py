@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import String, Integer, Boolean, DateTime, JSON, ForeignKey, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from sqlalchemy import String, Integer, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions import db
 from app.models.base import Base
 
@@ -192,12 +192,15 @@ class User(UserMixin, Base):
 
     def count_owned_records(self, record_type: str) -> int:
         """Count owned records of a specific type."""
-        from app.models.person import Person
-        from app.models.church import Church
-        from app.models.task import Task
-        from sqlalchemy import func
-        from app.extensions import db
-        from flask import request, session
+        from flask import request, session, g, current_app
+        
+        # Check if we already have cached stats
+        if hasattr(g, 'cached_stats') and record_type in g.cached_stats:
+            return g.cached_stats.get(record_type, 0)
+            
+        # Initialize cache if not exists
+        if not hasattr(g, 'cached_stats'):
+            g.cached_stats = {}
         
         # Check if 'Show Only My Assignments' is active
         show_only_my_assignments = session.get('show_only_my_assignments', False)
@@ -207,36 +210,61 @@ class User(UserMixin, Base):
             show_only_my_assignments = request.args.get('assigned') == 'me'
             session['show_only_my_assignments'] = show_only_my_assignments
         
-        if record_type == 'churches':
-            if self.is_super_admin() and not show_only_my_assignments:
-                return db.session.query(func.count(Church.id)).scalar() or 0
-            elif self.is_office_admin() and not show_only_my_assignments:
-                return db.session.query(func.count(Church.id)).filter(Church.office_id == self.office_id).scalar() or 0
+        # For regular users, just return the length of their owned records
+        if not (self.is_super_admin() or self.is_office_admin()) or show_only_my_assignments:
+            if record_type == 'churches':
+                count = len(self.owned_churches)
+            elif record_type == 'communications':
+                count = len(self.owned_communications)
+            elif record_type == 'tasks':
+                count = len(self.owned_tasks)
+            elif record_type == 'people':
+                # For people, we need to count assigned people
+                try:
+                    from app.models.person import Person
+                    from sqlalchemy import func
+                    from app.extensions import db
+                    count = db.session.query(func.count(Person.id)).filter(Person.assigned_to == self.username).scalar() or 0
+                except Exception as e:
+                    current_app.logger.error(f"Error counting people: {str(e)}")
+                    count = 0
             else:
-                return len(self.owned_churches)
+                count = 0
+        else:
+            # For admins showing all records
+            try:
+                from sqlalchemy import func
+                from app.extensions import db
                 
-        elif record_type == 'communications':
-            return len(self.owned_communications)
-            
-        elif record_type == 'tasks':
-            if self.is_super_admin() and not show_only_my_assignments:
-                return db.session.query(func.count(Task.id)).filter(Task.status != 'completed').scalar() or 0
-            elif self.is_office_admin() and not show_only_my_assignments:
-                return db.session.query(func.count(Task.id)).filter(Task.office_id == self.office_id, Task.status != 'completed').scalar() or 0
-            else:
-                return len(self.owned_tasks)
+                if record_type == 'churches':
+                    from app.models.church import Church
+                    if self.is_super_admin():
+                        count = db.session.query(func.count(Church.id)).scalar() or 0
+                    else:  # office_admin
+                        count = db.session.query(func.count(Church.id)).filter(Church.office_id == self.office_id).scalar() or 0
+                        
+                elif record_type == 'communications':
+                    count = len(self.owned_communications)
+                    
+                elif record_type == 'tasks':
+                    from app.models.task import Task
+                    if self.is_super_admin():
+                        count = db.session.query(func.count(Task.id)).filter(Task.status != 'completed').scalar() or 0
+                    else:  # office_admin
+                        count = db.session.query(func.count(Task.id)).filter(Task.office_id == self.office_id, Task.status != 'completed').scalar() or 0
+                        
+                elif record_type == 'people':
+                    from app.models.person import Person
+                    if self.is_super_admin():
+                        count = db.session.query(func.count(Person.id)).scalar() or 0
+                    else:  # office_admin
+                        count = db.session.query(func.count(Person.id)).filter(Person.office_id == self.office_id).scalar() or 0
+                else:
+                    count = 0
+            except Exception as e:
+                current_app.logger.error(f"Error counting {record_type}: {str(e)}")
+                count = 0
                 
-        elif record_type == 'people':
-            # For super_admin and office_admin, show all people unless 'Show Only My Assignments' is active
-            if self.is_super_admin() and not show_only_my_assignments:
-                # Show all people for super admin
-                return db.session.query(func.count(Person.id)).scalar() or 0
-            elif self.is_office_admin() and not show_only_my_assignments:
-                # Show all people in the office for office admin
-                return db.session.query(func.count(Person.id)).filter(Person.office_id == self.office_id).scalar() or 0
-            else:
-                # Show only assigned people
-                # Try both username and full_name for assigned_to field
-                return db.session.query(func.count(Person.id)).filter(Person.assigned_to == self.username).scalar() or 0
-                
-        return 0
+        # Cache the result
+        g.cached_stats[record_type] = count
+        return count

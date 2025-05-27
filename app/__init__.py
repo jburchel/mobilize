@@ -429,13 +429,19 @@ def create_app(test_config=None):
         if not hasattr(app, 'login_manager') or not app.login_manager:
             g.stats = None
             return
+        
+        # Initialize cached_stats if not exists
+        if not hasattr(g, 'cached_stats'):
+            g.cached_stats = {}
             
         if current_user.is_authenticated:
-            g.stats = {
-                'tasks_count': current_user.count_owned_records('tasks'),
-                'churches_count': current_user.count_owned_records('churches'),
-                'people_count': current_user.count_owned_records('people')
-            }
+            # Only calculate stats if they haven't been calculated yet
+            if not hasattr(g, 'stats') or g.stats is None:
+                g.stats = {
+                    'tasks_count': current_user.count_owned_records('tasks'),
+                    'churches_count': current_user.count_owned_records('churches'),
+                    'people_count': current_user.count_owned_records('people')
+                }
         else:
             g.stats = None
 
