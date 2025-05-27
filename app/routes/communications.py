@@ -436,20 +436,121 @@ def compose():
                           person_id=person_id,
                           church_id=church_id)
 
-@communications_bp.route('/view/<int:id>')
+@communications_bp.route('/<int:id>')
 @login_required
+@office_required
 def view(id):
     """View details of a specific communication."""
     communication = Communication.query.get_or_404(id)
     
-    # Check if user has access to this communication
-    if current_user.role != 'super_admin' and communication.office_id != current_user.office_id:
-        flash('You do not have permission to view this communication.', 'error')
+    # Check permissions
+    if not current_user.is_super_admin() and communication.office_id != current_user.office_id:
+        flash('You do not have permission to view this communication', 'danger')
         return redirect(url_for('communications.index'))
     
-    return render_template('communications/view.html', 
-                          communication=communication,
-                          page_title="View Message")
+    return render_template('communications/view.html', communication=communication)
+
+@communications_bp.route('/<int:id>/details')
+@login_required
+@office_required
+def get_details(id):
+    """Get details of a specific communication as JSON for modal display."""
+    try:
+        communication = Communication.query.get_or_404(id)
+        
+        # Check permissions
+        if not current_user.is_super_admin() and communication.office_id != current_user.office_id:
+            return jsonify({"error": "Permission denied"}), 403
+        
+        # Format the date for display
+        date_display = communication.date_sent.strftime('%Y-%m-%d %H:%M') if communication.date_sent else "No date"
+        date_iso = communication.date_sent.strftime('%Y-%m-%dT%H:%M') if communication.date_sent else ""
+        
+        # Get creator info
+        created_by = "Unknown"
+        if communication.created_by_user:
+            created_by = f"{communication.created_by_user.first_name} {communication.created_by_user.last_name}"
+        
+        # Build response data
+        data = {
+            "id": communication.id,
+            "type": communication.type,
+            "notes": communication.notes,
+            "date": date_display,
+            "date_iso": date_iso,
+            "created_by": created_by,
+            "person": None,
+            "church": None
+        }
+        
+        # Add person info if available
+        if communication.person:
+            data["person"] = {
+                "id": communication.person.id,
+                "name": f"{communication.person.first_name} {communication.person.last_name}"
+            }
+        
+        # Add church info if available
+        if communication.church:
+            data["church"] = {
+                "id": communication.church.id,
+                "name": communication.church.name
+            }
+        
+        return jsonify(data)
+    except Exception as e:
+        current_app.logger.error(f"Error getting communication details: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@communications_bp.route('/<int:id>/update', methods=['POST'])
+@login_required
+@office_required
+def update(id):
+    """Update a communication."""
+    try:
+        communication = Communication.query.get_or_404(id)
+        
+        # Check permissions
+        if not current_user.is_super_admin() and communication.office_id != current_user.office_id:
+            flash('You do not have permission to update this communication', 'danger')
+            return redirect(url_for('communications.index'))
+        
+        # Get form data
+        comm_type = request.form.get('type')
+        notes = request.form.get('notes')
+        date_str = request.form.get('date')
+        
+        # Update communication
+        communication.type = comm_type
+        communication.notes = notes
+        
+        # Parse date if provided
+        if date_str:
+            try:
+                communication.date_sent = datetime.strptime(date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                # If date format is invalid, keep the existing date
+                current_app.logger.warning(f"Invalid date format: {date_str}")
+        
+        # Update last modified info
+        communication.updated_at = datetime.now()
+        communication.updated_by = current_user.id
+        
+        db.session.commit()
+        flash('Communication updated successfully', 'success')
+        
+        # Redirect back to the person view if this was from there
+        if communication.person_id:
+            return redirect(url_for('people.show', id=communication.person_id))
+        elif communication.church_id:
+            return redirect(url_for('churches.show', id=communication.church_id))
+        else:
+            return redirect(url_for('communications.index'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating communication: {str(e)}")
+        flash(f"Error updating communication: {str(e)}", 'danger')
+        return redirect(url_for('communications.index'))
 
 @communications_bp.route('/add', methods=['POST'])
 @login_required

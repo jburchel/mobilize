@@ -247,27 +247,36 @@
             
             <!-- Additional Notes -->
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Additional Notes</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editNotesModal">
+                        <i class="bi bi-pencil"></i> Edit Notes
+                    </button>
                 </div>
                 <div class="card-body">
                     {% if person.notes %}
-                        <div class="mb-0">{{ person.notes|nl2br }}</div>
+                        <div class="mb-0 notes-content" data-bs-toggle="modal" data-bs-target="#viewNotesModal" style="cursor: pointer;">
+                            {{ person.notes|nl2br }}
+                            <div class="text-muted small mt-2"><i class="bi bi-info-circle"></i> Click to view full notes</div>
+                        </div>
                     {% else %}
-                        <p class="text-muted mb-0">No additional notes available.</p>
+                        <p class="text-muted mb-0">No additional notes available. <a href="#" data-bs-toggle="modal" data-bs-target="#editNotesModal">Add notes</a></p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Tasks -->
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Tasks</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                        <i class="bi bi-plus-circle"></i> Add Task
+                    </button>
                 </div>
                 <div class="card-body">
                     {% if tasks %}
                         <div class="table-responsive">
-                            <table class="table">
+                            <table class="table table-hover">
                                 <thead>
                                     <tr>
                                         <th>Title</th>
@@ -279,7 +288,7 @@
                                 </thead>
                                 <tbody>
                                     {% for task in tasks %}
-                                        <tr>
+                                        <tr class="clickable-row" data-href="{{ url_for('tasks.view', id=task.id) }}" style="cursor: pointer;">
                                             <td>{{ task.title }}</td>
                                             <td>{% if task.due_date %}{{ task.due_date.strftime('%Y-%m-%d') }}{% else %}No date{% endif %}</td>
                                             <td>
@@ -288,7 +297,7 @@
                                                 </span>
                                             </td>
                                             <td>{{ task.status_display }}</td>
-                                            <td>
+                                            <td onclick="event.stopPropagation();">
                                                 <div class="btn-group">
                                                     <button class="btn btn-sm btn-success" title="Complete"
                                                             onclick="completeTask({{ task.id }})">
@@ -300,6 +309,9 @@
                                                             data-task-id="{{ task.id }}">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
+                                                    <a href="{{ url_for('tasks.view', id=task.id) }}" class="btn btn-sm btn-info" title="View Details">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -308,34 +320,48 @@
                             </table>
                         </div>
                     {% else %}
-                        <p class="text-muted mb-0">No tasks assigned.</p>
+                        <p class="text-muted mb-0">No tasks assigned. <a href="#" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add a task</a></p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Communications Log -->
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Communications Log</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#logCommunicationModal">
+                        <i class="bi bi-plus-circle"></i> Log Communication
+                    </button>
                 </div>
                 <div class="card-body">
                     {% if communications %}
                         <div class="timeline">
                             {% for comm in communications %}
-                                <div class="timeline-item">
+                                <div class="timeline-item" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#viewCommunicationModal" data-comm-id="{{ comm.id }}">
                                     <div class="timeline-marker bg-{{ comm.type.lower() }}"></div>
-                                    <div class="timeline-content">
-                                        <h6 class="mb-1">{{ comm.type }}</h6>
+                                    <div class="timeline-content position-relative">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-1">{{ comm.type }}</h6>
+                                            <div class="btn-group btn-group-sm" onclick="event.stopPropagation();">
+                                                <button class="btn btn-sm btn-outline-primary" title="Edit" data-bs-toggle="modal" data-bs-target="#editCommunicationModal" data-comm-id="{{ comm.id }}">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <a href="{{ url_for('communications.view', id=comm.id) }}" class="btn btn-sm btn-outline-info" title="View Details">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </div>
+                                        </div>
                                         <p class="mb-1">{{ comm.notes }}</p>
                                         <small class="text-muted">
                                             {% if comm.date %}{{ comm.date.strftime('%Y-%m-%d %H:%M') }}{% else %}No date{% endif %}
                                         </small>
+                                        <div class="text-muted small mt-1"><i class="bi bi-info-circle"></i> Click to view details</div>
                                     </div>
                                 </div>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <p class="text-muted mb-0">No communications logged.</p>
+                        <p class="text-muted mb-0">No communications logged. <a href="#" data-bs-toggle="modal" data-bs-target="#logCommunicationModal">Log a communication</a></p>
                     {% endif %}
                 </div>
             </div>
@@ -520,6 +546,122 @@
         </div>
     </div>
 </div>
+
+<!-- View Notes Modal -->
+<div class="modal fade" id="viewNotesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Notes for {{ person.first_name }} {{ person.last_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="notes-full-content">
+                    {{ person.notes|nl2br }}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editNotesModal" data-bs-dismiss="modal">
+                    <i class="bi bi-pencil"></i> Edit Notes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Notes Modal -->
+<div class="modal fade" id="editNotesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Notes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editNotesForm" action="{{ url_for('people.update_notes', id=person.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="10">{{ person.notes }}</textarea>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Communication Modal -->
+<div class="modal fade" id="viewCommunicationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Communication Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="communicationDetails">
+                    <!-- Content will be loaded dynamically -->
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="editCommunicationBtn">
+                    <i class="bi bi-pencil"></i> Edit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Communication Modal -->
+<div class="modal fade" id="editCommunicationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Communication</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCommunicationForm" action="" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" id="editCommId" name="comm_id" value="">
+                    <div class="mb-3">
+                        <label for="editCommType" class="form-label">Type</label>
+                        <select class="form-select" id="editCommType" name="type" required>
+                            <option value="Email">Email</option>
+                            <option value="Phone">Phone</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Text">Text</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCommNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="editCommNotes" name="notes" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCommDate" class="form-label">Date</label>
+                        <input type="datetime-local" class="form-control" id="editCommDate" name="date" required>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_css %}
@@ -573,7 +715,8 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/tasks/${taskId}/complete`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
                 }
             }).then(response => {
                 if (response.ok) {
@@ -583,7 +726,92 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    // No custom form submission handling - let the forms submit normally
+    // Make table rows clickable
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function() {
+            window.location.href = this.dataset.href;
+        });
+    });
+    
+    // Handle communication modal
+    const viewCommunicationModal = document.getElementById('viewCommunicationModal');
+    if (viewCommunicationModal) {
+        viewCommunicationModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const commId = button.getAttribute('data-comm-id');
+            const detailsContainer = document.getElementById('communicationDetails');
+            
+            // Load communication details
+            fetch(`/communications/${commId}/details`)
+                .then(response => response.json())
+                .then(data => {
+                    detailsContainer.innerHTML = `
+                        <h5>${data.type}</h5>
+                        <p>${data.notes}</p>
+                        <p class="text-muted">${data.date}</p>
+                        <p><strong>Created by:</strong> ${data.created_by}</p>
+                    `;
+                    
+                    // Set up edit button
+                    document.getElementById('editCommunicationBtn').onclick = function() {
+                        // Hide this modal and show edit modal
+                        const viewModal = bootstrap.Modal.getInstance(viewCommunicationModal);
+                        viewModal.hide();
+                        
+                        // Populate and show edit modal
+                        document.getElementById('editCommId').value = commId;
+                        document.getElementById('editCommType').value = data.type;
+                        document.getElementById('editCommNotes').value = data.notes;
+                        document.getElementById('editCommDate').value = data.date_iso;
+                        
+                        const editModal = new bootstrap.Modal(document.getElementById('editCommunicationModal'));
+                        editModal.show();
+                    };
+                })
+                .catch(error => {
+                    detailsContainer.innerHTML = `<div class="alert alert-danger">Error loading communication details: ${error.message}</div>`;
+                });
+        });
+    }
+    
+    // Set up edit communication form
+    const editCommunicationForm = document.getElementById('editCommunicationForm');
+    if (editCommunicationForm) {
+        editCommunicationForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const commId = document.getElementById('editCommId').value;
+            editCommunicationForm.action = `/communications/${commId}/update`;
+            this.submit();
+        });
+    }
+    
+    // Handle edit communication modal
+    const editCommunicationModal = document.getElementById('editCommunicationModal');
+    if (editCommunicationModal) {
+        editCommunicationModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            if (button) {
+                const commId = button.getAttribute('data-comm-id');
+                if (commId) {
+                    // Load communication details for editing
+                    fetch(`/communications/${commId}/details`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('editCommId').value = commId;
+                            document.getElementById('editCommType').value = data.type;
+                            document.getElementById('editCommNotes').value = data.notes;
+                            document.getElementById('editCommDate').value = data.date_iso;
+                            
+                            // Set form action
+                            document.getElementById('editCommunicationForm').action = `/communications/${commId}/update`;
+                        })
+                        .catch(error => {
+                            console.error('Error loading communication details:', error);
+                        });
+                }
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

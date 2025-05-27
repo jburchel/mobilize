@@ -575,6 +575,44 @@ def add_note(id):
         flash(f'Error adding note: {str(e)}', 'danger')
         return redirect(url_for('people.show', id=person.id))
 
+@people_bp.route('/<int:id>/update_notes', methods=['POST'])
+@login_required
+@office_required
+def update_notes(id):
+    """Update a person's notes."""
+    try:
+        person = Person.query.get_or_404(id)
+        
+        # Check permissions
+        if not current_user.is_super_admin() and person.office_id != current_user.office_id:
+            flash('You do not have permission to update notes for this person', 'danger')
+            return redirect(url_for('people.index'))
+        
+        # Get the updated notes from the form
+        notes = request.form.get('notes', '')
+        
+        # Update the person's notes
+        person.notes = notes
+        
+        # Add an edit record at the bottom if notes were changed
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+        edit_note = f"[Notes edited by {current_user.full_name} on {timestamp}]"
+        
+        if person.notes:
+            person.notes = f"{person.notes}\n\n{edit_note}"
+        else:
+            person.notes = edit_note
+        
+        person.updated_at = datetime.now()
+        db.session.commit()
+        flash('Notes updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error updating notes: {str(e)}')
+        flash(f'Error updating notes: {str(e)}', 'danger')
+    
+    return redirect(url_for('people.show', id=id))
+
 
 
 @people_bp.route('/import', methods=['POST'])
