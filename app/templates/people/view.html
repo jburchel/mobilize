@@ -288,7 +288,7 @@
                                 </thead>
                                 <tbody>
                                     {% for task in tasks %}
-                                        <tr class="clickable-row" data-href="{{ url_for('tasks.view', id=task.id) }}" style="cursor: pointer;">
+                                        <tr class="clickable-row" data-href="{{ url_for('tasks.edit', id=task.id) }}" style="cursor: pointer;">
                                             <td>{{ task.title }}</td>
                                             <td>{% if task.due_date %}{{ task.due_date.strftime('%Y-%m-%d') }}{% else %}No date{% endif %}</td>
                                             <td>
@@ -309,7 +309,7 @@
                                                             data-task-id="{{ task.id }}">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
-                                                    <a href="{{ url_for('tasks.view', id=task.id) }}" class="btn btn-sm btn-info" title="View Details">
+                                                    <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-info" title="View Details">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
                                                 </div>
