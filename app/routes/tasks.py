@@ -20,37 +20,46 @@ tasks_bp = Blueprint('tasks', __name__, template_folder='../templates/tasks')
 @login_required
 def index():
     """Display list of tasks."""
-    # Get status filter from query params
+    # Get filters from query params
     status_filter = request.args.get('status')
+    priority_filter = request.args.get('priority')
     
-    # Query to fetch tasks assigned to the current user
+    # Base query for tasks assigned to the current user
     query = Task.query.filter(
         (Task.assigned_to == str(current_user.id)) | 
         (Task.created_by == current_user.id) |
         (Task.owner_id == current_user.id)
     )
     
-    # By default, don't show completed tasks unless explicitly requested
-    if status_filter:
-        if status_filter != 'all':
-            if status_filter == 'overdue':
-                # Special handling for overdue tasks
-                current_date = datetime.now().date()
-                query = query.filter(
-                    Task.status != TaskStatus.COMPLETED,
-                    Task.due_date < current_date
-                )
-            else:
-                # Convert string status to Enum
-                try:
-                    status_enum = TaskStatus(status_filter)
-                    query = query.filter(Task.status == status_enum)
-                except ValueError:
-                    # If invalid status provided, log it and ignore the filter
-                    current_app.logger.warning(f"Invalid status filter: {status_filter}")
+    # Apply status filter
+    if status_filter and status_filter != 'all':
+        if status_filter == 'overdue':
+            # Special handling for overdue tasks
+            current_date = datetime.now().date()
+            query = query.filter(
+                Task.status != TaskStatus.COMPLETED,
+                Task.due_date < current_date
+            )
+        else:
+            # Convert string status to Enum
+            try:
+                status_enum = TaskStatus(status_filter)
+                query = query.filter(Task.status == status_enum)
+            except ValueError:
+                # If invalid status provided, log it and ignore the filter
+                current_app.logger.warning(f"Invalid status filter: {status_filter}")
     else:
         # Default behavior: exclude completed tasks
         query = query.filter(Task.status != TaskStatus.COMPLETED)
+    
+    # Apply priority filter
+    if priority_filter and priority_filter != 'all':
+        try:
+            priority_enum = TaskPriority(priority_filter)
+            query = query.filter(Task.priority == priority_enum)
+        except ValueError:
+            # If invalid priority provided, log it and ignore the filter
+            current_app.logger.warning(f"Invalid priority filter: {priority_filter}")
     
     # Execute query with ordering
     filtered_tasks = query.order_by(Task.due_date.asc()).all()

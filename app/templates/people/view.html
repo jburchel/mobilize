@@ -297,20 +297,14 @@
                                                 </span>
                                             </td>
                                             <td>{{ task.status_display }}</td>
-                                            <td onclick="event.stopPropagation();">
-                                                <div class="btn-group">
-                                                    <button class="btn btn-sm btn-success" title="Complete"
-                                                            onclick="completeTask({{ task.id }})">
+                                            <td>
+                                                <div class="btn-group" onclick="event.stopPropagation();">
+                                                    <button class="btn btn-sm btn-success" title="Mark as Complete"
+                                                            onclick="event.stopPropagation(); completeTask({{ task.id }});">
                                                         <i class="bi bi-check-lg"></i>
                                                     </button>
-                                                    <button class="btn btn-sm btn-primary" title="Edit"
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#editTaskModal"
-                                                            data-task-id="{{ task.id }}">
+                                                    <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-primary" title="View/Edit Task">
                                                         <i class="bi bi-pencil"></i>
-                                                    </button>
-                                                    <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-info" title="View Details">
-                                                        <i class="bi bi-eye"></i>
                                                     </a>
                                                 </div>
                                             </td>
@@ -712,17 +706,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Task completion handler
     window.completeTask = function(taskId) {
         if (confirm('Mark this task as complete?')) {
-            fetch(`/tasks/${taskId}/complete`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            }).then(response => {
-                if (response.ok) {
-                    location.reload();
-                }
-            });
+            // Create a form element to submit the request
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/tasks/complete/${taskId}`;
+            
+            // Add CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = '{{ csrf_token() }}';
+            form.appendChild(csrfInput);
+            
+            // Add to document and submit
+            document.body.appendChild(form);
+            form.submit();
         }
     };
     
