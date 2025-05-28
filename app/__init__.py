@@ -21,14 +21,13 @@ from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter,
 from app.auth.firebase import init_firebase
 from app.auth.routes import auth_bp
 from app.routes import blueprints
+from app.utils.pipeline_setup import setup_main_pipelines
+from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.models.relationships import setup_relationships
 from app.tasks.scheduler import init_scheduler
-from app.utils.filters import register_filters, register_template_functions
 from app.utils.firebase import firebase_setup
 from app.utils.context_processors import register_template_utilities
-from app.utils.setup_main_pipelines import setup_main_pipelines
-from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
-from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
+from app.utils.filters import register_filters, register_template_functions
 from app.cli import register_commands
 
 # Import performance optimizations
@@ -150,17 +149,17 @@ def create_app(test_config=None):
     
     # Log database connection info (safely handle None)
     try:
-        from urllib.parse import urlparse, urlunparse
-        # Convert to string and handle potential None
-        db_uri_str = str(db_uri) if db_uri else ""
-        if not db_uri_str or not db_uri_str.strip():
-            app.logger.error("[DATABASE] ERROR: Database URI is empty or None")
-            # Set a default SQLite database to prevent app from crashing
+        # First, ensure db_uri is not None to prevent the error
+        if db_uri is None:
+            app.logger.error("[DATABASE] CRITICAL: Database URI is None!")
             db_uri = 'sqlite:////tmp/fallback.db'
             app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
             app.logger.warning(f"[DATABASE] Using fallback SQLite database at {db_uri}")
-            db_uri_str = str(db_uri)
-            
+        
+        # Now safely log the database URI
+        from urllib.parse import urlparse, urlunparse
+        db_uri_str = str(db_uri)
+        
         if db_uri_str and db_uri_str.strip():
             parsed = urlparse(db_uri_str)
             if parsed.password:
@@ -171,10 +170,14 @@ def create_app(test_config=None):
                 app.logger.info(f"[DATABASE] Using database: {masked_uri}")
             else:
                 app.logger.info(f"[DATABASE] Using database: {db_uri_str}")
+        else:
+            app.logger.error("[DATABASE] ERROR: Database URI is empty string")
+            db_uri = 'sqlite:////tmp/fallback.db'
+            app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+            app.logger.warning(f"[DATABASE] Using fallback SQLite database at {db_uri}")
     except Exception as e:
         app.logger.error(f"[DATABASE] ERROR parsing database URI: {str(e)}")
-        if db_uri:
-            app.logger.info(f"[DATABASE] Raw database URI: {str(db_uri)[:100]}...")
+        app.logger.info(f"[DATABASE] Raw database URI type: {type(db_uri)}, value: {str(db_uri)[:20] if db_uri else 'None'}...")
     
     # Ensure SQLALCHEMY_DATABASE_URI is set and not None
     if not app.config.get('SQLALCHEMY_DATABASE_URI'):
