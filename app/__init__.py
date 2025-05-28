@@ -16,6 +16,9 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 from dotenv import load_dotenv, find_dotenv
 from supabase import create_client
 
+# Initialize supabase_client at module level
+supabase_client = None
+
 # Configuration imports
 from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig
 from app.config.logging_config import setup_logging
