@@ -324,7 +324,9 @@ def oauth2callback():
         # Redirect to dashboard (which is at the root URL)
         return redirect(url_for('dashboard.index'))
     except Exception as e:
-        current_app.logger.error(f"Error in OAuth callback: {str(e)}")
+        # Use app logger safely
+        from flask import current_app as app
+        app.logger.error(f"Error in OAuth callback: {str(e)}")
         flash(f"Authentication error: {str(e)}", 'danger')
         return redirect(url_for('auth.login'))
 
