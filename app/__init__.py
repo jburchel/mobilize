@@ -14,6 +14,8 @@ from flask_limiter import Limiter  # noqa: F401
 from flask_limiter.util import get_remote_address  # noqa: F401
 from flask_talisman import Talisman  # noqa: F401
 from dotenv import load_dotenv, find_dotenv
+from supabase import create_client, Client
+
 # Configuration imports
 from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig  # noqa: F401
 from app.config.logging_config import setup_logging  # noqa: F401
@@ -226,8 +228,37 @@ def create_app(test_config=None):
                 app.config['SQLALCHEMY_DATABASE_URI'] = direct_uri
             except Exception as direct_err:
                 app.logger.error(f"[DATABASE] Direct connection also failed: {str(direct_err)}")
+                # Initialize Supabase client as a fallback
+                app.logger.info("[DATABASE] Initializing Supabase client as a fallback...")
+                try:
+                    global supabase_client
+                    supabase_url = os.environ.get('SUPABASE_URL', 'https://fwnitauuyzxnsvgsbrzr.supabase.co')
+                    supabase_key = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bml0YXV1eXp4bnN2Z3NicnpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTQwNzUsImV4cCI6MjA1NjY3MDA3NX0.OVhgxuiEx8kuIlQqwj5AdfcSoLUDPEM4q-6C-mtBf98')
+                    supabase_client = create_client(supabase_url, supabase_key)
+                    app.logger.info(f"[DATABASE] Supabase client initialized for {supabase_url}")
+                    
+                    # Test Supabase connection
+                    response = supabase_client.table('users').select('*').limit(1).execute()
+                    if response and hasattr(response, 'data'):
+                        app.logger.info("[DATABASE] Supabase connection test successful")
+                        app.config['USE_SUPABASE_CLIENT'] = True
+                    else:
+                        app.logger.error("[DATABASE] Supabase connection test failed: No data returned")
+                except Exception as supabase_err:
+                    app.logger.error(f"[DATABASE] Failed to initialize Supabase client: {str(supabase_err)}")
     except Exception as e:
         app.logger.error(f"[DATABASE] Unexpected error during connection test: {str(e)}")
+        # Try to initialize Supabase client
+        try:
+            global supabase_client
+            supabase_url = os.environ.get('SUPABASE_URL', 'https://fwnitauuyzxnsvgsbrzr.supabase.co')
+            supabase_key = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bml0YXV1eXp4bnN2Z3NicnpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTQwNzUsImV4cCI6MjA1NjY3MDA3NX0.OVhgxuiEx8kuIlQqwj5AdfcSoLUDPEM4q-6C-mtBf98')
+            supabase_client = create_client(supabase_url, supabase_key)
+            app.logger.info(f"[DATABASE] Supabase client initialized for {supabase_url}")
+            app.config['USE_SUPABASE_CLIENT'] = True
+        except Exception as supabase_err:
+            app.logger.error(f"[DATABASE] Failed to initialize Supabase client: {str(supabase_err)}")
+            app.config['USE_SUPABASE_CLIENT'] = False
     
     # Ensure SQLALCHEMY_DATABASE_URI is set and not None
     if not app.config.get('SQLALCHEMY_DATABASE_URI'):

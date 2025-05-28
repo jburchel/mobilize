@@ -14,6 +14,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger("wsgi")
 
+# Set the database URI environment variables before importing the app
+os.environ['DATABASE_URL'] = os.environ.get('DATABASE_URL', 'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require')
+os.environ['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', os.environ.get('DATABASE_URL'))
+os.environ['DB_CONNECTION_STRING'] = os.environ.get('DB_CONNECTION_STRING', os.environ.get('DATABASE_URL'))
+
+# Set Supabase environment variables
+os.environ['SUPABASE_URL'] = os.environ.get('SUPABASE_URL', 'https://fwnitauuyzxnsvgsbrzr.supabase.co')
+os.environ['SUPABASE_KEY'] = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bml0YXV1eXp4bnN2Z3NicnpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTQwNzUsImV4cCI6MjA1NjY3MDA3NX0.OVhgxuiEx8kuIlQqwj5AdfcSoLUDPEM4q-6C-mtBf98')
+
 # Ensure database URI is set before importing app
 db_uri_sources = [
     os.environ.get('DATABASE_URL'),

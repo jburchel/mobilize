@@ -9,6 +9,7 @@ from app.models.user import User
 from app.extensions import db
 from flask import current_app
 from app.utils.decorators import office_required
+from app import supabase_client
 from app.forms.task import TaskForm
 from app.forms.task_batch_reminder import TaskBatchReminderForm
 from sqlalchemy import or_
@@ -25,6 +26,7 @@ def index():
         try:
             db.session.execute('SELECT 1').scalar()
             current_app.logger.info("Database connection test successful")
+            use_supabase = False
         except Exception as db_error:
             current_app.logger.error(f"Database connection test failed: {str(db_error)}")
             # Get database connection info
@@ -38,22 +40,59 @@ def index():
                         user, _ = auth.split(':', 1)
                         masked_uri = f"{parts[0]}://{user}:****@{rest}"
             current_app.logger.error(f"Database URI: {masked_uri}")
-            return render_template('error.html', 
-                                error_title="Database Connection Error",
-                                error_message="Unable to connect to the database. Please try again later or contact support.",
-                                error_details=str(db_error))
+            
+            # Check if Supabase client is available as a fallback
+            if current_app.config.get('USE_SUPABASE_CLIENT') and supabase_client:
+                current_app.logger.info("Using Supabase client as a fallback")
+                use_supabase = True
+            else:
+                return render_template('error.html', 
+                                    error_title="Database Connection Error",
+                                    error_message="Unable to connect to the database. Please try again later or contact support.",
+                                    error_details=str(db_error))
             
         # Get filters from query params
         status_filter = request.args.get('status')
         priority_filter = request.args.get('priority')
         search_text = request.args.get('search', '').lower().strip()
         
-        # Base query for tasks assigned to the current user
-        query = Task.query.filter(
-            (Task.assigned_to == str(current_user.id)) | 
-            (Task.created_by == current_user.id) |
-            (Task.owner_id == current_user.id)
-        )
+        # Get tasks based on connection method
+        if 'use_supabase' in locals() and use_supabase:
+            # Use Supabase client to get tasks
+            current_app.logger.info("Getting tasks from Supabase client")
+            try:
+                # Get tasks from Supabase
+                tasks_query = supabase_client.table('tasks').select('*').or_(f"assigned_to.eq.{current_user.id},created_by.eq.{current_user.id},owner_id.eq.{current_user.id}")
+                tasks_response = tasks_query.execute()
+                
+                if tasks_response and hasattr(tasks_response, 'data'):
+                    # Convert to list of Task objects for compatibility
+                    all_tasks = []
+                    for task_data in tasks_response.data:
+                        task = Task()
+                        for key, value in task_data.items():
+                            if hasattr(task, key):
+                                setattr(task, key, value)
+                        all_tasks.append(task)
+                    
+                    # We'll filter these tasks in Python since we can't use SQLAlchemy
+                    query = all_tasks
+                else:
+                    current_app.logger.error("No data returned from Supabase tasks query")
+                    query = []
+            except Exception as supabase_err:
+                current_app.logger.error(f"Error getting tasks from Supabase: {str(supabase_err)}")
+                return render_template('error.html',
+                                    error_title="Error Loading Tasks",
+                                    error_message="An error occurred while loading your tasks from Supabase.",
+                                    error_details=str(supabase_err))
+        else:
+            # Use SQLAlchemy to get tasks
+            query = Task.query.filter(
+                (Task.assigned_to == str(current_user.id)) | 
+                (Task.created_by == current_user.id) |
+                (Task.owner_id == current_user.id)
+            )
     except Exception as e:
         current_app.logger.error(f"Error in tasks index route: {str(e)}")
         return render_template('error.html', 
@@ -61,72 +100,96 @@ def index():
                             error_message="An error occurred while loading your tasks.",
                             error_details=str(e))
     
-    # Apply status filter
-    if status_filter and status_filter != 'all':
-        if status_filter == 'overdue':
-            # Special handling for overdue tasks
-            current_date = datetime.now().date()
-            query = query.filter(
-                Task.status != TaskStatus.COMPLETED,
-                Task.due_date < current_date
-            )
-        else:
-            # Convert string status to Enum
-            try:
-                status_enum = TaskStatus(status_filter)
-                query = query.filter(Task.status == status_enum)
-            except ValueError:
-                # If invalid status provided, log it and ignore the filter
-                current_app.logger.warning(f"Invalid status filter: {status_filter}")
-    else:
-        # Default behavior: exclude completed tasks
-        query = query.filter(Task.status != TaskStatus.COMPLETED)
-    
-    # Apply priority filter
-    if priority_filter and priority_filter != 'all':
-        try:
-            priority_enum = TaskPriority(priority_filter)
-            query = query.filter(Task.priority == priority_enum)
-        except ValueError:
-            # If invalid priority provided, log it and ignore the filter
-            current_app.logger.warning(f"Invalid priority filter: {priority_filter}")
-    
-    # Apply search filter
-    if search_text:
-        search = f"%{search_text}%"
-        query = query.filter(
-            or_(
-                Task.title.ilike(search),
-                Task.description.ilike(search),
-                Task.person.has(Person.first_name.ilike(search)) | 
-                Task.person.has(Person.last_name.ilike(search)),
-                Task.church.has(Church.name.ilike(search))
-            )
-        )
-    
-    # Execute query with ordering
-    filtered_tasks = query.order_by(Task.due_date.asc()).all()
-    
-    # Get all tasks for statistics (including completed)
-    all_tasks_query = Task.query.filter(
-        (Task.assigned_to == str(current_user.id)) | 
-        (Task.created_by == current_user.id) |
-        (Task.owner_id == current_user.id)
-    )
-    all_tasks = all_tasks_query.all()
-    
-    # Calculate overdue tasks
-    overdue_count = 0
+    # Check if we're using Supabase or SQLAlchemy
+    using_supabase = isinstance(query, list)
     current_date = datetime.now().date()
-    for task in filtered_tasks:
-        if task.status != TaskStatus.COMPLETED and task.due_date:
-            # Compare dates to detect overdue tasks
-            if hasattr(task.due_date, 'date'):
-                due_date_val = task.due_date.date()
+    
+    if using_supabase:
+        # We already have all tasks from Supabase, filter in Python
+        all_tasks = query.copy()  # Make a copy of the original list
+        filtered_tasks = query  # Start with all tasks
+        
+        # Apply status filter
+        if status_filter and status_filter != 'all':
+            if status_filter == 'overdue':
+                # Special handling for overdue tasks
+                filtered_tasks = [task for task in filtered_tasks 
+                                if task.status != TaskStatus.COMPLETED.value and 
+                                task.due_date and 
+                                datetime.strptime(task.due_date, '%Y-%m-%d').date() < current_date]
             else:
-                due_date_val = task.due_date
-            if due_date_val < current_date:
-                overdue_count += 1
+                filtered_tasks = [task for task in filtered_tasks if task.status == status_filter]
+        
+        # Apply priority filter
+        if priority_filter and priority_filter != 'all':
+            filtered_tasks = [task for task in filtered_tasks if task.priority == priority_filter]
+        
+        # Apply search filter
+        if search_text:
+            filtered_tasks = [task for task in filtered_tasks 
+                            if (task.title and search_text in task.title.lower()) or 
+                               (task.description and search_text in task.description.lower())]
+        
+        # Calculate overdue count
+        overdue_count = sum(1 for task in all_tasks 
+                          if task.status != TaskStatus.COMPLETED.value and 
+                          task.due_date and 
+                          datetime.strptime(task.due_date, '%Y-%m-%d').date() < current_date)
+                          
+        # Sort tasks by due date
+        filtered_tasks.sort(key=lambda task: task.due_date if task.due_date else '9999-12-31')
+        
+        # Log success using Supabase
+        current_app.logger.info(f"Successfully loaded {len(filtered_tasks)} tasks from Supabase")
+    else:
+        # Using SQLAlchemy query
+        # Apply status filter
+        if status_filter and status_filter != 'all':
+            if status_filter == 'overdue':
+                # Special handling for overdue tasks
+                query = query.filter(
+                    Task.status != TaskStatus.COMPLETED,
+                    Task.due_date < current_date
+                )
+            else:
+                query = query.filter(Task.status == status_filter)
+        
+        # Apply priority filter
+        if priority_filter and priority_filter != 'all':
+            query = query.filter(Task.priority == priority_filter)
+        
+        # Apply search filter if provided
+        if search_text:
+            search_query = f"%{search_text}%"
+            query = query.filter(
+                or_(
+                    Task.title.ilike(search_query),
+                    Task.description.ilike(search_query),
+                    Person.first_name.ilike(search_query),
+                    Person.last_name.ilike(search_query),
+                    Church.name.ilike(search_query)
+                )
+            ).outerjoin(Person, Task.person_id == Person.id).outerjoin(Church, Task.church_id == Church.id)
+        
+        # Get all tasks for statistics
+        all_tasks_query = Task.query.filter(
+            (Task.assigned_to == str(current_user.id)) | 
+            (Task.created_by == current_user.id) |
+            (Task.owner_id == current_user.id)
+        )
+        all_tasks = all_tasks_query.all()
+        
+        # Calculate overdue count
+        overdue_count = sum(1 for task in all_tasks if task.status != TaskStatus.COMPLETED and task.due_date and task.due_date < current_date)
+        
+        # Get filtered tasks with ordering
+        filtered_tasks = query.order_by(Task.due_date.asc()).all()
+        
+        # Log success using SQLAlchemy
+        current_app.logger.info(f"Successfully loaded {len(filtered_tasks)} tasks from database")
+    
+    # Log the results
+    current_app.logger.info(f"Loaded {len(filtered_tasks)} tasks with {overdue_count} overdue")
             
     return render_template('tasks/index.html', 
                           tasks=filtered_tasks, 
