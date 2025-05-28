@@ -1,30 +1,45 @@
 import os
+import sys
+import time
 import logging
 import datetime
-import sys  # noqa: F401
-import time  # noqa: F401
-# Flask imports - these are used throughout the application
-from flask import Flask, Blueprint, g, jsonify, request, current_app, render_template, session  # noqa: F401
+from flask import Flask, Blueprint, g, jsonify, request, current_app, render_template, session
 from flask_cors import CORS
-from flask_migrate import Migrate  # noqa: F401
-from flask_login import LoginManager, current_user  # noqa: F401
-from flask_jwt_extended import JWTManager  # noqa: F401
-from flask_wtf.csrf import CSRFProtect, generate_csrf  # noqa: F401
-from flask_limiter import Limiter  # noqa: F401
-from flask_limiter.util import get_remote_address  # noqa: F401
-from flask_talisman import Talisman  # noqa: F401
+from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
+from flask_login import LoginManager, current_user
+from flask_caching import Cache
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from dotenv import load_dotenv, find_dotenv
-from supabase import create_client, Client
+from supabase import create_client
 
 # Configuration imports
-from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig  # noqa: F401
-from app.config.logging_config import setup_logging  # noqa: F401
+from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig
+from app.config.logging_config import setup_logging
 from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache
 from app.auth.firebase import init_firebase
 from app.auth.routes import auth_bp
 from app.routes import blueprints
-from app.utils.pipeline_setup import setup_main_pipelines
-from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
+
+# Try to import pipeline modules, but don't fail if they're missing
+try:
+    from app.utils.pipeline_setup import setup_main_pipelines
+except ImportError:
+    # Define a dummy function if the module is missing
+    def setup_main_pipelines(app):
+        app.logger.warning("Pipeline setup module not found, skipping pipeline initialization")
+        pass
+
+try:
+    from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
+except ImportError:
+    # Define a dummy function if the module is missing
+    def init_church_pipeline(app):
+        app.logger.warning("Church pipeline module not found, skipping church pipeline initialization")
+        pass
 from app.models.relationships import setup_relationships
 from app.tasks.scheduler import init_scheduler
 from app.utils.firebase import firebase_setup
