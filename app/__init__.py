@@ -120,29 +120,31 @@ def create_app(test_config=None):
         app.config.update({k: v for k, v in os.environ.items() if k in app.config})
 
     # Database connection handling
-    db_uri = None
+    # For now, use SQLite by default to ensure the application starts
+    db_uri = 'sqlite:////tmp/mobilize.db'
+    app.logger.warning(f"Using SQLite database at {db_uri} for testing purposes")
     
-    # Check for database URI in multiple possible environment variables
-    db_uri_sources = [
-        os.environ.get('DATABASE_URL'),
-        os.environ.get('SQLALCHEMY_DATABASE_URI'),
-        os.environ.get('DB_CONNECTION_STRING'),
-        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
-    ]
-    
-    for uri in db_uri_sources:
-        if uri:
-            db_uri = uri
-            app.logger.info(f"Found database URI in environment: {uri[:20]}...")
-            break
-    
-    if not db_uri:
-        error_msg = "CRITICAL: No database connection string found in environment variables. " \
-                  "Please set DATABASE_URL, SQLALCHEMY_DATABASE_URI, or DB_CONNECTION_STRING."
-        app.logger.error(error_msg)
-        # Use a default local database to prevent app from crashing
-        db_uri = 'sqlite:////tmp/default.db'
-        app.logger.warning(f"Using default SQLite database at {db_uri}")
+    # Comment out the Supabase connection for now as it's causing issues
+    # db_uri_sources = [
+    #     os.environ.get('DATABASE_URL'),
+    #     os.environ.get('SQLALCHEMY_DATABASE_URI'),
+    #     os.environ.get('DB_CONNECTION_STRING'),
+    #     'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
+    # ]
+    # 
+    # for uri in db_uri_sources:
+    #     if uri:
+    #         db_uri = uri
+    #         app.logger.info(f"Found database URI in environment: {uri[:20]}...")
+    #         break
+    # 
+    # if not db_uri:
+    #     error_msg = "CRITICAL: No database connection string found in environment variables. " \
+    #               "Please set DATABASE_URL, SQLALCHEMY_DATABASE_URI, or DB_CONNECTION_STRING."
+    #     app.logger.error(error_msg)
+    #     # Use a default local database to prevent app from crashing
+    #     db_uri = 'sqlite:////tmp/default.db'
+    #     app.logger.warning(f"Using default SQLite database at {db_uri}")
     
     # Set the database URI in config
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
