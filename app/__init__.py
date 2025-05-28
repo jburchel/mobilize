@@ -1,59 +1,34 @@
 import os
-import sys
-import time
 import logging
 import datetime
-
-# Flask imports
-from flask import Flask, g, jsonify, session
+import sys  # noqa: F401
+import time  # noqa: F401
+# Flask imports - these are used throughout the application
+from flask import Flask, Blueprint, g, jsonify, request, current_app, render_template, session  # noqa: F401
 from flask_cors import CORS
-from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager
-from flask_login import LoginManager, current_user
-from flask_caching import Cache
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from flask_talisman import Talisman
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_migrate import Migrate  # noqa: F401
+from flask_login import LoginManager, current_user  # noqa: F401
+from flask_jwt_extended import JWTManager  # noqa: F401
+from flask_wtf.csrf import CSRFProtect, generate_csrf  # noqa: F401
+from flask_limiter import Limiter  # noqa: F401
+from flask_limiter.util import get_remote_address  # noqa: F401
+from flask_talisman import Talisman  # noqa: F401
 from dotenv import load_dotenv, find_dotenv
-from supabase import create_client
-
 # Configuration imports
-from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig
-from app.config.logging_config import setup_logging
+from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig  # noqa: F401
+from app.config.logging_config import setup_logging  # noqa: F401
 from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache
 from app.auth.firebase import init_firebase
 from app.auth.routes import auth_bp
 from app.routes import blueprints
 from app.models.relationships import setup_relationships
 from app.tasks.scheduler import init_scheduler
-from app.utils.firebase import firebase_setup
-from app.utils.context_processors import register_template_utilities
-
-# Try to import pipeline modules, but don't fail if they're missing
-try:
-    from app.utils.pipeline_setup import setup_main_pipelines
-except ImportError:
-    # Define a dummy function if the module is missing
-    def setup_main_pipelines(app):
-        app.logger.warning("Pipeline setup module not found, skipping pipeline initialization")
-        pass
-
-try:
-    from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
-except ImportError:
-    # Define a dummy function if the module is missing
-    def init_church_pipeline(app):
-        app.logger.warning("Church pipeline module not found, skipping church pipeline initialization")
-        pass
-
-# Initialize supabase_client at module level
-supabase_client = None
-from app.models.relationships import setup_relationships
-from app.tasks.scheduler import init_scheduler
-from app.utils.firebase import firebase_setup
-from app.utils.context_processors import register_template_utilities
 from app.utils.filters import register_filters, register_template_functions
+from app.utils.firebase import firebase_setup
+from app.utils.context_processors import register_template_utilities
+from app.utils.setup_main_pipelines import setup_main_pipelines
+from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
+from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
 
 # Import performance optimizations
@@ -145,165 +120,17 @@ def create_app(test_config=None):
         # Ensure loaded .env.development values override DevelopmentConfig defaults
         app.config.update({k: v for k, v in os.environ.items() if k in app.config})
 
-    # Database connection handling
-    # Database connection handling
-    db_uri = None
+    # Ensure required environment variables are present, falling back to config if necessary
+    # Example: Database URI
+    # Always use DATABASE_URL directly from environment variables for production
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+    if not app.config['SQLALCHEMY_DATABASE_URI']:
+        app.logger.error("CRITICAL: DATABASE_URL is not set!")
     
-    # Check for database URI in multiple possible environment variables
-    db_uri_sources = [
-        os.environ.get('DATABASE_URL'),
-        os.environ.get('SQLALCHEMY_DATABASE_URI'),
-        os.environ.get('DB_CONNECTION_STRING'),
-        # Try different connection string formats for Supabase
-        # Format 1: Direct connection to Supabase with project reference
-        'postgresql://postgres:postgres@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres?sslmode=require',
-        # Format 2: Connection through pooler with project reference in username
-        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:postgres@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require',
-        # Format 3: Original connection string from Cloud Run
-        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
-    ]
-    
-    for uri in db_uri_sources:
-        if uri:
-            db_uri = uri
-            # Mask the password for logging
-            masked_uri = uri
-            if '://' in uri:
-                parts = uri.split('://', 1)
-                if '@' in parts[1]:
-                    auth, rest = parts[1].split('@', 1)
-                    if ':' in auth:
-                        user, _ = auth.split(':', 1)
-                        masked_uri = f"{parts[0]}://{user}:****@{rest}"
-            app.logger.info(f"Found database URI in environment: {masked_uri}")
-            break
-    
-    if not db_uri:
-        error_msg = "CRITICAL: No database connection string found in environment variables. " \
-                  "Please set DATABASE_URL, SQLALCHEMY_DATABASE_URI, or DB_CONNECTION_STRING."
-        app.logger.error(error_msg)
-        # Use a default local database to prevent app from crashing
-        db_uri = 'sqlite:////tmp/default.db'
-        app.logger.warning(f"Using default SQLite database at {db_uri}")
-    
-    # Set the database URI in config
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-    
-    # Log database connection info (safely handle None)
-    try:
-        # First, ensure db_uri is not None to prevent the error
-        if db_uri is None:
-            app.logger.error("[DATABASE] CRITICAL: Database URI is None!")
-            db_uri = 'sqlite:////tmp/fallback.db'
-            app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-            app.logger.warning(f"[DATABASE] Using fallback SQLite database at {db_uri}")
-            
-        # Now safely log the database URI
-        if isinstance(db_uri, str):
-            # Mask the password for logging
-            masked_uri = db_uri
-            if '://' in db_uri:
-                parts = db_uri.split('://', 1)
-                if '@' in parts[1]:
-                    auth, rest = parts[1].split('@', 1)
-                    if ':' in auth:
-                        user, _ = auth.split(':', 1)
-                        masked_uri = f"{parts[0]}://{user}:****@{rest}"
-            app.logger.info(f"[DATABASE] Using database URI: {masked_uri}")
-        else:
-            # If it's not a string for some reason, convert it
-            app.logger.warning(f"[DATABASE] Database URI is not a string: {type(db_uri)}")
-            db_uri = str(db_uri) if db_uri is not None else 'sqlite:////tmp/fallback.db'
-            app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-    except Exception as e:
-        app.logger.error(f"[DATABASE] ERROR handling database URI: {str(e)}")
-        # Ensure we have a valid database URI no matter what
-        if not db_uri or not isinstance(db_uri, str):
-            db_uri = 'sqlite:////tmp/fallback.db'
-            app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-            app.logger.warning(f"[DATABASE] Using fallback SQLite database after error: {db_uri}")
-        
-    # Double-check that SQLALCHEMY_DATABASE_URI is set and valid
-    if not app.config.get('SQLALCHEMY_DATABASE_URI') or not isinstance(app.config.get('SQLALCHEMY_DATABASE_URI'), str):
-        app.logger.error("[DATABASE] SQLALCHEMY_DATABASE_URI is not properly set!")
-        app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-        
-    # Test database connection
-    app.logger.info("[DATABASE] Testing database connection...")
-    from sqlalchemy import create_engine
-    from sqlalchemy.exc import OperationalError
-    try:
-        # Create a temporary engine to test the connection
-        test_engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
-        with test_engine.connect() as conn:
-            conn.execute('SELECT 1')
-        app.logger.info("[DATABASE] Connection test successful!")
-    except OperationalError as e:
-        app.logger.error(f"[DATABASE] Connection test failed: {str(e)}")
-        # If we're using the Supabase pooler, try a direct connection
-        if 'pooler.supabase.com' in app.config['SQLALCHEMY_DATABASE_URI']:
-            app.logger.info("[DATABASE] Trying direct connection to Supabase...")
-            try:
-                direct_uri = "postgresql://postgres:postgres@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres?sslmode=require"
-                test_engine = create_engine(direct_uri)
-                with test_engine.connect() as conn:
-                    conn.execute('SELECT 1')
-                app.logger.info("[DATABASE] Direct connection successful! Updating connection string.")
-                app.config['SQLALCHEMY_DATABASE_URI'] = direct_uri
-            except Exception as direct_err:
-                app.logger.error(f"[DATABASE] Direct connection also failed: {str(direct_err)}")
-                # Initialize Supabase client as a fallback
-                app.logger.info("[DATABASE] Initializing Supabase client as a fallback...")
-                try:
-                    global supabase_client
-                    supabase_url = os.environ.get('SUPABASE_URL', 'https://fwnitauuyzxnsvgsbrzr.supabase.co')
-                    supabase_key = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bml0YXV1eXp4bnN2Z3NicnpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTQwNzUsImV4cCI6MjA1NjY3MDA3NX0.OVhgxuiEx8kuIlQqwj5AdfcSoLUDPEM4q-6C-mtBf98')
-                    supabase_client = create_client(supabase_url, supabase_key)
-                    app.logger.info(f"[DATABASE] Supabase client initialized for {supabase_url}")
-                    
-                    # Test Supabase connection
-                    response = supabase_client.table('users').select('*').limit(1).execute()
-                    if response and hasattr(response, 'data'):
-                        app.logger.info("[DATABASE] Supabase connection test successful")
-                        app.config['USE_SUPABASE_CLIENT'] = True
-                    else:
-                        app.logger.error("[DATABASE] Supabase connection test failed: No data returned")
-                except Exception as supabase_err:
-                    app.logger.error(f"[DATABASE] Failed to initialize Supabase client: {str(supabase_err)}")
-    except Exception as e:
-        app.logger.error(f"[DATABASE] Unexpected error during connection test: {str(e)}")
-        # Try to initialize Supabase client
-        try:
-            # Use the module-level supabase_client variable
-            supabase_url = os.environ.get('SUPABASE_URL', 'https://fwnitauuyzxnsvgsbrzr.supabase.co')
-            supabase_key = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bml0YXV1eXp4bnN2Z3NicnpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTQwNzUsImV4cCI6MjA1NjY3MDA3NX0.OVhgxuiEx8kuIlQqwj5AdfcSoLUDPEM4q-6C-mtBf98')
-            supabase_client = create_client(supabase_url, supabase_key)
-            app.logger.info(f"[DATABASE] Supabase client initialized for {supabase_url}")
-            app.config['USE_SUPABASE_CLIENT'] = True
-        except Exception as supabase_err:
-            app.logger.error(f"[DATABASE] Failed to initialize Supabase client: {str(supabase_err)}")
-            app.config['USE_SUPABASE_CLIENT'] = False
-    
-    # Ensure SQLALCHEMY_DATABASE_URI is set and not None
-    if not app.config.get('SQLALCHEMY_DATABASE_URI'):
-        app.logger.error("[DATABASE] CRITICAL: SQLALCHEMY_DATABASE_URI is not set!")
-        # Set a default SQLite database to prevent app from crashing
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/fallback.db'
-        app.logger.warning("[DATABASE] Using fallback SQLite database")
-    
-    # Final check - if we still don't have a database URI, log all config keys
-    if not app.config.get('SQLALCHEMY_DATABASE_URI'):
-        app.logger.error("[DATABASE] CRITICAL: No database connection string could be determined!")
-        app.logger.info("[DATABASE] Current configuration keys: " + 
-                       ", ".join([str(k) for k in app.config.keys()]))
-    
-    # Log environment variable names (without values) for debugging
-    app.logger.info("Environment variables detected:")
-    for key in sorted(os.environ.keys()):
-        if any(skip in key.upper() for skip in ['KEY', 'SECRET', 'PASS', 'TOKEN', 'CREDENTIALS']):
-            app.logger.info(f"  {key}: [REDACTED]")
-        else:
-            app.logger.info(f"  {key}: {'*' * len(os.environ[key]) if os.environ[key] else '[empty]'}")
+    # Print database connection info for debugging
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
+    masked_uri = db_uri.replace("://", "://***:***@") if "://" in db_uri else db_uri
+    app.logger.info(f"[DATABASE CONNECTION] Using database: {masked_uri}")
 
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
@@ -567,22 +394,18 @@ def create_app(test_config=None):
                 
             # Ensure tables exist before pipeline setup
             db.create_all()
-            
-            # Try to set up pipelines, but don't crash if it fails
-            try:
-                app.logger.info("Starting pipeline initialization...")
-                setup_main_pipelines()
-                init_church_pipeline(app)
-                app.logger.info("Pipeline initialization complete")
-            except Exception as e:
-                app.logger.error(f"Error initializing pipelines (continuing): {str(e)}")
-                if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror'):
-                    app.logger.error(f"PostgreSQL Error: {e.orig.pgerror}")
-                
+            setup_main_pipelines()
+            if not app.debug:
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
+                    migrate_contacts_to_main_pipeline()
+                else:
+                    app.logger.warning("Skipping contact migration - required tables don't exist yet")
+            init_church_pipeline(app)
+            app.logger.info("Pipeline initialization complete")
         except Exception as e:
-            app.logger.error(f"Error in app initialization (continuing): {str(e)}")
-            if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror'):
-                app.logger.error(f"PostgreSQL Error: {e.orig.pgerror}")
+            app.logger.error(f"Error initializing pipelines: {str(e)}")
 
     # Register template utilities
     register_template_utilities(app)
