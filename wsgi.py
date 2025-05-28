@@ -4,14 +4,8 @@ WSGI entry point for the application.
 This is used by production servers to run the app.
 """
 import os
-import sys
 import logging
-
-from app import create_app
-from app.extensions import db
-from app.models.office import Office
-from app.models.user import User
-from app.utils.setup_main_pipelines import setup_main_pipelines
+import time
 
 # Configure basic logging
 logging.basicConfig(
@@ -20,9 +14,71 @@ logging.basicConfig(
 )
 logger = logging.getLogger("wsgi")
 
+# Ensure database URI is set before importing app
+db_uri_sources = [
+    os.environ.get('DATABASE_URL'),
+    os.environ.get('SQLALCHEMY_DATABASE_URI'),
+    os.environ.get('DB_CONNECTION_STRING'),
+    'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
+]
+
+# Find the first non-empty database URI
+db_uri = None
+for uri in db_uri_sources:
+    if uri:
+        db_uri = uri
+        logger.info(f"Found database URI in environment: {uri[:20]}...")
+        break
+
+# Set a default if none found
+if not db_uri:
+    logger.error("No database URI found in environment variables!")
+    db_uri = 'sqlite:////tmp/default.db'
+    logger.warning(f"Using default SQLite database at {db_uri}")
+
+# Set the database URI in environment variables
+os.environ['DATABASE_URL'] = db_uri
+os.environ['SQLALCHEMY_DATABASE_URI'] = db_uri
+
+# Now import the app and other modules
+from app import create_app
+from app.extensions import db
+from app.models.office import Office
+from app.models.user import User
+from app.utils.setup_main_pipelines import setup_main_pipelines
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+# Create the Flask application
 app = create_app()
 
-def init_minimal_data():
+def wait_for_db_connection(app, max_retries=5, delay=2):
+    """Wait for the database connection to become available."""
+    for attempt in range(max_retries):
+        try:
+            # Try to execute a simple query to check the connection
+            with app.app_context():
+                db.session.execute('SELECT 1')
+            logger.info("Successfully connected to the database.")
+            return True
+        except OperationalError as e:
+            if attempt < max_retries - 1:
+                logger.warning(
+                    f"Database connection attempt {attempt + 1} failed. "
+                    f"Retrying in {delay} seconds... Error: {str(e)}"
+                )
+                time.sleep(delay)
+            else:
+                logger.error("Failed to connect to the database after multiple attempts.")
+                return False
+        except SQLAlchemyError as e:
+            logger.error(f"Database error: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error while connecting to the database: {str(e)}")
+            return False
+    return False
+
+def init_minimal_data(app):
     """Initialize minimal database data if none exists."""
     with app.app_context():
         try:
@@ -77,9 +133,27 @@ def init_minimal_data():
             db.session.rollback()
 
 # Initialize minimal required data
-init_minimal_data()
-
 if __name__ == "__main__":
+    # Wait for database connection before initializing data
+    if wait_for_db_connection(app):
+        try:
+            init_minimal_data(app)
+            logger.info("Application initialization complete.")
+        except Exception as e:
+            logger.error(f"Failed to initialize application: {str(e)}")
+    else:
+        logger.error("Failed to connect to the database. Application may not function correctly.")
+    
     # When running directly (not through a WSGI server)
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port, debug=app.config["DEBUG"]) 
+    app.run(host="0.0.0.0", port=port, debug=app.config.get("DEBUG", False))
+else:
+    # For WSGI servers (like gunicorn), wait for DB connection
+    if not wait_for_db_connection(app):
+        logger.error("Failed to connect to the database. Application may not function correctly.")
+    else:
+        try:
+            init_minimal_data(app)
+            logger.info("Application initialization complete.")
+        except Exception as e:
+            logger.error(f"Failed to initialize application: {str(e)}")
