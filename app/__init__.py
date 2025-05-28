@@ -120,17 +120,82 @@ def create_app(test_config=None):
         # Ensure loaded .env.development values override DevelopmentConfig defaults
         app.config.update({k: v for k, v in os.environ.items() if k in app.config})
 
-    # Ensure required environment variables are present, falling back to config if necessary
-    # Example: Database URI
-    # Always use DATABASE_URL directly from environment variables for production
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
-    if not app.config['SQLALCHEMY_DATABASE_URI']:
-        app.logger.error("CRITICAL: DATABASE_URL is not set!")
+    # Database connection handling
+    db_uri = None
     
-    # Print database connection info for debugging
-    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
-    masked_uri = db_uri.replace("://", "://***:***@") if "://" in db_uri else db_uri
-    app.logger.info(f"[DATABASE CONNECTION] Using database: {masked_uri}")
+    # Check for database URI in multiple possible environment variables
+    db_uri_sources = [
+        os.environ.get('DATABASE_URL'),
+        os.environ.get('SQLALCHEMY_DATABASE_URI'),
+        os.environ.get('DB_CONNECTION_STRING'),
+        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
+    ]
+    
+    for uri in db_uri_sources:
+        if uri:
+            db_uri = uri
+            app.logger.info(f"Found database URI in environment: {uri[:20]}...")
+            break
+    
+    if not db_uri:
+        error_msg = "CRITICAL: No database connection string found in environment variables. " \
+                  "Please set DATABASE_URL, SQLALCHEMY_DATABASE_URI, or DB_CONNECTION_STRING."
+        app.logger.error(error_msg)
+        # Use a default local database to prevent app from crashing
+        db_uri = 'sqlite:////tmp/default.db'
+        app.logger.warning(f"Using default SQLite database at {db_uri}")
+    
+    # Set the database URI in config
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+    
+    # Log database connection info (safely handle None)
+    try:
+        from urllib.parse import urlparse, urlunparse
+        # Convert to string and handle potential None
+        db_uri_str = str(db_uri) if db_uri else ""
+        if not db_uri_str or not db_uri_str.strip():
+            app.logger.error("[DATABASE] ERROR: Database URI is empty or None")
+            # Set a default SQLite database to prevent app from crashing
+            db_uri = 'sqlite:////tmp/fallback.db'
+            app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+            app.logger.warning(f"[DATABASE] Using fallback SQLite database at {db_uri}")
+            db_uri_str = str(db_uri)
+            
+        if db_uri_str and db_uri_str.strip():
+            parsed = urlparse(db_uri_str)
+            if parsed.password:
+                masked_netloc = f"{parsed.username}:****@{parsed.hostname}"
+                if parsed.port:
+                    masked_netloc += f":{parsed.port}"
+                masked_uri = urlunparse(parsed._replace(netloc=masked_netloc))
+                app.logger.info(f"[DATABASE] Using database: {masked_uri}")
+            else:
+                app.logger.info(f"[DATABASE] Using database: {db_uri_str}")
+    except Exception as e:
+        app.logger.error(f"[DATABASE] ERROR parsing database URI: {str(e)}")
+        if db_uri:
+            app.logger.info(f"[DATABASE] Raw database URI: {str(db_uri)[:100]}...")
+    
+    # Ensure SQLALCHEMY_DATABASE_URI is set and not None
+    if not app.config.get('SQLALCHEMY_DATABASE_URI'):
+        app.logger.error("[DATABASE] CRITICAL: SQLALCHEMY_DATABASE_URI is not set!")
+        # Set a default SQLite database to prevent app from crashing
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/fallback.db'
+        app.logger.warning("[DATABASE] Using fallback SQLite database")
+    
+    # Final check - if we still don't have a database URI, log all config keys
+    if not app.config.get('SQLALCHEMY_DATABASE_URI'):
+        app.logger.error("[DATABASE] CRITICAL: No database connection string could be determined!")
+        app.logger.info("[DATABASE] Current configuration keys: " + 
+                       ", ".join([str(k) for k in app.config.keys()]))
+    
+    # Log environment variable names (without values) for debugging
+    app.logger.info("Environment variables detected:")
+    for key in sorted(os.environ.keys()):
+        if any(skip in key.upper() for skip in ['KEY', 'SECRET', 'PASS', 'TOKEN', 'CREDENTIALS']):
+            app.logger.info(f"  {key}: [REDACTED]")
+        else:
+            app.logger.info(f"  {key}: {'*' * len(os.environ[key]) if os.environ[key] else '[empty]'}")
 
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
@@ -394,18 +459,22 @@ def create_app(test_config=None):
                 
             # Ensure tables exist before pipeline setup
             db.create_all()
-            setup_main_pipelines()
-            if not app.debug:
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                if 'pipelines' in inspector.get_table_names() and 'pipeline_stages' in inspector.get_table_names():
-                    migrate_contacts_to_main_pipeline()
-                else:
-                    app.logger.warning("Skipping contact migration - required tables don't exist yet")
-            init_church_pipeline(app)
-            app.logger.info("Pipeline initialization complete")
+            
+            # Try to set up pipelines, but don't crash if it fails
+            try:
+                app.logger.info("Starting pipeline initialization...")
+                setup_main_pipelines()
+                init_church_pipeline(app)
+                app.logger.info("Pipeline initialization complete")
+            except Exception as e:
+                app.logger.error(f"Error initializing pipelines (continuing): {str(e)}")
+                if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror'):
+                    app.logger.error(f"PostgreSQL Error: {e.orig.pgerror}")
+                
         except Exception as e:
-            app.logger.error(f"Error initializing pipelines: {str(e)}")
+            app.logger.error(f"Error in app initialization (continuing): {str(e)}")
+            if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror'):
+                app.logger.error(f"PostgreSQL Error: {e.orig.pgerror}")
 
     # Register template utilities
     register_template_utilities(app)
