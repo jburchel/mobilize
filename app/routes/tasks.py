@@ -672,6 +672,113 @@ def debug_tasks():
                     user, _ = auth.split(':', 1)
                     env_vars[key] = f"{parts[0]}://{user}:****@{rest}"
     
+    # Now try to simulate the tasks index route functionality
+    tasks_simulation_result = {}
+    try:
+        current_app.logger.info("Simulating tasks index route functionality")
+        import traceback
+        import sys
+        
+        # Test database connection first
+        try:
+            current_app.logger.info("Testing database connection...")
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1')).scalar()
+            current_app.logger.info("Database connection test successful")
+            use_supabase = False
+            tasks_simulation_result['database_test'] = 'Success'
+        except Exception as db_error:
+            error_traceback = traceback.format_exc()
+            current_app.logger.error(f"Database connection test failed: {str(db_error)}")
+            current_app.logger.error(f"Exception traceback: {error_traceback}")
+            tasks_simulation_result['database_test'] = f'Failed: {str(db_error)}'
+            tasks_simulation_result['database_error_traceback'] = error_traceback
+            
+            # Check if Supabase client is available as a fallback
+            if current_app.config.get('USE_SUPABASE_CLIENT') and supabase:
+                current_app.logger.info("Using Supabase client as a fallback")
+                use_supabase = True
+                tasks_simulation_result['using_supabase_fallback'] = True
+            else:
+                current_app.logger.error("No fallback available - Supabase client not configured")
+                tasks_simulation_result['using_supabase_fallback'] = False
+        
+        # Get tasks based on connection method
+        if 'use_supabase' in locals() and use_supabase:
+            # Use Supabase client to get tasks
+            current_app.logger.info("Getting tasks from Supabase client")
+            try:
+                # Check if supabase is available
+                current_app.logger.info(f"Supabase object type: {type(supabase)}")
+                current_app.logger.info(f"Supabase has client: {'Yes' if hasattr(supabase, 'client') else 'No'}")
+                
+                # Get tasks from Supabase - simulate with a dummy user ID
+                if not supabase or not hasattr(supabase, 'client') or not supabase.client:
+                    current_app.logger.error("Supabase client is not initialized")
+                    tasks_simulation_result['supabase_client_initialized'] = False
+                else:
+                    tasks_simulation_result['supabase_client_initialized'] = True
+                    
+                    # Log Supabase client details
+                    current_app.logger.info(f"Supabase URL: {supabase.supabase_url if hasattr(supabase, 'supabase_url') else 'Not available'}")
+                    
+                    # Try to test the connection first
+                    try:
+                        connection_test = supabase.test_connection()
+                        current_app.logger.info(f"Supabase connection test result: {connection_test}")
+                        tasks_simulation_result['supabase_connection_test'] = f'Success: {connection_test}'
+                    except Exception as test_err:
+                        error_traceback = traceback.format_exc()
+                        current_app.logger.error(f"Supabase connection test failed: {str(test_err)}")
+                        current_app.logger.error(f"Exception traceback: {error_traceback}")
+                        tasks_simulation_result['supabase_connection_test'] = f'Failed: {str(test_err)}'
+                        tasks_simulation_result['supabase_connection_error_traceback'] = error_traceback
+                    
+                    # Try to get tasks with a dummy user ID
+                    try:
+                        dummy_user_id = 1  # Use a dummy user ID for testing
+                        current_app.logger.info(f"Attempting to get tasks for dummy user ID: {dummy_user_id}")
+                        tasks = supabase.get_tasks(user_id=dummy_user_id)
+                        current_app.logger.info(f"Retrieved {len(tasks) if tasks else 0} tasks from Supabase")
+                        tasks_simulation_result['supabase_get_tasks'] = f'Success: Retrieved {len(tasks) if tasks else 0} tasks'
+                    except Exception as tasks_err:
+                        error_traceback = traceback.format_exc()
+                        current_app.logger.error(f"Error getting tasks from Supabase: {str(tasks_err)}")
+                        current_app.logger.error(f"Exception traceback: {error_traceback}")
+                        tasks_simulation_result['supabase_get_tasks'] = f'Failed: {str(tasks_err)}'
+                        tasks_simulation_result['supabase_get_tasks_error_traceback'] = error_traceback
+            except Exception as supabase_err:
+                error_traceback = traceback.format_exc()
+                current_app.logger.error(f"Error in Supabase client section: {str(supabase_err)}")
+                current_app.logger.error(f"Exception traceback: {error_traceback}")
+                tasks_simulation_result['supabase_section_error'] = f'Failed: {str(supabase_err)}'
+                tasks_simulation_result['supabase_section_error_traceback'] = error_traceback
+        else:
+            # Use SQLAlchemy to get tasks - simulate with a dummy query
+            try:
+                current_app.logger.info("Simulating SQLAlchemy query")
+                from sqlalchemy import or_
+                dummy_user_id = 1  # Use a dummy user ID for testing
+                query = Task.query.filter(
+                    (Task.assigned_to == str(dummy_user_id)) | 
+                    (Task.created_by == dummy_user_id) |
+                    (Task.owner_id == dummy_user_id)
+                )
+                # Just build the query, don't execute it
+                tasks_simulation_result['sqlalchemy_query_build'] = 'Success'
+            except Exception as query_err:
+                error_traceback = traceback.format_exc()
+                current_app.logger.error(f"Error building SQLAlchemy query: {str(query_err)}")
+                current_app.logger.error(f"Exception traceback: {error_traceback}")
+                tasks_simulation_result['sqlalchemy_query_build'] = f'Failed: {str(query_err)}'
+                tasks_simulation_result['sqlalchemy_query_error_traceback'] = error_traceback
+    except Exception as sim_err:
+        error_traceback = traceback.format_exc()
+        current_app.logger.error(f"Error in tasks simulation: {str(sim_err)}")
+        current_app.logger.error(f"Exception traceback: {error_traceback}")
+        tasks_simulation_result['overall_simulation'] = f'Failed: {str(sim_err)}'
+        tasks_simulation_result['overall_simulation_error_traceback'] = error_traceback
+    
     # Return debug information
     return jsonify({
         'timestamp': datetime.now().isoformat(),
@@ -682,7 +789,8 @@ def debug_tasks():
             'type': str(type(supabase)),
             'has_client': hasattr(supabase, 'client'),
             'client_initialized': bool(supabase and hasattr(supabase, 'client') and supabase.client)
-        }
+        },
+        'tasks_simulation': tasks_simulation_result
     })
 
 @tasks_bp.route('/test-calendar-sync')
