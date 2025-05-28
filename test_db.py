@@ -23,10 +23,8 @@ def test_database_connection():
         os.environ.get('DATABASE_URL'),
         os.environ.get('SQLALCHEMY_DATABASE_URI'),
         os.environ.get('DB_CONNECTION_STRING'),
-        # Try different variations of the connection string
-        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require',
-        'postgresql://postgres:postgres@localhost:5432/postgres',
-        'sqlite:////tmp/default.db'
+        # Try the correct Supabase connection string with pooler hostname and proper username format
+        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
     ]
     
     # Find the first non-empty database URI

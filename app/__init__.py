@@ -120,31 +120,40 @@ def create_app(test_config=None):
         app.config.update({k: v for k, v in os.environ.items() if k in app.config})
 
     # Database connection handling
-    # For now, use SQLite by default to ensure the application starts
-    db_uri = 'sqlite:////tmp/mobilize.db'
-    app.logger.warning(f"Using SQLite database at {db_uri} for testing purposes")
+    # Database connection handling
+    db_uri = None
     
-    # Comment out the Supabase connection for now as it's causing issues
-    # db_uri_sources = [
-    #     os.environ.get('DATABASE_URL'),
-    #     os.environ.get('SQLALCHEMY_DATABASE_URI'),
-    #     os.environ.get('DB_CONNECTION_STRING'),
-    #     'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
-    # ]
-    # 
-    # for uri in db_uri_sources:
-    #     if uri:
-    #         db_uri = uri
-    #         app.logger.info(f"Found database URI in environment: {uri[:20]}...")
-    #         break
-    # 
-    # if not db_uri:
-    #     error_msg = "CRITICAL: No database connection string found in environment variables. " \
-    #               "Please set DATABASE_URL, SQLALCHEMY_DATABASE_URI, or DB_CONNECTION_STRING."
-    #     app.logger.error(error_msg)
-    #     # Use a default local database to prevent app from crashing
-    #     db_uri = 'sqlite:////tmp/default.db'
-    #     app.logger.warning(f"Using default SQLite database at {db_uri}")
+    # Check for database URI in multiple possible environment variables
+    db_uri_sources = [
+        os.environ.get('DATABASE_URL'),
+        os.environ.get('SQLALCHEMY_DATABASE_URI'),
+        os.environ.get('DB_CONNECTION_STRING'),
+        # Use the correct Supabase connection string format with the pooler hostname
+        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
+    ]
+    
+    for uri in db_uri_sources:
+        if uri:
+            db_uri = uri
+            # Mask the password for logging
+            masked_uri = uri
+            if '://' in uri:
+                parts = uri.split('://', 1)
+                if '@' in parts[1]:
+                    auth, rest = parts[1].split('@', 1)
+                    if ':' in auth:
+                        user, _ = auth.split(':', 1)
+                        masked_uri = f"{parts[0]}://{user}:****@{rest}"
+            app.logger.info(f"Found database URI in environment: {masked_uri}")
+            break
+    
+    if not db_uri:
+        error_msg = "CRITICAL: No database connection string found in environment variables. " \
+                  "Please set DATABASE_URL, SQLALCHEMY_DATABASE_URI, or DB_CONNECTION_STRING."
+        app.logger.error(error_msg)
+        # Use a default local database to prevent app from crashing
+        db_uri = 'sqlite:////tmp/default.db'
+        app.logger.warning(f"Using default SQLite database at {db_uri}")
     
     # Set the database URI in config
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
@@ -157,29 +166,29 @@ def create_app(test_config=None):
             db_uri = 'sqlite:////tmp/fallback.db'
             app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
             app.logger.warning(f"[DATABASE] Using fallback SQLite database at {db_uri}")
-        
+            
         # Now safely log the database URI
-        from urllib.parse import urlparse, urlunparse
-        db_uri_str = str(db_uri)
-        
-        if db_uri_str and db_uri_str.strip():
-            parsed = urlparse(db_uri_str)
-            if parsed.password:
-                masked_netloc = f"{parsed.username}:****@{parsed.hostname}"
-                if parsed.port:
-                    masked_netloc += f":{parsed.port}"
-                masked_uri = urlunparse(parsed._replace(netloc=masked_netloc))
-                app.logger.info(f"[DATABASE] Using database: {masked_uri}")
-            else:
-                app.logger.info(f"[DATABASE] Using database: {db_uri_str}")
+        if isinstance(db_uri, str):
+            # Already logged the masked URI above, no need to do it again
+            pass
         else:
-            app.logger.error("[DATABASE] ERROR: Database URI is empty string")
+            # If it's not a string for some reason, convert it
+            app.logger.warning(f"[DATABASE] Database URI is not a string: {type(db_uri)}")
+            db_uri = str(db_uri) if db_uri is not None else 'sqlite:////tmp/fallback.db'
+            app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+    except Exception as e:
+        app.logger.error(f"[DATABASE] ERROR handling database URI: {str(e)}")
+        # Ensure we have a valid database URI no matter what
+        if not db_uri or not isinstance(db_uri, str):
             db_uri = 'sqlite:////tmp/fallback.db'
             app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-            app.logger.warning(f"[DATABASE] Using fallback SQLite database at {db_uri}")
-    except Exception as e:
-        app.logger.error(f"[DATABASE] ERROR parsing database URI: {str(e)}")
-        app.logger.info(f"[DATABASE] Raw database URI type: {type(db_uri)}, value: {str(db_uri)[:20] if db_uri else 'None'}...")
+            app.logger.warning(f"[DATABASE] Using fallback SQLite database after error: {db_uri}")
+        app.logger.info(f"[DATABASE] Final database URI type: {type(db_uri)}")
+        
+    # Double-check that SQLALCHEMY_DATABASE_URI is set and valid
+    if not app.config.get('SQLALCHEMY_DATABASE_URI') or not isinstance(app.config.get('SQLALCHEMY_DATABASE_URI'), str):
+        app.logger.error("[DATABASE] SQLALCHEMY_DATABASE_URI is not properly set!")
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     
     # Ensure SQLALCHEMY_DATABASE_URI is set and not None
     if not app.config.get('SQLALCHEMY_DATABASE_URI'):
