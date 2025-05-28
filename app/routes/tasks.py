@@ -20,17 +20,46 @@ tasks_bp = Blueprint('tasks', __name__, template_folder='../templates/tasks')
 @login_required
 def index():
     """Display list of tasks."""
-    # Get filters from query params
-    status_filter = request.args.get('status')
-    priority_filter = request.args.get('priority')
-    search_text = request.args.get('search', '').lower().strip()
-    
-    # Base query for tasks assigned to the current user
-    query = Task.query.filter(
-        (Task.assigned_to == str(current_user.id)) | 
-        (Task.created_by == current_user.id) |
-        (Task.owner_id == current_user.id)
-    )
+    try:
+        # Test database connection first
+        try:
+            db.session.execute('SELECT 1').scalar()
+            current_app.logger.info("Database connection test successful")
+        except Exception as db_error:
+            current_app.logger.error(f"Database connection test failed: {str(db_error)}")
+            # Get database connection info
+            db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
+            masked_uri = db_uri
+            if '://' in db_uri:
+                parts = db_uri.split('://', 1)
+                if '@' in parts[1]:
+                    auth, rest = parts[1].split('@', 1)
+                    if ':' in auth:
+                        user, _ = auth.split(':', 1)
+                        masked_uri = f"{parts[0]}://{user}:****@{rest}"
+            current_app.logger.error(f"Database URI: {masked_uri}")
+            return render_template('error.html', 
+                                error_title="Database Connection Error",
+                                error_message="Unable to connect to the database. Please try again later or contact support.",
+                                error_details=str(db_error))
+            
+        # Get filters from query params
+        status_filter = request.args.get('status')
+        priority_filter = request.args.get('priority')
+        search_text = request.args.get('search', '').lower().strip()
+        
+        # Base query for tasks assigned to the current user
+        query = Task.query.filter(
+            (Task.assigned_to == str(current_user.id)) | 
+            (Task.created_by == current_user.id) |
+            (Task.owner_id == current_user.id)
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error in tasks index route: {str(e)}")
+        return render_template('error.html', 
+                            error_title="Error Loading Tasks",
+                            error_message="An error occurred while loading your tasks.",
+                            error_details=str(e))
     
     # Apply status filter
     if status_filter and status_filter != 'all':
@@ -69,8 +98,9 @@ def index():
             or_(
                 Task.title.ilike(search),
                 Task.description.ilike(search),
-                Task.related_to.has(Person.name.ilike(search)),
-                Task.related_to.has(Church.name.ilike(search))
+                Task.person.has(Person.first_name.ilike(search)) | 
+                Task.person.has(Person.last_name.ilike(search)),
+                Task.church.has(Church.name.ilike(search))
             )
         )
     

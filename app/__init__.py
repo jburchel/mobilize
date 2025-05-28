@@ -128,7 +128,12 @@ def create_app(test_config=None):
         os.environ.get('DATABASE_URL'),
         os.environ.get('SQLALCHEMY_DATABASE_URI'),
         os.environ.get('DB_CONNECTION_STRING'),
-        # Use the correct Supabase connection string format with the pooler hostname
+        # Try different connection string formats for Supabase
+        # Format 1: Direct connection to Supabase with project reference
+        'postgresql://postgres:postgres@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres?sslmode=require',
+        # Format 2: Connection through pooler with project reference in username
+        'postgresql://postgres.fwnitauuyzxnsvgsbrzr:postgres@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require',
+        # Format 3: Original connection string from Cloud Run
         'postgresql://postgres.fwnitauuyzxnsvgsbrzr:UK1eAogXCrBoaCyI@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
     ]
     
@@ -169,8 +174,16 @@ def create_app(test_config=None):
             
         # Now safely log the database URI
         if isinstance(db_uri, str):
-            # Already logged the masked URI above, no need to do it again
-            pass
+            # Mask the password for logging
+            masked_uri = db_uri
+            if '://' in db_uri:
+                parts = db_uri.split('://', 1)
+                if '@' in parts[1]:
+                    auth, rest = parts[1].split('@', 1)
+                    if ':' in auth:
+                        user, _ = auth.split(':', 1)
+                        masked_uri = f"{parts[0]}://{user}:****@{rest}"
+            app.logger.info(f"[DATABASE] Using database URI: {masked_uri}")
         else:
             # If it's not a string for some reason, convert it
             app.logger.warning(f"[DATABASE] Database URI is not a string: {type(db_uri)}")
@@ -183,12 +196,38 @@ def create_app(test_config=None):
             db_uri = 'sqlite:////tmp/fallback.db'
             app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
             app.logger.warning(f"[DATABASE] Using fallback SQLite database after error: {db_uri}")
-        app.logger.info(f"[DATABASE] Final database URI type: {type(db_uri)}")
         
     # Double-check that SQLALCHEMY_DATABASE_URI is set and valid
     if not app.config.get('SQLALCHEMY_DATABASE_URI') or not isinstance(app.config.get('SQLALCHEMY_DATABASE_URI'), str):
         app.logger.error("[DATABASE] SQLALCHEMY_DATABASE_URI is not properly set!")
         app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+        
+    # Test database connection
+    app.logger.info("[DATABASE] Testing database connection...")
+    from sqlalchemy import create_engine
+    from sqlalchemy.exc import OperationalError
+    try:
+        # Create a temporary engine to test the connection
+        test_engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+        with test_engine.connect() as conn:
+            conn.execute('SELECT 1')
+        app.logger.info("[DATABASE] Connection test successful!")
+    except OperationalError as e:
+        app.logger.error(f"[DATABASE] Connection test failed: {str(e)}")
+        # If we're using the Supabase pooler, try a direct connection
+        if 'pooler.supabase.com' in app.config['SQLALCHEMY_DATABASE_URI']:
+            app.logger.info("[DATABASE] Trying direct connection to Supabase...")
+            try:
+                direct_uri = "postgresql://postgres:postgres@db.fwnitauuyzxnsvgsbrzr.supabase.co:5432/postgres?sslmode=require"
+                test_engine = create_engine(direct_uri)
+                with test_engine.connect() as conn:
+                    conn.execute('SELECT 1')
+                app.logger.info("[DATABASE] Direct connection successful! Updating connection string.")
+                app.config['SQLALCHEMY_DATABASE_URI'] = direct_uri
+            except Exception as direct_err:
+                app.logger.error(f"[DATABASE] Direct connection also failed: {str(direct_err)}")
+    except Exception as e:
+        app.logger.error(f"[DATABASE] Unexpected error during connection test: {str(e)}")
     
     # Ensure SQLALCHEMY_DATABASE_URI is set and not None
     if not app.config.get('SQLALCHEMY_DATABASE_URI'):
