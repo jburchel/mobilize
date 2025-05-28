@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort, current_app, session
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
@@ -9,7 +10,7 @@ from app.models.user import User
 from app.extensions import db
 from flask import current_app
 from app.utils.decorators import office_required
-from app import supabase_client
+from app.supabase_client import supabase
 from app.forms.task import TaskForm
 from app.forms.task_batch_reminder import TaskBatchReminderForm
 from sqlalchemy import or_
@@ -21,9 +22,20 @@ tasks_bp = Blueprint('tasks', __name__, template_folder='../templates/tasks')
 @login_required
 def index():
     """Display list of tasks."""
+    # Start with detailed logging
+    current_app.logger.info("==== TASKS INDEX ROUTE STARTED ====")
+    current_app.logger.info(f"User ID: {current_user.id if current_user else 'Not logged in'}")
+    current_app.logger.info(f"Request args: {request.args}")
+    
     try:
+        # Log configuration
+        current_app.logger.info(f"SQLALCHEMY_DATABASE_URI set: {'Yes' if current_app.config.get('SQLALCHEMY_DATABASE_URI') else 'No'}")
+        current_app.logger.info(f"USE_SUPABASE_CLIENT set: {'Yes' if current_app.config.get('USE_SUPABASE_CLIENT') else 'No'}")
+        current_app.logger.info(f"Supabase client available: {'Yes' if supabase else 'No'}")
+        
         # Test database connection first
         try:
+            current_app.logger.info("Testing database connection...")
             db.session.execute('SELECT 1').scalar()
             current_app.logger.info("Database connection test successful")
             use_supabase = False
@@ -42,10 +54,11 @@ def index():
             current_app.logger.error(f"Database URI: {masked_uri}")
             
             # Check if Supabase client is available as a fallback
-            if current_app.config.get('USE_SUPABASE_CLIENT') and supabase_client:
+            if current_app.config.get('USE_SUPABASE_CLIENT') and supabase:
                 current_app.logger.info("Using Supabase client as a fallback")
                 use_supabase = True
             else:
+                current_app.logger.error("No fallback available - Supabase client not configured")
                 return render_template('error.html', 
                                     error_title="Database Connection Error",
                                     error_message="Unable to connect to the database. Please try again later or contact support.",
@@ -61,23 +74,48 @@ def index():
             # Use Supabase client to get tasks
             current_app.logger.info("Getting tasks from Supabase client")
             try:
-                # Get tasks from Supabase
-                tasks_query = supabase_client.table('tasks').select('*').or_(f"assigned_to.eq.{current_user.id},created_by.eq.{current_user.id},owner_id.eq.{current_user.id}")
-                tasks_response = tasks_query.execute()
+                # Check if supabase is available
+                current_app.logger.info(f"Supabase object type: {type(supabase)}")
+                current_app.logger.info(f"Supabase has client: {'Yes' if hasattr(supabase, 'client') else 'No'}")
                 
-                if tasks_response and hasattr(tasks_response, 'data'):
-                    # Convert to list of Task objects for compatibility
-                    all_tasks = []
-                    for task_data in tasks_response.data:
-                        task = Task()
-                        for key, value in task_data.items():
-                            if hasattr(task, key):
-                                setattr(task, key, value)
-                        all_tasks.append(task)
-                    
-                    # We'll filter these tasks in Python since we can't use SQLAlchemy
-                    query = all_tasks
-                else:
+                # Get tasks from Supabase
+                if not supabase or not hasattr(supabase, 'client') or not supabase.client:
+                    current_app.logger.error("Supabase client is not initialized")
+                    return render_template('error.html', 
+                                    error_title="Database Connection Error",
+                                    error_message="Unable to connect to the database. Please try again later or contact support.",
+                                    error_details="Supabase client is not initialized")
+                
+                # Log Supabase client details
+                current_app.logger.info(f"Supabase URL: {supabase.supabase_url if hasattr(supabase, 'supabase_url') else 'Not available'}")
+                
+                # Try to test the connection first
+                try:
+                    connection_test = supabase.test_connection()
+                    current_app.logger.info(f"Supabase connection test result: {connection_test}")
+                except Exception as test_err:
+                    current_app.logger.error(f"Supabase connection test failed: {str(test_err)}")
+                
+                # Get tasks from Supabase
+                current_app.logger.info(f"Attempting to get tasks for user ID: {current_user.id}")
+                tasks = supabase.get_tasks(user_id=current_user.id)
+                current_app.logger.info(f"Retrieved {len(tasks) if tasks else 0} tasks from Supabase")
+                
+                # Convert to list of Task objects for compatibility
+                all_tasks = []
+                for task_data in tasks:
+                    task = Task()
+                    for key, value in task_data.items():
+                        if hasattr(task, key):
+                            setattr(task, key, value)
+                    all_tasks.append(task)
+                
+                current_app.logger.info(f"Converted {len(all_tasks)} tasks to Task objects")
+                
+                # We'll filter these tasks in Python since we can't use SQLAlchemy
+                query = all_tasks
+                
+                if not tasks:
                     current_app.logger.error("No data returned from Supabase tasks query")
                     query = []
             except Exception as supabase_err:
@@ -551,6 +589,63 @@ def delete(id):
     
     flash('Task deleted successfully!', 'success')
     return redirect(url_for('tasks.index'))
+
+@tasks_bp.route('/debug')
+def debug_tasks():
+    """Debug route for tasks page."""
+    # Log detailed information about the environment
+    current_app.logger.info("==== TASKS DEBUG ROUTE STARTED ====")
+    
+    # Check database connection
+    db_status = "Unknown"
+    try:
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1')).scalar()
+        db_status = "Connected"
+    except Exception as e:
+        db_status = f"Error: {str(e)}"
+    
+    # Check Supabase connection
+    supabase_status = "Unknown"
+    try:
+        if supabase and hasattr(supabase, 'client') and supabase.client:
+            test_result = supabase.test_connection()
+            supabase_status = f"Available, Test Result: {test_result}"
+        else:
+            supabase_status = "Not initialized"
+    except Exception as e:
+        supabase_status = f"Error: {str(e)}"
+    
+    # Get environment variables
+    env_vars = {
+        'SQLALCHEMY_DATABASE_URI': current_app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set'),
+        'USE_SUPABASE_CLIENT': current_app.config.get('USE_SUPABASE_CLIENT', 'Not set'),
+        'SUPABASE_URL': os.environ.get('SUPABASE_URL', 'Not set'),
+        'DATABASE_URL': os.environ.get('DATABASE_URL', 'Not set')
+    }
+    
+    # Mask sensitive information
+    for key in ['SQLALCHEMY_DATABASE_URI', 'DATABASE_URL']:
+        if env_vars[key] and '://' in env_vars[key]:
+            parts = env_vars[key].split('://', 1)
+            if '@' in parts[1]:
+                auth, rest = parts[1].split('@', 1)
+                if ':' in auth:
+                    user, _ = auth.split(':', 1)
+                    env_vars[key] = f"{parts[0]}://{user}:****@{rest}"
+    
+    # Return debug information
+    return jsonify({
+        'timestamp': datetime.now().isoformat(),
+        'database_status': db_status,
+        'supabase_status': supabase_status,
+        'environment_variables': env_vars,
+        'supabase_info': {
+            'type': str(type(supabase)),
+            'has_client': hasattr(supabase, 'client'),
+            'client_initialized': bool(supabase and hasattr(supabase, 'client') and supabase.client)
+        }
+    })
 
 @tasks_bp.route('/test-calendar-sync')
 @login_required

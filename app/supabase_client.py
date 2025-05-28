@@ -56,24 +56,47 @@ class SupabaseClient:
             return []
         
         try:
+            logger.info(f"Starting Supabase tasks query for user_id={user_id}, status={status}, priority={priority}")
+            
             # Start with base query
-            query = self.client.table('tasks').select('*')
+            try:
+                query = self.client.table('tasks').select('*')
+                logger.info("Successfully created base query")
+            except Exception as query_err:
+                logger.error(f"Error creating base query: {str(query_err)}")
+                return []
             
             # Apply filters
-            if user_id:
-                query = query.or_(f"assigned_to.eq.{user_id},created_by.eq.{user_id},owner_id.eq.{user_id}")
-            
-            if status:
-                query = query.eq('status', status)
+            try:
+                if user_id:
+                    filter_str = f"assigned_to.eq.{user_id},created_by.eq.{user_id},owner_id.eq.{user_id}"
+                    logger.info(f"Applying user filter: {filter_str}")
+                    query = query.or_(filter_str)
                 
-            if priority:
-                query = query.eq('priority', priority)
+                if status:
+                    logger.info(f"Applying status filter: {status}")
+                    query = query.eq('status', status)
+                    
+                if priority:
+                    logger.info(f"Applying priority filter: {priority}")
+                    query = query.eq('priority', priority)
+            except Exception as filter_err:
+                logger.error(f"Error applying filters: {str(filter_err)}")
+                # Continue with unfiltered query
+                pass
             
             # Execute query
-            response = query.execute()
+            try:
+                logger.info("Executing Supabase query")
+                response = query.execute()
+                logger.info("Query executed successfully")
+            except Exception as exec_err:
+                logger.error(f"Error executing query: {str(exec_err)}")
+                return []
             
             if response and hasattr(response, 'data'):
                 tasks = response.data
+                logger.info(f"Retrieved {len(tasks)} tasks from Supabase")
                 
                 # Apply text search filter in Python (since Supabase REST doesn't support complex text search)
                 if search_text and tasks:
@@ -86,15 +109,20 @@ class SupabaseClient:
                             (task.get('description') and search_text in task.get('description', '').lower())
                         ):
                             filtered_tasks.append(task)
+                    logger.info(f"Applied text search filter, {len(filtered_tasks)} tasks match")
                     return filtered_tasks
                 
                 return tasks
             else:
                 logger.error("No data returned from Supabase tasks query")
+                if response:
+                    logger.error(f"Response type: {type(response)}, has data attr: {hasattr(response, 'data')}")
                 return []
                 
         except Exception as e:
             logger.error(f"Error fetching tasks from Supabase: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return []
 
 # Initialize the client

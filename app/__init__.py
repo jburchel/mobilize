@@ -3,7 +3,9 @@ import sys
 import time
 import logging
 import datetime
-from flask import Flask, Blueprint, g, jsonify, request, current_app, render_template, session
+
+# Flask imports
+from flask import Flask, g, jsonify, session
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -16,9 +18,6 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 from dotenv import load_dotenv, find_dotenv
 from supabase import create_client
 
-# Initialize supabase_client at module level
-supabase_client = None
-
 # Configuration imports
 from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig
 from app.config.logging_config import setup_logging
@@ -26,6 +25,10 @@ from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter,
 from app.auth.firebase import init_firebase
 from app.auth.routes import auth_bp
 from app.routes import blueprints
+from app.models.relationships import setup_relationships
+from app.tasks.scheduler import init_scheduler
+from app.utils.firebase import firebase_setup
+from app.utils.context_processors import register_template_utilities
 
 # Try to import pipeline modules, but don't fail if they're missing
 try:
@@ -43,6 +46,9 @@ except ImportError:
     def init_church_pipeline(app):
         app.logger.warning("Church pipeline module not found, skipping church pipeline initialization")
         pass
+
+# Initialize supabase_client at module level
+supabase_client = None
 from app.models.relationships import setup_relationships
 from app.tasks.scheduler import init_scheduler
 from app.utils.firebase import firebase_setup
@@ -268,7 +274,7 @@ def create_app(test_config=None):
         app.logger.error(f"[DATABASE] Unexpected error during connection test: {str(e)}")
         # Try to initialize Supabase client
         try:
-            global supabase_client
+            # Use the module-level supabase_client variable
             supabase_url = os.environ.get('SUPABASE_URL', 'https://fwnitauuyzxnsvgsbrzr.supabase.co')
             supabase_key = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bml0YXV1eXp4bnN2Z3NicnpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwOTQwNzUsImV4cCI6MjA1NjY3MDA3NX0.OVhgxuiEx8kuIlQqwj5AdfcSoLUDPEM4q-6C-mtBf98')
             supabase_client = create_client(supabase_url, supabase_key)
