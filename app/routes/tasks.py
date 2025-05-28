@@ -36,7 +36,8 @@ def index():
         # Test database connection first
         try:
             current_app.logger.info("Testing database connection...")
-            db.session.execute('SELECT 1').scalar()
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1')).scalar()
             current_app.logger.info("Database connection test successful")
             use_supabase = False
         except Exception as db_error:
