@@ -27,11 +27,23 @@ def index():
     current_app.logger.info(f"User ID: {current_user.id if current_user else 'Not logged in'}")
     current_app.logger.info(f"Request args: {request.args}")
     
+    # Add more detailed logging for troubleshooting
+    import traceback
+    import sys
+    
     try:
         # Log configuration
         current_app.logger.info(f"SQLALCHEMY_DATABASE_URI set: {'Yes' if current_app.config.get('SQLALCHEMY_DATABASE_URI') else 'No'}")
         current_app.logger.info(f"USE_SUPABASE_CLIENT set: {'Yes' if current_app.config.get('USE_SUPABASE_CLIENT') else 'No'}")
         current_app.logger.info(f"Supabase client available: {'Yes' if supabase else 'No'}")
+        
+        # Log detailed information about the supabase client
+        if supabase:
+            current_app.logger.info(f"Supabase type: {type(supabase)}")
+            current_app.logger.info(f"Supabase has client attribute: {hasattr(supabase, 'client')}")
+            if hasattr(supabase, 'client'):
+                current_app.logger.info(f"Supabase client type: {type(supabase.client)}")
+                current_app.logger.info(f"Supabase client initialized: {bool(supabase.client)}")
         
         # Test database connection first
         try:
@@ -120,11 +132,26 @@ def index():
                     current_app.logger.error("No data returned from Supabase tasks query")
                     query = []
             except Exception as supabase_err:
+                error_traceback = traceback.format_exc()
+                exc_type, exc_value, exc_tb = sys.exc_info()
                 current_app.logger.error(f"Error getting tasks from Supabase: {str(supabase_err)}")
+                current_app.logger.error(f"Exception type: {exc_type.__name__}")
+                current_app.logger.error(f"Exception traceback: {error_traceback}")
+                
+                # Log detailed information about the Supabase client
+                if supabase:
+                    current_app.logger.error(f"Supabase type: {type(supabase)}")
+                    if hasattr(supabase, 'client'):
+                        current_app.logger.error(f"Supabase client type: {type(supabase.client)}")
+                    if hasattr(supabase, 'supabase_url'):
+                        current_app.logger.error(f"Supabase URL: {supabase.supabase_url}")
+                    if hasattr(supabase, 'supabase_key'):
+                        current_app.logger.error(f"Supabase key set: {'Yes' if supabase.supabase_key else 'No'}")
+                
                 return render_template('error.html',
                                     error_title="Error Loading Tasks",
                                     error_message="An error occurred while loading your tasks from Supabase.",
-                                    error_details=str(supabase_err))
+                                    error_details=f"{str(supabase_err)}\n\nTraceback: {error_traceback}")
         else:
             # Use SQLAlchemy to get tasks
             query = Task.query.filter(
@@ -133,11 +160,21 @@ def index():
                 (Task.owner_id == current_user.id)
             )
     except Exception as e:
+        error_traceback = traceback.format_exc()
+        exc_type, exc_value, exc_tb = sys.exc_info()
         current_app.logger.error(f"Error in tasks index route: {str(e)}")
+        current_app.logger.error(f"Exception type: {exc_type.__name__}")
+        current_app.logger.error(f"Exception traceback: {error_traceback}")
+        
+        # Log detailed information about the current state
+        current_app.logger.error(f"Current user: {current_user.id if current_user else 'Not logged in'}")
+        current_app.logger.error(f"Database URI: {current_app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')}")
+        current_app.logger.error(f"Supabase URL: {os.environ.get('SUPABASE_URL', 'Not set')}")
+        
         return render_template('error.html', 
                             error_title="Error Loading Tasks",
                             error_message="An error occurred while loading your tasks.",
-                            error_details=str(e))
+                            error_details=f"{str(e)}\n\nTraceback: {error_traceback}")
     
     # Check if we're using Supabase or SQLAlchemy
     using_supabase = isinstance(query, list)
