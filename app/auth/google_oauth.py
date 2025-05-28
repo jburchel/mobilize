@@ -1,4 +1,4 @@
-from flask import current_app, url_for, session, request
+from flask import url_for, session, request, current_app
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
@@ -102,8 +102,11 @@ def get_google_auth_url():
     )
     session['state'] = state
     
-    # Print the auth URL for debugging
-    current_app.logger.debug(f"Auth URL: {auth_url}")
+    # Log the auth URL for debugging
+    if current_app:
+        current_app.logger.debug(f"Auth URL: {auth_url}")
+    else:
+        print(f"Auth URL: {auth_url}")
     
     return auth_url
 
