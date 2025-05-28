@@ -47,11 +47,8 @@
                         </div>
                         <div class="col-md-3">
                             <div class="d-flex">
-                                <a href="{{ url_for('tasks.add') }}" class="btn btn-success me-2">
+                                <a href="{{ url_for('tasks.add') }}" class="btn btn-success">
                                     <i class="bi bi-plus-circle me-1"></i>New
-                                </a>
-                                <a href="{{ url_for('tasks.send_reminders') }}" class="btn btn-info">
-                                    <i class="bi bi-bell me-1"></i>Reminders
                                 </a>
                             </div>
                         </div>
@@ -115,7 +112,7 @@
                                                 {% if (task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date and task.status != 'completed' %}
                                                     <span class="text-danger">{{ task.due_date.strftime('%Y-%m-%d') if hasattr(task.due_date, 'strftime') else task.due_date }}</span>
                                                 {% else %}
-                                                    {{ task.due_date.strftime('%Y-%m-%d') if hasattr(task.due_date, 'strftime') else task.due_date }}
+                                                    {{ task.due_date.strftime('%Y-%m-%d') if task.due_date and hasattr(task.due_date, 'strftime') else (task.due_date if task.due_date else 'No due date') }}
                                                 {% endif %}
                                             {% else %}
                                                 <span class="text-muted">No due date</span>
@@ -348,81 +345,6 @@
     </div>
 </div>
 
-<!-- Add batch reminder modal here -->
-<div class="modal fade" id="batchReminderModal" tabindex="-1" aria-labelledby="batchReminderModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="batchReminderModalLabel">Batch Update Reminder Settings</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="batchReminderForm">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Select tasks to update:</label>
-                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="selectAll">
-                                                <label class="form-check-label" for="selectAll">All</label>
-                                            </div>
-                                        </th>
-                                        <th>Title</th>
-                                        <th>Due Date</th>
-                                        <th>Current Reminder</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for task in tasks %}
-                                    {% if task.google_calendar_sync_enabled %}
-                                    <tr>
-                                        <td>
-                                            <div class="form-check">
-                                                <input class="form-check-input task-checkbox" type="checkbox" 
-                                                       name="task_ids" value="{{ task.id }}" id="task{{ task.id }}">
-                                                <label class="form-check-label" for="task{{ task.id }}"></label>
-                                            </div>
-                                        </td>
-                                        <td>{{ task.title }}</td>
-                                        <td>{{ task.due_date.strftime('%Y-%m-%d') if task.due_date and hasattr(task.due_date, 'strftime') else (task.due_date if task.due_date else 'No due date') }}</td>
-                                        <td>{{ task.get_reminder_display() }}</td>
-                                    </tr>
-                                    {% endif %}
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="reminderOption" class="form-label">Set Reminder</label>
-                        <select class="form-select" id="reminderOption" name="reminder_option" required>
-                            <option value="">-- Select Reminder Option --</option>
-                            <option value="15_min">15 minutes before</option>
-                            <option value="30_min">30 minutes before</option>
-                            <option value="1_hour">1 hour before</option>
-                            <option value="2_hours">2 hours before</option>
-                            <option value="1_day">1 day before</option>
-                            <option value="3_days">3 days before</option>
-                            <option value="1_week">1 week before</option>
-                            <option value="none">No reminder</option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="updateRemindersBtn">Update Reminders</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Get filter buttons
@@ -530,9 +452,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': '{{ csrf_token() }}'
+                            'X-CSRFToken': '{{ csrf_token }}'
                         },
-                        body: `_method=POST&csrf_token={{ csrf_token() }}`
+                        body: `_method=POST&csrf_token={{ csrf_token }}`
                     });
                     
                     if (response.ok) {
@@ -562,9 +484,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': '{{ csrf_token() }}'
+                            'X-CSRFToken': '{{ csrf_token }}'
                         },
-                        body: `_method=POST&csrf_token={{ csrf_token() }}`
+                        body: `_method=POST&csrf_token={{ csrf_token }}`
                     });
                     
                     if (response.ok) {
@@ -582,136 +504,82 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Search functionality
     let currentSearchText = '';
+    let searchTimeout;
     
     function performSearch() {
-        currentSearchText = document.getElementById('search-tasks').value.toLowerCase();
-        filterTasks();
+        const searchText = document.getElementById('search-tasks').value.trim().toLowerCase();
+        
+        // Only update the URL if the search text has changed
+        if (searchText !== currentSearchText) {
+            currentSearchText = searchText;
+            
+            // Update URL with search parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (searchText) {
+                urlParams.set('search', searchText);
+            } else {
+                urlParams.delete('search');
+            }
+            
+            // Update URL without page reload if possible (using history API)
+            const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+            
+            // Trigger a page reload to apply the search filter on the server side
+            window.location.reload();
+        }
     }
     
-    // Search button click handler
-    document.getElementById('search-button').addEventListener('click', performSearch);
-    
-    // Dynamic search as user types - with debounce for better performance
-    let searchTimeout;
-    document.getElementById('search-tasks').addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(performSearch, 300); // 300ms debounce
-    });
-    
-    // Also trigger search on enter key
-    document.getElementById('search-tasks').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            performSearch();
+    // Initialize search input with current search value from URL
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        
+        if (searchParam) {
+            const searchInput = document.getElementById('search-tasks');
+            if (searchInput) {
+                searchInput.value = searchParam;
+                currentSearchText = searchParam.toLowerCase();
+            }
         }
     });
+    
+    // Search button click handler
+    const searchButton = document.getElementById('search-button');
+    if (searchButton) {
+        searchButton.addEventListener('click', performSearch);
+    }
+    
+    // Dynamic search as user types - with debounce for better performance
+    const searchInput = document.getElementById('search-tasks');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 500); // 500ms debounce
+        });
+        
+        // Also trigger search on enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    }
 });
 </script>
-{% endblock %}
 
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    // Handle the "Select All" checkbox
+    // Handle select all checkbox
     $('#selectAll').on('change', function() {
-        $('.task-checkbox').prop('checked', $(this).is(':checked'));
+        $('.task-checkbox').prop('checked', $(this).prop('checked'));
     });
     
-    // Update "Select All" state based on individual checkboxes
     $(document).on('change', '.task-checkbox', function() {
         $('#selectAll').prop('checked', $('.task-checkbox:checked').length === $('.task-checkbox').length);
     });
-    
-    // Handle the reminder update button
-    $('#updateRemindersBtn').on('click', function() {
-        const selectedTasks = $('.task-checkbox:checked');
-        const reminderOption = $('#reminderOption').val();
-        
-        if (selectedTasks.length === 0) {
-            alert('Please select at least one task to update.');
-            return;
-        }
-        
-        if (!reminderOption) {
-            alert('Please select a reminder option.');
-            return;
-        }
-        
-        // Gather task IDs
-        const taskIds = [];
-        selectedTasks.each(function() {
-            taskIds.push($(this).val());
-        });
-        
-        // Show loading state
-        const updateBtn = $(this);
-        const originalText = updateBtn.text();
-        updateBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...');
-        
-        // Send AJAX request to the API endpoint
-        $.ajax({
-            url: '/api/v1/calendar/sync-reminder-settings',
-            method: 'POST',
-            contentType: 'application/json',
-            headers: {
-                'X-CSRFToken': "{{ csrf_token }}"
-            },
-            data: JSON.stringify({
-                task_ids: taskIds,
-                reminder_option: reminderOption
-            }),
-            success: function(response) {
-                // Show results
-                let successCount = 0;
-                let errorCount = 0;
-                
-                if (response.success && response.results) {
-                    for (const taskId in response.results) {
-                        if (response.results[taskId].success) {
-                            successCount++;
-                        } else {
-                            errorCount++;
-                        }
-                    }
-                    
-                    let message = `Updated ${successCount} task reminder settings successfully.`;
-                    if (errorCount > 0) {
-                        message += ` Failed to update ${errorCount} tasks.`;
-                    }
-                    
-                    alert(message);
-                    
-                    // Reset form and close modal
-                    $('#batchReminderModal').modal('hide');
-                    $('.task-checkbox').prop('checked', false);
-                    $('#selectAll').prop('checked', false);
-                    $('#reminderOption').val('');
-                    
-                    // Reload page to reflect changes
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + (response.error || 'Unknown error occurred'));
-                }
-            },
-            error: function(xhr, status, error) {
-                let errorMessage = 'Error updating reminder settings.';
-                try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    if (errorResponse.error) {
-                        errorMessage += ' ' + errorResponse.error;
-                    }
-                } catch (e) {
-                    // If parsing fails, use generic message
-                    errorMessage += ' Please try again.';
-                }
-                alert(errorMessage);
-                console.error(xhr.responseText);
-            },
-            complete: function() {
-                // Reset button state
-                updateBtn.prop('disabled', false).text(originalText);
-            }
-        });
-    });
 });
 </script>
-{% endblock %} 
+{% endblock %}

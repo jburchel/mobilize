@@ -23,6 +23,7 @@ def index():
     # Get filters from query params
     status_filter = request.args.get('status')
     priority_filter = request.args.get('priority')
+    search_text = request.args.get('search', '').lower().strip()
     
     # Base query for tasks assigned to the current user
     query = Task.query.filter(
@@ -60,6 +61,18 @@ def index():
         except ValueError:
             # If invalid priority provided, log it and ignore the filter
             current_app.logger.warning(f"Invalid priority filter: {priority_filter}")
+    
+    # Apply search filter
+    if search_text:
+        search = f"%{search_text}%"
+        query = query.filter(
+            or_(
+                Task.title.ilike(search),
+                Task.description.ilike(search),
+                Task.related_to.has(Person.name.ilike(search)),
+                Task.related_to.has(Church.name.ilike(search))
+            )
+        )
     
     # Execute query with ordering
     filtered_tasks = query.order_by(Task.due_date.asc()).all()
