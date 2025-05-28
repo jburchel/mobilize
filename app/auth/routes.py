@@ -184,11 +184,14 @@ def google_auth():
 @auth_bp.route('/google/callback')
 def oauth2callback():
     """Handle Google OAuth2 callback."""
+    # Import current_app safely at the beginning of the function
+    from flask import current_app as app
+    
     # Check for error parameter first - Google sends this when there's an auth problem
     error = request.args.get('error')
     if error:
         error_description = request.args.get('error_description', 'Unknown error')
-        current_app.logger.error(f"Google OAuth error: {error} - {error_description}")
+        app.logger.error(f"Google OAuth error: {error} - {error_description}")
         flash(f'Google authentication error: {error_description}', 'danger')
         return redirect(url_for('auth.login'))
     
@@ -208,7 +211,6 @@ def oauth2callback():
         scheme = request.headers.get('X-Forwarded-Proto', 'https')
         
         # Use app logger safely
-        from flask import current_app as app
         app.logger.info(f"OAuth callback received from: {callback_url}")
         app.logger.info(f"Host header: {host}")
         app.logger.info(f"X-Forwarded-Proto: {scheme}")
@@ -217,7 +219,7 @@ def oauth2callback():
         # Validate the state parameter
         state = session.get('state')
         if not state or request.args.get('state') != state:
-            current_app.logger.error("State mismatch in OAuth callback")
+            app.logger.error("State mismatch in OAuth callback")
             flash('Invalid authentication state. Please try again.', 'danger')
             return redirect(url_for('auth.login'))
         
@@ -236,7 +238,7 @@ def oauth2callback():
         
         # Validate email domain for Crossover Global only in production
         email = user_info.get('email', '')
-        current_app.logger.info(f"Email from Google: {email}")
+        app.logger.info(f"Email from Google: {email}")
         
         # TEMPORARY: Bypass domain restriction for all users
         is_dev_mode = True
@@ -246,7 +248,7 @@ def oauth2callback():
             return redirect(url_for('auth.login'))
         
         # Log email being used
-        current_app.logger.info(f"Login attempt with email: {email}")
+        app.logger.info(f"Login attempt with email: {email}")
         
         # Find or create user
         user = User.query.filter_by(email=user_info['email']).first()
@@ -270,17 +272,17 @@ def oauth2callback():
         else:
             # Update existing user's profile image from Google
             if 'picture' in user_info and user_info['picture']:
-                current_app.logger.info(f"Updating profile image for user {user.id} from Google: {user_info['picture']}")
+                app.logger.info(f"Updating profile image for user {user.id} from Google: {user_info['picture']}")
                 
                 # Download and store the image locally instead of just storing the URL
                 try:
                     import requests
                     import os
                     from werkzeug.utils import secure_filename
-                    from flask import current_app
+                    # Use the app variable already imported at the beginning of the function
                     
                     # Create profile images directory if it doesn't exist
-                    profile_images_dir = os.path.join(current_app.static_folder, 'profile_images')
+                    profile_images_dir = os.path.join(app.static_folder, 'profile_images')
                     os.makedirs(profile_images_dir, exist_ok=True)
                     
                     # Download the image
@@ -298,9 +300,9 @@ def oauth2callback():
                         # Update the user's profile image with the local path
                         user.profile_image = url_for('static', filename=f'profile_images/{secure_name}', _external=True)
                         db.session.commit()
-                        current_app.logger.info(f"Successfully downloaded and stored Google profile image for user {user.id}")
+                        app.logger.info(f"Successfully downloaded and stored Google profile image for user {user.id}")
                 except Exception as e:
-                    current_app.logger.error(f"Error downloading Google profile image: {str(e)}")
+                    app.logger.error(f"Error downloading Google profile image: {str(e)}")
                     # Fallback to just storing the URL if download fails
                     user.profile_image = user_info['picture']
                     db.session.commit()
@@ -311,7 +313,7 @@ def oauth2callback():
             from app.auth.google_oauth import store_credentials
             store_credentials(credentials, user.id)
         except Exception as e:
-            current_app.logger.error(f"Error storing credentials: {str(e)}")
+            app.logger.error(f"Error storing credentials: {str(e)}")
             # Continue even if storing credentials fails - we can still log in the user
         
         # Log in the user
@@ -326,7 +328,6 @@ def oauth2callback():
     except Exception as e:
         # Use app logger safely
         from flask import current_app as app
-        app.logger.error(f"Error in OAuth callback: {str(e)}")
         flash(f"Authentication error: {str(e)}", 'danger')
         return redirect(url_for('auth.login'))
 
