@@ -172,6 +172,28 @@ def create_app(test_config=None):
     # Set the custom context-aware task as the default base class for all tasks
     celery_app_instance.Task = ContextTask
 
+    # Initialize Flask extensions
+    db.init_app(app)
+    migrate.init_app(app, db) # Flask-Migrate needs both app and db
+    # Adjust CORS origins as per your actual requirements for production
+    cors.init_app(app, resources={r"/*": {"origins": "*"}}) # Example: Allow all for now, refine later
+    login_manager.init_app(app)
+    jwt.init_app(app)
+    csrf.init_app(app) # Crucial for csrf_token() in templates
+    limiter.init_app(app)
+    # Basic Talisman setup, review and strengthen CSP for production
+    talisman.init_app(app, content_security_policy=None, force_https=os.environ.get('FLASK_ENV') == 'production') 
+    configure_cache(app) # This function from extensions.py calls cache.init_app(app)
+    # mail.init_app(app) # Uncomment and configure if direct mail sending is needed here
+    # scheduler.init_app(app) # Uncomment if APScheduler is used and needs init here
+    # if os.environ.get('FLASK_ENV') != 'testing' and not (scheduler.running and scheduler.app):
+    #    if not scheduler.running:
+    #        scheduler.start()
+    #    elif scheduler.app != app:
+    #        scheduler.shutdown(wait=False)
+    #        scheduler.init_app(app)
+    #        scheduler.start()
+
     # --- Keep Health Check and Debug Endpoints from main ---
     @app.route('/health', methods=['GET'])
     def health_check():
