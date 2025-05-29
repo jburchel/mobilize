@@ -18,7 +18,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix # Add ProxyFix import
 # Configuration imports
 from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig  # noqa: F401
 from app.config.logging_config import setup_logging  # noqa: F401
-from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache
+from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache, scheduler
 from app.auth.firebase import init_firebase
 from app.auth.routes import auth_bp
 from app.routes import blueprints
@@ -157,7 +157,7 @@ def create_app(test_config=None):
     app.logger.info(f"[DATABASE CONNECTION] Using database: {masked_uri}")
 
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
-        app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+    app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
     # Initialize Flask extensions
     db.init_app(app)
