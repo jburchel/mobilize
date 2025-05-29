@@ -135,6 +135,43 @@ def create_app(test_config=None):
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
+    # Celery Configuration
+    # Import celery instance from app.extensions
+    from app.extensions import celery as celery_app_instance # Use an alias
+
+    # Define a context-aware task base class
+    class ContextTask(celery_app_instance.Task):
+        abstract = True # Ensure this is an abstract class
+        def __call__(self, *args, **kwargs):
+            with app.app_context(): # Ensures task runs within Flask app context
+                return self.run(*args, **kwargs)
+
+    # Get Celery broker URL from environment variables
+    celery_broker_url = os.environ.get('CELERY_BROKER_URL')
+
+    if not celery_broker_url:
+        # Log a warning if no broker URL is set and configure for eager execution
+        logging.warning(
+            "CELERY_BROKER_URL not set or empty. "
+            "Celery will run tasks eagerly (synchronously) in the current process. "
+            "This is suitable for development or environments without a message broker."
+        )
+        celery_app_instance.conf.update(
+            task_always_eager=True,
+            task_eager_propagates=True  # If True, exceptions in eager tasks will propagate
+        )
+    else:
+        # Log that Celery is configured with a broker
+        logging.info(f"Celery configured with broker URL: {celery_broker_url}")
+        celery_app_instance.conf.update(
+            broker_url=celery_broker_url,
+            # Use broker_url as default for result_backend if CELERY_RESULT_BACKEND is not set
+            result_backend=os.environ.get('CELERY_RESULT_BACKEND', celery_broker_url)
+        )
+    
+    # Set the custom context-aware task as the default base class for all tasks
+    celery_app_instance.Task = ContextTask
+
     # --- Keep Health Check and Debug Endpoints from main ---
     @app.route('/health', methods=['GET'])
     def health_check():
