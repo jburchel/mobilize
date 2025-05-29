@@ -81,7 +81,16 @@ def create_app(test_config=None):
 
     # Load configuration (Keep logic from development)
     env = os.getenv('FLASK_ENV', 'development')
+    app.logger.info(f"[ENV_DEBUG] FLASK_ENV is '{env}'. Entered '{env}' configuration block.")
     secrets = access_secrets()
+    
+    # Debug: List all environment variables to help troubleshoot
+    app.logger.info("[ENV_DEBUG] Listing all environment variable names:")
+    env_var_names = list(os.environ.keys())
+    for name in env_var_names:
+        if 'client' in name.lower() or 'google' in name.lower() or 'secret' in name.lower():
+            # Only log names that might be related to our issue, for security
+            app.logger.info(f"[ENV_DEBUG] Found environment variable: {name}")
     
     # Check if we're running in Cloud Run
     is_cloud_run = os.environ.get('K_SERVICE') is not None
@@ -111,15 +120,47 @@ def create_app(test_config=None):
         if not db_uri:
             app.logger.error("CRITICAL: DATABASE_URL is not set for production environment!")
         
-        # ---- START DETAILED AUTH LOGGING (PRE-CONFIG) ----
-        raw_env_client_id = os.environ.get('mobilize-google-client-id')
-        raw_env_client_secret_val = os.environ.get('mobilize-google-client-secret') # Get the actual value to check existence
-        app.logger.info(f"[AUTH_DEBUG_ENV] Raw os.environ.get('mobilize-google-client-id'): '{raw_env_client_id}'")
+        # Add OAuth credentials to app config - try multiple environment variable name formats
+        # The issue might be that environment variables with hyphens don't work as expected
+        possible_client_id_names = [
+            'mobilize-google-client-id',  # Original name with hyphens
+            'MOBILIZE_GOOGLE_CLIENT_ID',  # Uppercase with underscores (common env var format)
+            'mobilize_google_client_id',  # Lowercase with underscores
+            'GOOGLE_CLIENT_ID',          # Direct name without prefix
+            'google-client-id'           # Lowercase with hyphens, no prefix
+        ]
+        
+        possible_client_secret_names = [
+            'mobilize-google-client-secret',  # Original name with hyphens
+            'MOBILIZE_GOOGLE_CLIENT_SECRET',  # Uppercase with underscores
+            'mobilize_google_client_secret',  # Lowercase with underscores
+            'GOOGLE_CLIENT_SECRET',          # Direct name without prefix
+            'google-client-secret'           # Lowercase with hyphens, no prefix
+        ]
+        
+        # Try each possible name for client ID
+        raw_env_client_id = None
+        for var_name in possible_client_id_names:
+            value = os.environ.get(var_name)
+            if value:
+                raw_env_client_id = value
+                app.logger.info(f"[AUTH_DEBUG_ENV] Found Google Client ID in environment variable: {var_name}")
+                break
+        
+        # Try each possible name for client secret
+        raw_env_client_secret_val = None
+        for var_name in possible_client_secret_names:
+            value = os.environ.get(var_name)
+            if value:
+                raw_env_client_secret_val = value
+                app.logger.info(f"[AUTH_DEBUG_ENV] Found Google Client Secret in environment variable: {var_name}")
+                break
+                
+        app.logger.info(f"[AUTH_DEBUG_ENV] Google Client ID found: {bool(raw_env_client_id)}")
         app.logger.info(f"[AUTH_DEBUG_ENV] Raw os.environ.get('mobilize-google-client-secret') exists: {bool(raw_env_client_secret_val)}")
         if not raw_env_client_id:
             app.logger.error("[AUTH_DEBUG_ENV] CRITICAL: 'mobilize-google-client-id' NOT FOUND in os.environ!")
-        # ---- END DETAILED AUTH LOGGING (PRE-CONFIG) ----
-
+        
         app.config.update(
             SECRET_KEY=secrets.get('SECRET_KEY', app.config.get('SECRET_KEY')),
             SQLALCHEMY_DATABASE_URI=db_uri,
