@@ -388,13 +388,7 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_now():
         return {'now': datetime.datetime.now()}
-    @app.context_processor
-    def inject_csrf_token():
-        token = generate_csrf()
-        return {
-            'csrf_token': token,
-            'csrf_token_field': f'<input type="hidden" name="csrf_token" value="{token}">',
-        }
+
     @app.context_processor
     def inject_pipeline_utilities():
         from app.extensions import db
