@@ -188,6 +188,7 @@ def create_app(test_config=None):
     configure_cache(app) # This initializes cache.init_app(app) internally
 
     # Initialize our custom database transaction fix *after* db is initialized
+    # This fixes the 'Textual SQL expression' error with SELECT 1
     init_db_transaction_fix(app)
     app.logger.info("Initialized Flask extensions and DB transaction fix.")
 
