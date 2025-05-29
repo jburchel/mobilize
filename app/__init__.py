@@ -17,7 +17,7 @@ from dotenv import load_dotenv, find_dotenv
 # Configuration imports
 from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig  # noqa: F401
 from app.config.logging_config import setup_logging  # noqa: F401
-from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache, celery as celery_app_instance
+from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache
 from app.auth.firebase import init_firebase
 from app.auth.routes import auth_bp
 from app.routes import blueprints
@@ -66,6 +66,10 @@ def access_secrets():
     except Exception as e:
         logging.error(f"Error initializing secret manager: {str(e)}")
     return secrets
+
+# Initialize extensions that aren't in extensions.py
+# (Remove this as we're using the ones from extensions.py)
+
 def create_app(test_config=None):
     """Create and configure the Flask application"""
     
@@ -227,36 +231,6 @@ def create_app(test_config=None):
     else:
          app.logger.warning("SQLALCHEMY_DATABASE_URI not configured!")
 
-    # Configure Celery instance from app.extensions
-    # Update Celery configuration from Flask app config
-    # Filter for CELERY_ prefixed keys and convert them to lowercase for Celery config
-    celery_flask_config = {key.lower(): value for key, value in app.config.items() if key.startswith('CELERY_')}
-
-    if 'celery_broker_url' in celery_flask_config and celery_flask_config['celery_broker_url']:
-        app.logger.info(f"Configuring Celery with broker: {celery_flask_config['celery_broker_url']}")
-        # Ensure task_always_eager is False if a broker is set (it's Celery's default, but good to be explicit if overriding)
-        celery_flask_config.setdefault('task_always_eager', False) 
-    else:
-        app.logger.warning(
-            "CELERY_BROKER_URL not found or is empty in app.config. "
-            "Configuring Celery for eager execution (tasks run synchronously). "
-            "Set CELERY_BROKER_URL to connect to a message broker for asynchronous tasks."
-        )
-        celery_flask_config['task_always_eager'] = True
-        # Optionally, set a default in-memory broker/backend for eager mode if Celery requires them
-        # celery_flask_config.setdefault('broker_url', 'memory://') # For Celery < 5, 'memory' was an option. For >=5, use 'redis://localhost/0' or similar if needed, or just eager.
-        # celery_flask_config.setdefault('result_backend', 'cache+memory://') # If using Flask-Caching as a backend
-
-    celery_app_instance.conf.update(celery_flask_config)
-    celery_app_instance.flask_app = app  # Link Flask app to Celery instance
-
-    # Define the ContextTask to ensure tasks run within Flask app context
-    class ContextTask(celery_app_instance.Task):
-        abstract = True  # Make it an abstract task
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return self.run(*args, **kwargs)
-    celery_app_instance.Task = ContextTask
 
     # Initialize Flask extensions (Combined section)
     try:
