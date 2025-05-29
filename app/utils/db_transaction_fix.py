@@ -5,6 +5,7 @@ This module adds request handlers to automatically rollback aborted transactions
 
 from flask import g
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text # Add this import
 from app.extensions import db
 import logging
 
@@ -36,7 +37,7 @@ def init_app(app):
                     
                     # Try a simple query to verify the connection is working
                     try:
-                        db.session.execute("SELECT 1")
+                        db.session.execute(text("SELECT 1"))
                         logger.info("Database connection verified after rollback")
                     except Exception as verify_error:
                         logger.error(f"Connection still broken after rollback: {str(verify_error)}")
@@ -76,7 +77,7 @@ def init_app(app):
             # Check if we need to rollback any existing transaction
             try:
                 # Try a simple query to check if the session is usable
-                db.session.execute("SELECT 1")
+                db.session.execute(text("SELECT 1"))
                 logger.debug("Database session verified at request start")
             except SQLAlchemyError as e:
                 logger.warning(f"Database session error detected, rolling back: {str(e)}")

@@ -14,6 +14,7 @@ from flask_limiter import Limiter  # noqa: F401
 from flask_limiter.util import get_remote_address  # noqa: F401
 from flask_talisman import Talisman  # noqa: F401
 from dotenv import load_dotenv, find_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix # Add ProxyFix import
 # Configuration imports
 from app.config.config import Config, TestingConfig, ProductionConfig, DevelopmentConfig  # noqa: F401
 from app.config.logging_config import setup_logging  # noqa: F401
@@ -74,6 +75,8 @@ def create_app(test_config=None):
     """Create and configure the Flask application"""
     
     app = Flask(__name__, instance_relative_config=True)
+    # Apply ProxyFix to handle X-Forwarded-Proto and X-Forwarded-Host headers
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     # Load configuration (Keep logic from development)
     env = os.getenv('FLASK_ENV', 'development')

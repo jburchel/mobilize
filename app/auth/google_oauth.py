@@ -27,37 +27,46 @@ def get_oauth_redirect_uri():
     Get the OAuth redirect URI, handling various environments properly.
     
     This function handles redirect URIs for different environments:
-    - Cloud Run
-    - Custom domains
-    - Local development
+    - Production (Cloud Run with custom domain or standard Cloud Run URL)
+    - Local development (optionally with BASE_URL for ngrok/custom local setups)
     """
-    # Get the host from the request headers
-    host = request.headers.get('Host', '')
-    scheme = request.headers.get('X-Forwarded-Proto', 'https')
+    # With ProxyFix, request.scheme and request.host should be reliable.
+    # X-Forwarded-Proto and Host headers are used by ProxyFix to set these.
     
-    # Log the host and scheme for debugging
-    current_app.logger.info(f"OAuth Redirect - Host: {host}, Scheme: {scheme}")
+    flask_env = os.environ.get('FLASK_ENV', 'development')
     
-    # Check if we're running on Cloud Run
-    if 'run.app' in host:
-        redirect_uri = f"https://{host}/api/auth/google/callback"
-        current_app.logger.info(f"Using Cloud Run redirect URI: {redirect_uri}")
+    if flask_env == 'production':
+        # In production, always use the scheme and host from the request,
+        # which ProxyFix should have set correctly based on X-Forwarded headers.
+        # This handles both '.run.app' domains and custom domains like 'mobilize-crm.org'.
+        scheme = request.scheme # Should be 'https' on Cloud Run
+        host = request.host     # Should be 'mobilize-crm.org' or '*.run.app'
+        redirect_uri = f"{scheme}://{host}/api/auth/google/callback"
+        current_app.logger.info(f"[PROD] Using redirect URI from request.scheme and request.host: {redirect_uri}")
         return redirect_uri
-    
-    # For production with custom domain or local development, use the BASE_URL from environment variables
-    base_url = os.environ.get('BASE_URL') or current_app.config.get('BASE_URL')
-    if base_url:
-        # Ensure HTTPS for production
-        if os.environ.get('FLASK_ENV') == 'production' and not base_url.startswith('https://'):
-            base_url = base_url.replace('http://', 'https://')
-        redirect_uri = f"{base_url}/api/auth/google/callback"
-        current_app.logger.info(f"Using BASE_URL redirect URI: {redirect_uri}")
-        return redirect_uri
-    
-    # Fallback to Flask's url_for
-    redirect_uri = url_for('auth.oauth2callback', _external=True)
-    current_app.logger.info(f"Using fallback redirect URI: {redirect_uri}")
-    return redirect_uri
+    else: # Development or other environments
+        current_app.logger.info(f"[DEV/OTHER] FLASK_ENV is '{flask_env}'. Checking for BASE_URL.")
+        # For local development, allow BASE_URL from environment or config for ngrok/custom setups
+        base_url = os.environ.get('BASE_URL') or current_app.config.get('BASE_URL')
+        if base_url:
+            # Ensure scheme is present, default to http if not specified for local dev
+            if not base_url.startswith(('http://', 'https://')):
+                base_url = f"http://{base_url}"
+            redirect_uri = f"{base_url}/api/auth/google/callback"
+            current_app.logger.info(f"[DEV/OTHER] Using BASE_URL redirect URI: {redirect_uri}")
+            return redirect_uri
+        
+        # Fallback to Flask's url_for for local development if no BASE_URL
+        # This will typically generate http://localhost:port or http://127.0.0.1:port
+        try:
+            redirect_uri = url_for('auth.oauth2callback', _external=True)
+            current_app.logger.info(f"[DEV/OTHER] Using fallback redirect URI from url_for: {redirect_uri}")
+            return redirect_uri
+        except RuntimeError as e:
+            # This can happen if url_for is called outside of a request context or SERVER_NAME is not set
+            current_app.logger.error(f"[DEV/OTHER] RuntimeError generating redirect_uri with url_for: {e}. Defaulting to hardcoded localhost.")
+            # As a last resort for development, if url_for fails (e.g. no request context during setup)
+            return "http://localhost:8000/api/auth/google/callback"
 
 def create_oauth_flow():
     """Create a Google OAuth2 flow instance."""
