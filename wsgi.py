@@ -56,6 +56,7 @@ from app.models.office import Office
 from app.models.user import User
 from app.utils.setup_main_pipelines import setup_main_pipelines
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy import text
 
 # Create the Flask application
 app = create_app()
@@ -66,7 +67,7 @@ def wait_for_db_connection(app, max_retries=5, delay=2):
         try:
             # Try to execute a simple query to check the connection
             with app.app_context():
-                db.session.execute('SELECT 1')
+                db.session.execute(text('SELECT 1'))
             logger.info("Successfully connected to the database.")
             return True
         except OperationalError as e:

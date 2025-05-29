@@ -159,20 +159,45 @@ def create_app(test_config=None):
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
-    # Initialize Flask extensions
-    db.init_app(app)
-    migrate.init_app(app, db)  # Flask-Migrate needs both app and db
-    # Adjust CORS origins as needed for production
-    cors.init_app(app, resources={r"/api/*": {"origins": app.config.get('CORS_ORIGINS', '*')}})
-    login_manager.init_app(app)
-    jwt.init_app(app)
-    csrf.init_app(app)
-    if not app.config.get('TESTING', False): # APScheduler can cause issues in tests if not handled
-        scheduler.init_app(app)
-        scheduler.start()
-    limiter.init_app(app)
-    # Basic Talisman setup. Review and strengthen CSP for production.
-    talisman.init_app(app, content_security_policy=app.config.get('TALISMAN_CSP', None))
+    # Initialize Flask extensions - only if they haven't been initialized yet
+    # Check if db is already initialized with this app
+    if not hasattr(app, '_got_first_request'):
+        # Flask-SQLAlchemy
+        try:
+            db.init_app(app)
+            app.logger.info("Initialized Flask-SQLAlchemy extension.")
+        except RuntimeError as e:
+            app.logger.info(f"Flask-SQLAlchemy already initialized: {str(e)}")
+        
+        # Flask-Migrate
+        migrate.init_app(app, db)  # Flask-Migrate needs both app and db
+        
+        # Flask-CORS
+        # Adjust CORS origins as needed for production
+        cors.init_app(app, resources={r"/api/*": {"origins": app.config.get('CORS_ORIGINS', '*')}})
+        
+        # Flask-Login
+        login_manager.init_app(app)
+        
+        # Flask-JWT-Extended
+        jwt.init_app(app)
+        
+        # Flask-WTF CSRF Protection
+        csrf.init_app(app)
+        
+        # APScheduler
+        if not app.config.get('TESTING', False): # APScheduler can cause issues in tests if not handled
+            scheduler.init_app(app)
+            scheduler.start()
+        
+        # Flask-Limiter
+        limiter.init_app(app)
+        
+        # Flask-Talisman (HTTPS/security headers)
+        # Basic Talisman setup. Review and strengthen CSP for production.
+        talisman.init_app(app, content_security_policy=app.config.get('TALISMAN_CSP', None))
+        
+        app.logger.info("All Flask extensions initialized successfully.")
 
     # Initialize mail: Use MailStub for dev/test, real Mail for prod
     if app.config.get('ENV') in ['development', 'testing'] or not app.config.get('MAIL_SERVER') or app.config.get('TESTING'):
