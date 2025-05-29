@@ -113,6 +113,15 @@ def create_app(test_config=None):
             GOOGLE_CLIENT_SECRET=os.environ.get('mobilize-google-client-secret'),
         )
         app.logger.info(f'Database URI set to: {db_uri and db_uri[:10]}...')
+
+        # ---- START NEW TEMPORARY LOGGING ----
+        loaded_client_id = app.config.get('GOOGLE_CLIENT_ID')
+        client_secret_is_set = bool(app.config.get('GOOGLE_CLIENT_SECRET'))
+        app.logger.info(f"[AUTH_DEBUG] Attempting to use GOOGLE_CLIENT_ID: '{loaded_client_id}'")
+        app.logger.info(f"[AUTH_DEBUG] GOOGLE_CLIENT_SECRET is set: {client_secret_is_set}")
+        if not loaded_client_id:
+            app.logger.error("[AUTH_DEBUG] CRITICAL: GOOGLE_CLIENT_ID is NOT SET in app.config!")
+        # ---- END NEW TEMPORARY LOGGING ----
     elif env == 'testing':
         app.config.from_object(TestingConfig)
     else: # Development or default
