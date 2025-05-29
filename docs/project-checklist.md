@@ -338,5 +338,4 @@
 
 ✅ Phase 7 Complete when: Application is stable and users are satisfied
 
-- [x] Fix Flask-Login AttributeError (login_manager)
-- [x] Fix Internal Server Error on Communications page
+- [x] Fix Flask-Login AttributeError (login_manager) 
