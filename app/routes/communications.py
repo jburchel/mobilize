@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from sqlalchemy import false as sql_false
 from app.models.communication import Communication
 from app.models.person import Person
 from app.models.church import Church
@@ -92,19 +91,7 @@ def index():
     
     # Filter by office if not super admin
     if current_user.role != 'super_admin':
-        if current_user.office and hasattr(current_user.office, 'id'):
-            query = query.filter(Communication.office_id == current_user.office.id)
-        else:
-            # This case means current_user.office is None or doesn't have an id.
-            # This would happen if User.office_id (the FK column) is NULL or contains
-            # a value (like a UUID string) that doesn't correctly join to an Office record (with an Integer id).
-            current_app.logger.warning(
-                f"User {current_user.id} (office_id: {current_user.office_id}) "
-                f"does not have a resolvable office relationship. "
-                f"Cannot filter communications by office for this user."
-            )
-            # This ensures no communications are returned if the office link is broken.
-            query = query.filter(sql_false())
+        query = query.filter(Communication.office_id == current_user.office_id)
     
     # Order by date sent descending
     query = query.order_by(Communication.date_sent.desc())
