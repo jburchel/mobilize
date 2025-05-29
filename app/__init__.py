@@ -31,6 +31,7 @@ from app.utils.setup_main_pipelines import setup_main_pipelines
 from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main_pipeline
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
+from app.utils.db_transaction_fix import init_app as init_db_transaction_fix
 
 # Import performance optimizations
 from app.config.performance_optimizations import optimize_flask_app
@@ -156,7 +157,39 @@ def create_app(test_config=None):
     app.logger.info(f"[DATABASE CONNECTION] Using database: {masked_uri}")
 
     # Ensure SQLALCHEMY_TRACK_MODIFICATIONS is disabled
-    app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+        app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+
+    # Initialize Flask extensions
+    db.init_app(app)
+    migrate.init_app(app, db)  # Flask-Migrate needs both app and db
+    # Adjust CORS origins as needed for production
+    cors.init_app(app, resources={r"/api/*": {"origins": app.config.get('CORS_ORIGINS', '*')}})
+    login_manager.init_app(app)
+    jwt.init_app(app)
+    csrf.init_app(app)
+    if not app.config.get('TESTING', False): # APScheduler can cause issues in tests if not handled
+        scheduler.init_app(app)
+        scheduler.start()
+    limiter.init_app(app)
+    # Basic Talisman setup. Review and strengthen CSP for production.
+    talisman.init_app(app, content_security_policy=app.config.get('TALISMAN_CSP', None))
+
+    # Initialize mail: Use MailStub for dev/test, real Mail for prod
+    if app.config.get('ENV') in ['development', 'testing'] or not app.config.get('MAIL_SERVER') or app.config.get('TESTING'):
+        from app.extensions import MailStub
+        app.mail = MailStub() # Assign to app.mail directly for consistency
+        app.logger.info("Using MailStub for email.")
+    else:
+        from app.extensions import mail # import mail instance
+        mail.init_app(app)
+        app.mail = mail # Assign to app.mail
+        app.logger.info("Flask-Mail initialized for sending emails.")
+    
+    configure_cache(app) # This initializes cache.init_app(app) internally
+
+    # Initialize our custom database transaction fix *after* db is initialized
+    init_db_transaction_fix(app)
+    app.logger.info("Initialized Flask extensions and DB transaction fix.")
 
     # Celery Configuration
     # Import celery instance from app.extensions
