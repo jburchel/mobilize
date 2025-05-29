@@ -20,7 +20,7 @@ cors = CORS()
 login_manager = LoginManager()
 jwt = JWTManager()
 csrf = CSRFProtect()
-celery = Celery('app')
+celery = Celery()  # Initialize Celery object, full configuration in app/__init__.py
 scheduler = APScheduler()
 mail = Mail()  # Initialize Flask-Mail
 limiter = Limiter(key_func=get_remote_address)
