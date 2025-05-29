@@ -100,28 +100,39 @@ def create_app(test_config=None):
         else:
             app.config.from_object(test_config)
     elif env == 'production':
+        app.logger.info(f"[ENV_DEBUG] FLASK_ENV is '{env}'. Entered 'production' configuration block.")
         app.config.from_object(ProductionConfig)
         # Always use DATABASE_URL directly from environment variables for production
         db_uri = os.environ.get('DATABASE_URL')
         if not db_uri:
             app.logger.error("CRITICAL: DATABASE_URL is not set for production environment!")
         
+        # ---- START DETAILED AUTH LOGGING (PRE-CONFIG) ----
+        raw_env_client_id = os.environ.get('mobilize-google-client-id')
+        raw_env_client_secret_val = os.environ.get('mobilize-google-client-secret') # Get the actual value to check existence
+        app.logger.info(f"[AUTH_DEBUG_ENV] Raw os.environ.get('mobilize-google-client-id'): '{raw_env_client_id}'")
+        app.logger.info(f"[AUTH_DEBUG_ENV] Raw os.environ.get('mobilize-google-client-secret') exists: {bool(raw_env_client_secret_val)}")
+        if not raw_env_client_id:
+            app.logger.error("[AUTH_DEBUG_ENV] CRITICAL: 'mobilize-google-client-id' NOT FOUND in os.environ!")
+        # ---- END DETAILED AUTH LOGGING (PRE-CONFIG) ----
+
         app.config.update(
             SECRET_KEY=secrets.get('SECRET_KEY', app.config.get('SECRET_KEY')),
             SQLALCHEMY_DATABASE_URI=db_uri,
-            GOOGLE_CLIENT_ID=os.environ.get('mobilize-google-client-id'),
-            GOOGLE_CLIENT_SECRET=os.environ.get('mobilize-google-client-secret'),
+            GOOGLE_CLIENT_ID=raw_env_client_id, # Use the already fetched value
+            GOOGLE_CLIENT_SECRET=raw_env_client_secret_val, # Use the already fetched value
         )
-        app.logger.info(f'Database URI set to: {db_uri and db_uri[:10]}...')
+        app.logger.info(f'Database URI set to: {db_uri and db_uri[:10]}...') # This log was seen
 
-        # ---- START NEW TEMPORARY LOGGING ----
-        loaded_client_id = app.config.get('GOOGLE_CLIENT_ID')
-        client_secret_is_set = bool(app.config.get('GOOGLE_CLIENT_SECRET'))
-        app.logger.info(f"[AUTH_DEBUG] Attempting to use GOOGLE_CLIENT_ID: '{loaded_client_id}'")
-        app.logger.info(f"[AUTH_DEBUG] GOOGLE_CLIENT_SECRET is set: {client_secret_is_set}")
-        if not loaded_client_id:
-            app.logger.error("[AUTH_DEBUG] CRITICAL: GOOGLE_CLIENT_ID is NOT SET in app.config!")
-        # ---- END NEW TEMPORARY LOGGING ----
+        # ---- START DETAILED AUTH LOGGING (POST-CONFIG) ----
+        loaded_config_client_id = app.config.get('GOOGLE_CLIENT_ID')
+        config_client_secret_is_set = bool(app.config.get('GOOGLE_CLIENT_SECRET')) # Check if it's set in config
+        app.logger.info(f"[AUTH_DEBUG_CONFIG] app.config.get('GOOGLE_CLIENT_ID'): '{loaded_config_client_id}'")
+        app.logger.info(f"[AUTH_DEBUG_CONFIG] app.config.get('GOOGLE_CLIENT_SECRET') is set in app.config: {config_client_secret_is_set}")
+
+        if not loaded_config_client_id: # Check after trying to load into app.config
+            app.logger.error("[AUTH_DEBUG_CONFIG] CRITICAL: GOOGLE_CLIENT_ID is NOT SET in app.config (after attempting to set from env)!")
+        # ---- END DETAILED AUTH LOGGING (POST-CONFIG) ----
     elif env == 'testing':
         app.config.from_object(TestingConfig)
     else: # Development or default
