@@ -109,8 +109,8 @@ def create_app(test_config=None):
         app.config.update(
             SECRET_KEY=secrets.get('SECRET_KEY', app.config.get('SECRET_KEY')),
             SQLALCHEMY_DATABASE_URI=db_uri,
-            GOOGLE_CLIENT_ID=secrets.get('GOOGLE_CLIENT_ID', os.environ.get('mobilize-google-client-id')),
-            GOOGLE_CLIENT_SECRET=secrets.get('GOOGLE_CLIENT_SECRET', os.environ.get('mobilize-google-client-secret')),
+            GOOGLE_CLIENT_ID=os.environ.get('mobilize-google-client-id'),
+            GOOGLE_CLIENT_SECRET=os.environ.get('mobilize-google-client-secret'),
         )
         app.logger.info(f'Database URI set to: {db_uri and db_uri[:10]}...')
     elif env == 'testing':
