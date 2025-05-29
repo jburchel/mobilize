@@ -413,22 +413,68 @@ def edit(id):
 @login_required
 def complete(id):
     """Mark a task as completed."""
-    task = Task.query.get_or_404(id)
-    
-    # Update the task
-    task.status = TaskStatus.COMPLETED
-    task.completed_at = datetime.now()
-    
-    # Add completion notes if provided
-    completion_notes = request.form.get('completion_notes')
-    if completion_notes:
-        task.completion_notes = completion_notes
+    try:
+        current_app.logger.info(f'Task completion requested for task ID: {id}')
         
-    task.updated_at = datetime.now()
-    db.session.commit()
-    
-    flash('Task marked as completed!', 'success')
-    return redirect(url_for('tasks.index'))
+        # Get CSRF token from form data or header
+        csrf_token = request.form.get('csrf_token') or request.headers.get('X-CSRFToken')
+        current_app.logger.debug(f'CSRF token received: {bool(csrf_token)}')
+        
+        # Verify CSRF token
+        if not csrf_token or csrf_token != session.get('_csrf_token'):
+            current_app.logger.error('CSRF token missing or invalid')
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Security token is invalid. Please refresh the page and try again.'
+                }), 403
+            flash('Security token is invalid. Please refresh the page and try again.', 'error')
+            return redirect(request.referrer or url_for('tasks.index'))
+        
+        task = Task.query.get_or_404(id)
+        current_app.logger.info(f'Found task: {task.title} (ID: {task.id})')
+        
+        # Update the task
+        task.status = TaskStatus.COMPLETED
+        task.completed_at = datetime.now()
+        task.updated_at = datetime.now()
+        
+        # Add completion notes if provided
+        if request.is_json and request.json:
+            completion_notes = request.json.get('completion_notes')
+        else:
+            completion_notes = request.form.get('completion_notes')
+            
+        if completion_notes:
+            task.completion_notes = completion_notes
+        
+        db.session.commit()
+        current_app.logger.info(f'Task {task.id} marked as completed')
+        
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'status': 'success',
+                'message': 'Task marked as completed!',
+                'task_id': task.id,
+                'status_display': task.status_display
+            })
+            
+        flash('Task marked as completed!', 'success')
+        return redirect(request.referrer or url_for('tasks.index'))
+        
+    except Exception as e:
+        db.session.rollback()
+        error_msg = f'Error completing task {id}: {str(e)}'
+        current_app.logger.error(error_msg, exc_info=True)
+        
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'status': 'error',
+                'message': 'An error occurred while completing the task. Please try again.'
+            }), 500
+            
+        flash('An error occurred while completing the task. Please try again.', 'error')
+        return redirect(request.referrer or url_for('tasks.index'))
 
 @tasks_bp.route('/send_reminders', methods=['GET'])
 @login_required

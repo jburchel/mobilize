@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from app.models.user import User
 from app.extensions import db
 from app.auth.firebase import auth_required, admin_required
@@ -117,11 +117,34 @@ def update_preferences(user_id):
 def update_signature(user_id):
     """Update user email signature."""
     try:
+        from app.models.email_signature import EmailSignature
+        
         user = User.query.get_or_404(user_id)
         data = request.get_json()
-        user.email_signature = data.get('signature')
+        signature_content = data.get('signature')
+        
+        # Get or create the default signature
+        signature = EmailSignature.query.filter_by(
+            user_id=user.id,
+            is_default=True
+        ).first()
+        
+        if not signature:
+            # Create a new default signature if none exists
+            signature = EmailSignature(
+                name='Default',
+                content=signature_content,
+                is_default=True,
+                user_id=user.id
+            )
+            db.session.add(signature)
+        else:
+            # Update existing signature
+            signature.content = signature_content
+        
         db.session.commit()
         return jsonify({'message': 'Signature updated successfully'}), 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 400 
+        current_app.logger.error(f'Error updating email signature: {str(e)}')
+        return jsonify({'error': 'Failed to update email signature'}), 400

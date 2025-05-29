@@ -299,8 +299,8 @@
                                             <td>{{ task.status_display }}</td>
                                             <td>
                                                 <div class="btn-group" onclick="event.stopPropagation();">
-                                                    <button class="btn btn-sm btn-success" title="Mark as Complete"
-                                                            onclick="event.stopPropagation(); completeTask({{ task.id }});">
+                                                    <button class="btn btn-sm btn-success complete-task-btn" title="Mark as Complete"
+                                                            onclick="event.stopPropagation(); completeTask({{ task.id }}, this);">
                                                         <i class="bi bi-check-lg"></i>
                                                     </button>
                                                     <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-primary" title="View/Edit Task">
@@ -704,24 +704,62 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Task completion handler
-    window.completeTask = function(taskId) {
+    window.completeTask = function(taskId, buttonElement) {
+        console.log('completeTask called with taskId:', taskId);
+        
         if (confirm('Mark this task as complete?')) {
-            // Create a form element to submit the request
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/tasks/complete/${taskId}`;
-            
-            // Add CSRF token
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = '{{ csrf_token() }}';
-            form.appendChild(csrfInput);
-            
-            // Add to document and submit
-            document.body.appendChild(form);
-            form.submit();
+            try {
+                // Get CSRF token from meta tag
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
+                
+                if (!csrfToken) {
+                    console.error('CSRF token not found');
+                    alert('Error: Security token missing. Please refresh the page and try again.');
+                    return false;
+                }
+                
+                // Disable the button to prevent multiple clicks
+                if (buttonElement) {
+                    buttonElement.disabled = true;
+                    buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Completing...';
+                }
+                
+                // Use AJAX to submit the request
+                $.ajax({
+                    url: `/tasks/complete/${taskId}`,
+                    type: 'POST',
+                    data: {
+                        csrf_token: csrfToken,
+                        completion_notes: ''
+                    },
+                    success: function(response, status, xhr) {
+                        console.log('Task completion successful', response);
+                        // Reload the page to show the updated task status
+                        window.location.reload();
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error completing task:', error);
+                        alert('Failed to mark task as complete. Please try again.');
+                        if (buttonElement) {
+                            buttonElement.disabled = false;
+                            buttonElement.innerHTML = '<i class="bi bi-check-lg"></i>';
+                        }
+                    }
+                });
+                
+                return false; // Prevent default form submission
+            } catch (error) {
+                console.error('Error in completeTask:', error);
+                alert('An error occurred while processing your request. Please try again.');
+                if (buttonElement) {
+                    buttonElement.disabled = false;
+                    buttonElement.innerHTML = '<i class="bi bi-check-lg"></i>';
+                }
+                return false;
+            }
         }
+        return false; // Prevent default if not confirmed
     };
     
     // Make table rows clickable

@@ -3,8 +3,8 @@ from flask_login import login_required, current_user
 from app.models.communication import Communication
 from app.models.person import Person
 from app.models.church import Church
-from app.models.email_template import EmailTemplate
 from app.models.email_signature import EmailSignature
+from app.models.email_template import EmailTemplate
 from app.extensions import db, cache
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import text
