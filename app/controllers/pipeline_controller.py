@@ -916,10 +916,13 @@ def move_contact_api(contact_id):
         
         # Get the new stage ID - prioritize form data
         new_stage_id = None
+        notes = ''  # Initialize notes with empty string
+        data = {}  # Initialize data as empty dict to avoid reference errors
         
         # Check form data first
         if request.form and 'stage_id' in request.form:
             new_stage_id = request.form.get('stage_id')
+            notes = request.form.get('notes', '')  # Get notes from form if available
             current_app.logger.info(f"Found stage_id in form data: {new_stage_id}")
         
         # If not in form, try JSON
@@ -927,11 +930,13 @@ def move_contact_api(contact_id):
             data = request.get_json()
             if data and 'stage_id' in data:
                 new_stage_id = data.get('stage_id')
+                notes = data.get('notes', '')  # Get notes from JSON if available
                 current_app.logger.info(f"Found stage_id in JSON: {new_stage_id}")
         
         # Finally, check query parameters
         if not new_stage_id and request.args and 'stage_id' in request.args:
             new_stage_id = request.args.get('stage_id')
+            notes = request.args.get('notes', '')  # Get notes from query params if available
             current_app.logger.info(f"Found stage_id in query parameters: {new_stage_id}")
         
         current_app.logger.info(f"Final stage_id value: {new_stage_id}")
@@ -953,9 +958,6 @@ def move_contact_api(contact_id):
         # Verify stage belongs to this pipeline
         if new_stage.pipeline_id != pipeline_contact.pipeline_id:
             return jsonify({'success': False, 'message': 'Stage not in this pipeline'})
-        
-        # Get notes if provided
-        notes = data.get('notes', '')
         
         # Get the old stage
         old_stage = PipelineStage.query.get(pipeline_contact.current_stage_id)
