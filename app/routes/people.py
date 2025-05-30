@@ -52,8 +52,41 @@ def index():
         people = query.order_by(Person.last_name, Person.first_name).all()
         current_app.logger.info(f"Found {len(people)} people matching the criteria")
         
-        # The current_pipeline_stage property will now handle getting the latest pipeline stage
-        # No need to manually set it here anymore
+        # Preload pipeline data to avoid N+1 query problem
+        try:
+            # First, get the main pipeline
+            main_pipeline = Pipeline.query.filter_by(pipeline_type="people", is_main_pipeline=True).first()
+            if main_pipeline:
+                # Get all pipeline contacts for these people in one query
+                person_ids = [person.id for person in people]
+                pipeline_contacts = PipelineContact.query.filter(
+                    PipelineContact.contact_id.in_(person_ids),
+                    PipelineContact.pipeline_id == main_pipeline.id
+                ).all()
+                
+                # Create a lookup dictionary for quick access
+                contact_stage_map = {}
+                stage_ids = set()
+                for pc in pipeline_contacts:
+                    contact_stage_map[pc.contact_id] = pc.current_stage_id
+                    if pc.current_stage_id:
+                        stage_ids.add(pc.current_stage_id)
+                
+                # Get all stages in one query
+                stages = PipelineStage.query.filter(PipelineStage.id.in_(stage_ids)).all()
+                stage_name_map = {stage.id: stage.name for stage in stages}
+                
+                # Set the current_pipeline_stage directly on each person
+                for person in people:
+                    if person.id in contact_stage_map and contact_stage_map[person.id] in stage_name_map:
+                        person.current_pipeline_stage = stage_name_map[contact_stage_map[person.id]]
+                    else:
+                        person.current_pipeline_stage = person.pipeline_stage or 'Not in Pipeline'
+        except Exception as e:
+            current_app.logger.error(f"Error preloading pipeline data: {str(e)}")
+            # Fall back to using the stored pipeline_stage
+            for person in people:
+                person.current_pipeline_stage = person.pipeline_stage or 'Not in Pipeline'
         
         return render_template('people/list.html', 
                             people=people,
