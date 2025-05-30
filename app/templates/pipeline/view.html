@@ -178,7 +178,7 @@
     <div class="row mb-3">
         <div class="col-12">
             <h1>{% if pipeline.pipeline_type == 'person' %}People Pipeline{% elif pipeline.pipeline_type == 'church' %}Church Pipeline{% else %}{{ pipeline.name }}{% endif %}</h1>
-            <p class="text-muted">{{ pipeline.description }}</p>
+            <p class="text-muted">{{ pipeline.description }} <small class="text-success" id="load-time-display">{% if load_time %}(Loaded in {{ load_time }}s){% endif %}</small></p>
             
             <div class="btn-group" role="group">
                 {% if not pipeline.is_main_pipeline %}
