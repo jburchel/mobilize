@@ -39,8 +39,124 @@ def get_default_signature(user_id):
 @communications_bp.route('/index')
 @login_required
 def index():
-    """Redirect to test route for now"""
-    return redirect(url_for('communications.test_page'))
+    """Display communications hub."""
+    try:
+        current_app.logger.info("Starting communications index route")
+        start_time = datetime.now()
+        
+        # Manually load email signatures with proper type conversion
+        try:
+            # Convert user_id to string to match database type
+            user_id_str = str(current_user.id)
+            current_app.logger.info(f"Loading email signatures for user_id: {user_id_str}")
+            
+            # Attach signatures to current_user to avoid template errors
+            from app.models.email_signature import EmailSignature
+            current_user.email_signatures = EmailSignature.query.filter_by(
+                user_id=user_id_str
+            ).all()
+            
+            current_app.logger.info(f"Loaded {len(current_user.email_signatures)} email signatures")
+        except Exception as e:
+            current_app.logger.error(f"Error loading email signatures: {str(e)}")
+            current_user.email_signatures = []
+        
+        # Get filter parameters
+        person_id = request.args.get('person_id')
+        church_id = request.args.get('church_id')
+        
+        # Convert IDs to integers if they exist to avoid type mismatch
+        try:
+            person_id = int(person_id) if person_id else None
+        except (ValueError, TypeError):
+            person_id = None
+            current_app.logger.warning(f"Invalid person_id format: {person_id}")
+        
+        try:
+            church_id = int(church_id) if church_id else None
+        except (ValueError, TypeError):
+            church_id = None
+            current_app.logger.warning(f"Invalid church_id format: {church_id}")
+            
+        comm_type = request.args.get('type')
+        direction = request.args.get('direction')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)  # Default to 50 items per page
+        
+        # Build query with eager loading to prevent N+1 query problems
+        query = Communication.query.options(
+            joinedload(Communication.person),
+            joinedload(Communication.church)
+        )
+        
+        # Apply filters
+        if person_id:
+            query = query.filter(Communication.person_id == person_id)
+        if church_id:
+            query = query.filter(Communication.church_id == church_id)
+        if comm_type:
+            query = query.filter(Communication.type == comm_type)
+        if direction:
+            query = query.filter(Communication.direction == direction)
+        
+        # Apply date range filter if provided
+        if start_date:
+            try:
+                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                query = query.filter(Communication.date_sent >= start_date_obj)
+            except ValueError:
+                current_app.logger.warning(f"Invalid start_date format: {start_date}")
+        
+        if end_date:
+            try:
+                # Set end_date to end of day
+                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+                query = query.filter(Communication.date_sent <= end_date_obj)
+            except ValueError:
+                current_app.logger.warning(f"Invalid end_date format: {end_date}")
+        
+        # Filter by office if not super admin
+        if current_user.role != 'super_admin':
+            # Use the office's ID (integer) instead of the office_id (which might be a UUID string)
+            if hasattr(current_user, 'office') and current_user.office:
+                query = query.filter(Communication.office_id == current_user.office.id)
+            else:
+                query = query.filter(Communication.office_id == current_user.office_id)
+        
+        # Order by date sent descending
+        query = query.order_by(Communication.date_sent.desc())
+        
+        # Apply pagination to avoid loading too many records at once
+        try:
+            communications, pagination = with_pagination(query, page=page, per_page=per_page)
+        except Exception as e:
+            current_app.logger.error(f"Error in pagination: {str(e)}")
+            communications = []
+            pagination = {
+                'page': 1,
+                'per_page': 50,
+                'total': 0,
+                'pages': 0,
+                'has_next': False,
+                'has_prev': False
+            }
+        
+        # Log performance metrics
+        elapsed_time = (datetime.now() - start_time).total_seconds()
+        if elapsed_time > 0.5:  # Log if it took more than 500ms
+            current_app.logger.warning(f"Communications index took {elapsed_time:.2f}s to load")
+        
+        return render_template('communications/index.html', 
+                              communications=communications,
+                              pagination=pagination,
+                              page_title="Communications Hub")
+    except Exception as e:
+        current_app.logger.error(f"Error in communications index: {str(e)}")
+        current_app.logger.exception("Full traceback:")
+        flash('Error loading communications. Please try again later.', 'error')
+        return render_template('error.html', error_message=f"Error: {str(e)}", page_title="Error")
 
 @communications_bp.route('/test')
 @login_required
@@ -49,8 +165,24 @@ def test_page():
     try:
         current_app.logger.info("Loading test communications page with actual template")
         
+        # Manually load email signatures with proper type conversion
+        try:
+            # Convert user_id to string to match database type
+            user_id_str = str(current_user.id)
+            current_app.logger.info(f"Loading email signatures for user_id: {user_id_str}")
+            
+            # Attach signatures to current_user to avoid template errors
+            from app.models.email_signature import EmailSignature
+            current_user.email_signatures = EmailSignature.query.filter_by(
+                user_id=user_id_str
+            ).all()
+            
+            current_app.logger.info(f"Loaded {len(current_user.email_signatures)} email signatures")
+        except Exception as e:
+            current_app.logger.error(f"Error loading email signatures: {str(e)}")
+            current_user.email_signatures = []
+        
         # Try to render the actual template but with empty data
-        # Also explicitly pass empty signatures to avoid signature retrieval issues
         return render_template('communications/index.html', 
                               communications=[],
                               pagination={
@@ -61,8 +193,6 @@ def test_page():
                                   'has_next': False,
                                   'has_prev': False
                               },
-                              signatures=[],  # Explicitly pass empty signatures
-                              default_signature=None,  # Explicitly pass None for default signature
                               page_title="Communications Test")
     except Exception as e:
         current_app.logger.error(f"Error in test communications page: {str(e)}")
