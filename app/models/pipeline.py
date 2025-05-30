@@ -170,6 +170,17 @@ class PipelineContact(db.Model):
         """Move contact to a new stage and create history record."""
         try:
             previous_stage_id = self.current_stage_id
+            from flask import current_app
+            from app.models.person import Person
+            from app.models.church import Church
+            
+            current_app.logger.info(f"Moving contact {self.contact_id} from stage {previous_stage_id} to {stage_id}")
+            
+            # Get the new stage name to update the contact's pipeline_stage field
+            new_stage = PipelineStage.query.get(stage_id)
+            if not new_stage:
+                current_app.logger.error(f"Stage {stage_id} not found")
+                return False
             
             # Create history record
             if previous_stage_id != stage_id:
@@ -184,17 +195,39 @@ class PipelineContact(db.Model):
                 db.session.add(history_entry)
                 # Commit the history record first
                 db.session.commit()
+                current_app.logger.info(f"Created history entry for contact {self.contact_id} move")
             
-            # Update current stage
+            # Update current stage in PipelineContact
             self.current_stage_id = stage_id
             self.last_updated = datetime.now()
+            
+            # Update the pipeline_stage field in the Contact model (Person or Church)
+            contact = None
+            # Check if this is a Person contact
+            contact = Person.query.get(self.contact_id)
+            if contact:
+                current_app.logger.info(f"Updating Person {self.contact_id} pipeline_stage to {new_stage.name}")
+                contact.pipeline_stage = new_stage.name
+            else:
+                # Check if this is a Church contact
+                contact = Church.query.get(self.contact_id)
+                if contact:
+                    current_app.logger.info(f"Updating Church {self.contact_id} pipeline_stage to {new_stage.name}")
+                    contact.pipeline_stage = new_stage.name
+                else:
+                    current_app.logger.warning(f"Could not find contact {self.contact_id} in Person or Church tables")
+            
+            # Commit all changes
             db.session.commit()
+            current_app.logger.info(f"Successfully updated contact {self.contact_id} stage to {stage_id} in database")
             
             return True
-        except Exception:
+        except Exception as e:
             db.session.rollback()
             import traceback
             traceback.print_exc()
+            from flask import current_app
+            current_app.logger.error(f"Error moving contact to stage: {str(e)}")
             return False
     
     def to_dict(self):
