@@ -105,6 +105,20 @@ def add_contact():
 def history(pipeline_id, pipeline_contact_id):
     return pipeline_history(pipeline_id, pipeline_contact_id)
 
+@pipeline_bp.route('/test-drag')
+@login_required
+def test_drag():
+    """Test page for drag and drop functionality."""
+    current_app.logger.info("Loading drag and drop test page")
+    return render_template('pipeline/test_drag.html')
+
+@pipeline_bp.route('/test-sortable')
+@login_required
+def test_sortable():
+    """Test page for Sortable.js functionality."""
+    current_app.logger.info("Loading Sortable.js test page")
+    return render_template('pipeline/test_sortable.html')
+
 @pipeline_bp.route('/update', methods=['POST'])
 @login_required
 def update_pipeline():
