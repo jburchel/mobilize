@@ -33,124 +33,25 @@ def get_default_signature(user_id):
 def index():
     """Display communications hub."""
     try:
-        current_app.logger.info("Starting communications index route")
-        start_time = datetime.now()
+        current_app.logger.info("Starting SIMPLIFIED communications index route")
         
-        # Get filter parameters
-        person_id = request.args.get('person_id')
-        church_id = request.args.get('church_id')
-        
-        # Log the raw parameters
-        current_app.logger.info(f"Raw parameters: person_id={person_id}, church_id={church_id}")
-        
-        # Convert IDs to integers if they exist to avoid type mismatch
-        try:
-            person_id = int(person_id) if person_id else None
-            current_app.logger.info(f"Converted person_id to {person_id}")
-        except (ValueError, TypeError):
-            person_id = None
-            current_app.logger.error(f"Invalid person_id format: {person_id}")
-        
-        try:
-            church_id = int(church_id) if church_id else None
-            current_app.logger.info(f"Converted church_id to {church_id}")
-        except (ValueError, TypeError):
-            church_id = None
-            current_app.logger.error(f"Invalid church_id format: {church_id}")
-        comm_type = request.args.get('type')
-        direction = request.args.get('direction')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)  # Default to 50 items per page
-        
-        current_app.logger.info(f"Filters: type={comm_type}, direction={direction}, start_date={start_date}, end_date={end_date}")
-        current_app.logger.info(f"Pagination: page={page}, per_page={per_page}")
-    
-        # Build query with eager loading to prevent N+1 query problems
-        current_app.logger.info("Building query with eager loading")
-        query = Communication.query.options(
-            joinedload(Communication.person),
-            joinedload(Communication.church)
-        )
-    
-        # Apply filters
-        current_app.logger.info("Applying filters to query")
-        if person_id:
-            query = query.filter(Communication.person_id == person_id)
-            current_app.logger.info(f"Filtered by person_id: {person_id}")
-        if church_id:
-            query = query.filter(Communication.church_id == church_id)
-            current_app.logger.info(f"Filtered by church_id: {church_id}")
-        if comm_type:
-            query = query.filter(Communication.type == comm_type)
-            current_app.logger.info(f"Filtered by type: {comm_type}")
-        if direction:
-            query = query.filter(Communication.direction == direction)
-            current_app.logger.info(f"Filtered by direction: {direction}")
-    
-        # Apply date range filter if provided
-        current_app.logger.info("Applying date filters")
-        if start_date:
-            try:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-                query = query.filter(Communication.date_sent >= start_date_obj)
-                current_app.logger.info(f"Filtered by start_date: {start_date_obj}")
-            except ValueError:
-                current_app.logger.error(f"Invalid start_date format: {start_date}")
-        
-        if end_date:
-            try:
-                # Set end_date to end of day
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
-                query = query.filter(Communication.date_sent <= end_date_obj)
-                current_app.logger.info(f"Filtered by end_date: {end_date_obj}")
-            except ValueError:
-                current_app.logger.error(f"Invalid end_date format: {end_date}")
-    
-        # TEMPORARILY BYPASS OFFICE FILTERING TO DEBUG THE ISSUE
-        current_app.logger.info("TEMPORARILY BYPASSING OFFICE FILTER FOR DEBUGGING")
-        if current_user.role != 'super_admin':
-            current_app.logger.info(f"User role: {current_user.role}, office_id: {current_user.office_id}, type: {type(current_user.office_id)}")
-            # Not applying any filter for now to see if this is the issue
-            pass
-        
-        # Order by date sent descending
-        current_app.logger.info("Ordering by date sent descending")
-        query = query.order_by(Communication.date_sent.desc())
-        
-        # Apply pagination to avoid loading too many records at once
-        current_app.logger.info("Applying pagination")
-        try:
-            communications, pagination = with_pagination(query, page=page, per_page=per_page)
-            current_app.logger.info(f"Found {len(communications)} communications")
-        except Exception as e:
-            current_app.logger.error(f"Error in pagination: {str(e)}")
-            communications = []
-            pagination = None
-    except Exception as e:
-        current_app.logger.error(f"Error in communications index: {str(e)}")
-        current_app.logger.exception("Full traceback:")
-        communications = []
-        pagination = {
-            'page': 1,
-            'per_page': 50,
-            'total': 0,
-            'pages': 0,
-            'has_next': False,
-            'has_prev': False
-        }
-        flash('Error loading communications. Please try again later.', 'error')
-    
-        # Log performance metrics
-        elapsed_time = (datetime.now() - start_time).total_seconds()
-        if elapsed_time > 0.5:  # Log if it took more than 500ms
-            current_app.logger.warning(f"Communications index took {elapsed_time:.2f}s to load")
-        
+        # Return a basic template with no data to see if it works
         return render_template('communications/index.html', 
-                              communications=communications,
-                              pagination=pagination,
+                              communications=[],
+                              pagination={
+                                  'page': 1,
+                                  'per_page': 50,
+                                  'total': 0,
+                                  'pages': 0,
+                                  'has_next': False,
+                                  'has_prev': False
+                              },
                               page_title="Communications Hub")
+    except Exception as e:
+        current_app.logger.error(f"Error in SIMPLIFIED communications index: {str(e)}")
+        current_app.logger.exception("Full traceback:")
+        flash('Error loading communications. Please try again later.', 'error')
+        return render_template('error.html', error_message=f"Error: {str(e)}", page_title="Error")
 
 @communications_bp.route('/compose', methods=['GET', 'POST'])
 @login_required
