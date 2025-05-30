@@ -277,10 +277,10 @@
                                     
                                     <!-- Contact info stacked in second column -->
                                     <div style="margin-right: 30px;">
-                                        <!-- Type badge at top -->
+                                        <!-- Type badge only shown for mixed pipeline types -->
                                         <div style="margin-bottom: 5px;">
                                             {% if contact.contact %}
-                                                {% if pipeline.pipeline_type != 'person' and pipeline.pipeline_type != 'church' %}
+                                                {% if pipeline.pipeline_type == 'both' %}
                                                     {% if contact.contact.contact_type == 'person' %}
                                                         <span class="badge bg-primary" style="font-size: 10px; padding: 3px 6px;">PERSON</span>
                                                     {% elif contact.contact.contact_type == 'church' %}
