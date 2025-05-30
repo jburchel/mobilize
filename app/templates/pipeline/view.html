@@ -344,7 +344,7 @@
                             </div>
                         </li>
                         {% else %}
-                        <li class="list-group-item text-center text-muted py-4">
+                        <li class="list-group-item text-center text-muted py-4 empty-stage-message">
                             <em>No contacts in this stage</em>
                         </li>
                         {% endfor %}
@@ -606,11 +606,9 @@ function dropContact(ev) {
             contactElement.removeChild(loadingIndicator);
             
             if (data.success) {
-                // Move the contact to the new stage
-                targetStage.appendChild(contactElement);
-                
-                // Update the stage counter badges
-                updateStageCounts();
+                // Refresh the page to ensure database changes are reflected
+                // This also ensures empty stage messages are properly updated
+                window.location.reload();
             } else {
                 // If there was an error, show an alert
                 alert('Error: ' + data.message);
@@ -630,14 +628,30 @@ function dropContact(ev) {
     }
 }
 
-// Function to update stage counts
+// Function to update stage counts and handle empty stage messages
 function updateStageCounts() {
     document.querySelectorAll('.pipeline-stage').forEach(stage => {
         const stageId = stage.dataset.stageId;
         const contactCount = stage.querySelectorAll('.pipeline-contact').length;
+        
+        // Update the badge count
         const countBadge = document.querySelector(`.badge[data-stage-id="${stageId}"]`);
         if (countBadge) {
             countBadge.textContent = contactCount;
+        }
+        
+        // Check for empty stage message
+        const emptyMessage = stage.querySelector('.empty-stage-message');
+        
+        if (contactCount === 0 && !emptyMessage) {
+            // Stage is empty but doesn't have the message - add it
+            const newEmptyMessage = document.createElement('li');
+            newEmptyMessage.className = 'list-group-item text-center text-muted py-4 empty-stage-message';
+            newEmptyMessage.innerHTML = '<em>No contacts in this stage</em>';
+            stage.appendChild(newEmptyMessage);
+        } else if (contactCount > 0 && emptyMessage) {
+            // Stage has contacts but still shows the message - remove it
+            emptyMessage.remove();
         }
     });
 }
