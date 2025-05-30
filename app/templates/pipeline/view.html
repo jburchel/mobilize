@@ -477,23 +477,19 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Export Pipeline Data</h5>
+                <h5 class="modal-title">Export Pipeline</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Export all contacts in this pipeline along with their stage information.</p>
-                <form id="exportPipelineForm" method="post" action="{{ url_for('reports.export_pipeline', pipeline_id=pipeline.id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <div class="mb-3">
-                        <label class="form-label">Select format:</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="format" id="formatCSV" value="csv" checked>
-                            <label class="form-check-label" for="formatCSV">
-                                CSV (Comma-separated values)
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="format" id="formatExcel" value="excel">
+                <p>Export this pipeline as:</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('pipeline.export', pipeline_id=pipeline.id, format='csv') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-file-csv me-2"></i>CSV File
+                    </a>
+                    <a href="{{ url_for('pipeline.export', pipeline_id=pipeline.id, format='xlsx') }}" class="btn btn-outline-success">
+                        <i class="fas fa-file-excel me-2"></i>Excel File
+                    </a>
+                </div>
                             <label class="form-check-label" for="formatExcel">
                                 Excel (.xlsx)
                             </label>
@@ -793,4 +789,149 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<!-- Drag and Drop Test Section (Only visible to admins) -->
+{% if current_user.is_admin() %}
+<div class="container mt-5 mb-5">
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Drag and Drop Test</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">List 1</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="test-list1" class="list-group">
+                                <div class="list-group-item">Item 1-1</div>
+                                <div class="list-group-item">Item 1-2</div>
+                                <div class="list-group-item">Item 1-3</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">List 2</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="test-list2" class="list-group">
+                                <div class="list-group-item">Item 2-1</div>
+                                <div class="list-group-item">Item 2-2</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">List 3</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="test-list3" class="list-group">
+                                <div class="list-group-item">Item 3-1</div>
+                                <div class="list-group-item">Item 3-2</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">Event Log</h5>
+                        </div>
+                        <div class="card-body">
+                            <pre id="test-event-log" style="height: 150px; overflow-y: auto;"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Only run if the test elements exist
+    if (document.getElementById('test-list1')) {
+        const eventLog = document.getElementById('test-event-log');
+        
+        // Log events to the event log
+        function logEvent(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            eventLog.innerHTML += `${timestamp}: ${message}\n`;
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+        
+        // Initialize Sortable for each test list
+        const list1 = document.getElementById('test-list1');
+        const list2 = document.getElementById('test-list2');
+        const list3 = document.getElementById('test-list3');
+        
+        // Create Sortable instances
+        const sortable1 = new Sortable(list1, {
+            group: 'test-shared',
+            animation: 150,
+            onStart: function(evt) {
+                logEvent(`Started dragging ${evt.item.textContent} from List 1`);
+            },
+            onEnd: function(evt) {
+                logEvent(`Ended dragging ${evt.item.textContent}`);
+            },
+            onAdd: function(evt) {
+                logEvent(`Added ${evt.item.textContent} to List 1`);
+            },
+            onRemove: function(evt) {
+                logEvent(`Removed ${evt.item.textContent} from List 1`);
+            }
+        });
+        
+        const sortable2 = new Sortable(list2, {
+            group: 'test-shared',
+            animation: 150,
+            onStart: function(evt) {
+                logEvent(`Started dragging ${evt.item.textContent} from List 2`);
+            },
+            onEnd: function(evt) {
+                logEvent(`Ended dragging ${evt.item.textContent}`);
+            },
+            onAdd: function(evt) {
+                logEvent(`Added ${evt.item.textContent} to List 2`);
+            },
+            onRemove: function(evt) {
+                logEvent(`Removed ${evt.item.textContent} from List 2`);
+            }
+        });
+        
+        const sortable3 = new Sortable(list3, {
+            group: 'test-shared',
+            animation: 150,
+            onStart: function(evt) {
+                logEvent(`Started dragging ${evt.item.textContent} from List 3`);
+            },
+            onEnd: function(evt) {
+                logEvent(`Ended dragging ${evt.item.textContent}`);
+            },
+            onAdd: function(evt) {
+                logEvent(`Added ${evt.item.textContent} to List 3`);
+            },
+            onRemove: function(evt) {
+                logEvent(`Removed ${evt.item.textContent} from List 3`);
+            }
+        });
+        
+        logEvent('Sortable.js test initialized');
+    }
+});
+</script>
+{% endif %}
+
 {% endblock %} 
