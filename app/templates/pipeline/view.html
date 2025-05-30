@@ -752,18 +752,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const originalBtnText = submitBtn.html();
         submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Moving...');
         
-        // Use fetch API with JSON payload for consistency with drag-and-drop
+        // Use fetch API with form data for better compatibility
+        const formData = new FormData();
+        formData.append('stage_id', stageId);
+        formData.append('notes', notes);
+        formData.append('csrf_token', csrfToken);
+        
         fetch(form.attr('action'), {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRFToken': csrfToken
             },
-            body: JSON.stringify({
-                stage_id: stageId,
-                notes: notes
-            })
+            body: formData
         })
         .then(response => {
             if (!response.ok) {

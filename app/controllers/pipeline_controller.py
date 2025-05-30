@@ -887,15 +887,21 @@ def update_pipeline():
 @pipeline_bp.route('/move-contact/<int:contact_id>', methods=['POST'])
 @login_required
 def move_contact_api(contact_id):
-    # Log the request to help with debugging
-    current_app.logger.debug(f"move_contact_api called with contact_id: {contact_id}")
-    current_app.logger.debug(f"Request method: {request.method}")
-    current_app.logger.debug(f"Request content type: {request.content_type}")
-    current_app.logger.debug(f"Request data: {request.get_data()}")
-    current_app.logger.debug(f"Request form: {request.form}")
-    current_app.logger.debug(f"Request JSON: {request.get_json(silent=True)}")
-    
     """API endpoint to move a contact to a new stage"""
+    # Enhanced logging for debugging
+    current_app.logger.info(f"move_contact_api called with contact_id: {contact_id}")
+    current_app.logger.info(f"Request method: {request.method}")
+    current_app.logger.info(f"Request content type: {request.content_type}")
+    current_app.logger.info(f"Request form data: {request.form}")
+    current_app.logger.info(f"Request args: {request.args}")
+    
+    # Handle GET requests (for debugging only)
+    if request.method == 'GET':
+        return jsonify({
+            'success': False,
+            'message': 'This endpoint requires a POST request with stage_id parameter'
+        }), 400
+    
     try:
         # Get the contact
         pipeline_contact = PipelineContact.query.get_or_404(contact_id)
@@ -908,15 +914,27 @@ def move_contact_api(contact_id):
         if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
             return jsonify({'success': False, 'message': 'Permission denied'})
         
-        # Get form data - handle both JSON and form data
-        data = request.get_json(silent=True) or request.form
-        current_app.logger.debug(f"Move contact data: {data}")
+        # Get the new stage ID - prioritize form data
+        new_stage_id = None
         
-        # Get the new stage ID from either form data or query parameters
-        new_stage_id = data.get('stage_id') or request.args.get('stage_id')
+        # Check form data first
+        if request.form and 'stage_id' in request.form:
+            new_stage_id = request.form.get('stage_id')
+            current_app.logger.info(f"Found stage_id in form data: {new_stage_id}")
         
-        # Log the stage ID for debugging
-        current_app.logger.debug(f"New stage ID from request: {new_stage_id}")
+        # If not in form, try JSON
+        if not new_stage_id and request.is_json:
+            data = request.get_json()
+            if data and 'stage_id' in data:
+                new_stage_id = data.get('stage_id')
+                current_app.logger.info(f"Found stage_id in JSON: {new_stage_id}")
+        
+        # Finally, check query parameters
+        if not new_stage_id and request.args and 'stage_id' in request.args:
+            new_stage_id = request.args.get('stage_id')
+            current_app.logger.info(f"Found stage_id in query parameters: {new_stage_id}")
+        
+        current_app.logger.info(f"Final stage_id value: {new_stage_id}")
         
         if not new_stage_id:
             return jsonify({'success': False, 'message': 'No stage ID provided'})

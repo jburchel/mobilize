@@ -78,9 +78,14 @@ def edit(pipeline_id):
 def manage_stages(pipeline_id):
     return pipeline_manage_stages(pipeline_id)
 
-@pipeline_bp.route('/move-contact/<int:contact_id>', methods=['POST'])
+@pipeline_bp.route('/move-contact/<int:contact_id>', methods=['POST', 'GET'])
 @login_required
 def move_contact(contact_id):
+    # Log the request for debugging
+    current_app.logger.info(f"Move contact request for contact_id: {contact_id}")
+    current_app.logger.info(f"Request method: {request.method}")
+    current_app.logger.info(f"Form data: {request.form}")
+    
     # Pass the parameter with the correct name to the API function
     return pipeline_move_contact_api(contact_id)
 
