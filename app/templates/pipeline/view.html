@@ -177,7 +177,7 @@
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
-            <h1>{% if pipeline.pipeline_type == 'person' %}People Pipeline{% elif pipeline.pipeline_type == 'church' %}Church Pipeline{% else %}{{ pipeline.name }}{% endif %}</h1>
+            <h1>{% if pipeline.pipeline_type == 'person' or pipeline.pipeline_type == 'people' %}People Pipeline{% elif pipeline.pipeline_type == 'church' %}Church Pipeline{% else %}{{ pipeline.name }}{% endif %}</h1>
             <p class="text-muted">{{ pipeline.description }} <small class="text-success" id="load-time-display">{% if load_time %}(Loaded in {{ load_time }}s){% endif %}</small></p>
             
             <div class="btn-group" role="group">
@@ -485,11 +485,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const stageLists = document.querySelectorAll('.pipeline-stage');
     console.log(`Found ${stageLists.length} sortable containers`);
     
-    // Add CSRF token to all pages
-    const meta = document.createElement('meta');
-    meta.name = 'csrf-token';
-    meta.content = '{{ csrf_token }}';
-    document.head.appendChild(meta);
+    // Make sure we have the CSRF token
+    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!csrfToken) {
+        // Add CSRF token if not already present
+        const meta = document.createElement('meta');
+        meta.name = 'csrf-token';
+        meta.content = '{{ csrf_token() }}';
+        document.head.appendChild(meta);
+        csrfToken = '{{ csrf_token() }}';
+        console.log('Added CSRF token meta tag');
+    }
     
     // Initialize sortable on each pipeline stage list
     stageLists.forEach(list => {
@@ -516,6 +522,10 @@ document.addEventListener('DOMContentLoaded', function() {
             direction: 'vertical',
             swapThreshold: 0.5,
             dragoverBubble: false,
+            delay: 150, // Delay to prevent unwanted drags
+            delayOnTouchOnly: true, // Only delay for touch devices
+            touchStartThreshold: 5, // Threshold before drag starts
+
             onStart: function(evt) {
                 console.log('Drag started', evt.item.id);
                 document.body.classList.add('dragging-active');
@@ -547,9 +557,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': csrfToken
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
                         },
-                        body: `stage_id=${newStageId}`
+                        body: `stage_id=${newStageId}&csrf_token=${csrfToken}`
                     })
                     .then(response => {
                         if (!response.ok) {

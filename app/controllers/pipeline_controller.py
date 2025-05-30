@@ -908,15 +908,16 @@ def move_contact_api(contact_id):
         if not current_user.is_super_admin() and pipeline.office_id != current_user.office_id:
             return jsonify({'success': False, 'message': 'Permission denied'})
         
-        # Get form data
-        data = request.get_json()
-        if not data:
-            data = request.form
-            
+        # Get form data - handle both JSON and form data
+        data = request.get_json(silent=True) or request.form
         current_app.logger.debug(f"Move contact data: {data}")
         
-        # Get the new stage ID
-        new_stage_id = data.get('stage_id')
+        # Get the new stage ID from either form data or query parameters
+        new_stage_id = data.get('stage_id') or request.args.get('stage_id')
+        
+        # Log the stage ID for debugging
+        current_app.logger.debug(f"New stage ID from request: {new_stage_id}")
+        
         if not new_stage_id:
             return jsonify({'success': False, 'message': 'No stage ID provided'})
             
