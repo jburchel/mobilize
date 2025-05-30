@@ -482,24 +482,30 @@
             </div>
             <div class="modal-body">
                 <p>Export this pipeline as:</p>
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('pipeline.export', pipeline_id=pipeline.id, format='csv') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-file-csv me-2"></i>CSV File
-                    </a>
-                    <a href="{{ url_for('pipeline.export', pipeline_id=pipeline.id, format='xlsx') }}" class="btn btn-outline-success">
-                        <i class="fas fa-file-excel me-2"></i>Excel File
-                    </a>
-                </div>
+                <form id="exportPipelineForm" method="post" action="{{ url_for('reports.export_pipeline', pipeline_id=pipeline.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="mb-3">
+                        <label class="form-label">Select format:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" id="formatCSV" value="csv" checked>
+                            <label class="form-check-label" for="formatCSV">
+                                CSV (Comma-separated values)
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" id="formatExcel" value="excel">
                             <label class="form-check-label" for="formatExcel">
                                 Excel (.xlsx)
                             </label>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-download"></i> Download
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-download me-2"></i>Export Pipeline
                         </button>
+                    </div>
+                    <div class="modal-footer mt-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     </div>
                 </form>
             </div>
