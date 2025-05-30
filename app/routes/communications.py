@@ -31,27 +31,40 @@ def get_default_signature(user_id):
 @communications_bp.route('/index')
 @login_required
 def index():
-    """Display communications hub."""
+    """Redirect to test route for now"""
+    return redirect(url_for('communications.test_page'))
+
+@communications_bp.route('/test')
+@login_required
+def test_page():
+    """Super simple test page to diagnose issues"""
     try:
-        current_app.logger.info("Starting SIMPLIFIED communications index route")
+        current_app.logger.info("Loading test communications page")
         
-        # Return a basic template with no data to see if it works
-        return render_template('communications/index.html', 
-                              communications=[],
-                              pagination={
-                                  'page': 1,
-                                  'per_page': 50,
-                                  'total': 0,
-                                  'pages': 0,
-                                  'has_next': False,
-                                  'has_prev': False
-                              },
-                              page_title="Communications Hub")
+        # Return a simple HTML response directly without using a template
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Communications Test Page</title>
+            <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+        </head>
+        <body>
+            <div class="container mt-5">
+                <h1>Communications Test Page</h1>
+                <p>This is a test page to diagnose issues with the communications page.</p>
+                <p>If you can see this, the basic route is working!</p>
+                <a href="/" class="btn btn-primary">Back to Home</a>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return html
     except Exception as e:
-        current_app.logger.error(f"Error in SIMPLIFIED communications index: {str(e)}")
+        current_app.logger.error(f"Error in test communications page: {str(e)}")
         current_app.logger.exception("Full traceback:")
-        flash('Error loading communications. Please try again later.', 'error')
-        return render_template('error.html', error_message=f"Error: {str(e)}", page_title="Error")
+        return f"<h1>Error</h1><p>{str(e)}</p>"
 
 @communications_bp.route('/compose', methods=['GET', 'POST'])
 @login_required
