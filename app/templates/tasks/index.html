@@ -79,12 +79,12 @@
                         <table class="table table-hover" id="tasks-table">
                             <thead>
                                 <tr>
-                                    <th class="sortable" data-sort="related" style="width: 15%;">Related To <i class="bi bi-arrow-down-up"></i></th>
-                                    <th class="sortable" data-sort="due-date" style="width: 100px; white-space: nowrap;">Due Date <i class="bi bi-arrow-down-up"></i></th>
-                                    <th class="sortable" data-sort="title" style="width: 25%;">Title <i class="bi bi-arrow-down-up"></i></th>
+                                    <th class="sortable" data-sort="related" style="width: 20%;">Related To <i class="bi bi-arrow-down-up"></i></th>
+                                    <th class="sortable" data-sort="due-date" style="width: 120px; white-space: nowrap;">Due Date <i class="bi bi-arrow-down-up"></i></th>
+                                    <th class="sortable" data-sort="title" style="width: 30%;">Title <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="status" style="width: 10%;">Status <i class="bi bi-arrow-down-up"></i></th>
                                     <th class="sortable" data-sort="priority" style="width: 10%;">Priority <i class="bi bi-arrow-down-up"></i></th>
-                                    <th style="width: 120px;">Actions</th>
+                                    <th style="width: 150px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -92,7 +92,7 @@
                                     {% for task in tasks %}
                                     <tr data-status="{{ task.status.value }}" data-priority="{{ task.priority.value }}" 
                                         {% if task.due_date and ((task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date) and task.status.value != 'completed' %}data-is-overdue="true"{% endif %}>
-                                        <td style="width: 15%;">
+                                        <td style="width: 20%;">
                                             {% if task.person_id %}
                                                 <a href="{{ url_for('people.show', id=task.person_id) }}" class="text-truncate d-inline-block" style="max-width: 100%;">
                                                     <i class="bi bi-person text-primary me-1"></i>
@@ -107,7 +107,7 @@
                                                 <span class="text-muted">None</span>
                                             {% endif %}
                                         </td>
-                                        <td style="width: 100px; white-space: nowrap;">
+                                        <td style="width: 120px; white-space: nowrap;">
                                             {% if task.due_date %}
                                                 {% if (task.due_date.date() if task.due_date is not string and task.due_date is not mapping and task.due_date is not sequence and hasattr(task.due_date, 'date') else task.due_date) < current_date and task.status != 'completed' %}
                                                     <span class="text-danger">{{ task.due_date.strftime('%Y-%m-%d') if hasattr(task.due_date, 'strftime') else task.due_date }}</span>
@@ -118,7 +118,7 @@
                                                 <span class="text-muted">No due date</span>
                                             {% endif %}
                                         </td>
-                                        <td style="width: 25%;">
+                                        <td style="width: 30%;">
                                             <a href="{{ url_for('tasks.edit', id=task.id) }}" class="text-truncate d-inline-block" style="max-width: 100%;">
                                                 {{ task.title }}
                                             </a>
@@ -147,7 +147,7 @@
                                                 <span class="badge bg-secondary">{{ task.priority_display }}</span>
                                             {% endif %}
                                         </td>
-                                        <td style="width: 120px;">
+                                        <td style="width: 180px;">
                                             <div class="btn-group btn-group-sm" role="group">
                                                 <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-outline-primary" title="Edit">
                                                     <i class="bi bi-pencil"></i>
@@ -353,15 +353,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners to status filter buttons
     statusFilters.forEach(btn => {
-        btn.addEventListener('click', function() {
-            applyFilter('status', this.getAttribute('data-status'));
+        const statusValue = btn.getAttribute('data-status');
+        console.log('Adding click listener for status button:', statusValue);
+        
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Status button clicked:', statusValue);
+            applyFilter('status', statusValue);
         });
     });
     
     // Add event listeners to priority filter buttons
     priorityFilters.forEach(btn => {
-        btn.addEventListener('click', function() {
-            applyFilter('priority', this.getAttribute('data-priority'));
+        const priorityValue = btn.getAttribute('data-priority');
+        console.log('Adding click listener for priority button:', priorityValue);
+        
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Priority button clicked:', priorityValue);
+            applyFilter('priority', priorityValue);
         });
     });
     const searchInput = document.getElementById('search-tasks');
@@ -454,6 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Complete task button
     const completeTaskButtons = document.querySelectorAll('.complete-task-btn');
+    console.log('Complete task buttons found:', completeTaskButtons.length);
     
     completeTaskButtons.forEach(button => {
         button.addEventListener('click', async function(e) {
@@ -464,22 +475,27 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (confirm('Are you sure you want to mark this task as complete?')) {
                 try {
+                    const csrfToken = '{{ csrf_token() }}';
+                    console.log('Using CSRF token (first 10 chars):', csrfToken.substring(0, 10) + '...');
+                    
                     const response = await fetch(`/tasks/complete/${taskId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': '{{ csrf_token }}'
+                            'X-CSRFToken': csrfToken
                         },
-                        body: `csrf_token={{ csrf_token }}`
+                        body: `csrf_token=${csrfToken}`
                     });
+                    
+                    console.log('Response status:', response.status);
                     
                     if (response.ok) {
                         console.log('Task completed successfully');
                         window.location.reload();
                     } else {
-                        const errorData = await response.json();
-                        console.error('Server error:', errorData);
-                        throw new Error('Failed to complete task: ' + (errorData.error || response.statusText));
+                        const errorText = await response.text();
+                        console.error('Server error response:', errorText);
+                        throw new Error(`Failed to complete task: ${response.status} ${response.statusText}`);
                     }
                 } catch (error) {
                     console.error('Error completing task:', error);
@@ -491,6 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Delete task button
     const deleteTaskButtons = document.querySelectorAll('.delete-task-btn');
+    console.log('Delete task buttons found:', deleteTaskButtons.length);
     
     deleteTaskButtons.forEach(button => {
         button.addEventListener('click', async function(e) {
@@ -501,22 +518,27 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
                 try {
+                    const csrfToken = '{{ csrf_token() }}';
+                    console.log('Using CSRF token (first 10 chars):', csrfToken.substring(0, 10) + '...');
+                    
                     const response = await fetch(`/tasks/delete/${taskId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-CSRFToken': '{{ csrf_token }}'
+                            'X-CSRFToken': csrfToken
                         },
-                        body: `csrf_token={{ csrf_token }}`
+                        body: `csrf_token=${csrfToken}`
                     });
+                    
+                    console.log('Response status:', response.status);
                     
                     if (response.ok) {
                         console.log('Task deleted successfully');
                         window.location.reload();
                     } else {
-                        const errorData = await response.json();
-                        console.error('Server error:', errorData);
-                        throw new Error('Failed to delete task: ' + (errorData.error || response.statusText));
+                        const errorText = await response.text();
+                        console.error('Server error response:', errorText);
+                        throw new Error(`Failed to delete task: ${response.status} ${response.statusText}`);
                     }
                 } catch (error) {
                     console.error('Error deleting task:', error);
