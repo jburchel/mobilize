@@ -108,29 +108,12 @@ def index():
             except ValueError:
                 current_app.logger.error(f"Invalid end_date format: {end_date}")
     
-        # Filter by office if not super admin
-        current_app.logger.info("Applying office filter")
+        # TEMPORARILY BYPASS OFFICE FILTERING TO DEBUG THE ISSUE
+        current_app.logger.info("TEMPORARILY BYPASSING OFFICE FILTER FOR DEBUGGING")
         if current_user.role != 'super_admin':
             current_app.logger.info(f"User role: {current_user.role}, office_id: {current_user.office_id}, type: {type(current_user.office_id)}")
-            
-            # Check if office_id is a UUID string or an integer
-            try:
-                # Log the first few communications' office_ids for comparison
-                sample_comms = Communication.query.limit(5).all()
-                for i, comm in enumerate(sample_comms):
-                    current_app.logger.info(f"Sample comm {i}: office_id={comm.office_id}, type={type(comm.office_id)}")
-                
-                # Use the office's ID (integer) instead of the office_id (which might be a UUID string)
-                if hasattr(current_user, 'office') and current_user.office:
-                    current_app.logger.info(f"Using current_user.office.id: {current_user.office.id}, type: {type(current_user.office.id)}")
-                    query = query.filter(Communication.office_id == current_user.office.id)
-                else:
-                    current_app.logger.info("Falling back to current_user.office_id")
-                    query = query.filter(Communication.office_id == current_user.office_id)
-            except Exception as e:
-                current_app.logger.error(f"Error in office_id filtering: {str(e)}")
-                # Fallback to string comparison if needed
-                query = query.filter(Communication.office_id == current_user.office_id)
+            # Not applying any filter for now to see if this is the issue
+            pass
         
         # Order by date sent descending
         current_app.logger.info("Ordering by date sent descending")
