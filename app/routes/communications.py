@@ -41,6 +41,12 @@ def get_default_signature(user_id):
 def index():
     """Display communications hub."""
     try:
+        # Check if database is configured properly
+        if not current_app.config.get('SQLALCHEMY_DATABASE_URI') and not current_app.config.get('DATABASE_URL'):
+            current_app.logger.error("Database connection not configured properly")
+            flash('Database connection not configured. Please check your environment variables.', 'error')
+            return render_template('error.html', error_message="Database connection not configured", page_title="Error")
+            
         current_app.logger.info("Starting communications index route")
         start_time = datetime.now()
         
