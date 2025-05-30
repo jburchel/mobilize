@@ -28,6 +28,30 @@
     .contact-item:hover {
         background-color: #f8f9fa;
     }
+    /* Improved drag handle styling */
+    .drag-handle {
+        cursor: grab !important;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        touch-action: none;
+    }
+    .drag-handle:hover {
+        background-color: #e9ecef !important;
+    }
+    .drag-handle:active {
+        cursor: grabbing !important;
+        background-color: #dee2e6 !important;
+    }
+    /* Styling for dragged items */
+    .sortable-ghost {
+        opacity: 0.6;
+        background-color: #e9ecef !important;
+    }
+    .sortable-chosen {
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
     /* Card Grid Layout */
     .card-grid {
         display: grid;
@@ -227,9 +251,11 @@
                             <!-- Using table layout for reliable columns -->
                             <div style="display: table-row; width: 100%;">
                                 <!-- Left side - Drag handle (first column) -->
-                                <div style="display: table-cell; vertical-align: middle; width: 40px; text-align: center;" class="drag-handle">
-                                    <i class="fas fa-grip-vertical" style="font-size: 20px; color: #0d6efd;"></i>
-                                    <div style="font-size: 11px; margin-top: 5px; font-weight: bold; color: #0d6efd;">Drag</div>
+                                <div style="display: table-cell; vertical-align: middle; width: 60px; text-align: center; cursor: grab; background-color: #f8f9fa; border-right: 1px solid #dee2e6; padding: 10px 0;" class="drag-handle">
+                                    <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                        <i class="fas fa-grip-vertical" style="font-size: 24px; color: #0d6efd; margin-bottom: 5px;"></i>
+                                        <div style="font-size: 12px; font-weight: bold; color: #0d6efd;">DRAG</div>
+                                    </div>
                                 </div>
                                 
                                 <!-- Right side - Content (second column) -->
@@ -517,14 +543,16 @@ document.addEventListener('DOMContentLoaded', function() {
             chosenClass: 'sortable-chosen',  // Class name for the chosen item
             dragClass: 'sortable-drag',  // Class name for the dragging item
             handle: '.drag-handle',  // Restricts sort start click/touch to the specified element
-            forceFallback: true,  // Force fallback for better mobile support
-            fallbackTolerance: 3,  // Tolerance in pixels
+            forceFallback: false,  // Use native HTML5 drag-and-drop when possible
+            fallbackTolerance: 0,  // Tolerance in pixels (reduced for better responsiveness)
             direction: 'vertical',
-            swapThreshold: 0.5,
+            swapThreshold: 0.65,  // Increased to make swapping easier
             dragoverBubble: false,
-            delay: 150, // Delay to prevent unwanted drags
+            delay: 0, // No delay for desktop
             delayOnTouchOnly: true, // Only delay for touch devices
-            touchStartThreshold: 5, // Threshold before drag starts
+            touchStartThreshold: 3, // Lower threshold for easier activation
+            preventOnFilter: false, // Allow dragging to start on filtered elements
+            touchAction: 'none', // Disable browser touch actions on drag handle
 
             onStart: function(evt) {
                 console.log('Drag started', evt.item.id);
