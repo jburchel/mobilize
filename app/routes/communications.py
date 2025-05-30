@@ -37,30 +37,22 @@ def index():
 @communications_bp.route('/test')
 @login_required
 def test_page():
-    """Super simple test page to diagnose issues"""
+    """Test page that uses the actual template but with empty data"""
     try:
-        current_app.logger.info("Loading test communications page")
+        current_app.logger.info("Loading test communications page with actual template")
         
-        # Return a simple HTML response directly without using a template
-        html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Communications Test Page</title>
-            <link rel="stylesheet" href="/static/css/bootstrap.min.css">
-        </head>
-        <body>
-            <div class="container mt-5">
-                <h1>Communications Test Page</h1>
-                <p>This is a test page to diagnose issues with the communications page.</p>
-                <p>If you can see this, the basic route is working!</p>
-                <a href="/" class="btn btn-primary">Back to Home</a>
-            </div>
-        </body>
-        </html>
-        """
-        
-        return html
+        # Try to render the actual template but with empty data
+        return render_template('communications/index.html', 
+                              communications=[],
+                              pagination={
+                                  'page': 1,
+                                  'per_page': 50,
+                                  'total': 0,
+                                  'pages': 0,
+                                  'has_next': False,
+                                  'has_prev': False
+                              },
+                              page_title="Communications Test")
     except Exception as e:
         current_app.logger.error(f"Error in test communications page: {str(e)}")
         current_app.logger.exception("Full traceback:")
