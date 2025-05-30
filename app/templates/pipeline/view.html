@@ -24,9 +24,20 @@
     .contact-item {
         transition: all 0.2s ease-in-out;
         position: relative;
+        cursor: grab;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     .contact-item:hover {
         background-color: #f8f9fa;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    .contact-item:active {
+        cursor: grabbing;
+        background-color: #e9ecef;
     }
     /* Improved drag handle styling */
     .drag-handle {
@@ -246,22 +257,21 @@
                         <li class="list-group-item contact-item pipeline-contact" 
                             id="contact-{{ contact.id }}" 
                             data-id="{{ contact.id }}"
-                            style="position: relative; min-height: 80px; padding: 0; display: table; width: 100%; border-collapse: separate;">
+                            style="position: relative; min-height: 80px; padding: 8px; margin: 8px 4px; background-color: white;">
                             
-                            <!-- Using table layout for reliable columns -->
-                            <div style="display: table-row; width: 100%;">
-                                <!-- Left side - Drag handle (first column) -->
-                                <div style="display: table-cell; vertical-align: middle; width: 60px; text-align: center; cursor: grab; background-color: #f8f9fa; border-right: 1px solid #dee2e6; padding: 10px 0;" class="drag-handle">
-                                    <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                        <i class="fas fa-grip-vertical" style="font-size: 24px; color: #0d6efd; margin-bottom: 5px;"></i>
-                                        <div style="font-size: 12px; font-weight: bold; color: #0d6efd;">DRAG</div>
-                                    </div>
-                                </div>
+                            <!-- Drag indicator visible on the entire card -->
+                            <div class="drag-indicator" style="position: absolute; top: 8px; left: 8px; color: #0d6efd;">
+                                <i class="fas fa-arrows-alt" title="Drag to move"></i>
+                            </div>
+                            
+                            <!-- Card content with padding for the drag indicator -->
+                            <div style="padding-left: 25px;">
+                                <!-- Old drag handle removed to make entire card draggable -->
                                 
-                                <!-- Right side - Content (second column) -->
-                                <div style="display: table-cell; vertical-align: middle; padding: 10px; position: relative;">
+                                <!-- Content section -->
+                                <div style="position: relative;">
                                     <!-- Action buttons - Top right corner -->
-                                    <div style="position: absolute; top: 5px; right: 5px;" class="contact-actions">
+                                    <div style="position: absolute; top: 0; right: 0;" class="contact-actions">
                                         <div class="dropdown">
                                             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
                                                 <i class="fas fa-ellipsis-v"></i>
@@ -301,8 +311,8 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- Contact info stacked in second column -->
-                                    <div style="margin-right: 30px;">
+                                    <!-- Contact info section -->
+                                    <div style="margin-right: 30px; margin-top: 25px;">
                                         <!-- Type badge only shown for mixed pipeline types -->
                                         <div style="margin-bottom: 5px;">
                                             {% if contact.contact %}
@@ -542,8 +552,11 @@ document.addEventListener('DOMContentLoaded', function() {
             ghostClass: 'sortable-ghost',  // Class name for the drop placeholder
             chosenClass: 'sortable-chosen',  // Class name for the chosen item
             dragClass: 'sortable-drag',  // Class name for the dragging item
-            handle: '.drag-handle',  // Restricts sort start click/touch to the specified element
-            forceFallback: false,  // Use native HTML5 drag-and-drop when possible
+            // Make the entire card draggable - remove handle restriction
+            // handle: '.drag-handle',
+            forceFallback: true,  // Force fallback for better cross-browser compatibility
+            fallbackClass: 'sortable-fallback',
+            fallbackOnBody: true,
             fallbackTolerance: 0,  // Tolerance in pixels (reduced for better responsiveness)
             direction: 'vertical',
             swapThreshold: 0.65,  // Increased to make swapping easier
@@ -552,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function() {
             delayOnTouchOnly: true, // Only delay for touch devices
             touchStartThreshold: 3, // Lower threshold for easier activation
             preventOnFilter: false, // Allow dragging to start on filtered elements
-            touchAction: 'none', // Disable browser touch actions on drag handle
+            touchAction: 'auto', // Allow normal touch actions
 
             onStart: function(evt) {
                 console.log('Drag started', evt.item.id);
