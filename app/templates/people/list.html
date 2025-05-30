@@ -130,7 +130,7 @@
                                 <tr data-name="{{ person.get_name() }}" 
                                     data-email="{{ person.email|default('') }}" 
                                     data-phone="{{ person.phone|default('') }}"
-                                    data-pipeline="{{ person.current_pipeline_stage|default('') }}"
+                                    data-pipeline="{{ pipeline_stages[person.id]|default('') if pipeline_stages and person.id in pipeline_stages else '' }}"
                                     data-priority="{{ person.priority|default('') }}">
                                     <td>
                                         <div class="table-user">
@@ -148,9 +148,9 @@
                                     <td>{{ person.email }}</td>
                                     <td>{{ person.phone }}</td>
                                     <td>
-                                        {% if person.current_pipeline_stage %}
-                                        <span class="badge badge-{{ get_badge_color_for_pipeline(person.current_pipeline_stage) }}">
-                                            {{ person.current_pipeline_stage }}
+                                        {% if pipeline_stages and person.id in pipeline_stages and pipeline_stages[person.id] %}
+                                        <span class="badge badge-{{ get_badge_color_for_pipeline(pipeline_stages[person.id]) }}">
+                                            {{ pipeline_stages[person.id] }}
                                         </span>
                                         {% else %}
                                         <span class="badge badge-secondary">Not in Pipeline</span>

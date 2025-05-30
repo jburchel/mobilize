@@ -76,20 +76,23 @@ def index():
                 stages = PipelineStage.query.filter(PipelineStage.id.in_(stage_ids)).all()
                 stage_name_map = {stage.id: stage.name for stage in stages}
                 
-                # Set the current_pipeline_stage directly on each person
+                # Create a dictionary to store pipeline stage data
+                pipeline_stages = {}
                 for person in people:
                     if person.id in contact_stage_map and contact_stage_map[person.id] in stage_name_map:
-                        person.current_pipeline_stage = stage_name_map[contact_stage_map[person.id]]
+                        pipeline_stages[person.id] = stage_name_map[contact_stage_map[person.id]]
                     else:
-                        person.current_pipeline_stage = person.pipeline_stage or 'Not in Pipeline'
+                        pipeline_stages[person.id] = person.pipeline_stage or 'Not in Pipeline'
         except Exception as e:
             current_app.logger.error(f"Error preloading pipeline data: {str(e)}")
             # Fall back to using the stored pipeline_stage
+            pipeline_stages = {}
             for person in people:
-                person.current_pipeline_stage = person.pipeline_stage or 'Not in Pipeline'
+                pipeline_stages[person.id] = person.pipeline_stage or 'Not in Pipeline'
         
         return render_template('people/list.html', 
                             people=people,
+                            pipeline_stages=pipeline_stages,
                             show_assigned=show_assigned,
                             page_title='People')
     except Exception as e:
