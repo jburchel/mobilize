@@ -214,37 +214,22 @@ def view(pipeline_id):
         query = PipelineContact.query.filter_by(pipeline_id=pipeline_id)
         
         # Eager load the contact relationship to avoid N+1 queries
-        if pipeline.pipeline_type == 'church':
-            query = query.options(selectinload(PipelineContact.church_contact))
-        else:
-            query = query.options(selectinload(PipelineContact.person_contact))
+        query = query.options(selectinload(PipelineContact.contact))
         
         # Apply role-based filtering at the database level
         if not current_user.is_super_admin():
-            if pipeline.pipeline_type == 'church':
-                # For church pipelines
-                query = query.join(PipelineContact.church_contact)
-                if current_user.role == 'office_admin':
-                    # Office admins see contacts from their office
-                    query = query.filter(Church.office_id == current_user.office_id)
-                else:
-                    # Regular users see only their assigned contacts
-                    query = query.filter(
-                        Church.office_id == current_user.office_id,
-                        Church.assigned_to == current_user.id
-                    )
+            # Join to the Contact model
+            query = query.join(PipelineContact.contact)
+            
+            if current_user.role == 'office_admin':
+                # Office admins see contacts from their office
+                query = query.filter(Contact.office_id == current_user.office_id)
             else:
-                # For people pipelines
-                query = query.join(PipelineContact.person_contact)
-                if current_user.role == 'office_admin':
-                    # Office admins see contacts from their office
-                    query = query.filter(Person.office_id == current_user.office_id)
-                else:
-                    # Regular users see only their assigned contacts
-                    query = query.filter(
-                        Person.office_id == current_user.office_id,
-                        Person.assigned_to == current_user.id
-                    )
+                # Regular users see only their assigned contacts
+                query = query.filter(
+                    Contact.office_id == current_user.office_id,
+                    Contact.assigned_to == current_user.id
+                )
         
         # Execute the query once
         pipeline_contacts = query.all()
