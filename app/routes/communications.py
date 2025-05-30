@@ -20,12 +20,20 @@ communications_bp = Blueprint('communications', __name__, template_folder='../te
 # Helper function to get default signature
 def get_default_signature(user_id):
     """Get the default signature for a user"""
-    signature = EmailSignature.query.filter_by(
-        user_id=user_id,
-        is_default=True
-    ).first()
-    
-    return signature
+    try:
+        # Convert user_id to string to match database type
+        user_id_str = str(user_id)
+        current_app.logger.info(f"Getting default signature for user_id: {user_id_str}")
+        
+        signature = EmailSignature.query.filter_by(
+            user_id=user_id_str,
+            is_default=True
+        ).first()
+        
+        return signature
+    except Exception as e:
+        current_app.logger.error(f"Error getting default signature: {str(e)}")
+        return None
 
 @communications_bp.route('/')
 @communications_bp.route('/index')
@@ -42,6 +50,7 @@ def test_page():
         current_app.logger.info("Loading test communications page with actual template")
         
         # Try to render the actual template but with empty data
+        # Also explicitly pass empty signatures to avoid signature retrieval issues
         return render_template('communications/index.html', 
                               communications=[],
                               pagination={
@@ -52,6 +61,8 @@ def test_page():
                                   'has_next': False,
                                   'has_prev': False
                               },
+                              signatures=[],  # Explicitly pass empty signatures
+                              default_signature=None,  # Explicitly pass None for default signature
                               page_title="Communications Test")
     except Exception as e:
         current_app.logger.error(f"Error in test communications page: {str(e)}")
