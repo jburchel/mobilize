@@ -179,6 +179,19 @@ class Person(Contact):
             stage = PipelineStage.query.get(pipeline_contact.current_stage_id)
             return stage.name if stage else None
         return None
+        
+    @property
+    def current_pipeline_stage(self):
+        """Get the current pipeline stage name from the PipelineContact table.
+        This is used by the people list view to show the most up-to-date stage."""
+        # First try to get from the main pipeline
+        stage_name = self.main_pipeline_stage
+        if stage_name:
+            return stage_name
+            
+        # If not in the main pipeline, return the stored pipeline_stage value
+        # or a default message
+        return self.pipeline_stage or 'Not in Pipeline'
 
     def __repr__(self) -> str:
         return f"<Person(name='{self.first_name} {self.last_name}', email='{self.email}')>"

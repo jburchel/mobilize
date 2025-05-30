@@ -52,12 +52,8 @@ def index():
         people = query.order_by(Person.last_name, Person.first_name).all()
         current_app.logger.info(f"Found {len(people)} people matching the criteria")
         
-        # Set a default pipeline stage for display
-        for person in people:
-            if person.pipeline_stage:
-                person.current_pipeline_stage = person.pipeline_stage
-            else:
-                person.current_pipeline_stage = 'Not in Pipeline'
+        # The current_pipeline_stage property will now handle getting the latest pipeline stage
+        # No need to manually set it here anymore
         
         return render_template('people/list.html', 
                             people=people,
