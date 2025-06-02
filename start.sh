@@ -111,4 +111,4 @@ echo
 
 # Start the application
 echo "Starting application with gunicorn..."
-exec gunicorn --config=gunicorn.conf.py "app:create_app()" 
+exec gunicorn --config=gunicorn.conf.py wsgi:application
