@@ -365,6 +365,7 @@ Phase 7 Complete when: Application is stable and users are satisfied
 - [ ] Monitor logs for any residual or new issues post-deployment
 - [ ] Resolve app initialization issues to enable database schema inspection
 - [ ] Address SQLAlchemy warnings about implicit column combinations
+- [ ] A branch `revert_to_pre_chat_state` has been created and pushed to the repository, representing the codebase before the changes made in the recent chat session. See `revert_instructions.md` for details on using this branch to revert to the pre-chat state.
 
 **Note**: A branch `revert_to_pre_chat_state` has been created and pushed to the repository, representing the codebase before the changes made in the recent chat session. See `revert_instructions.md` for details on using this branch to revert to the pre-chat state.
 
