@@ -44,7 +44,7 @@ blueprints = [
     people_bp,
     churches_bp,
     tasks_bp,
-    communications_bp,
+    # communications_bp,  # Using communications_fixed_bp instead registered directly in app/__init__.py
     google_sync_bp,
     settings_bp,
     pipeline_bp,
