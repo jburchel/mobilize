@@ -13,6 +13,8 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf  # noqa: F401
 from flask_limiter import Limiter  # noqa: F401
 from flask_limiter.util import get_remote_address  # noqa: F401
 from flask_talisman import Talisman  # noqa: F401
+from flask_limiter.util import get_remote_address  # noqa: F401
+from flask_talisman import Talisman  # noqa: F401
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix # Add ProxyFix import
 # Configuration imports
@@ -296,26 +298,36 @@ def create_app(test_config=None):
     celery_app_instance.Task = ContextTask
 
     # Initialize Flask extensions
-    db.init_app(app)
-    migrate.init_app(app, db) # Flask-Migrate needs both app and db
-    # Adjust CORS origins as per your actual requirements for production
-    cors.init_app(app, resources={r"/*": {"origins": "*"}}) # Example: Allow all for now, refine later
-    login_manager.init_app(app)
-    jwt.init_app(app)
-    csrf.init_app(app) # Crucial for csrf_token() in templates
-    limiter.init_app(app)
-    # Basic Talisman setup, review and strengthen CSP for production
-    talisman.init_app(app, content_security_policy=None, force_https=os.environ.get('FLASK_ENV') == 'production') 
-    configure_cache(app) # This function from extensions.py calls cache.init_app(app)
-    # mail.init_app(app) # Uncomment and configure if direct mail sending is needed here
-    # scheduler.init_app(app) # Uncomment if APScheduler is used and needs init here
-    # if os.environ.get('FLASK_ENV') != 'testing' and not (scheduler.running and scheduler.app):
-    #    if not scheduler.running:
-    #        scheduler.start()
-    #    elif scheduler.app != app:
-    #        scheduler.shutdown(wait=False)
-    #        scheduler.init_app(app)
-    #        scheduler.start()
+    # Prevent duplicate SQLAlchemy registration
+    if not hasattr(app, 'db'):
+        db.init_app(app)
+    if not hasattr(app, 'migrate'):
+        migrate.init_app(app, db)
+
+    # Import and register blueprints
+    from app.routes.main import main_bp
+    from app.routes.auth import auth_bp
+    from app.routes.dashboard import dashboard_bp
+    from app.routes.people import people_bp
+    from app.routes.churches import churches_bp
+    from app.routes.tasks import tasks_bp
+    from app.routes.communications import communications_bp
+    from app.routes.communications_simple import communications_simple_bp
+    from app.routes.admin import admin_bp
+    from app.routes.api import api_bp
+    from app.routes.pipeline import pipeline_bp
+
+    app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(people_bp)
+    app.register_blueprint(churches_bp)
+    app.register_blueprint(tasks_bp)
+    app.register_blueprint(communications_bp)
+    app.register_blueprint(communications_simple_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(api_bp)
+    app.register_blueprint(pipeline_bp)
 
     # --- Keep Health Check and Debug Endpoints from main ---
     @app.route('/health', methods=['GET'])
