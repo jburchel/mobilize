@@ -7,9 +7,10 @@ from app.models.email_signature import EmailSignature
 from app.models.email_template import EmailTemplate
 from app.extensions import db, cache
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import text
+from sqlalchemy import text, or_
 from sqlalchemy.orm import joinedload
 import json
+import traceback
 from app.utils.decorators import office_required
 from app.utils.upload import save_uploaded_file
 from app.utils.time import format_date
@@ -19,35 +20,40 @@ communications_bp = Blueprint('communications', __name__, template_folder='../te
 
 # Helper function to get default signature
 def get_default_signature(user_id):
-    """Get the default signature for a user"""
+    """Get the default signature for a user with robust type handling"""
     try:
         # Log the incoming user_id for debugging
         current_app.logger.info(f"Getting default signature for user_id: {user_id} (type: {type(user_id)})")
         
-        # Try with the original user_id (likely an integer)
-        signature = EmailSignature.query.filter_by(
-            user_id=user_id,
-            is_default=True
+        # Try with both integer and string versions using SQLAlchemy OR condition
+        # This is more efficient than running two separate queries
+        user_id_str = str(user_id)
+        
+        signature = EmailSignature.query.filter(
+            or_(
+                EmailSignature.user_id == user_id,  # Try with original type
+                EmailSignature.user_id == user_id_str  # Try with string conversion
+            ),
+            EmailSignature.is_default == True
         ).first()
         
         if signature:
-            current_app.logger.info(f"Found signature with original user_id: {user_id}")
+            current_app.logger.info(f"Found default signature for user: {user_id}")
             return signature
             
-        # If not found, try with string conversion as fallback
-        user_id_str = str(user_id)
-        current_app.logger.info(f"No signature found with original user_id, trying string version: {user_id_str}")
+        # If still not found, try with raw SQL as a last resort
+        current_app.logger.info(f"No signature found with ORM query, trying raw SQL as last resort")
         
         # Use raw SQL to avoid SQLAlchemy type casting
-        signature = db.session.execute(
-            text("SELECT * FROM email_signatures WHERE user_id = :user_id AND is_default = TRUE LIMIT 1"),
-            {"user_id": user_id_str}
+        result = db.session.execute(
+            text("SELECT id FROM email_signatures WHERE user_id::TEXT = :user_id_str AND is_default = TRUE LIMIT 1"),
+            {"user_id_str": user_id_str}
         ).fetchone()
         
-        if signature:
-            current_app.logger.info(f"Found signature with string user_id: {user_id_str}")
+        if result:
+            current_app.logger.info(f"Found signature with raw SQL query")
             # Convert row proxy to EmailSignature object
-            return EmailSignature.query.get(signature.id)
+            return EmailSignature.query.get(result.id)
             
         current_app.logger.warning(f"No default signature found for user_id: {user_id}")
         return None
