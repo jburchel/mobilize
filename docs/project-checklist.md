@@ -370,3 +370,5 @@
 - [ ] Remove or archive deprecated files and scripts
 - [ ] Document all fixes and procedures for future reference
 - [ ] Review and refine SQLAlchemy models to eliminate warnings
+
+**Note**: Ensure each phase is completed before moving to the next. Refer to `mobilize-prompt.md` for detailed project context if needed.
