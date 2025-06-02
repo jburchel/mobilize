@@ -1,12 +1,15 @@
 """Module for setting up relationships between models."""
 from app.extensions import db
-import inspect
-from sqlalchemy import and_, or_
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def setup_relationships():
     """Set up relationships between models."""
     # Import models
-    from app.models import Person, Church, Task, Communication, User, Office, EmailSignature, GoogleToken, Contact, Pipeline, PipelineStage, PipelineContact, PipelineStageHistory
+    from app.models import Person, Church, Task, Communication, User, Office, Pipeline, PipelineStage, PipelineContact, PipelineStageHistory, EmailSignature, GoogleToken, Contact
     
     # Define all relationships
     relationships = [
@@ -61,15 +64,15 @@ def setup_relationships():
         (User, "assigned_tasks", db.relationship("Task", back_populates="assigned_to_user", foreign_keys="Task.assigned_to", overlaps="assigned_to_user,assigned_tasks")),
         (User, "owned_tasks", db.relationship("Task", back_populates="owner", foreign_keys="Task.owner_id", overlaps="owner,owned_tasks")),
         (User, "created_tasks", db.relationship("Task", back_populates="created_by_user", foreign_keys="Task.created_by", overlaps="created_by_user,created_tasks")),
+        (User, "office", db.relationship("Office", back_populates="users", overlaps="users")),
 
         # Office relationships
-        (Office, "contacts", db.relationship("Contact", back_populates="office", overlaps="office,contacts")),
-        (Office, "communications", db.relationship("Communication", back_populates="office", overlaps="office,communications", foreign_keys="Communication.office_id")),
         (Office, "churches", db.relationship("Church", back_populates="office", overlaps="office")),
-        (Office, "tasks", db.relationship("Task", back_populates="office", overlaps="office,assigned_tasks")),
+        (Office, "users", db.relationship("User", back_populates="office", overlaps="office")),
+        (Office, "tasks", db.relationship("Task", back_populates="office", overlaps="office")),
+        (Office, "communications", db.relationship("Communication", back_populates="office", overlaps="office", foreign_keys="Communication.office_id")),
     ]
-    
-    # Apply all relationships
+
     for cls, name, rel in relationships:
         if not hasattr(cls, name):
-            setattr(cls, name, rel) 
+            setattr(cls, name, rel)
