@@ -360,9 +360,10 @@
 
 ## Phase 4: Redeployment and Validation
 
-- [x] Redeploy application to Google Cloud Run after data and schema fixes
-- [ ] Verify resolution of 'Service Unavailable' error on dashboard
-- [x] Monitor logs for any residual or new issues post-deployment
+- [x] Redeploy the application to Google Cloud Run after data and schema fixes.
+- [x] Commit and push changes to trigger deployment instead of using deploy script.
+- [ ] Verify resolution of 'Service Unavailable' error on the dashboard.
+- [ ] Monitor logs for any residual or new issues post-deployment.
 
 ## Phase 5: Cleanup and Optimization
 
