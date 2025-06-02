@@ -170,13 +170,22 @@ def index():
             except ValueError:
                 current_app.logger.warning(f"Invalid end_date format: {end_date}")
         
-        # Filter by office if not super admin
-        if current_user.role != 'super_admin':
-            # Use the office's ID (integer) instead of the office_id (which might be a UUID string)
+        # Filter by current user's office with robust type handling
+        try:
             if hasattr(current_user, 'office') and current_user.office:
-                query = query.filter(Communication.office_id == current_user.office.id)
+                # Use the office.id (integer) instead of office_id (which might be a string UUID)
+                office_id = current_user.office.id if hasattr(current_user.office, 'id') else None
+                
+                if office_id is not None:
+                    current_app.logger.info(f"Filtering by office_id: {office_id} (type: {type(office_id)})")
+                    query = query.filter(Communication.office_id == office_id)
+                else:
+                    current_app.logger.warning("User has office but office.id is None")
             else:
-                query = query.filter(Communication.office_id == current_user.office_id)
+                current_app.logger.warning("User has no office attribute or it's None")
+        except Exception as e:
+            current_app.logger.error(f"Error filtering by office: {str(e)}")
+            current_app.logger.exception("Full traceback for office filter error:")
         
         # Order by date sent descending
         query = query.order_by(Communication.date_sent.desc())
@@ -207,9 +216,25 @@ def index():
                               page_title="Communications Hub")
     except Exception as e:
         current_app.logger.error(f"Error in communications index: {str(e)}")
-        current_app.logger.exception("Full traceback:")
-        flash('Error loading communications. Please try again later.', 'error')
-        return render_template('error.html', error_message=f"Error: {str(e)}", page_title="Error")
+        current_app.logger.exception("Full traceback for communications index error:")
+        
+        # Return a more detailed error page
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'traceback': traceback.format_exc(),
+            'user_id': current_user.id if hasattr(current_user, 'id') else 'Unknown',
+            'user_id_type': type(current_user.id).__name__ if hasattr(current_user, 'id') else 'Unknown'
+        }
+        
+        # Convert error_details to a string for display
+        error_details_str = '\n'.join([f"{k}: {v}" for k, v in error_details.items()])
+        
+        flash(f"Error: {str(e)}", 'danger')
+        return render_template('error.html', 
+                            error_message=f"Error: {str(e)}", 
+                            error_details=error_details_str,
+                            page_title="Error")
 
 @communications_bp.route('/test')
 @login_required
