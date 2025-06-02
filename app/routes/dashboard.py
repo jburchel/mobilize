@@ -11,6 +11,7 @@ from app.models.person import Person
 from app.utils.decorators import office_required
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
+import traceback
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -161,8 +162,25 @@ def index():
         is_super_admin = fresh_user.role == 'super_admin'
     except Exception as e:
         current_app.logger.error(f"Error in dashboard index: {str(e)}")
-        flash('An error occurred. Please try again.', 'danger')
-        return redirect(url_for('auth.login'))
+        current_app.logger.exception("Full traceback for dashboard index error:")
+        
+        # Return a more detailed error page
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'traceback': traceback.format_exc(),
+            'user_id': user_id if 'user_id' in locals() else 'Unknown',
+            'office_id': office_id if 'office_id' in locals() else 'Unknown'
+        }
+        
+        # Convert error_details to a string for display
+        error_details_str = '\n'.join([f"{k}: {v}" for k, v in error_details.items()])
+        
+        flash(f"Error: {str(e)}", 'danger')
+        return render_template('error.html', 
+                            error_message=f"Error: {str(e)}", 
+                            error_details=error_details_str,
+                            page_title="Error")
         
     if is_super_admin:
         # Super admins see Main Office pipelines by default
@@ -722,15 +740,36 @@ def get_dashboard_stats():
             stats['people_count'] = result[0] if result else 0
             stats['church_count'] = result[1] if result else 0
         else:
-            # Get counts for specific office in a single query using UNION
-            counts_query = """
-                SELECT 
-                    (SELECT COUNT(*) FROM people JOIN contacts ON people.id = contacts.id WHERE contacts.office_id = :office_id) AS people_count,
-                    (SELECT COUNT(*) FROM churches JOIN contacts ON churches.id = contacts.id WHERE contacts.office_id = :office_id) AS church_count
-            """
-            result = db.session.execute(text(counts_query), {"office_id": office_id}).fetchone()
-            stats['people_count'] = result[0] if result else 0
-            stats['church_count'] = result[1] if result else 0
+            # Get the office.id (integer) instead of office_id (which might be a string UUID)
+            try:
+                if hasattr(fresh_user, 'office') and fresh_user.office:
+                    # Use the office.id (integer) instead of office_id (which might be a string UUID)
+                    office_id_int = fresh_user.office.id if hasattr(fresh_user.office, 'id') else None
+                    
+                    if office_id_int is not None:
+                        current_app.logger.info(f"Filtering counts by office_id: {office_id_int} (type: {type(office_id_int)})")
+                        # Get counts for specific office in a single query using UNION
+                        counts_query = """
+                            SELECT 
+                                (SELECT COUNT(*) FROM people JOIN contacts ON people.id = contacts.id WHERE contacts.office_id = :office_id) AS people_count,
+                                (SELECT COUNT(*) FROM churches JOIN contacts ON churches.id = contacts.id WHERE contacts.office_id = :office_id) AS church_count
+                        """
+                        result = db.session.execute(text(counts_query), {"office_id": office_id_int}).fetchone()
+                        stats['people_count'] = result[0] if result else 0
+                        stats['church_count'] = result[1] if result else 0
+                    else:
+                        current_app.logger.warning("User has office but office.id is None")
+                        stats['people_count'] = 0
+                        stats['church_count'] = 0
+                else:
+                    current_app.logger.warning("User has no office attribute or it's None")
+                    stats['people_count'] = 0
+                    stats['church_count'] = 0
+            except Exception as e:
+                current_app.logger.error(f"Error filtering counts by office: {str(e)}")
+                current_app.logger.exception("Full traceback for office filter error:")
+                stats['people_count'] = 0
+                stats['church_count'] = 0
             
         # Get task counts in a single query
         tasks_query = """
@@ -753,10 +792,28 @@ def get_dashboard_stats():
                 Communication.created_at >= thirty_days_ago
             ).scalar() or 0
         else:
-            communications_count = db.session.query(func.count(Communication.id)).filter(
-                Communication.office_id == office_id,
-                Communication.created_at >= thirty_days_ago
-            ).scalar() or 0
+            # Get the office.id (integer) instead of office_id (which might be a string UUID)
+            try:
+                if hasattr(fresh_user, 'office') and fresh_user.office:
+                    # Use the office.id (integer) instead of office_id (which might be a string UUID)
+                    office_id_int = fresh_user.office.id if hasattr(fresh_user.office, 'id') else None
+                    
+                    if office_id_int is not None:
+                        current_app.logger.info(f"Filtering communications by office_id: {office_id_int} (type: {type(office_id_int)})")
+                        communications_count = db.session.query(func.count(Communication.id)).filter(
+                            Communication.office_id == office_id_int,
+                            Communication.created_at >= thirty_days_ago
+                        ).scalar() or 0
+                    else:
+                        current_app.logger.warning("User has office but office.id is None")
+                        communications_count = 0
+                else:
+                    current_app.logger.warning("User has no office attribute or it's None")
+                    communications_count = 0
+            except Exception as e:
+                current_app.logger.error(f"Error filtering communications by office: {str(e)}")
+                current_app.logger.exception("Full traceback for office filter error:")
+                communications_count = 0
             
         stats['recent_communications'] = communications_count
         
