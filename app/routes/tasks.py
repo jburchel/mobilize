@@ -172,7 +172,8 @@ def add():
                     assigned_to = None
             
             # Get Google Calendar sync option
-            google_calendar_sync_enabled = request.form.get('google_calendar_sync_enabled') == 'true'
+            google_calendar_sync_enabled = request.form.get('google_calendar_sync_enabled') == 'true' or request.form.get('google_calendar_sync_enabled') == 'on'
+            current_app.logger.debug(f"Google Calendar sync value: {request.form.get('google_calendar_sync_enabled')}, enabled: {google_calendar_sync_enabled}")
             
             # Create new task
             task = Task(
@@ -334,7 +335,8 @@ def edit(id):
         
         # Handle Google Calendar sync
         old_sync_enabled = task.google_calendar_sync_enabled
-        task.google_calendar_sync_enabled = request.form.get('google_calendar_sync_enabled') == 'true'
+        task.google_calendar_sync_enabled = request.form.get('google_calendar_sync_enabled') == 'true' or request.form.get('google_calendar_sync_enabled') == 'on'
+        current_app.logger.debug(f"Google Calendar sync value: {request.form.get('google_calendar_sync_enabled')}, enabled: {task.google_calendar_sync_enabled}")
         
         task.updated_at = datetime.now()
         db.session.commit()
