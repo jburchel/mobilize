@@ -511,12 +511,12 @@ def create_app(test_config=None):
     from app.routes.communications_robust import communications_robust_bp
     app.register_blueprint(communications_robust_bp, url_prefix='/communications_robust')
     
-    # Register our fixed communications blueprint as the main communications route
+    # Register our fixed communications blueprint with comprehensive type handling
     from app.routes.communications_fixed import communications_fixed_bp
-    app.register_blueprint(communications_fixed_bp, url_prefix='/communications')
-    # Define URL prefixes for all routes
+    app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
+    # Temporarily redirect main communications route to the fixed version
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
-                     'tasks': '/tasks', 'google_sync': '/google_sync',
+                     'communications': '/communications_fixed', 'tasks': '/tasks', 'google_sync': '/google_sync',
                      'settings': '/settings', 'pipeline': '/pipeline', 'reports': '/reports',
                      'emails': '/emails', 'onboarding': '/onboarding', }
     for bp in blueprints:

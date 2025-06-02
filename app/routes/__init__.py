@@ -44,6 +44,7 @@ blueprints = [
     people_bp,
     churches_bp,
     tasks_bp,
+    communications_bp,
     google_sync_bp,
     settings_bp,
     pipeline_bp,
