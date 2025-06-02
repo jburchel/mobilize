@@ -511,7 +511,6 @@ def create_app(test_config=None):
     from app.routes.communications_robust import communications_robust_bp
     app.register_blueprint(communications_robust_bp, url_prefix='/communications_robust')
     
-    # Register our fixed communications blueprint with comprehensive type handling
     from app.routes.communications import communications_bp
     app.register_blueprint(communications_bp, url_prefix='/communications')
     # Define URL prefixes for all routes

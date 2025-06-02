@@ -161,8 +161,17 @@ def index():
         is_super_admin = fresh_user.role == 'super_admin'
     except Exception as e:
         current_app.logger.error(f"Error in dashboard index: {str(e)}")
-        flash('An error occurred. Please try again.', 'danger')
-        return redirect(url_for('auth.login'))
+        current_app.logger.exception("Full traceback for dashboard index error:")
+        current_app.logger.info(f"Request URL at error: {request.url}")
+        current_app.logger.info(f"Request Headers at error: {dict(request.headers)}")
+        current_app.logger.info(f"Request Args at error: {request.args}")
+        current_app.logger.info(f"User ID at error: {current_user.id}, Type: {type(current_user.id)}")
+        if hasattr(current_user, 'office'):
+            current_app.logger.info(f"User Office at error: {current_user.office}, Office ID: {getattr(current_user.office, 'id', None)}, Type: {type(getattr(current_user.office, 'id', None))}")
+        else:
+            current_app.logger.info("User has no office attribute at error")
+        flash('An error occurred while loading the dashboard. Please try again later.', 'error')
+        return render_template('error.html', error_message="An error occurred", page_title="Error")
         
     if is_super_admin:
         # Super admins see Main Office pipelines by default
