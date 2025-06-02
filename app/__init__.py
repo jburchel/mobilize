@@ -516,7 +516,7 @@ def create_app(test_config=None):
     app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
     # Define URL prefixes for all routes
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
-                     'communications': '/communications_fixed', 'tasks': '/tasks', 'google_sync': '/google_sync',
+                     'tasks': '/tasks', 'google_sync': '/google_sync',
                      'settings': '/settings', 'pipeline': '/pipeline', 'reports': '/reports',
                      'emails': '/emails', 'onboarding': '/onboarding', }
     for bp in blueprints:

@@ -10,7 +10,6 @@ from app.routes.dashboard import dashboard_bp
 from app.routes.people import people_bp
 from app.routes.churches import churches_bp
 from app.routes.tasks import tasks_bp
-from app.routes.communications import communications_bp
 from .google_sync import google_sync_bp
 from app.routes.admin import admin_bp
 from app.routes.settings import settings_bp
@@ -44,7 +43,6 @@ blueprints = [
     people_bp,
     churches_bp,
     tasks_bp,
-    communications_bp,
     google_sync_bp,
     settings_bp,
     pipeline_bp,
