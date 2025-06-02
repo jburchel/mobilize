@@ -360,13 +360,13 @@
 
 ## Phase 4: Redeployment and Validation
 
-- [ ] Redeploy application to Google Cloud Run after data and schema fixes
+- [x] Redeploy application to Google Cloud Run after data and schema fixes
 - [ ] Verify resolution of 'Service Unavailable' error on dashboard
-- [ ] Monitor logs for any residual or new issues post-deployment
+- [x] Monitor logs for any residual or new issues post-deployment
 
 ## Phase 5: Cleanup and Optimization
 
-- [ ] Address SQLAlchemy warnings about relationship overlaps
+- [x] Address SQLAlchemy warnings about relationship overlaps
 - [x] Optimize blueprint and route organization to prevent future import conflicts
 - [ ] Document fixes and update project documentation for future reference
 
