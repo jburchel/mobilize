@@ -230,3 +230,84 @@ def index():
                             error_message=f"Error: {str(e)}", 
                             error_details=error_details_str,
                             page_title="Error")
+
+@communications_fixed_bp.route('/test')
+@login_required
+def test_page():
+    """Test page that uses the actual template but with empty data"""
+    try:
+        current_app.logger.info("Loading test communications page with actual template")
+        
+        # Manually load email signatures with robust type handling
+        try:
+            # Log the current user ID for debugging
+            current_app.logger.info(f"Loading email signatures for user_id: {current_user.id} (type: {type(current_user.id)})")
+            
+            # Try with both integer and string versions using SQLAlchemy OR condition
+            user_id_str = str(current_user.id)
+            
+            signatures = EmailSignature.query.filter(
+                or_(
+                    EmailSignature.user_id == current_user.id,  # Try with original type
+                    EmailSignature.user_id == user_id_str  # Try with string conversion
+                )
+            ).all()
+            
+            if signatures:
+                current_app.logger.info(f"Found {len(signatures)} signatures with OR condition query")
+                current_user.email_signatures = signatures
+            else:
+                # If still not found, try with raw SQL as a last resort
+                current_app.logger.info("No signatures found with ORM query, trying raw SQL as last resort")
+                
+                # Use raw SQL with explicit text casting to handle type differences
+                result = db.session.execute(
+                    text("SELECT id FROM email_signatures WHERE user_id::TEXT = :user_id_str"),
+                    {"user_id_str": user_id_str}
+                ).fetchall()
+                
+                if result:
+                    signature_ids = [row[0] for row in result]
+                    current_app.logger.info(f"Found {len(signature_ids)} signatures with raw SQL query")
+                    current_user.email_signatures = EmailSignature.query.filter(EmailSignature.id.in_(signature_ids)).all()
+                else:
+                    current_app.logger.warning(f"No email signatures found for user_id: {current_user.id}")
+                    current_user.email_signatures = []
+            
+            current_app.logger.info(f"Loaded {len(current_user.email_signatures)} email signatures")
+        except Exception as e:
+            current_app.logger.error(f"Error loading email signatures: {str(e)}")
+            current_app.logger.exception("Full traceback for email signature error:")
+            current_user.email_signatures = []
+        
+        # Try to render the actual template but with empty data
+        return render_template('communications/index.html', 
+                              communications=[],
+                              pagination={
+                                  'page': 1,
+                                  'per_page': 50,
+                                  'total': 0,
+                                  'pages': 0,
+                                  'has_next': False,
+                                  'has_prev': False
+                              },
+                              page_title="Communications Test")
+    except Exception as e:
+        current_app.logger.error(f"Error in test communications page: {str(e)}")
+        current_app.logger.exception("Full traceback:")
+        
+        # Convert error details to a string for display
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'traceback': traceback.format_exc(),
+            'user_id': current_user.id if hasattr(current_user, 'id') else 'Unknown',
+            'user_id_type': type(current_user.id).__name__ if hasattr(current_user, 'id') else 'Unknown'
+        }
+        error_details_str = '\n'.join([f"{k}: {v}" for k, v in error_details.items()])
+        
+        flash(f"Error: {str(e)}", 'danger')
+        return render_template('error.html', 
+                            error_message=f"Error: {str(e)}", 
+                            error_details=error_details_str,
+                            page_title="Error")
