@@ -12,7 +12,6 @@ from app.utils.decorators import office_required
 from app.forms.task import TaskForm
 from app.forms.task_batch_reminder import TaskBatchReminderForm
 from sqlalchemy import or_
-import json
 
 tasks_bp = Blueprint('tasks', __name__, template_folder='../templates/tasks')
 
@@ -177,35 +176,25 @@ def add():
             google_calendar_sync_enabled = sync_value == 'true' or sync_value == 'on' or sync_value == 'True' or sync_value == '1'
             current_app.logger.debug(f"Google Calendar sync value: {sync_value}, enabled: {google_calendar_sync_enabled}")
             
-            # Log all form data for debugging
-            current_app.logger.debug(f"All form data: {request.form}")
-            
-            # Create new task with explicit type conversion and validation
-            try:
-                task = Task(
-                    title=title,
-                    description=description,
-                    status=TaskStatus.PENDING,
-                    priority=priority,
-                    due_date=due_date,
-                    due_time=due_time,
-                    person_id=int(person_id) if person_id else None,
-                    church_id=int(church_id) if church_id else None,
-                    assigned_to=assigned_to,
-                    owner_id=current_user.id,
-                    created_by=current_user.id,
-                    office_id=current_user.office_id,
-                    google_calendar_sync_enabled=google_calendar_sync_enabled,
-                    reminder_option=request.form.get('reminder_option', 'none'),
-                    created_at=datetime.now(),
-                    updated_at=datetime.now()
-                )
-                current_app.logger.debug(f"Task object created successfully: {task.title}")
-            except Exception as task_creation_error:
-                current_app.logger.error(f"Error creating task object: {str(task_creation_error)}")
-                import traceback
-                current_app.logger.error(f"Task creation error details: {traceback.format_exc()}")
-                raise
+            # Create new task
+            task = Task(
+                title=title,
+                description=description,
+                status=status,
+                priority=priority,
+                due_date=due_date,
+                due_time=due_time,  # Store the time
+                assigned_to=assigned_to,
+                person_id=person_id,
+                church_id=church_id,
+                created_by=current_user.id,
+                owner_id=current_user.id,
+                office_id=current_user.office_id,
+                reminder_option=request.form.get('reminder_option', 'none'),
+                google_calendar_sync_enabled=google_calendar_sync_enabled,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
             
             db.session.add(task)
             db.session.commit()
@@ -225,40 +214,24 @@ def add():
                         flash('Task was created, but calendar sync failed: You need to connect your Google account first. Go to Settings > Integrations to connect.', 'warning')
                     else:
                         # Check if token has calendar scope
-                        current_app.logger.debug(f"Token scopes for user {current_user.id}: {token.scopes}")
-                        
-                        # Parse the scopes from JSON if needed
                         has_calendar_scope = False
                         if token.scopes:
                             try:
-                                # Check if scopes is already a JSON string that needs parsing
-                                if isinstance(token.scopes, str):
-                                    try:
-                                        scopes_list = json.loads(token.scopes)
-                                        has_calendar_scope = any('calendar' in scope for scope in scopes_list)
-                                    except json.JSONDecodeError:
-                                        # If not valid JSON, check if the calendar scope is in the string directly
-                                        has_calendar_scope = 'calendar' in token.scopes
-                                else:
-                                    # If not a string, assume it's already a list or other structure
-                                    has_calendar_scope = 'calendar' in str(token.scopes)
-                            except Exception as scope_error:
-                                current_app.logger.error(f"Error checking token scopes: {str(scope_error)}")
-                                # Default to checking if 'calendar' appears anywhere in the scopes string
-                                has_calendar_scope = 'calendar' in str(token.scopes)
-                        
-                        current_app.logger.debug(f"Has calendar scope: {has_calendar_scope}")
+                                import json
+                                scopes = json.loads(token.scopes)
+                                has_calendar_scope = any('calendar' in scope.lower() for scope in scopes)
+                            except json.JSONDecodeError:
+                                current_app.logger.warning(f"Could not parse token scopes JSON: {token.scopes}")
                         
                         if not has_calendar_scope:
-                            current_app.logger.warning(f"Token for user {current_user.id} missing calendar scope")
-                            flash('Your Google account does not have calendar permissions. Please reconnect your account.', 'warning')
+                            current_app.logger.warning(f"Token for user {current_user.id} does not have calendar scopes")
+                            flash('Task was created, but calendar sync failed: Your Google account needs calendar permissions. Go to Settings > Integrations to reconnect with calendar access.', 'warning')
                         else:
-                            # Create calendar event
-                            current_app.logger.info(f"Creating Google Calendar event for task {task.id}")
+                            # Proceed with calendar sync
                             calendar_service = CalendarService(current_user.id)
-                            event = calendar_service.create_event(task)
-                            current_app.logger.info(f"Created Google Calendar event for task {task.id}: {event['id']}")
-                            flash('Task successfully synced with Google Calendar', 'success')
+                            calendar_service.create_event(task)
+                            current_app.logger.info(f"Successfully created Google Calendar event for task: {task.id}, event ID: {task.google_calendar_event_id}")
+                            flash('Task created and added to your Google Calendar!', 'success')
                 except Exception as e:
                     import traceback
                     error_details = traceback.format_exc()

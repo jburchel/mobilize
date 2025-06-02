@@ -1,14 +1,12 @@
+from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from app.models.google_token import GoogleToken
 from app.models.task import Task
+from app.models.google_token import GoogleToken
+from app.extensions import db
 from datetime import datetime, timedelta, time
 import json
 import pytz
-import traceback
-from flask import current_app
-from app.extensions import db
 
 class CalendarService:
     """Service class for Google Calendar API operations."""
@@ -70,64 +68,8 @@ class CalendarService:
             current_app.logger.error(f"Error details: {error_details}")
             raise ValueError(f"Failed to initialize Calendar service: {str(e)}")
 
-    def _format_event_datetime(self, task):
-        """Format the event datetime for Google Calendar API."""
-        try:
-            # Default time is noon if no specific time is set
-            default_time = time(12, 0)
-            event_time = default_time
-            
-            # Check if task has due_time attribute and it's not empty
-            if hasattr(task, 'due_time') and task.due_time:
-                try:
-                    # Parse the time string in format HH:MM
-                    hour, minute = map(int, task.due_time.split(':'))
-                    event_time = time(hour, minute)
-                    current_app.logger.debug(f"Using task due_time: {task.due_time} for event")
-                except (ValueError, AttributeError) as time_error:
-                    # If time parsing fails, use default time
-                    current_app.logger.warning(f"Could not parse time string '{task.due_time}': {str(time_error)}. Using default time (noon).")
-                    event_time = default_time
-            else:
-                # No specific time found, use default
-                current_app.logger.debug("No due_time found for task, using default time (noon)")
-                event_time = default_time
-            
-            # Combine the date and time into a datetime object
-            start_datetime = datetime.combine(task.due_date, event_time)
-            end_datetime = start_datetime + timedelta(hours=1)
-            
-            # Format the datetimes for Google Calendar API (RFC3339 format)
-            # Include time zone offset for proper display
-            local_timezone = pytz.timezone('America/New_York')  # Adjust to your time zone
-            
-            start_datetime_local = local_timezone.localize(start_datetime)
-            end_datetime_local = local_timezone.localize(end_datetime)
-            
-            # Format times in ISO 8601 / RFC 3339 format with timezone info
-            start_time_str = start_datetime_local.isoformat()
-            end_time_str = end_datetime_local.isoformat()
-            
-            current_app.logger.debug(f"Event start time: {start_time_str}, end time: {end_time_str}")
-            
-            return {
-                'start': {
-                    'dateTime': start_time_str,
-                    'timeZone': 'America/New_York',  # Use the same time zone
-                },
-                'end': {
-                    'dateTime': end_time_str,
-                    'timeZone': 'America/New_York',  # Use the same time zone
-                }
-            }
-        except Exception as e:
-            current_app.logger.error(f"Error formatting event datetime: {str(e)}")
-            import traceback
-            current_app.logger.error(f"Datetime formatting error details: {traceback.format_exc()}")
-            raise
-    
     def _get_reminder_settings(self, task):
-        """Get reminder settings based on task's reminder option."""
+        """Get reminder settings based on task's reminder_option."""
         from flask import current_app
         
         # Default is to use Google Calendar's default reminders
@@ -183,40 +125,79 @@ class CalendarService:
                 
             current_app.logger.info(f"Creating Google Calendar event for task {task.id}: {task.title}")
             
+            # Convert date to datetime with time
+            from datetime import datetime, time, timedelta
+            
+            # Default time is noon if no specific time is set
+            default_time = time(12, 0)
+            
+            # Check if task has due_time attribute and it's not empty
+            if hasattr(task, 'due_time') and task.due_time:
+                try:
+                    # Parse the time string in format HH:MM
+                    hour, minute = map(int, task.due_time.split(':'))
+                    event_time = time(hour, minute)
+                    current_app.logger.debug(f"Using task due_time: {task.due_time} for event")
+                except (ValueError, AttributeError) as time_error:
+                    # If time parsing fails, use default time
+                    current_app.logger.warning(f"Could not parse time string '{task.due_time}': {str(time_error)}. Using default time (noon).")
+                    event_time = default_time
+            else:
+                # No specific time found, use default
+                current_app.logger.debug("No due_time found for task, using default time (noon)")
+                event_time = default_time
+            
+            # Combine the date and time into a datetime object
+            start_datetime = datetime.combine(task.due_date, event_time)
+            end_datetime = start_datetime + timedelta(hours=1)
+            
+            # Format the datetimes for Google Calendar API (RFC3339 format)
+            # Include time zone offset for proper display
+            local_timezone = pytz.timezone('America/New_York')  # Adjust to your time zone
+            
+            start_datetime_local = local_timezone.localize(start_datetime)
+            end_datetime_local = local_timezone.localize(end_datetime)
+            
+            # Format times in ISO 8601 / RFC 3339 format with timezone info
+            start_time_str = start_datetime_local.isoformat()
+            end_time_str = end_datetime_local.isoformat()
+            
+            current_app.logger.debug(f"Event start time: {start_time_str}, end time: {end_time_str}")
+            
+            # Get reminder settings based on task's reminder option
             reminders = self._get_reminder_settings(task)
-            current_app.logger.debug(f"Reminder settings: {reminders}")
             
-            event_datetime = self._format_event_datetime(task)
-            
-            # Create the event data
             event = {
                 'summary': task.title,
                 'description': task.description or '',
-                'start': event_datetime['start'],
-                'end': event_datetime['end'],
+                'start': {
+                    'dateTime': start_time_str,
+                    'timeZone': 'America/New_York',  # Use the same time zone
+                },
+                'end': {
+                    'dateTime': end_time_str,
+                    'timeZone': 'America/New_York',  # Use the same time zone
+                },
                 'reminders': reminders
             }
+
+            current_app.logger.debug(f"Creating event with data: {event}")
             
-            try:
-                current_app.logger.debug(f"Event data prepared: {json.dumps(event)}")
-            except Exception as json_error:
-                current_app.logger.debug(f"Could not serialize event data: {str(json_error)}")
-            
-            # Create the event
-            current_app.logger.info("Sending event creation request to Google Calendar API")
-            
+            # Log the exact request being sent to the API for debugging
+            current_app.logger.debug("Calling Google Calendar API to insert event")
             try:
                 event_result = self.service.events().insert(
                     calendarId='primary',
                     body=event
                 ).execute()
-                current_app.logger.info(f"Successfully created Google Calendar event with ID: {event_result['id']}")
             except Exception as api_error:
                 current_app.logger.error(f"Google Calendar API error: {str(api_error)}")
                 current_app.logger.error(f"Event data that caused error: {event}")
                 import traceback
                 current_app.logger.error(f"API error details: {traceback.format_exc()}")
                 raise
+            
+            current_app.logger.info(f"Successfully created Google Calendar event with ID: {event_result['id']}")
 
             # Update task with calendar event ID and sync time
             task.google_calendar_event_id = event_result['id']
@@ -408,7 +389,7 @@ class CalendarService:
                 event['attendees'] = [{'email': email} for email in attendees if email]
                 current_app.logger.debug(f"Adding {len(event['attendees'])} attendees to meeting")
 
-            current_app.logger.debug("Creating event with Google Calendar API")
+            current_app.logger.debug(f"Creating event with data: {event}")
             
             current_app.logger.debug("Calling Google Calendar API to insert event with conferencing")
             event_result = self.service.events().insert(
