@@ -498,6 +498,10 @@ def create_app(test_config=None):
     # Register our simplified communications blueprint
     from app.routes.communications_simple import communications_simple_bp
     app.register_blueprint(communications_simple_bp, url_prefix='/communications_simple')
+    
+    # Register our ultra-simplified test blueprint
+    from app.routes.communications_test import communications_test_bp
+    app.register_blueprint(communications_test_bp, url_prefix='/communications_test')
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
                      'communications': '/communications', 'tasks': '/tasks', 'google_sync': '/google_sync',
                      'settings': '/settings', 'pipeline': '/pipeline', 'reports': '/reports',
