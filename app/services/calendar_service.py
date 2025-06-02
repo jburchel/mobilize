@@ -183,11 +183,19 @@ class CalendarService:
 
             current_app.logger.debug(f"Creating event with data: {event}")
             
+            # Log the exact request being sent to the API for debugging
             current_app.logger.debug("Calling Google Calendar API to insert event")
-            event_result = self.service.events().insert(
-                calendarId='primary',
-                body=event
-            ).execute()
+            try:
+                event_result = self.service.events().insert(
+                    calendarId='primary',
+                    body=event
+                ).execute()
+            except Exception as api_error:
+                current_app.logger.error(f"Google Calendar API error: {str(api_error)}")
+                current_app.logger.error(f"Event data that caused error: {event}")
+                import traceback
+                current_app.logger.error(f"API error details: {traceback.format_exc()}")
+                raise
             
             current_app.logger.info(f"Successfully created Google Calendar event with ID: {event_result['id']}")
 
