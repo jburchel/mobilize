@@ -287,7 +287,7 @@ def get_contact_activity(contact_id):
                 'type': 'communication',
                 'date': comm.date,
                 'description': f"{comm.type}: {comm.subject or 'No subject'}",
-                'url': url_for('communications_fixed.view', id=comm.id)
+                'url': url_for('communications.view', id=comm.id)
             })
         
         # Add tasks

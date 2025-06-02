@@ -207,28 +207,20 @@ def index():
         return render_template('communications/index.html', 
                               communications=communications,
                               pagination=pagination,
-                              page_title="Communications Hub")
+                              per_page=per_page)
     except Exception as e:
         current_app.logger.error(f"Error in communications index: {str(e)}")
         current_app.logger.exception("Full traceback for communications index error:")
-        
-        # Return a more detailed error page
-        error_details = {
-            'error_type': type(e).__name__,
-            'error_message': str(e),
-            'traceback': traceback.format_exc(),
-            'user_id': current_user.id if hasattr(current_user, 'id') else 'Unknown',
-            'user_id_type': type(current_user.id).__name__ if hasattr(current_user, 'id') else 'Unknown'
-        }
-        
-        # Convert error_details to a string for display
-        error_details_str = '\n'.join([f"{k}: {v}" for k, v in error_details.items()])
-        
-        flash(f"Error: {str(e)}", 'danger')
-        return render_template('error.html', 
-                            error_message=f"Error: {str(e)}", 
-                            error_details=error_details_str,
-                            page_title="Error")
+        current_app.logger.info(f"Request URL at error: {request.url}")
+        current_app.logger.info(f"Request Headers at error: {dict(request.headers)}")
+        current_app.logger.info(f"Request Args at error: {request.args}")
+        current_app.logger.info(f"User ID at error: {current_user.id}, Type: {type(current_user.id)}")
+        if hasattr(current_user, 'office'):
+            current_app.logger.info(f"User Office at error: {current_user.office}, Office ID: {getattr(current_user.office, 'id', None)}, Type: {type(getattr(current_user.office, 'id', None))}")
+        else:
+            current_app.logger.info("User has no office attribute at error")
+        flash('An error occurred while loading communications. Please try again later.', 'error')
+        return render_template('error.html', error_message="An error occurred", page_title="Error")
 
 @communications_bp.route('/test')
 @login_required
