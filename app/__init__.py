@@ -495,6 +495,9 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp, url_prefix='/auth', name='auth_web')
     from app.routes.api.v1 import api_bp
     app.register_blueprint(api_bp, url_prefix='/api/v1')
+    # Register our simplified communications blueprint
+    from app.routes.communications_simple import communications_simple_bp
+    app.register_blueprint(communications_simple_bp, url_prefix='/communications_simple')
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
                      'communications': '/communications', 'tasks': '/tasks', 'google_sync': '/google_sync',
                      'settings': '/settings', 'pipeline': '/pipeline', 'reports': '/reports',

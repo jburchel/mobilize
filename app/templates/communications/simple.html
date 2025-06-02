@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Communications Hub (Simple){% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1>Communications Hub (Simple)</h1>
+            <p class="lead">This is a simplified version of the communications page for testing.</p>
+            
+            <div class="alert alert-info">
+                <p><strong>Debug Information:</strong></p>
+                <ul>
+                    <li>User ID: {{ current_user.id }} ({{ current_user.id.__class__.__name__ }})</li>
+                    <li>Email: {{ current_user.email }}</li>
+                    <li>Email Signatures: {{ current_user.email_signatures|length }}</li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5>Communications</h5>
+                </div>
+                <div class="card-body">
+                    <p>No communications to display in this simplified version.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
