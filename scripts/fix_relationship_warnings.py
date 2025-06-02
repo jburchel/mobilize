@@ -1,4 +1,14 @@
+import os
 import logging
+
+# Add the app directory to the Python path
+APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if APP_DIR not in os.sys.path:
+    os.sys.path.append(APP_DIR)
+
+"""
+Script to update relationship configurations in models to address SQLAlchemy warnings about overlaps.
+"""
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

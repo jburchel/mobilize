@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 def setup_relationships():
     """Set up relationships between models."""
     # Import models
-    from app.models import Person, Church, Task, Communication, User, Office, Pipeline, PipelineStage, PipelineContact, PipelineStageHistory
+    from app.models import Person, Church, Task, Communication, User, Office, Pipeline, PipelineStage, PipelineContact, PipelineStageHistory, EmailSignature, GoogleToken, Contact
     
     # Define all relationships
     relationships = [
@@ -57,10 +57,13 @@ def setup_relationships():
         # User relationships
         (User, "communications", db.relationship("Communication", back_populates="sender", overlaps="sender,communications,userSender", foreign_keys="Communication.user_id")),
         (User, "owned_communications", db.relationship("Communication", back_populates="owner", overlaps="owner,owned_communications", foreign_keys="Communication.owner_id")),
+        (User, "email_signatures", db.relationship("EmailSignature", back_populates="user", overlaps="user")),
+        (User, "google_tokens", db.relationship("GoogleToken", back_populates="user", overlaps="user")),
+        (User, "contacts", db.relationship("Contact", back_populates="user", foreign_keys="Contact.user_id", overlaps="user,contacts")),
         (User, "owned_churches", db.relationship("Church", back_populates="owner", foreign_keys="[Church.owner_id]", overlaps="owner,owned_churches")),
         (User, "assigned_tasks", db.relationship("Task", back_populates="assigned_to_user", foreign_keys="Task.assigned_to", overlaps="assigned_to_user,assigned_tasks")),
         (User, "owned_tasks", db.relationship("Task", back_populates="owner", foreign_keys="Task.owner_id", overlaps="owner,owned_tasks")),
-        (User, "created_tasks", db.relationship("Task", back_populates="created_by_user", foreign_keys="Task.created_by", overlaps="created_tasks")),
+        (User, "created_tasks", db.relationship("Task", back_populates="created_by_user", foreign_keys="Task.created_by", overlaps="created_by_user,created_tasks")),
         (User, "office", db.relationship("Office", back_populates="users", overlaps="users")),
 
         # Office relationships
