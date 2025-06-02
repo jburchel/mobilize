@@ -376,3 +376,7 @@ Phase 7 Complete when: Application is stable and users are satisfied
 - [ ] Review and refine SQLAlchemy models to eliminate warnings
 
 **Note**: Ensure each phase is completed before moving to the next. Refer to `mobilize-prompt.md` for detailed project context if needed.
+
+## Notes
+- This checklist is a living document and will be updated as the project evolves.
+- Last updated to trigger deployment on 2025-06-03.
