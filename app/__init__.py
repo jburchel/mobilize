@@ -506,6 +506,10 @@ def create_app(test_config=None):
     # Register our most basic test blueprint (no login required)
     from app.routes.basic_test import basic_test_bp
     app.register_blueprint(basic_test_bp, url_prefix='/basic_test')
+    
+    # Register our robust communications blueprint with explicit type handling
+    from app.routes.communications_robust import communications_robust_bp
+    app.register_blueprint(communications_robust_bp, url_prefix='/communications_robust')
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
                      'communications': '/communications', 'tasks': '/tasks', 'google_sync': '/google_sync',
                      'settings': '/settings', 'pipeline': '/pipeline', 'reports': '/reports',
