@@ -64,7 +64,7 @@
 
 ## Phase 2: Core Backend Development
 
-### Pase 2: Development Steps
+### Phase 2: Development Steps
 
 - [x] 1. Models Implementation
   - [x] Design and implement User model
@@ -338,4 +338,36 @@
 
 ✅ Phase 7 Complete when: Application is stable and users are satisfied
 
-- [x] Fix Flask-Login AttributeError (login_manager) 
+## Project Checklist for Mobilize-CRM
+
+## Phase 1: Initial Diagnosis and Setup
+
+- [x] Review error logs to identify the cause of 'Service Unavailable' on dashboard
+- [x] Set up environment and verify configuration settings
+- [x] Create or update error handling to capture detailed logs
+
+## Phase 2: Data Integrity Fixes
+
+- [x] Develop script to fix `office_id` data type mismatches in database tables
+- [x] Execute `fix_office_id_data.py` script to convert string `office_id` values to integers
+- [x] Handle schema mismatches by checking for column existence before updates
+
+## Phase 3: Database Schema Alignment
+
+- [x] Investigate discrepancies between database schema and SQLAlchemy model definitions
+- [x] Update database schema or models to resolve missing column errors (e.g., `contacts.church_name`, `tasks.reminder_time`)
+- [x] Apply necessary migrations to align database structure with application expectations
+
+## Phase 4: Redeployment and Validation
+
+- [ ] Redeploy application to Google Cloud Run after data and schema fixes
+- [ ] Verify resolution of 'Service Unavailable' error on dashboard
+- [ ] Monitor logs for any residual or new issues post-deployment
+
+## Phase 5: Cleanup and Optimization
+
+- [ ] Address SQLAlchemy warnings about relationship overlaps
+- [x] Optimize blueprint and route organization to prevent future import conflicts
+- [ ] Document fixes and update project documentation for future reference
+
+**Note**: Ensure each phase is completed before moving to the next. Refer to `mobilize-prompt.md` for detailed project context if needed.

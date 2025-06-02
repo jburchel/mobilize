@@ -152,7 +152,7 @@ def index():
             return redirect(url_for('onboarding.welcome'))
             
         # Get the office ID from the fresh user
-        office_id = fresh_user.office_id
+        office_id = int(current_user.office_id) if current_user.office_id else None
         
         # Get dashboard statistics
         stats = get_dashboard_stats()
@@ -389,7 +389,7 @@ def simple_pipeline_chart_data(pipeline_type=None):
             }), 400
             
         # Get user's office
-        office_id = current_user.office_id
+        office_id = int(current_user.office_id) if current_user.office_id else None
         is_super_admin = current_user.role == 'super_admin'
         
         # Find the appropriate pipeline
@@ -503,7 +503,7 @@ def debug_chart_data(chart_type):
     try:
         # Get statistics for totals
         stats = get_dashboard_stats()
-        office_id = current_user.office_id
+        office_id = int(current_user.office_id) if current_user.office_id else None
         
         # Choose the right query and parameters based on chart type
         if chart_type == 'person':
@@ -708,7 +708,7 @@ def get_dashboard_stats():
                 return {}
                 
             # Get the office ID from the fresh user
-            office_id = fresh_user.office_id
+            office_id = int(current_user.office_id) if current_user.office_id else None
             is_super_admin = fresh_user.role == 'super_admin'
         except Exception as e:
             current_app.logger.error(f"Error getting user in dashboard stats: {str(e)}")

@@ -138,6 +138,9 @@ def index():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 50, type=int)  # Default to 50 items per page
         
+        # Ensure office_id is treated as an integer in queries
+        office_id = int(current_user.office_id) if current_user.office_id else None
+        
         # Build query with eager loading to prevent N+1 query problems
         query = Communication.query.options(
             joinedload(Communication.person),
@@ -171,15 +174,9 @@ def index():
                 current_app.logger.warning(f"Invalid end_date format: {end_date}")
         
         # Restrict to user's office with explicit type conversion
-        if hasattr(current_user, 'office') and hasattr(current_user.office, 'id'):
-            office_id_int = int(current_user.office.id) if current_user.office.id else None
-            if office_id_int:
-                query = query.filter(Communication.office_id == office_id_int)
-                current_app.logger.info(f"Filtering communications by office_id: {office_id_int}")
-            else:
-                current_app.logger.warning("User office ID could not be converted to integer")
-        else:
-            current_app.logger.warning("User has no office attribute or office has no ID")
+        if office_id:
+            query = query.filter(Communication.office_id == office_id)
+            current_app.logger.info(f"Filtering communications by office_id: {office_id}")
         
         # Order by date sent descending
         query = query.order_by(Communication.date_sent.desc())
