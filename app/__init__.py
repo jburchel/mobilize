@@ -511,14 +511,6 @@ def create_app(test_config=None):
     from app.routes.communications_simple import communications_simple_bp
     app.register_blueprint(communications_simple_bp, url_prefix='/communications_simple')
     
-    # Register our ultra-simplified test blueprint
-    from app.routes.communications_test import communications_test_bp
-    app.register_blueprint(communications_test_bp, url_prefix='/communications_test')
-    
-    # Register our most basic test blueprint (no login required)
-    from app.routes.basic_test import basic_test_bp
-    app.register_blueprint(basic_test_bp, url_prefix='/basic_test')
-    
     # Register our robust communications blueprint with explicit type handling
     from app.routes.communications_robust import communications_robust_bp
     app.register_blueprint(communications_robust_bp, url_prefix='/communications_robust')

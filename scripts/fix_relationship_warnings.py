@@ -1,12 +1,11 @@
 import os
 import logging
+from app import create_app
 
 # Add the app directory to the Python path
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if APP_DIR not in os.sys.path:
     os.sys.path.append(APP_DIR)
-
-from app import create_app
 
 """
 Script to update relationship configurations in models to address SQLAlchemy warnings about overlaps.

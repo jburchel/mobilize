@@ -369,6 +369,6 @@
 
 - [x] Address SQLAlchemy warnings about relationship overlaps
 - [x] Optimize blueprint and route organization to prevent future import conflicts
-- [ ] Document fixes and update project documentation for future reference
-
-**Note**: Ensure each phase is completed before moving to the next. Refer to `mobilize-prompt.md` for detailed project context if needed.
+- [ ] Remove or archive deprecated files and scripts
+- [ ] Document all fixes and procedures for future reference
+- [ ] Review and refine SQLAlchemy models to eliminate warnings
