@@ -8,7 +8,7 @@ from sqlalchemy import text, or_
 from sqlalchemy.orm import joinedload
 import traceback
 
-communications_fixed_bp = Blueprint('communications_fixed', __name__, template_folder='../templates/communications')
+communications_fixed_bp = Blueprint('communications_fixed', __name__, template_folder='../templates')
 
 # Helper function to get default signature
 def get_default_signature(user_id):
@@ -222,7 +222,11 @@ def index():
             'user_id_type': type(current_user.id).__name__ if hasattr(current_user, 'id') else 'Unknown'
         }
         
+        # Convert error_details to a string for display
+        error_details_str = '\n'.join([f"{k}: {v}" for k, v in error_details.items()])
+        
+        flash(f"Error: {str(e)}", 'danger')
         return render_template('error.html', 
                             error_message=f"Error: {str(e)}", 
-                            error_details=error_details,
+                            error_details=error_details_str,
                             page_title="Error")
