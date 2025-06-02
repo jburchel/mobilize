@@ -750,21 +750,23 @@
     color: white;
     font-weight: 600;
     font-size: 0.85rem;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
     padding: 8px 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: all 0.3s ease;
 }
 
 .pipeline-stage-current .pipeline-stage-label {
-    background: rgba(255, 255, 255, 0.25);
-    border-radius: 8px;
-    backdrop-filter: blur(5px);
-    border: 2px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transform: translateY(-2px);
+    color: #ffffff;
     font-weight: 700;
+    font-size: 0.9rem;
+    text-shadow: 0 3px 6px rgba(0, 0, 0, 0.8);
+    transform: translateY(-2px);
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.8);
+    text-underline-offset: 4px;
 }
 
 .pipeline-stage-indicator {
