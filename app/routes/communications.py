@@ -170,22 +170,16 @@ def index():
             except ValueError:
                 current_app.logger.warning(f"Invalid end_date format: {end_date}")
         
-        # Filter by current user's office with robust type handling
-        try:
-            if hasattr(current_user, 'office') and current_user.office:
-                # Use the office.id (integer) instead of office_id (which might be a string UUID)
-                office_id = current_user.office.id if hasattr(current_user.office, 'id') else None
-                
-                if office_id is not None:
-                    current_app.logger.info(f"Filtering by office_id: {office_id} (type: {type(office_id)})")
-                    query = query.filter(Communication.office_id == office_id)
-                else:
-                    current_app.logger.warning("User has office but office.id is None")
+        # Restrict to user's office with explicit type conversion
+        if hasattr(current_user, 'office') and hasattr(current_user.office, 'id'):
+            office_id_int = int(current_user.office.id) if current_user.office.id else None
+            if office_id_int:
+                query = query.filter(Communication.office_id == office_id_int)
+                current_app.logger.info(f"Filtering communications by office_id: {office_id_int}")
             else:
-                current_app.logger.warning("User has no office attribute or it's None")
-        except Exception as e:
-            current_app.logger.error(f"Error filtering by office: {str(e)}")
-            current_app.logger.exception("Full traceback for office filter error:")
+                current_app.logger.warning("User office ID could not be converted to integer")
+        else:
+            current_app.logger.warning("User has no office attribute or office has no ID")
         
         # Order by date sent descending
         query = query.order_by(Communication.date_sent.desc())
