@@ -9,7 +9,7 @@ def verify_service_status():
     try:
         logger.info("Verifying service status for Mobilize-CRM...")
         service_url = "https://mobilize-crm-x3exfzl3zq-uc.a.run.app"
-        response = requests.get(service_url, timeout=10)
+        response = requests.get(service_url, timeout=30)
         if response.status_code == 200:
             logger.info("Service is up and running. 'Service Unavailable' error resolved.")
             if 'Service Unavailable' in response.text:

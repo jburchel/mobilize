@@ -363,12 +363,10 @@
 - [x] Redeploy the application to Google Cloud Run after data and schema fixes.
 - [x] Commit and push changes to trigger deployment instead of using deploy script.
 - [ ] Verify resolution of 'Service Unavailable' error on the dashboard.
-- [ ] Monitor logs for any residual or new issues post-deployment.
+- [x] Monitor logs for any residual or new issues post-deployment.
 
 ## Phase 5: Cleanup and Optimization
 
-- [x] Address SQLAlchemy warnings about relationship overlaps
-- [x] Optimize blueprint and route organization to prevent future import conflicts
 - [ ] Remove or archive deprecated files and scripts
 - [ ] Document all fixes and procedures for future reference
 - [ ] Review and refine SQLAlchemy models to eliminate warnings

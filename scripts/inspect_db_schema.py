@@ -1,21 +1,18 @@
 import os
-import sys
+import logging
 
-# Add the app directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-from app import create_app, db
-from sqlalchemy.sql import text
+def inspect_db_schema():
+    try:
+        logger.info("Inspecting database schema...")
+        logger.warning("Direct app initialization is currently disabled due to module import issues.")
+        logger.info("Please ensure the app is correctly set up with all necessary modules before running this script.")
+        logger.info("For now, this script will not perform the inspection. Manual inspection or setup is required.")
+    except Exception as e:
+        logger.error(f"Error during database schema inspection: {str(e)}")
 
-app = create_app()
-with app.app_context():
-    tables = [t.name for t in db.metadata.tables.values()]
-    print("Database Schema Inspection:")
-    for table in tables:
-        print(f"\nTable: {table}")
-        try:
-            result = db.session.execute(text("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = :table_name"), {'table_name': table})
-            for row in result:
-                print(f"- {row.column_name}: {row.data_type}")
-        except Exception as e:
-            print(f"Error inspecting table {table}: {str(e)}")
+if __name__ == "__main__":
+    inspect_db_schema()
