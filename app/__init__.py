@@ -514,7 +514,7 @@ def create_app(test_config=None):
     # Register our fixed communications blueprint with comprehensive type handling
     from app.routes.communications_fixed import communications_fixed_bp
     app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
-    # Temporarily redirect main communications route to the fixed version
+    # Define URL prefixes for all routes
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
                      'communications': '/communications_fixed', 'tasks': '/tasks', 'google_sync': '/google_sync',
                      'settings': '/settings', 'pipeline': '/pipeline', 'reports': '/reports',
