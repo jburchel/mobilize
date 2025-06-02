@@ -35,6 +35,31 @@
         </div>
     </div>
 
+    <!-- Pipeline Stage Visualization -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-3">
+                    <div class="pipeline-visualization">
+                        <div class="pipeline-stages-container">
+                            {% set pipeline_stages = ['PROMOTION', 'INFORMATION', 'INVITATION', 'CONFIRMATION', 'AUTOMATION'] %}
+                            {% set current_stage = person.pipeline_stage or 'PROMOTION' %}
+                            {% for stage in pipeline_stages %}
+                                <div class="pipeline-stage {% if stage == current_stage %}pipeline-stage-current{% endif %}" 
+                                     data-stage="{{ stage }}">
+                                    <div class="pipeline-stage-label">{{ stage }}</div>
+                                    {% if stage == current_stage %}
+                                        <div class="pipeline-stage-indicator"></div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <!-- Profile Information -->
         <div class="col-md-4">
@@ -697,6 +722,88 @@
 .priority-high { background-color: var(--bs-danger); }
 .priority-medium { background-color: var(--bs-warning); }
 .priority-low { background-color: var(--bs-success); }
+
+/* Pipeline Visualization Styles */
+.pipeline-visualization {
+    margin: 0;
+}
+
+.pipeline-stages-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(90deg, #41b553 0%, #37a36e 25%, #2d9189 50%, #237fa4 75%, #1a4b91 100%);
+    border-radius: 12px;
+    padding: 8px;
+    position: relative;
+    min-height: 60px;
+}
+
+.pipeline-stage {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.pipeline-stage-label {
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    padding: 8px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pipeline-stage-current .pipeline-stage-label {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+    font-weight: 700;
+}
+
+.pipeline-stage-indicator {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid rgba(255, 255, 255, 0.9);
+    z-index: 3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .pipeline-stage-label {
+        font-size: 0.7rem;
+        padding: 6px 2px;
+    }
+    
+    .pipeline-stages-container {
+        min-height: 50px;
+        padding: 6px;
+    }
+}
+
+@media (max-width: 576px) {
+    .pipeline-stage-label {
+        font-size: 0.6rem;
+        padding: 4px 1px;
+    }
+    
+    .pipeline-stages-container {
+        min-height: 45px;
+        padding: 4px;
+    }
+}
 </style>
 {% endblock %}
 
