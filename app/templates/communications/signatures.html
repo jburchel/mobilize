@@ -38,7 +38,7 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-12">
-            <a href="{{ url_for('communications.index') }}" class="btn btn-outline-secondary mb-3">
+            <a href="{{ url_for('communications_fixed.index') }}" class="btn btn-outline-secondary mb-3">
                 <i class="bi bi-arrow-left-circle me-2"></i>Back to Communications Hub
             </a>
             
@@ -79,7 +79,7 @@
                                                     </li>
                                                     {% if not signature.is_default %}
                                                         <li>
-                                                            <form action="{{ url_for('communications.signatures') }}" method="post">
+                                                            <form action="{{ url_for('communications_fixed.signatures') }}" method="post">
                                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                                                 <input type="hidden" name="action" value="set_default">
                                                                 <input type="hidden" name="signature_id" value="{{ signature.id }}">
@@ -91,7 +91,7 @@
                                                     {% endif %}
                                                     <li><hr class="dropdown-divider"></li>
                                                     <li>
-                                                        <form action="{{ url_for('communications.signatures') }}" method="post" onsubmit="return confirm('Are you sure you want to delete this signature?');">
+                                                        <form action="{{ url_for('communications_fixed.signatures') }}" method="post" onsubmit="return confirm('Are you sure you want to delete this signature?');">
                                                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                                             <input type="hidden" name="action" value="delete">
                                                             <input type="hidden" name="signature_id" value="{{ signature.id }}">
@@ -124,7 +124,7 @@
                                 <i class="bi bi-envelope text-muted" style="font-size: 3rem;"></i>
                             </div>
                             <h4>No Signatures Yet</h4>
-                            <p class="text-muted">Create your first email signature to use in your communications.</p>
+                            <p class="text-muted">Create your first email signature to use in your communications_fixed.</p>
                             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSignatureModal">
                                 <i class="bi bi-plus-circle me-2"></i>Create Signature
                             </button>
@@ -140,7 +140,7 @@
 <div class="modal fade" id="createSignatureModal" tabindex="-1" aria-labelledby="createSignatureModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form action="{{ url_for('communications.signatures') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ url_for('communications_fixed.signatures') }}" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="create">
                 <div class="modal-header">
@@ -194,7 +194,7 @@
 <div class="modal fade" id="editSignatureModal" tabindex="-1" aria-labelledby="editSignatureModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form action="{{ url_for('communications.signatures') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ url_for('communications_fixed.signatures') }}" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="signature_id" id="edit-signature-id">

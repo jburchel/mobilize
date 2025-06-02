@@ -183,17 +183,17 @@
                 </div>
                 
                 <div class="card-footer d-flex justify-content-between">
-                    <a href="{{ url_for('communications.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ url_for('communications_fixed.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left me-2"></i>Back to List
                     </a>
                     <div>
                         {% if communication.direction == 'inbound' %}
-                        <a href="{{ url_for('communications.compose') }}?reply_to={{ communication.id }}" class="btn btn-primary">
+                        <a href="{{ url_for('communications_fixed.compose') }}?reply_to={{ communication.id }}" class="btn btn-primary">
                             <i class="bi bi-reply me-2"></i>Reply
                         </a>
                         {% endif %}
                         {% if communication.direction == 'outbound' %}
-                        <a href="{{ url_for('communications.compose') }}?forward={{ communication.id }}" class="btn btn-secondary">
+                        <a href="{{ url_for('communications_fixed.compose') }}?forward={{ communication.id }}" class="btn btn-secondary">
                             <i class="bi bi-forward me-2"></i>Forward
                         </a>
                         {% endif %}
@@ -275,7 +275,7 @@
                         <a href="{{ url_for('people.show', id=communication.person_id) }}" class="btn btn-outline-primary">
                             <i class="bi bi-person me-2"></i>View Contact Profile
                         </a>
-                        <a href="{{ url_for('communications.index') }}?person_id={{ communication.person_id }}" class="btn btn-outline-secondary">
+                        <a href="{{ url_for('communications_fixed.index') }}?person_id={{ communication.person_id }}" class="btn btn-outline-secondary">
                             <i class="bi bi-envelope me-2"></i>View All Communications
                         </a>
                     </div>
@@ -297,7 +297,7 @@
                         <a href="{{ url_for('churches.show', id=communication.church_id) }}" class="btn btn-outline-primary">
                             <i class="bi bi-building me-2"></i>View Church Profile
                         </a>
-                        <a href="{{ url_for('communications.index') }}?church_id={{ communication.church_id }}" class="btn btn-outline-secondary">
+                        <a href="{{ url_for('communications_fixed.index') }}?church_id={{ communication.church_id }}" class="btn btn-outline-secondary">
                             <i class="bi bi-envelope me-2"></i>View All Communications
                         </a>
                     </div>

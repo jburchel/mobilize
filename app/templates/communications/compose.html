@@ -199,7 +199,7 @@
                     <p>Recent communications with selected recipient:</p>
                     <div id="recent-communications">
                         <div class="text-center text-muted py-4">
-                            <p>Select a recipient to see recent communications.</p>
+                            <p>Select a recipient to see recent communications_fixed.</p>
                         </div>
                     </div>
                 </div>
@@ -538,7 +538,7 @@
         $('#person-recipient, #church-recipient').on('change', function() {
             const id = $(this).val();
             if (!id) {
-                $('#recent-communications').html('<div class="text-center text-muted py-4"><p>Select a recipient to see recent communications.</p></div>');
+                $('#recent-communications').html('<div class="text-center text-muted py-4"><p>Select a recipient to see recent communications_fixed.</p></div>');
                 return;
             }
 
