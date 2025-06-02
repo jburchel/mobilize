@@ -231,6 +231,34 @@ def index():
                             error_details=error_details_str,
                             page_title="Error")
 
+@communications_fixed_bp.route('/compose')
+@login_required
+def compose():
+    """Compose a new communication"""
+    flash('Compose feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))
+
+@communications_fixed_bp.route('/view/<int:comm_id>')
+@login_required
+def view(comm_id):
+    """View a specific communication"""
+    flash('View feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))
+
+@communications_fixed_bp.route('/templates')
+@login_required
+def templates():
+    """Manage communication templates"""
+    flash('Templates feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))
+
+@communications_fixed_bp.route('/signatures')
+@login_required
+def signatures():
+    """Manage email signatures"""
+    flash('Signatures feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))
+
 @communications_fixed_bp.route('/test')
 @login_required
 def test_page():
@@ -311,3 +339,31 @@ def test_page():
                             error_message=f"Error: {str(e)}", 
                             error_details=error_details_str,
                             page_title="Error")
+
+@communications_fixed_bp.route('/compose')
+@login_required
+def compose():
+    """Compose a new communication"""
+    flash('Compose feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))
+
+@communications_fixed_bp.route('/view/<int:comm_id>')
+@login_required
+def view(comm_id):
+    """View a specific communication"""
+    flash('View feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))
+
+@communications_fixed_bp.route('/templates')
+@login_required
+def templates():
+    """Manage communication templates"""
+    flash('Templates feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))
+
+@communications_fixed_bp.route('/signatures')
+@login_required
+def signatures():
+    """Manage email signatures"""
+    flash('Signatures feature coming soon!', 'info')
+    return redirect(url_for('communications_fixed.index'))

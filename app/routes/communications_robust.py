@@ -52,7 +52,7 @@ def index():
                     signature = EmailSignature(
                         id=row.id,
                         name=row.name,
-                        signature=row.signature,
+                        content=row.content,
                         is_default=row.is_default,
                         user_id=row.user_id
                     )
