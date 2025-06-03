@@ -8,10 +8,10 @@ import os
 bind = "0.0.0.0:8080"
 
 # Worker Settings
-workers = 1
-threads = 8
+workers = 1  # Keep this at 1 for Cloud Run
+threads = 4  # Reduce from 8 to 4 for better stability
 worker_class = "gthread"
-timeout = 0  # Disable timeout as specified in Dockerfile's CMD
+timeout = 120  # Add a reasonable timeout instead of 0
 
 # Logging
 loglevel = os.getenv("LOG_LEVEL", "info").lower()
@@ -27,6 +27,14 @@ reload = False  # Disable auto-reload in production
 # Function to handle when worker starts
 def on_starting(server):
     print("Gunicorn server is starting")
+    # Make sure the app can be imported
+    try:
+        from wsgi import app
+        print("Successfully imported the application")
+    except Exception as e:
+        print(f"ERROR: Failed to import application: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Function to initialize worker process
 def post_fork(server, worker):
