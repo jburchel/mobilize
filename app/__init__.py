@@ -13,8 +13,6 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf  # noqa: F401
 from flask_limiter import Limiter  # noqa: F401
 from flask_limiter.util import get_remote_address  # noqa: F401
 from flask_talisman import Talisman  # noqa: F401
-from flask_limiter.util import get_remote_address  # noqa: F401
-from flask_talisman import Talisman  # noqa: F401
 from dotenv import load_dotenv, find_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix # Add ProxyFix import
 # Configuration imports
@@ -22,9 +20,7 @@ from app.config.config import Config, TestingConfig, ProductionConfig, Developme
 from app.config.logging_config import setup_logging  # noqa: F401
 from app.extensions import db, migrate, cors, login_manager, jwt, csrf, limiter, talisman, configure_cache, scheduler
 from app.auth.firebase import init_firebase
-from app.auth.routes import auth_bp
 from app.routes import blueprints
-from app.models.relationships import setup_relationships
 from app.tasks.scheduler import init_scheduler
 from app.utils.filters import register_filters, register_template_functions
 from app.utils.firebase import firebase_setup
@@ -318,7 +314,8 @@ def create_app(test_config=None):
     from app.routes.pipeline import pipeline_bp
 
     app.register_blueprint(main_bp)
-    app.register_blueprint(auth_bp)
+    # Register auth_bp with URL prefix to avoid conflicts
+    app.register_blueprint(auth_bp, url_prefix='/auth', name='auth_web')
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(people_bp)
     app.register_blueprint(churches_bp)
@@ -425,86 +422,12 @@ def create_app(test_config=None):
     else:
          app.logger.warning("SQLALCHEMY_DATABASE_URI not configured!")
 
-
-    # Initialize Flask extensions (Combined section)
-    try:
-        # Initialize login_manager first, before any other extensions
-        login_manager.init_app(app)
-        login_manager.login_view = 'auth.login_page'
-        login_manager.login_message_category = 'info'
-        
-        @login_manager.user_loader
-        def load_user(user_id):
-            from app.models.user import User
-            return User.query.get(int(user_id))
-
-        # Then initialize other extensions
-        db.init_app(app)
-        migrate.init_app(app, db)
-        cors.init_app(app)
-        csrf.init_app(app)
-        limiter.init_app(app)
-        
-        # Set up relationships before any database operations
-        with app.app_context():
-            setup_relationships()
-            app.logger.info("Model relationships set up.")
-        
-        skip_db_init = os.environ.get('SKIP_DB_INIT', 'False').lower() == 'true' or app.config.get('TESTING')
-        app.logger.info(f"SKIP_DB_INIT is set to: {skip_db_init}")
-
-        if not skip_db_init:
-            app.logger.info("Attempting to create database tables...")
-            with app.app_context():
-                try:
-                    # Import all models needed for db.create_all() to work properly
-                    # These imports are used by SQLAlchemy to discover models for table creation
-                    from app.models import User, Contact, Person, Church, Office, Task, Communication, EmailSignature, GoogleToken, Role, Permission # noqa
-                    db.create_all()
-                    app.logger.info("Database tables checked/created successfully.")
-                except Exception as e:
-                    app.logger.error(f"Error during DB initialization: {str(e)}")
-        else:
-            app.logger.info("Skipping automatic database initialization.")
-
-        app.url_map.strict_slashes = False
-        configure_cache(app)
-
-        # Configure Talisman (Keep logic from development)
-        csp = {
-            'default-src': ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
-            'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.jsdelivr.net', 'https://www.google-analytics.com'],
-            'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
-            'img-src': ["'self'", 'data:', 'https://www.google-analytics.com'],
-            'font-src': ["'self'", 'data:', 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com'],
-            # Add these new directives to allow drag and drop functionality
-            'connect-src': ["'self'"],
-            'worker-src': ["'self'"],
-            'frame-src': ["'self'"],
-            # Use a more permissive child-src policy as a fallback for older browsers
-            'child-src': ["'self'"]
-        }
-        if env == 'production':
-            talisman.init_app(app, force_https=True, content_security_policy=csp,
-                              content_security_policy_nonce_in=['script-src'],
-                              feature_policy={'geolocation': "'none'", 'microphone': "'none'", 'camera': "'none'"},
-                              session_cookie_secure=True, session_cookie_http_only=True)
-        else:
-            talisman.init_app(app, force_https=False, content_security_policy=None,
-                              feature_policy=None, session_cookie_secure=False)
-
-    except Exception as e:
-        app.logger.error(f"Error during application extension initialization: {str(e)}")
-
-    # --- MOVE ALL REGISTRATIONS BELOW THIS LINE ---
-
     jwt.init_app(app)
     init_firebase(app)
     init_scheduler(app)
 
-    # Register all blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(auth_bp, url_prefix='/auth', name='auth_web')
+    # Register API blueprints
+    # auth_bp is already registered above with URL prefix '/auth'
     from app.routes.api.v1 import api_bp
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     # Register our simplified communications blueprint
