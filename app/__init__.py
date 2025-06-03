@@ -451,24 +451,46 @@ def create_app(test_config=None):
     # Register our fixed communications blueprint with proper error handling
     try:
         from app.routes.communications_fixed import communications_fixed_bp
-        # Ensure unique name for the blueprint
-        communications_fixed_bp.name = 'communications_fixed_v1'
-        app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
-        app.logger.info("Successfully registered communications_fixed blueprint")
+        # Create a new blueprint with a unique name
+        from flask import Blueprint
+        fixed_bp = Blueprint(
+            'communications_fixed_v1',  # Unique name
+            __name__,
+            template_folder='templates',
+            static_folder='static'
+        )
+        # Copy routes from the original blueprint
+        for rule in communications_fixed_bp.url_map.iter_rules():
+            view_func = communications_fixed_bp.view_functions[rule.endpoint]
+            fixed_bp.add_url_rule(rule.rule, view_func=view_func, **rule.options)
+        
+        app.register_blueprint(fixed_bp, url_prefix='/communications_fixed')
+        app.logger.info("Successfully registered communications_fixed blueprint with unique name")
     except Exception as e:
         app.logger.error(f"Error registering communications_fixed blueprint: {e}")
-    
-    # Ensure communications_simple_bp is not registered again anywhere else
     
     # Register our fixed communications blueprint with robust type handling
     try:
         from app.routes.communications_fixed_type import communications_fixed_bp as communications_fixed_type_bp
-        # Ensure unique name for the blueprint
-        communications_fixed_type_bp.name = 'communications_fixed_type_v1'
-        app.register_blueprint(communications_fixed_type_bp, url_prefix='/communications_fixed_type')
-        app.logger.info("Successfully registered communications_fixed_type blueprint")
+        # Create a new blueprint with a unique name
+        fixed_type_bp = Blueprint(
+            'communications_fixed_type_v1',  # Unique name
+            __name__,
+            template_folder='templates',
+            static_folder='static'
+        )
+        # Copy routes from the original blueprint
+        for rule in communications_fixed_type_bp.url_map.iter_rules():
+            view_func = communications_fixed_type_bp.view_functions[rule.endpoint]
+            fixed_type_bp.add_url_rule(rule.rule, view_func=view_func, **rule.options)
+        
+        app.register_blueprint(fixed_type_bp, url_prefix='/communications_fixed_type')
+        app.logger.info("Successfully registered communications_fixed_type blueprint with unique name")
     except Exception as e:
         app.logger.error(f"Error registering communications_fixed_type blueprint: {e}")
+        # If we can't register the fixed_type blueprint, log the error but continue
+        import traceback
+        app.logger.error(f"Full traceback: {traceback.format_exc()}")
     # Define URL prefixes for all routes
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
                      'tasks': '/tasks', 'google_sync': '/google_sync',
