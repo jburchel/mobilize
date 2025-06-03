@@ -310,8 +310,9 @@ def create_app(test_config=None):
     from app.routes.communications import communications_bp
     from app.routes.communications_simple import communications_simple_bp
     from app.routes.admin import admin_bp
-    from app.routes.api import api_bp
     from app.routes.pipeline import pipeline_bp
+    # Import API blueprint from v1
+    from app.routes.api.v1 import api_bp
 
     app.register_blueprint(main_bp)
     # Register auth_bp with URL prefix to avoid conflicts
@@ -323,8 +324,9 @@ def create_app(test_config=None):
     app.register_blueprint(communications_bp)
     app.register_blueprint(communications_simple_bp)
     app.register_blueprint(admin_bp)
-    app.register_blueprint(api_bp)
     app.register_blueprint(pipeline_bp)
+    # Register API blueprint with URL prefix
+    app.register_blueprint(api_bp, url_prefix='/api/v1')
 
     # --- Keep Health Check and Debug Endpoints from main ---
     @app.route('/health', methods=['GET'])
@@ -426,10 +428,6 @@ def create_app(test_config=None):
     init_firebase(app)
     init_scheduler(app)
 
-    # Register API blueprints
-    # auth_bp is already registered above with URL prefix '/auth'
-    from app.routes.api.v1 import api_bp
-    app.register_blueprint(api_bp, url_prefix='/api/v1')
     # Register our simplified communications blueprint
     from app.routes.communications_simple import communications_simple_bp
     app.register_blueprint(communications_simple_bp, url_prefix='/communications_simple')
