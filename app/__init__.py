@@ -521,6 +521,10 @@ def create_app(test_config=None):
     # Register our fixed communications blueprint with proper error handling
     from app.routes.communications_fixed import communications_fixed_bp
     app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
+    
+    # Register our fixed communications blueprint with robust type handling
+    from app.routes.communications_fixed_type import communications_fixed_bp as communications_fixed_type_bp
+    app.register_blueprint(communications_fixed_type_bp, url_prefix='/communications_fixed_type')
     # Define URL prefixes for all routes
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
                      'tasks': '/tasks', 'google_sync': '/google_sync',
