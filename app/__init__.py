@@ -517,6 +517,10 @@ def create_app(test_config=None):
     
     from app.routes.communications import communications_bp
     app.register_blueprint(communications_bp, url_prefix='/communications')
+    
+    # Register our fixed communications blueprint with proper error handling
+    from app.routes.communications_fixed import communications_fixed_bp
+    app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
     # Define URL prefixes for all routes
     url_prefixes = { 'dashboard': '/', 'admin': '/admin', 'people': '/people', 'churches': '/churches',
                      'tasks': '/tasks', 'google_sync': '/google_sync',
