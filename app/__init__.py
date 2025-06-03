@@ -431,13 +431,30 @@ def create_app(test_config=None):
     init_firebase(app)
     init_scheduler(app)
 
-    # Register our robust communications blueprint with explicit type handling
-    from app.routes.communications_robust import communications_robust_bp
-    app.register_blueprint(communications_robust_bp, url_prefix='/communications_robust')
+    # Try to register the robust communications blueprint if marshmallow is available
+    try:
+        import importlib.util
+        if importlib.util.find_spec('marshmallow') is not None:
+            try:
+                from app.routes.communications_robust import communications_robust_bp
+                app.register_blueprint(communications_robust_bp, url_prefix='/communications_robust')
+                app.logger.info("Successfully registered communications_robust blueprint")
+            except ImportError as e:
+                app.logger.warning(f"Could not import communications_robust: {e}")
+            except Exception as e:
+                app.logger.error(f"Error registering communications_robust blueprint: {e}")
+        else:
+            app.logger.warning("marshmallow package not found. Skipping communications_robust blueprint registration.")
+    except Exception as e:
+        app.logger.error(f"Error checking for marshmallow package: {e}")
     
     # Register our fixed communications blueprint with proper error handling
-    from app.routes.communications_fixed import communications_fixed_bp
-    app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
+    try:
+        from app.routes.communications_fixed import communications_fixed_bp
+        app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
+        app.logger.info("Successfully registered communications_fixed blueprint")
+    except Exception as e:
+        app.logger.error(f"Error registering communications_fixed blueprint: {e}")
     
     # Ensure communications_simple_bp is not registered again anywhere else
     
