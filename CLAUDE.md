@@ -40,3 +40,5 @@
 3. When you feel like a file is becoming too large, evaluate the code to see if it can be broken down into smaller files
 4. Always be thinking about refactoring and keeping our code base as simple and as understandable as possible using best practices
 5. Alway fix linting issues as we go before committing or pushing changes.
+6. If a terminal command needs to be run, run it yourslef without just providing the command... just run it in the chat.
+7. 
