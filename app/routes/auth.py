@@ -1,10 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
-from flask_login import login_required, current_user, login_user, logout_user
-from app.models.user import User
-from app import db
+from flask import Blueprint
 
 # Create Blueprint
 auth_bp = Blueprint('auth', __name__)
 
-# Import the actual routes from the auth directory
+# Import the actual routes from the auth directory - must be after Blueprint creation
 from app.auth.routes import *

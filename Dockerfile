@@ -56,7 +56,5 @@ EXPOSE 8080
 RUN echo "from flask import Flask\napp = Flask(__name__)\n@app.route('/health')\ndef health_check():\n    return {'status': 'ok'}\n\nif __name__ == '__main__':\n    app.run(host='0.0.0.0', port=8080)" > health_check.py
 
 # Use our startup script
-# Use optimized Gunicorn configuration for better performance
-# Number of workers = (2 * CPU cores) + 1
-# We're setting to 3 for a 1 CPU instance
-CMD exec gunicorn --bind :8080 --workers 3 --threads 8 --timeout 0 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 wsgi:app
+# Use our startup script which configures and starts Gunicorn
+CMD ["/bin/bash", "/app/start.sh"]
