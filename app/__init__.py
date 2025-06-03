@@ -498,7 +498,7 @@ def create_app(test_config=None):
                      'emails': '/emails', 'onboarding': '/onboarding', }
     for bp in blueprints:
         prefix = url_prefixes.get(bp.name, '/' + bp.name)
-        app.register_blueprint(bp, url_prefix=prefix)
+        app.register_blueprint(bp, url_prefix=prefix, name=f"{bp.name}_{prefix.replace('/', '_')}")
 
     # Register template filters and functions
     register_filters(app)
