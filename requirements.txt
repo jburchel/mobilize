@@ -46,5 +46,8 @@ psutil==5.9.5
 # Date/time formatting
 humanize==4.12.3
 
+# Data validation and serialization
+marshmallow==3.20.1
+
 # Supabase client
 supabase==2.15.2
