@@ -30,6 +30,8 @@ from app.utils.migrate_contacts_to_main_pipeline import migrate_contacts_to_main
 from app.utils.ensure_church_pipeline import init_app as init_church_pipeline
 from app.cli import register_commands
 from app.utils.db_transaction_fix import init_app as init_db_transaction_fix
+from app.utils.blueprint_validator import safe_register_blueprint
+from app.monitoring import init_app as init_monitoring
 
 # Import performance optimizations
 from app.config.performance_optimizations import optimize_flask_app
@@ -312,6 +314,7 @@ def create_app(test_config=None):
     from app.routes.admin import admin_bp
     from app.routes.pipeline import pipeline_bp
     from app.routes.api.v1 import api_bp  # Import API blueprint from v1
+    from app.routes.health import health_bp
 
     app.register_blueprint(main_bp)
     # Register auth_bp with URL prefix to avoid conflicts
@@ -325,6 +328,7 @@ def create_app(test_config=None):
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(pipeline_bp, url_prefix='/pipeline')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
+    app.register_blueprint(health_bp, url_prefix='/api')
     
     # Register communications_simple_bp with its unique name
     # The name in the Blueprint constructor is now 'communications_simple_bp'
@@ -498,7 +502,7 @@ def create_app(test_config=None):
                      'emails': '/emails', 'onboarding': '/onboarding', }
     for bp in blueprints:
         prefix = url_prefixes.get(bp.name, '/' + bp.name)
-        app.register_blueprint(bp, url_prefix=prefix, name=f"{bp.name}_{prefix.replace('/', '_')}")
+        safe_register_blueprint(app, bp, url_prefix=prefix)
 
     # Register template filters and functions
     register_filters(app)
@@ -675,5 +679,8 @@ def create_app(test_config=None):
                 }
         else:
             g.stats = None
+
+    init_monitoring(app)
+    app.logger.info("Application monitoring initialized")
 
     return app
