@@ -300,7 +300,7 @@ def create_app(test_config=None):
     if not hasattr(app, 'migrate'):
         migrate.init_app(app, db)
 
-    # Import and register blueprints
+    # Import blueprints
     from app.routes.main import main_bp
     from app.routes.auth import auth_bp
     from app.routes.dashboard import dashboard_bp
@@ -311,8 +311,7 @@ def create_app(test_config=None):
     from app.routes.communications_simple import communications_simple_bp
     from app.routes.admin import admin_bp
     from app.routes.pipeline import pipeline_bp
-    # Import API blueprint from v1
-    from app.routes.api.v1 import api_bp
+    from app.routes.api.v1 import api_bp  # Import API blueprint from v1
 
     app.register_blueprint(main_bp)
     # Register auth_bp with URL prefix to avoid conflicts
@@ -321,12 +320,16 @@ def create_app(test_config=None):
     app.register_blueprint(people_bp)
     app.register_blueprint(churches_bp)
     app.register_blueprint(tasks_bp)
-    app.register_blueprint(communications_bp)
-    app.register_blueprint(communications_simple_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(pipeline_bp)
-    # Register API blueprint with URL prefix
+    # Register blueprints with appropriate URL prefixes
+    app.register_blueprint(communications_bp, url_prefix='/communications')
+    app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(pipeline_bp, url_prefix='/pipeline')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
+    
+    # Register communications_simple_bp with a unique name to avoid conflicts
+    app.register_blueprint(communications_simple_bp, 
+                         url_prefix='/communications_simple',
+                         name='communications_simple_bp')
 
     # --- Keep Health Check and Debug Endpoints from main ---
     @app.route('/health', methods=['GET'])
@@ -428,16 +431,9 @@ def create_app(test_config=None):
     init_firebase(app)
     init_scheduler(app)
 
-    # Register our simplified communications blueprint
-    from app.routes.communications_simple import communications_simple_bp
-    app.register_blueprint(communications_simple_bp, url_prefix='/communications_simple')
-    
     # Register our robust communications blueprint with explicit type handling
     from app.routes.communications_robust import communications_robust_bp
     app.register_blueprint(communications_robust_bp, url_prefix='/communications_robust')
-    
-    from app.routes.communications import communications_bp
-    app.register_blueprint(communications_bp, url_prefix='/communications')
     
     # Register our fixed communications blueprint with proper error handling
     from app.routes.communications_fixed import communications_fixed_bp
