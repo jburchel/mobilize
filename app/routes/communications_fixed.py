@@ -1,20 +1,11 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.models.communication import Communication
-from app.models.person import Person
-from app.models.church import Church
 from app.models.email_signature import EmailSignature
-from app.models.email_template import EmailTemplate
-from app.extensions import db, cache
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import text, or_
+from app.extensions import db
+from sqlalchemy import text
 from sqlalchemy.orm import joinedload
-import json
-import traceback
-from app.utils.decorators import office_required
 from app.utils.upload import save_uploaded_file
-from app.utils.time import format_date
-from app.utils.query_optimization import optimize_query, with_pagination, cached_query
 
 communications_fixed_bp = Blueprint('communications_fixed', __name__, template_folder='../templates/communications')
 
@@ -89,6 +80,9 @@ def index():
             
             current_app.logger.info(f"Loaded {len(current_user.email_signatures)} email signatures")
         except Exception as e:
+            # Rollback any failed transactions to prevent cascading errors
+            db.session.rollback()
+            
             current_app.logger.error(f"Error loading email signatures: {str(e)}")
             current_app.logger.exception("Full traceback for email signature error:")
             current_user.email_signatures = []

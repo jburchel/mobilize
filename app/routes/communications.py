@@ -206,6 +206,9 @@ def index():
                               pagination=pagination,
                               per_page=per_page)
     except Exception as e:
+        # Rollback any failed transactions to prevent cascading errors
+        db.session.rollback()
+        
         current_app.logger.error(f"Error in communications index: {str(e)}")
         current_app.logger.exception("Full traceback for communications index error:")
         current_app.logger.info(f"Request URL at error: {request.url}")
@@ -218,6 +221,111 @@ def index():
             current_app.logger.info("User has no office attribute at error")
         flash('An error occurred while loading communications. Please try again later.', 'error')
         return render_template('error.html', error_message="An error occurred", page_title="Error")
+
+@communications_bp.route('/signatures', methods=['GET', 'POST'])
+@login_required
+def signatures():
+    """Manage email signatures"""
+    try:
+        current_app.logger.info(f"User {current_user.id} accessed signatures page")
+        
+        if request.method == 'POST':
+            action = request.form.get('action')
+            
+            if action == 'create' or action == 'update':
+                # Get form data
+                signature_id = request.form.get('signature_id')
+                name = request.form.get('name')
+                content = request.form.get('content', '')
+                is_default = request.form.get('is_default') == 'on'
+                
+                # Convert line breaks to HTML
+                content = content.replace('\n', '<br>').replace('\r', '<br>')
+                
+                # Handle logo upload if present
+                logo_url = None
+                if 'logo' in request.files and request.files['logo'].filename:
+                    try:
+                        logo_url = save_uploaded_file(request.files['logo'], 'signatures')
+                    except Exception as e:
+                        current_app.logger.error(f"Error uploading signature logo: {str(e)}")
+                        flash(f"Error uploading logo: {str(e)}", 'danger')
+                
+                try:
+                    if action == 'create':
+                        # Create new signature
+                        signature = EmailSignature(
+                            name=name,
+                            content=content,
+                            logo_url=logo_url,
+                            is_default=is_default,
+                            user_id=current_user.id
+                        )
+                        db.session.add(signature)
+                        flash('Signature created successfully', 'success')
+                    else:
+                        # Update existing signature
+                        signature = EmailSignature.query.get(signature_id)
+                        if signature and signature.user_id == current_user.id:
+                            signature.name = name
+                            signature.content = content
+                            if logo_url:
+                                signature.logo_url = logo_url
+                            signature.is_default = is_default
+                            flash('Signature updated successfully', 'success')
+                        else:
+                            flash('Signature not found', 'danger')
+                            return redirect(url_for('communications.signatures'))
+                    
+                    # If this is set as default, unset other defaults
+                    if is_default:
+                        other_signatures = EmailSignature.query.filter(
+                            EmailSignature.user_id == current_user.id,
+                            EmailSignature.id != (signature.id if action == 'update' else None)
+                        ).all()
+                        for other in other_signatures:
+                            other.is_default = False
+                    
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    current_app.logger.error(f"Database error with signature: {str(e)}")
+                    flash(f"Error saving signature: {str(e)}", 'danger')
+            
+            elif action == 'delete':
+                signature_id = request.form.get('signature_id')
+                signature = EmailSignature.query.get(signature_id)
+                
+                if signature and signature.user_id == current_user.id:
+                    db.session.delete(signature)
+                    db.session.commit()
+                    flash('Signature deleted successfully', 'success')
+                else:
+                    flash('Signature not found or you do not have permission', 'danger')
+            
+            elif action == 'set_default':
+                signature_id = request.form.get('signature_id')
+                
+                # First, unset all defaults for this user
+                signatures = EmailSignature.query.filter_by(user_id=current_user.id).all()
+                for sig in signatures:
+                    sig.is_default = (str(sig.id) == signature_id)
+                
+                db.session.commit()
+                flash('Default signature updated', 'success')
+        
+        # Get all signatures for this user
+        signatures = EmailSignature.query.filter_by(
+            user_id=current_user.id
+        ).order_by(EmailSignature.is_default.desc(), EmailSignature.name).all()
+        
+        return render_template('communications/signatures.html', 
+                              signatures=signatures,
+                              page_title="Email Signatures")
+    except Exception as e:
+        current_app.logger.error(f"Error in signatures page: {str(e)}")
+        current_app.logger.exception("Full traceback for signatures error:")
+        return render_template('error.html', error_message=f"Error: {str(e)}", page_title="Error")
 
 @communications_bp.route('/test')
 @login_required
@@ -265,16 +373,16 @@ def test_page():
         
         # Try to render the actual template but with empty data
         return render_template('communications/index.html', 
-                              communications=[],
-                              pagination={
-                                  'page': 1,
-                                  'per_page': 50,
-                                  'total': 0,
-                                  'pages': 0,
-                                  'has_next': False,
-                                  'has_prev': False
-                              },
-                              page_title="Communications Test")
+                               communications=[],
+                               pagination={
+                                   'page': 1,
+                                   'per_page': 50,
+                                   'total': 0,
+                                   'pages': 0,
+                                   'has_next': False,
+                                   'has_prev': False
+                               },
+                               page_title="Communications Test")
     except Exception as e:
         current_app.logger.error(f"Error in test communications page: {str(e)}")
         current_app.logger.exception("Full traceback:")
