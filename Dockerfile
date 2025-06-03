@@ -18,8 +18,16 @@ RUN pip install --no-cache-dir --upgrade pip
 # Copy requirements file
 COPY requirements.txt .
 
+# Add a cache-busting step to ensure fresh package installation
+ARG CACHEBUST=1
+
 # Install Python dependencies with explicit psycopg2-binary
 RUN pip install --no-cache-dir psycopg2-binary
+
+# Install marshmallow explicitly to ensure it's available
+RUN pip install --no-cache-dir marshmallow==3.20.1
+
+# Install requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
