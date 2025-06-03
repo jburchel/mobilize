@@ -4,7 +4,8 @@ from app.extensions import db
 from app.models import Communication, Person, Church, User, Office
 import logging
 
-communications_simple_bp = Blueprint('communications_simple', __name__)
+# Use a unique name for the blueprint to avoid conflicts
+communications_simple_bp = Blueprint('communications_simple_bp', __name__)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

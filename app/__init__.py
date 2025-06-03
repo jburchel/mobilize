@@ -326,10 +326,10 @@ def create_app(test_config=None):
     app.register_blueprint(pipeline_bp, url_prefix='/pipeline')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     
-    # Register communications_simple_bp with a unique name to avoid conflicts
+    # Register communications_simple_bp with its unique name
+    # The name in the Blueprint constructor is now 'communications_simple_bp'
     app.register_blueprint(communications_simple_bp, 
-                         url_prefix='/communications_simple',
-                         name='communications_simple_bp')
+                         url_prefix='/communications_simple')
 
     # --- Keep Health Check and Debug Endpoints from main ---
     @app.route('/health', methods=['GET'])
@@ -438,6 +438,8 @@ def create_app(test_config=None):
     # Register our fixed communications blueprint with proper error handling
     from app.routes.communications_fixed import communications_fixed_bp
     app.register_blueprint(communications_fixed_bp, url_prefix='/communications_fixed')
+    
+    # Ensure communications_simple_bp is not registered again anywhere else
     
     # Register our fixed communications blueprint with robust type handling
     from app.routes.communications_fixed_type import communications_fixed_bp as communications_fixed_type_bp
