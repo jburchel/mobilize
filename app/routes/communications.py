@@ -275,7 +275,7 @@ def signatures():
                             flash('Signature updated successfully', 'success')
                         else:
                             flash('Signature not found', 'danger')
-                            return redirect(url_for('communications.signatures'))
+                            return redirect(url_for('communications_fixed.signatures'))
                     
                     # If this is set as default, unset other defaults
                     if is_default:
